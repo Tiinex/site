@@ -1,0 +1,77 @@
+name: Publish Public Branch
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - README.md
+      - LICENSE
+      - NOTICE
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch, tag, or commit to publish from
+        required: false
+        default: "master"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-site-public
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PAGES_CNAME: ${{ vars.PAGES_CNAME || '' }}
+
+    steps:
+      - name: Resolve source ref
+        id: settings
+        shell: bash
+        run: |
+          source_ref="${{ github.event.inputs.source_ref }}"
+          if [ -z "$source_ref" ]; then
+            source_ref="master"
+          fi
+
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.settings.outputs.source_ref }}
+          fetch-depth: 0
+
+      - name: Prepare publish directory
+        shell: bash
+        run: |
+          rm -rf .site-publish
+          mkdir -p .site-publish
+
+          rsync -av ./ .site-publish/ \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.site-publish/' \
+            --exclude 'README.md' \
+            --exclude 'LICENSE' \
+            --exclude 'NOTICE'
+
+          touch .site-publish/.nojekyll
+
+          if [ -n "$PAGES_CNAME" ]; then
+            printf '%s\n' "$PAGES_CNAME" > .site-publish/CNAME
+          fi
+
+      - name: Publish public branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .site-publish
+          publish_branch: public
+          force_orphan: true
+          commit_message: >-
+            Publish public branch from ${{ steps.settings.outputs.source_ref }} @ ${{ github.sha }}

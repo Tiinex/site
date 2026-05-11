@@ -1,0 +1,44 @@
+{
+  "title": "Feedback Review Queue",
+  "summary": "A small public view of feedback that is waiting for human review.",
+  "problem": "The human feedback loop is under-covered and one human lane carries too much of the review burden.",
+  "feedbackAsk": "Useful feedback says what signal would tell you this is wrong or actually held.",
+  "reviewGate": "Nothing here changes direction until a human records a triage decision.",
+  "principles": [
+    "One human-reviewed truth source",
+    "Human review outranks automation",
+    "Raw audience input never self-promotes",
+    "Public wording stays readable"
+  ],
+  "triageStates": [
+    {
+      "id": "captured",
+      "label": "Captured",
+      "description": "Feedback was recorded but has not been reviewed by a human yet."
+    },
+    {
+      "id": "reviewing",
+      "label": "Reviewing",
+      "description": "A human is checking signal quality, scope, and relevance."
+    },
+    {
+      "id": "accepted",
+      "label": "Accepted",
+      "description": "The feedback is strong enough to influence the next bounded slice."
+    },
+    {
+      "id": "rejected",
+      "label": "Rejected",
+      "description": "The feedback is noise, drift, or outside the current problem frame."
+    }
+  ],
+  "sampleItem": {
+    "id": "FB-001",
+    "source": "public-site",
+    "report": "Make the useful feedback ask explicit so viewers know what signal matters.",
+    "whyItMatters": "Without a concrete ask, activity can look alive while signal stays weak.",
+    "status": "reviewing",
+    "humanDecision": "Keep the first surface focused on one useful-feedback prompt and one visible triage state.",
+    "updatedAt": "2026-05-11T21:40:00.000Z"
+  }
+}

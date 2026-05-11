@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiinex Feedback Spine</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <main class="shell">
+        <section class="hero">
+            <header class="masthead">
+                <div class="brand-lockup">
+                    <img
+                        class="brand-mark"
+                        src="../.github/assets/tiinex-logotype-subtitle-white-transparent.png"
+                        alt="Tiinex"
+                        decoding="async"
+                    >
+                </div>
+
+                <section class="mission-panel" aria-label="Tiinex mission">
+                    <p class="mission-title">Building recoverable AI workflows instead of magical ones</p>
+                    <div class="mission-traits">
+                        <span>Explicit</span>
+                        <span>Recoverable</span>
+                        <span>Observable</span>
+                        <span>Adaptable</span>
+                    </div>
+                </section>
+            </header>
+
+            <div class="hero-layout">
+                <div class="hero-copy">
+                    <p class="eyebrow">Feedback layer</p>
+                    <h1 id="title">Loading feedback spine</h1>
+                    <p id="summary" class="summary">Waiting for canonical feedback data.</p>
+                    <p id="feedback-ask" class="ask">Waiting for useful feedback guidance.</p>
+                </div>
+
+                <aside class="hero-card" aria-label="Queue snapshot">
+                    <p class="hero-card-label">Queue snapshot</p>
+                    <div class="hero-card-status">
+                        <span id="hero-status" class="status-chip status-captured">loading</span>
+                        <span id="hero-updated" class="hero-updated">Waiting for update time.</span>
+                    </div>
+
+                    <div class="hero-stats">
+                        <div class="hero-stat">
+                            <span class="hero-stat-value" id="hero-state-count">0</span>
+                            <span class="hero-stat-label">triage states</span>
+                        </div>
+
+                        <div class="hero-stat">
+                            <span class="hero-stat-value" id="hero-principle-count">0</span>
+                            <span class="hero-stat-label">public principles</span>
+                        </div>
+                    </div>
+
+                    <div class="hero-card-block">
+                        <p class="hero-card-label">Human gate</p>
+                        <p id="hero-gate">Waiting for review boundary.</p>
+                    </div>
+
+                    <div class="hero-card-block">
+                        <p class="hero-card-label">Current report</p>
+                        <p id="hero-report">Waiting for current report.</p>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="panel problem-panel lane-cyan">
+            <div class="panel-header">
+                <h2>Current Problem</h2>
+                <span class="badge">Human review required</span>
+            </div>
+            <p id="problem" class="problem-copy">Waiting for problem framing.</p>
+        </section>
+
+        <section class="grid">
+            <article class="panel lane-cyan">
+                <div class="panel-header">
+                    <h2>Principles</h2>
+                    <span class="badge badge-muted">One source</span>
+                </div>
+                <ul id="principles" class="pill-list"></ul>
+            </article>
+
+            <article class="panel lane-gold">
+                <div class="panel-header">
+                    <h2>Triage States</h2>
+                    <span class="badge badge-muted">Shared states</span>
+                </div>
+                <div id="states" class="state-list"></div>
+            </article>
+        </section>
+
+        <section class="panel sample-panel lane-violet">
+            <div class="panel-header">
+                <h2>Sample Feedback Item</h2>
+                <span id="sample-status" class="status-chip">Waiting</span>
+            </div>
+
+            <div class="sample-meta">
+                <span id="sample-id">--</span>
+                <span id="sample-source">--</span>
+                <span id="sample-updated">--</span>
+            </div>
+
+            <div class="sample-block">
+                <h3>Report</h3>
+                <p id="sample-report">Waiting for report.</p>
+            </div>
+
+            <div class="sample-block">
+                <h3>Why It Matters</h3>
+                <p id="sample-why">Waiting for reasoning.</p>
+            </div>
+
+            <div class="sample-block">
+                <h3>Human Decision</h3>
+                <p id="sample-decision">Waiting for decision.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="./app.js"></script>
+</body>
+</html>
