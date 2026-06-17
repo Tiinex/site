@@ -1,198 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Tiinex builds open infrastructure for owned continuity: traceable, recoverable, portable AI-assisted workflows.">
-    <title>Tiinex — Infrastructure for Owned Continuity</title>
-    <link rel="stylesheet" href="./styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Tiinex lineage viewer for inspectable .trace.md artifacts.">
+  <title>Tiinex Lineage</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-    <header class="site-header">
-        <a class="brand" href="#top" aria-label="Tiinex home">
-            <img src="./assets/tiinex-logotype-subtitle-white-transparent.png" alt="Tiinex — Infrastructure for Owned Continuity">
-        </a>
-        <nav class="nav" aria-label="Primary navigation">
-            <a href="#why">Why</a>
-            <a href="#runtime">Runtime</a>
-            <a href="#format">Format</a>
-            <a href="#repos">Repos</a>
-            <a href="https://github.com/Tiinex" target="_blank" rel="noopener">GitHub</a>
-        </nav>
-    </header>
+<!--
+  Tiinex origin notice:
+  Keep the visible "Powered by Tiinex" footer when redistributing or publishing derived viewers.
+  It preserves tool lineage and avoids misleading provenance.
+-->
 
-    <main id="top">
-        <section class="hero section-pad">
-            <div class="hero-copy">
-                <p class="kicker">Built around operational reality</p>
-                <h1>You own the continuity. We provide the infrastructure.</h1>
-                <p class="lead">
-                    Tiinex explores open continuity infrastructure for AI-assisted workflows that need to be explicit,
-                    recoverable, inspectable, portable, and runtime-agnostic.
-                </p>
-                <div class="hero-actions">
-                    <a class="button primary" href="https://github.com/Tiinex/ai-provenance" target="_blank" rel="noopener">Explore ai-provenance</a>
-                    <a class="button" href="#format">See the format direction</a>
-                </div>
-            </div>
+  <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    // App-level viewer options. Host pages may override this before loading app.js.
+    // Set createWorkspace to false to hide/disable Create workspace controls.
+    window.TIINEX_VIEWER_OPTIONS = window.TIINEX_VIEWER_OPTIONS || {
+      createWorkspace: true
+    };
+  </script>
 
-            <aside class="hero-card" aria-label="Tiinex principles">
-                <p class="card-label">Core principles</p>
-                <div class="principle-grid">
-                    <span>Explicit</span>
-                    <span>Recoverable</span>
-                    <span>Observable</span>
-                    <span>Portable</span>
-                    <span>Yours</span>
-                </div>
-                <p class="card-note">No hidden magic. No forced platform lock-in. Continuity should survive runtimes.</p>
-            </aside>
-        </section>
-
-        <section id="why" class="section-pad split">
-            <div>
-                <p class="kicker">Why Tiinex</p>
-                <h2>AI work is becoming harder to inspect after the fact.</h2>
-            </div>
-            <div class="copy-stack">
-                <p>
-                    Useful AI workflows often span chats, tools, files, roles, models, and human decisions. When the
-                    continuity is hidden inside a runtime, it becomes difficult to understand what happened, what drifted,
-                    and what can be recovered.
-                </p>
-                <p>
-                    Tiinex treats continuity as an artifact: something you can inspect, move, fork, compress, verify,
-                    and continue from without pretending the system is perfect.
-                </p>
-            </div>
-        </section>
-
-        <section id="runtime" class="section-pad panel runtime-panel">
-            <div class="section-heading">
-                <p class="kicker">Continuity runtime</p>
-                <h2>Traceable interactions become recoverable.</h2>
-            </div>
-
-            <div class="flow" aria-label="Continuity runtime flow">
-                <article>
-                    <strong>Input</strong>
-                    <span>Human, agent, files, context</span>
-                </article>
-                <article>
-                    <strong>Agent</strong>
-                    <span>Model, provider, role, tools</span>
-                </article>
-                <article>
-                    <strong>Trace</strong>
-                    <span>.trace.md record of interaction</span>
-                </article>
-                <article>
-                    <strong>Lineage</strong>
-                    <span>Parent / child continuity tree</span>
-                </article>
-                <article>
-                    <strong>Carry</strong>
-                    <span>Explicit state passed forward</span>
-                </article>
-                <article>
-                    <strong>Follow-up</strong>
-                    <span>Continue, fork, reconstruct, extend</span>
-                </article>
-            </div>
-        </section>
-
-        <section class="section-pad grid-3">
-            <article class="panel">
-                <p class="kicker">Filesystem foundation</p>
-                <h3>Hidden by default. Inspectable on demand.</h3>
-                <p>
-                    Work can live in hidden `.topics` folders while user-facing clients render conversations, traces,
-                    topics, and evidence in simpler views.
-                </p>
-            </article>
-            <article class="panel">
-                <p class="kicker">Degradation & recovery</p>
-                <h3>Not every run succeeds. The state should still be truthful.</h3>
-                <p>
-                    Partial, failed, unresolved, and recoverable states are first-class signals instead of being hidden
-                    behind plausible output.
-                </p>
-            </article>
-            <article class="panel">
-                <p class="kicker">Privacy & control</p>
-                <h3>You decide what is captured.</h3>
-                <p>
-                    Continuity is opt-in, movable, compressible, shareable, and deletable. The goal is explicit
-                    continuity, not surveillance memory.
-                </p>
-            </article>
-        </section>
-
-        <section id="format" class="section-pad panel format-panel">
-            <div class="section-heading">
-                <p class="kicker">Format direction</p>
-                <h2>Simple artifacts before proprietary containers.</h2>
-            </div>
-
-            <div class="format-grid">
-                <article>
-                    <h3>.trace.md</h3>
-                    <p>Human-readable markdown continuity records with explicit runtime and lineage metadata.</p>
-                </article>
-                <article>
-                    <h3>.trace.zip</h3>
-                    <p>Flat lineage export: simple `.trace.md` files in a zip archive for cross-platform portability.</p>
-                </article>
-                <article>
-                    <h3>Checksums</h3>
-                    <p>Integrity verification for parent edges and exported artifacts without pretending to be a blockchain.</p>
-                </article>
-                <article>
-                    <h3>Remote parents</h3>
-                    <p>Pinned references can let lineage span repos, teams, runtimes, and origins without inheriting hidden trust.</p>
-                </article>
-            </div>
-        </section>
-
-        <section id="repos" class="section-pad repos">
-            <div class="section-heading">
-                <p class="kicker">Start here</p>
-                <h2>Current public work surfaces</h2>
-            </div>
-
-            <div class="repo-list">
-                <a href="https://github.com/Tiinex/ai-provenance" target="_blank" rel="noopener">
-                    <strong>ai-provenance</strong>
-                    <span>TRACEABLE, `.trace.md`, lineage, recoverability, runtime evidence.</span>
-                </a>
-                <a href="https://github.com/Tiinex/ai-vscode-tools" target="_blank" rel="noopener">
-                    <strong>ai-vscode-tools</strong>
-                    <span>Local chat inspection, session-store tooling, and host utilities.</span>
-                </a>
-                <a href="https://github.com/Tiinex/feedback" target="_blank" rel="noopener">
-                    <strong>feedback</strong>
-                    <span>Experimental topic-oriented feedback and evaluation workflows.</span>
-                </a>
-                <a href="https://github.com/Tiinex/ai" target="_blank" rel="noopener">
-                    <strong>ai</strong>
-                    <span>Maintained role sources, canon, transfer artifacts, and broader continuity context.</span>
-                </a>
-            </div>
-        </section>
-
-        <section class="section-pad closing">
-            <p class="kicker">North star</p>
-            <h2>Recoverability is the path to trust.</h2>
-            <p>
-                Built in public. Improved in public. Owned by the people who create the continuity.
-            </p>
-        </section>
-    </main>
-
-    <footer class="footer">
-        <span>Tiinex</span>
-        <span>Open format. Open ecosystem. Open collaboration.</span>
-        <a href="https://ko-fi.com/Tiinusen" target="_blank" rel="noopener">Support</a>
-    </footer>
+  <script src="./app.js"></script>
 </body>
 </html>
