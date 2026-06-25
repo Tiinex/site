@@ -33,4 +33,5 @@ Browser state:
 - Local workspace persistence stores local/draft deltas only.
 - Remote/default workspace content should not be duplicated into browser storage.
 - Scroll and lens state are session-scoped and should stay compact, content-aware, and safe to clear.
-- Scroll and view-state behavior are still an active design surface; verify current runtime behavior before asserting it is settled.
+- Route, lens, and scroll policy helpers have an owned `src/viewstate/` surface, but browser restore behavior is still an active design surface; verify current runtime behavior before asserting it is settled.
+- `architectureReadyForProductWork: yes` is the metrics signal that the current module boundary baseline is ready for product work.

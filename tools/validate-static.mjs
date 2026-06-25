@@ -1,9 +1,21 @@
 #!/usr/bin/env node
+import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { ARCHITECTURE_BOUNDARIES, architectureLayerForPath } from '../src/architecture/boundaries.mjs';
+import { normalizeLineEndings, shortText, splitNonEmptyLines, trimOuterBlankLines } from '../src/core/text.mjs';
+import { canonicalWorkspacePath, dirname, fileNameFromPath, joinPath, normalizeAssetPath, relativePath, slugify } from '../src/core/path.mjs';
+import { extractBodySections, parseMarkdownLink, plainBlock, sectionMap, singleFieldFromBullet, stripBodyTitle, stripMarkdownInline, stripTrailingBodySeparator } from '../src/core/markdown.mjs';
+import { schemaBadgeClass, schemaIdFromText, schemaKey } from '../src/core/schema.mjs';
+import { readJson, removeKeysWithPrefix, textByteLength, writeJson } from '../src/services/storage.mjs';
+import { localStateAssetIsPersistent, localStateDataKey, localStateFileIsPersistent, localStateJsonSize, localStateSlug, makeLocalStateId, serializeAssetForLocalState, serializeFileForLocalState, workspaceHasLocalStateContent } from '../src/state/local-workspace.mjs';
+import { escapeAttr, escapeHtml, safeUrl } from '../src/ui/html.mjs';
+import { attachmentFileExtension, attachmentMetaChips, humanSize, shortMime } from '../src/ui/evidence-attachments.mjs';
+import { renderPreviewSections } from '../src/ui/preview.mjs';
+import { decorateLensSource, discoveryScrollSignature, normalizedHistoryKind, routeDescriptorFor, shouldApplyLens, shouldRejectDiscoveryScroll, stripVolatileLensState } from '../src/viewstate/lens.mjs';
 
-const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
 const notes = [];
 
@@ -151,6 +163,25 @@ function validateRequiredFiles() {
     'index.html',
     'app.js',
     'styles.css',
+    'src/architecture/boundaries.mjs',
+    'src/core/text.mjs',
+    'src/core/path.mjs',
+    'src/core/markdown.mjs',
+    'src/core/schema.mjs',
+    'src/app/core-runtime.js',
+    'src/app/services-runtime.js',
+    'src/app/state-runtime.js',
+    'src/app/ui-runtime.js',
+    'src/app/viewstate-runtime.js',
+    'src/services/storage.mjs',
+    'src/state/local-workspace.mjs',
+    'src/ui/html.mjs',
+    'src/ui/evidence-attachments.mjs',
+    'src/ui/preview.mjs',
+    'src/viewstate/lens.mjs',
+    'tools/build-public.mjs',
+    'tools/check-public-build.mjs',
+    '.github/workflows/publish-public.yml',
     'README.md',
     'llms.txt',
     'tiinex.app.llm.v1.md',
@@ -195,6 +226,23 @@ function validateToolSyntax() {
     if (result.status !== 0) fail(`node --check ${path} failed:\n${result.stderr || result.stdout}`.trim());
   }
   note(`tool syntax checked: ${toolPaths.join(', ')}`);
+}
+
+function sourceModulePaths() {
+  const srcRoot = file('src');
+  return walk(srcRoot)
+    .map((full) => relative(root, full).replace(/\\/g, '/'))
+    .filter((path) => path.endsWith('.mjs') || path.endsWith('.js'))
+    .sort();
+}
+
+function validateSourceModuleSyntax() {
+  const modulePaths = sourceModulePaths();
+  for (const path of modulePaths) {
+    const result = spawnSync(process.execPath, ['--check', file(path)], { encoding: 'utf8' });
+    if (result.status !== 0) fail(`node --check ${path} failed:\n${result.stderr || result.stdout}`.trim());
+  }
+  note(`source module syntax checked: ${modulePaths.join(', ')}`);
 }
 
 function validateWrapperHygiene() {
@@ -360,6 +408,34 @@ function validateOrdinaryFunctionReassignments() {
   note(`ordinary function reassignment inventory: ${ordinary.length}/${allowedKeys.size}; parked scroll/viewState only`);
 }
 
+function validateArchitectureProductReadiness() {
+  const docs = {
+    'README.md': read('README.md'),
+    'VALIDATION_NOTES.md': read('VALIDATION_NOTES.md'),
+    'tiinex.app.llm.v1.md': read('tiinex.app.llm.v1.md'),
+  };
+  for (const [path, text] of Object.entries(docs)) {
+    if (!text.includes('architectureReadyForProductWork')) {
+      fail(`${path} must mention architectureReadyForProductWork so future work has a single readiness signal`);
+    }
+  }
+  const expectedSignals = [
+    'architectureScaffoldReady',
+    'coreExtractionReady',
+    'serviceStateExtractionReady',
+    'uiFeatureExtractionReady',
+    'viewStateIsolationReady',
+    'publicBuildReady',
+    'cleanupReadyForProductWork',
+  ];
+  for (const signal of expectedSignals) {
+    if (!docs['README.md'].includes(signal) || !docs['VALIDATION_NOTES.md'].includes(signal)) {
+      fail(`Architecture readiness docs must keep ${signal} visible in README.md and VALIDATION_NOTES.md`);
+    }
+  }
+  note('architecture product-readiness signal is documented');
+}
+
 function validateJavascriptSyntax() {
   const result = spawnSync(process.execPath, ['--check', file('app.js')], {
     encoding: 'utf8'
@@ -482,6 +558,7 @@ function validateNoScaffoldMarkers() {
   const checkedFiles = [
     'app.js',
     'styles.css',
+    ...sourceModulePaths(),
     'README.md',
     'llms.txt',
     'tiinex.app.llm.v1.md',
@@ -534,9 +611,253 @@ function validateEmbeddedWorkspaceMirror() {
   }
 }
 
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function validateArchitectureBoundaries() {
+  const layerNames = new Set(ARCHITECTURE_BOUNDARIES.layers.map((layer) => layer.name));
+  const requiredLayers = ['app', 'architecture', 'core', 'state', 'services', 'ui', 'viewstate'];
+  const missingLayers = requiredLayers.filter((name) => !layerNames.has(name));
+  if (missingLayers.length) fail(`Architecture boundary manifest is missing layers: ${missingLayers.join(', ')}`);
+
+  for (const layer of ARCHITECTURE_BOUNDARIES.layers) {
+    if (!existsSync(join(root, layer.path))) fail(`Architecture layer path is missing: ${layer.path}`);
+    for (const allowed of layer.mayImport) {
+      if (!layerNames.has(allowed)) fail(`Architecture layer ${layer.name} allows unknown import layer: ${allowed}`);
+    }
+  }
+
+  const modulePaths = sourceModulePaths();
+  const requiredModules = [
+    'src/architecture/boundaries.mjs',
+    'src/app/core-runtime.js',
+    'src/app/services-runtime.js',
+    'src/app/state-runtime.js',
+    'src/app/ui-runtime.js',
+    'src/app/viewstate-runtime.js',
+    'src/core/text.mjs',
+    'src/core/path.mjs',
+    'src/core/markdown.mjs',
+    'src/core/schema.mjs',
+    'src/services/storage.mjs',
+    'src/state/local-workspace.mjs',
+    'src/ui/html.mjs',
+    'src/ui/evidence-attachments.mjs',
+    'src/ui/preview.mjs',
+    'src/viewstate/lens.mjs'
+  ];
+  for (const path of requiredModules) {
+    if (!modulePaths.includes(path)) fail(`Required architecture module is missing: ${path}`);
+  }
+
+  const forbiddenHits = [];
+  const importHits = [];
+  for (const path of modulePaths) {
+    const layer = architectureLayerForPath(path);
+    if (!layer) {
+      fail(`Source module is outside a declared architecture layer: ${path}`);
+      continue;
+    }
+    const text = read(path);
+    const code = stripJsStringsAndComments(text);
+    for (const token of layer.forbids || []) {
+      const pattern = new RegExp(`(?<![\\w$])${escapeRegExp(token)}(?![\\w$])`, 'g');
+      if (pattern.test(code)) forbiddenHits.push(`${path} uses ${token}`);
+    }
+
+    const imports = [...text.matchAll(/\bimport\s+(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"]/g)].map((match) => match[1]);
+    for (const specifier of imports) {
+      if (!specifier.startsWith('.')) continue;
+      const baseParts = path.split('/').slice(0, -1);
+      const parts = specifier.split('/');
+      const resolvedParts = [...baseParts];
+      for (const part of parts) {
+        if (!part || part === '.') continue;
+        if (part === '..') resolvedParts.pop();
+        else resolvedParts.push(part);
+      }
+      const resolvedPath = resolvedParts.join('/');
+      const importedLayer = architectureLayerForPath(resolvedPath);
+      if (importedLayer && importedLayer.name !== layer.name && !layer.mayImport.includes(importedLayer.name)) {
+        importHits.push(`${path} imports ${importedLayer.name} via ${specifier}`);
+      }
+    }
+  }
+
+  if (forbiddenHits.length) fail(`Architecture boundary forbidden access found: ${forbiddenHits.slice(0, 20).join(', ')}`);
+  if (importHits.length) fail(`Architecture boundary import violations found: ${importHits.slice(0, 20).join(', ')}`);
+
+  if (normalizeLineEndings('a\r\nb\rc') !== 'a\nb\nc') fail('src/core/text.mjs normalizeLineEndings contract failed');
+  if (trimOuterBlankLines('\n\nalpha\n') !== 'alpha') fail('src/core/text.mjs trimOuterBlankLines contract failed');
+  if (splitNonEmptyLines('\n alpha \n\n beta \n').join('|') !== 'alpha|beta') fail('src/core/text.mjs splitNonEmptyLines contract failed');
+  if (shortText('alpha beta gamma', 8) !== 'alpha b…') fail('src/core/text.mjs shortText contract failed');
+  if (fileNameFromPath('a/b/c.trace.md') !== 'c.trace.md') fail('src/core/path.mjs fileNameFromPath contract failed');
+  if (dirname('a/b/c.trace.md') !== 'a/b') fail('src/core/path.mjs dirname contract failed');
+  if (joinPath('a/b', '../c') !== 'a/c') fail('src/core/path.mjs joinPath contract failed');
+  if (relativePath('a/b/root.trace.md', 'a/c/leaf.trace.md') !== '../c/leaf.trace.md') fail('src/core/path.mjs relativePath contract failed');
+  if (canonicalWorkspacePath('./a//b/../c.trace.md') !== 'a/c.trace.md') fail('src/core/path.mjs canonicalWorkspacePath contract failed');
+  if (normalizeAssetPath('/a//b') !== 'a/b') fail('src/core/path.mjs normalizeAssetPath contract failed');
+  if (slugify('Hello, Tiinex!') !== 'hello-tiinex') fail('src/core/path.mjs slugify contract failed');
+  const parsedLink = parseMarkdownLink('[Label](../x.md)');
+  if (parsedLink.text !== 'Label' || parsedLink.href !== '../x.md') fail('src/core/markdown.mjs parseMarkdownLink contract failed');
+  if (stripMarkdownInline('[Label](x) `code`') !== 'Label code') fail('src/core/markdown.mjs stripMarkdownInline contract failed');
+  if (stripTrailingBodySeparator('body\n---\n') !== 'body') fail('src/core/markdown.mjs stripTrailingBodySeparator contract failed');
+  if (stripBodyTitle('# Title\n\nBody') !== 'Body') fail('src/core/markdown.mjs stripBodyTitle contract failed');
+  if (plainBlock('- alpha\n- beta') !== 'alpha\nbeta') fail('src/core/markdown.mjs plainBlock contract failed');
+  if (extractBodySections('## One\na\n## Two\nb\n').One.trim() !== 'a') fail('src/core/markdown.mjs extractBodySections contract failed');
+  if (sectionMap('# T\n\n## One\na\n').one !== 'a') fail('src/core/markdown.mjs sectionMap contract failed');
+  if (singleFieldFromBullet('- Target: thing', 'Target') !== 'thing') fail('src/core/markdown.mjs singleFieldFromBullet contract failed');
+  if (schemaKey('tiinex.evidence.v1') !== 'evidence') fail('src/core/schema.mjs schemaKey contract failed');
+  if (schemaBadgeClass('tiinex.unknown.v1') !== 'unknown') fail('src/core/schema.mjs schemaBadgeClass contract failed');
+  if (schemaIdFromText('[tiinex.topic.v1](schema.md)') !== 'tiinex.topic.v1') fail('src/core/schema.mjs schemaIdFromText contract failed');
+  if (textByteLength('å') !== 2) fail('src/services/storage.mjs textByteLength contract failed');
+  const memoryStorage = Object.create(null);
+  const storageAdapter = {
+    getItem: (key) => Object.prototype.hasOwnProperty.call(memoryStorage, key) ? memoryStorage[key] : null,
+    setItem: (key, value) => { memoryStorage[key] = String(value); storageAdapter[key] = String(value); },
+    removeItem: (key) => { delete memoryStorage[key]; delete storageAdapter[key]; },
+  };
+  writeJson(storageAdapter, 'alpha', { ok: true });
+  if (readJson(storageAdapter, 'alpha', {}).ok !== true) fail('src/services/storage.mjs JSON read/write contract failed');
+  writeJson(storageAdapter, 'tiinex.localWorkspace.state.keep', { keep: true });
+  writeJson(storageAdapter, 'tiinex.localWorkspace.state.drop', { drop: true });
+  removeKeysWithPrefix(storageAdapter, 'tiinex.localWorkspace.state.', 'tiinex.localWorkspace.state.keep');
+  if (readJson(storageAdapter, 'tiinex.localWorkspace.state.drop', null) !== null) fail('src/services/storage.mjs removeKeysWithPrefix contract failed');
+  if (localStateDataKey('prefix.', 'id') !== 'prefix.id') fail('src/state/local-workspace.mjs localStateDataKey contract failed');
+  if (localStateSlug('My Local Workspace!') !== 'my-local-workspace') fail('src/state/local-workspace.mjs localStateSlug contract failed');
+  if (!makeLocalStateId('Demo', 'fixed').endsWith('-fixed')) fail('src/state/local-workspace.mjs makeLocalStateId contract failed');
+  if (!localStateFileIsPersistent({ sourceId: 'local' })) fail('src/state/local-workspace.mjs localStateFileIsPersistent contract failed');
+  if (!localStateAssetIsPersistent({ source: 'zip', content: 'asset' })) fail('src/state/local-workspace.mjs localStateAssetIsPersistent contract failed');
+  if (!workspaceHasLocalStateContent({ files: new Map([['a', { sourceId: 'local' }]]), assets: new Map() })) fail('src/state/local-workspace.mjs workspaceHasLocalStateContent contract failed');
+  if (serializeFileForLocalState({ path: 'x.trace.md', content: 'a\r\nb' }).content !== 'a\nb') fail('src/state/local-workspace.mjs serializeFileForLocalState contract failed');
+  if (serializeAssetForLocalState({ path: 'asset.png', content: 'abc' }).name !== 'asset.png') fail('src/state/local-workspace.mjs serializeAssetForLocalState contract failed');
+  if (localStateJsonSize('å') !== 2) fail('src/state/local-workspace.mjs localStateJsonSize contract failed');
+  if (escapeHtml('<tag>&\"') !== '&lt;tag&gt;&amp;&quot;') fail('src/ui/html.mjs escapeHtml contract failed');
+  if (escapeAttr('`') !== '&#096;') fail('src/ui/html.mjs escapeAttr contract failed');
+  if (safeUrl('javascript:alert(1)') !== '') fail('src/ui/html.mjs safeUrl contract failed');
+  if (attachmentFileExtension('demo.trace.md') !== 'MD') fail('src/ui/evidence-attachments.mjs attachmentFileExtension contract failed');
+  if (humanSize(2048) !== '2 KB') fail('src/ui/evidence-attachments.mjs humanSize contract failed');
+  if (shortMime('application/json', 'data.bin') !== 'JSON') fail('src/ui/evidence-attachments.mjs shortMime contract failed');
+  if (attachmentMetaChips({ kind: 'url', url: 'https://www.example.com/x', representation: 'snapshot' }).join('|') !== 'snapshot|URL|example.com') fail('src/ui/evidence-attachments.mjs attachmentMetaChips contract failed');
+  if (!renderPreviewSections({ One: 'Hello **world**' }, ['One']).includes('Hello **world**')) fail('src/ui/preview.mjs renderPreviewSections contract failed');
+  const lineageDescriptor = routeDescriptorFor({ id: 'n1', path: 'a.trace.md', title: 'A' });
+  if (lineageDescriptor.mode !== 'lineage' || lineageDescriptor.selectedPath !== 'a.trace.md') fail('src/viewstate/lens.mjs routeDescriptorFor node contract failed');
+  const pendingDescriptor = routeDescriptorFor(null, { selectedPath: 'b.trace.md' });
+  if (pendingDescriptor.mode !== 'lineage' || pendingDescriptor.selectedPath !== 'b.trace.md') fail('src/viewstate/lens.mjs routeDescriptorFor pending contract failed');
+  const source = decorateLensSource({}, lineageDescriptor, { top: 12.6, mode: 'lineage', selectedPath: 'a.trace.md' });
+  if (source.scrollTop !== 13 || source.scrollMode !== 'lineage') fail('src/viewstate/lens.mjs decorateLensSource contract failed');
+  if (discoveryScrollSignature({ nodeKeys: ['b', 'a'], hash: (text) => text }) !== 'feed::all::::normal::::2::a\nb') fail('src/viewstate/lens.mjs discoveryScrollSignature contract failed');
+  const volatile = stripVolatileLensState({ scrollTop: 5, keep: { feedScrollTop: 2, value: true } });
+  if ('scrollTop' in volatile || 'feedScrollTop' in volatile.keep || volatile.keep.value !== true) fail('src/viewstate/lens.mjs stripVolatileLensState contract failed');
+  if (normalizedHistoryKind({ kind: 'push', signature: 'a', lastSignature: 'a', lastAt: 10, now: 20 }).kind !== 'replace') fail('src/viewstate/lens.mjs normalizedHistoryKind recent contract failed');
+  if (normalizedHistoryKind({ kind: 'push', signature: 'b', lastSignature: 'a', lastAt: 0, now: 2000 }).kind !== 'push') fail('src/viewstate/lens.mjs normalizedHistoryKind push contract failed');
+  if (shouldApplyLens({ userInteracted: true, isBootingFromUrl: false, routingRestoring: false })) fail('src/viewstate/lens.mjs shouldApplyLens user contract failed');
+  if (!shouldRejectDiscoveryScroll('old', 'new')) fail('src/viewstate/lens.mjs shouldRejectDiscoveryScroll contract failed');
+
+  const appJs = read('app.js');
+  const indexHtml = read('index.html');
+  const requiredClassicScripts = [
+    '<script src="./src/app/core-runtime.js"></script>',
+    '<script src="./src/app/services-runtime.js"></script>',
+    '<script src="./src/app/state-runtime.js"></script>',
+    '<script src="./src/app/ui-runtime.js"></script>',
+    '<script src="./src/app/viewstate-runtime.js"></script>',
+    '<script src="./app.js"></script>'
+  ];
+  for (const script of requiredClassicScripts) {
+    if (!indexHtml.includes(script)) fail(`index.html must load ${script}`);
+  }
+  if (indexHtml.indexOf('./src/app/core-runtime.js') > indexHtml.indexOf('./src/app/services-runtime.js')
+    || indexHtml.indexOf('./src/app/services-runtime.js') > indexHtml.indexOf('./src/app/state-runtime.js')
+    || indexHtml.indexOf('./src/app/state-runtime.js') > indexHtml.indexOf('./src/app/ui-runtime.js')
+    || indexHtml.indexOf('./src/app/ui-runtime.js') > indexHtml.indexOf('./src/app/viewstate-runtime.js')
+    || indexHtml.indexOf('./src/app/viewstate-runtime.js') > indexHtml.indexOf('./app.js')) {
+    fail('index.html classic runtime scripts must load core, services, state, UI, viewstate, then app.js');
+  }
+  if (/type="module"\s+src="\.\/app\.js"/.test(indexHtml)) fail('app.js must remain a classic script for file-open static usage');
+  const extractedNames = [
+    'normalizeNewlines', 'shortText', 'fileNameFromPath', 'dirname', 'joinPath', 'relativePath', 'slugify',
+    'parseMarkdownLink', 'stripMarkdownInline', 'schemaKey', 'schemaBadgeClass', 'canonicalWorkspacePath',
+    'sourceUrlDirectory', 'isFetchableHttpUrl', 'extractBodySections', 'normalizeAssetPath', 'schemaIdFromText',
+    'stripBodyTitle', 'sectionMap', 'plainBlock', 'singleFieldFromBullet', 'stripTrailingBodySeparator'
+  ];
+  for (const name of extractedNames) {
+    const declarationPattern = new RegExp(`^\\s*function\\s+${escapeRegExp(name)}\\s*\\(`, 'm');
+    if (declarationPattern.test(appJs)) fail(`Extracted core helper should not be redeclared in app.js: ${name}`);
+  }
+  const extractedUiNames = [
+    'escapeHtml', 'escapeAttr', 'safeUrl', 'attachmentFileExtension', 'humanSize', 'shortMime',
+    'attachmentMetaChips', 'renderPreviewSections'
+  ];
+  for (const name of extractedUiNames) {
+    const declarationPattern = new RegExp(`^\\s*function\\s+${escapeRegExp(name)}\\s*\\(`, 'm');
+    if (declarationPattern.test(appJs)) fail(`Extracted UI helper should not be redeclared in app.js: ${name}`);
+  }
+  const coreRuntime = read('src/app/core-runtime.js');
+  for (const name of extractedNames.filter((name) => name !== 'normalizeNewlines')) {
+    if (!new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`).test(coreRuntime)) fail(`Core browser runtime does not expose expected helper: ${name}`);
+  }
+  if (!coreRuntime.includes('normalizeLineEndings')) fail('Core browser runtime must expose normalizeLineEndings for app.js aliasing');
+  const servicesRuntime = read('src/app/services-runtime.js');
+  const stateRuntime = read('src/app/state-runtime.js');
+  for (const name of ['readJson', 'writeJson', 'textByteLength', 'removeKeysWithPrefix']) {
+    if (!new RegExp(`(?<![\w$])${escapeRegExp(name)}(?![\w$])`).test(servicesRuntime)) fail(`Services browser runtime does not expose expected helper: ${name}`);
+  }
+  for (const name of ['localStateDataKey', 'makeLocalStateId', 'localStateFiles', 'serializeFileForLocalState', 'serializeAssetForLocalState']) {
+    if (!new RegExp(`(?<![\w$])${escapeRegExp(name)}(?![\w$])`).test(stateRuntime)) fail(`State browser runtime does not expose expected helper: ${name}`);
+  }
+  const uiRuntime = read('src/app/ui-runtime.js');
+  for (const name of ['escapeHtml', 'escapeAttr', 'safeUrl', 'attachmentMetaChips', 'renderPreviewSections']) {
+    if (!new RegExp(`(?<![\w$])${escapeRegExp(name)}(?![\w$])`).test(uiRuntime)) fail(`UI browser runtime does not expose expected helper: ${name}`);
+  }
+  const viewstateRuntime = read('src/app/viewstate-runtime.js');
+  for (const name of ['routeDescriptorFor', 'decorateLensSource', 'discoveryScrollSignature', 'stripVolatileLensState', 'normalizedHistoryKind', 'shouldApplyLens', 'shouldRejectDiscoveryScroll']) {
+    if (!new RegExp(`(?<![\w$])${escapeRegExp(name)}(?![\w$])`).test(viewstateRuntime)) fail(`Viewstate browser runtime does not expose expected helper: ${name}`);
+  }
+
+  note(`architecture layers checked: ${[...layerNames].sort().join(', ')}`);
+}
+
+function validatePublicBuildContracts() {
+  const packageJson = JSON.parse(read('package.json'));
+  const scripts = packageJson.scripts || {};
+  if (scripts['build:public'] !== 'node tools/build-public.mjs') {
+    fail('package.json must expose "build:public": "node tools/build-public.mjs"');
+  }
+  if (scripts['public:check'] !== 'node tools/check-public-build.mjs') {
+    fail('package.json must expose "public:check": "node tools/check-public-build.mjs"');
+  }
+  if (scripts.test !== 'node tools/validate-static.mjs && node tools/check-public-build.mjs') {
+    fail('package.json test script must run static validation and public build check');
+  }
+
+  const buildScript = read('tools/build-public.mjs');
+  if (!buildScript.includes("argValue('--out', '.site-publish')")) fail('build-public must default to .site-publish and accept --out for checks');
+  if (!buildScript.includes('tiinex.bundle.js')) fail('build-public must create tiinex.bundle.js');
+  if (!buildScript.includes('window.TIINEX_VIEWER_OPTIONS')) fail('build-public must include viewer options before app.js in the bundle');
+  for (const section of ['src/app/core-runtime.js', 'src/app/services-runtime.js', 'src/app/state-runtime.js', 'src/app/ui-runtime.js', 'src/app/viewstate-runtime.js', 'app.js']) {
+    if (!buildScript.includes(section)) fail(`build-public must include ${section}`);
+  }
+
+  const checkScript = read('tools/check-public-build.mjs');
+  if (!checkScript.includes('public index must load exactly one local JS bundle')) fail('public build checker must enforce one local app bundle');
+  if (!checkScript.includes('node --check public bundle failed')) fail('public build checker must syntax-check the bundle');
+
+  const workflow = read('.github/workflows/publish-public.yml');
+  for (const required of ['npm test', 'npm run build:public', 'publish_dir: .site-publish', 'publish_branch: public']) {
+    if (!workflow.includes(required)) fail(`publish workflow must include ${required}`);
+  }
+  if (/rsync\b/u.test(workflow)) fail('publish workflow must publish build output, not rsync the raw repository');
+
+  note('public build and publish workflow contracts are valid');
+}
+
 function validateRootPackageShape() {
   const allowedRootEntries = new Set([
     '.editorconfig',
+    '.github',
     '.gitignore',
     '.topics',
     'assets',
@@ -546,6 +867,7 @@ function validateRootPackageShape() {
     'package.json',
     'README.md',
     'samples',
+    'src',
     'styles.css',
     'tiinex.app.llm.v1.md',
     'tools',
@@ -566,13 +888,25 @@ function validateRootPackageShape() {
     fail('package.json must set private: true so the static frontend is not presented as an npm-published package');
   }
   const validateScript = packageJson.scripts && packageJson.scripts.validate;
+  const testScript = packageJson.scripts && packageJson.scripts.test;
   const metricsScript = packageJson.scripts && packageJson.scripts.metrics;
   const storageScanScript = packageJson.scripts && packageJson.scripts['storage:scan'];
+  const buildPublicScript = packageJson.scripts && packageJson.scripts['build:public'];
+  const publicCheckScript = packageJson.scripts && packageJson.scripts['public:check'];
   if (validateScript !== 'node tools/validate-static.mjs') {
     fail('package.json must expose "validate": "node tools/validate-static.mjs"');
   }
+  if (testScript !== 'node tools/validate-static.mjs && node tools/check-public-build.mjs') {
+    fail('package.json must expose "test": "node tools/validate-static.mjs && node tools/check-public-build.mjs"');
+  }
   if (metricsScript !== 'node tools/collect-metrics.mjs') {
     fail('package.json must expose "metrics": "node tools/collect-metrics.mjs"');
+  }
+  if (buildPublicScript !== 'node tools/build-public.mjs') {
+    fail('package.json must expose "build:public": "node tools/build-public.mjs"');
+  }
+  if (publicCheckScript !== 'node tools/check-public-build.mjs') {
+    fail('package.json must expose "public:check": "node tools/check-public-build.mjs"');
   }
   if (storageScanScript !== 'node tools/inspect-storage.mjs') {
     fail('package.json must expose "storage:scan": "node tools/inspect-storage.mjs"');
@@ -589,6 +923,10 @@ function main() {
   validateEmbeddedWorkspaceMirror();
   validateNoScaffoldMarkers();
   validateToolSyntax();
+  validateSourceModuleSyntax();
+  validateArchitectureBoundaries();
+  validateArchitectureProductReadiness();
+  validatePublicBuildContracts();
   validateJavascriptSyntax();
   validateJavascriptSurface();
   validateWrapperHygiene();
@@ -602,13 +940,15 @@ function main() {
     for (const message of failures) console.error(`- ${message}`);
     process.exit(1);
   }
-  console.log('✓ node --check app.js and tools');
+  console.log('✓ node --check app.js, tools, and source modules');
   console.log('✓ CSS brace balance');
   console.log('✓ no ordinary app-level version-stamped identifiers/classes detected');
   console.log('✓ no public scaffold/debug markers detected');
   console.log('✓ root package markdown is intentional');
   console.log('✓ packaged continuity markdown has pinned schema links and non-placeholder integrity values');
   console.log('✓ embedded default workspace mirrors packaged workspace markdown');
+  console.log('✓ architecture boundary manifest and product-readiness contracts are valid');
+  console.log('✓ public build and publish workflow contracts are valid');
   console.log('\nStatic validation passed. Browser golden-flow validation is still required for UI behavior.');
 }
 

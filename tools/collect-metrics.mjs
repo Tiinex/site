@@ -1,8 +1,10 @@
 #!/usr/bin/env node
+import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { ARCHITECTURE_BOUNDARIES, architectureLayerForPath } from '../src/architecture/boundaries.mjs';
 
-const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 
 function read(path) {
   const full = join(root, path);
@@ -22,6 +24,89 @@ function walk(dir, output = []) {
 
 function relativePackageFiles() {
   return walk(root).map((full) => relative(root, full).replace(/\\/g, '/')).sort();
+}
+
+
+function sourceModulePaths() {
+  const srcRoot = join(root, 'src');
+  if (!existsSync(srcRoot)) return [];
+  return walk(srcRoot)
+    .map((full) => relative(root, full).replace(/\\/g, '/'))
+    .filter((path) => path.endsWith('.mjs') || path.endsWith('.js'))
+    .sort();
+}
+
+function inventoryArchitecture() {
+  const modulePaths = sourceModulePaths();
+  const layerCounts = Object.fromEntries(ARCHITECTURE_BOUNDARIES.layers.map((layer) => [layer.name, 0]));
+  const forbiddenHits = [];
+  let totalLines = 0;
+  let totalBytes = 0;
+
+  for (const path of modulePaths) {
+    const layer = architectureLayerForPath(path);
+    if (layer) layerCounts[layer.name] = (layerCounts[layer.name] || 0) + 1;
+    const text = read(path);
+    totalLines += lines(text);
+    totalBytes += bytes(text);
+    const code = stripJsStringsAndComments(text);
+    for (const token of (layer && layer.forbids) || []) {
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`(?<![\\w$])${escaped}(?![\\w$])`, 'g');
+      if (pattern.test(code)) forbiddenHits.push(`${path} uses ${token}`);
+    }
+  }
+
+  const requiredLayers = ['app', 'architecture', 'core', 'state', 'services', 'ui', 'viewstate'];
+  const existingLayerDirs = requiredLayers.filter((name) => existsSync(join(root, `src/${name}`)));
+  const hasManifest = modulePaths.includes('src/architecture/boundaries.mjs');
+  const requiredCoreModules = [
+    'src/core/text.mjs',
+    'src/core/path.mjs',
+    'src/core/markdown.mjs',
+    'src/core/schema.mjs'
+  ];
+  const requiredServiceStateModules = [
+    'src/services/storage.mjs',
+    'src/state/local-workspace.mjs',
+    'src/app/services-runtime.js',
+    'src/app/state-runtime.js'
+  ];
+  const requiredUiModules = [
+    'src/ui/html.mjs',
+    'src/ui/evidence-attachments.mjs',
+    'src/ui/preview.mjs',
+    'src/app/ui-runtime.js'
+  ];
+  const requiredViewStateModules = [
+    'src/viewstate/lens.mjs',
+    'src/app/viewstate-runtime.js'
+  ];
+  const hasCoreProofModule = modulePaths.includes('src/core/text.mjs');
+  const hasCoreExtractionModules = requiredCoreModules.every((path) => modulePaths.includes(path));
+  const hasBrowserCoreRuntime = modulePaths.includes('src/app/core-runtime.js');
+  const hasServiceStateExtractionModules = requiredServiceStateModules.every((path) => modulePaths.includes(path));
+  const hasUiFeatureModules = requiredUiModules.every((path) => modulePaths.includes(path));
+  const hasViewStateModules = requiredViewStateModules.every((path) => modulePaths.includes(path));
+
+  return {
+    sourceModuleFiles: modulePaths.length,
+    sourceModuleLines: totalLines,
+    sourceModuleBytes: totalBytes,
+    declaredLayers: ARCHITECTURE_BOUNDARIES.layers.map((layer) => layer.name),
+    existingLayerDirs,
+    layerModuleCounts: layerCounts,
+    forbiddenBoundaryHits: forbiddenHits,
+    hasManifest,
+    hasCoreProofModule,
+    hasCoreExtractionModules,
+    hasBrowserCoreRuntime,
+    architectureScaffoldReady: hasManifest && hasCoreProofModule && requiredLayers.every((name) => existingLayerDirs.includes(name)) && forbiddenHits.length === 0,
+    coreExtractionReady: hasManifest && hasCoreExtractionModules && hasBrowserCoreRuntime && forbiddenHits.length === 0,
+    serviceStateExtractionReady: hasManifest && hasCoreExtractionModules && hasBrowserCoreRuntime && hasServiceStateExtractionModules && forbiddenHits.length === 0,
+    uiFeatureExtractionReady: hasManifest && hasCoreExtractionModules && hasBrowserCoreRuntime && hasServiceStateExtractionModules && hasUiFeatureModules && forbiddenHits.length === 0,
+    viewStateIsolationReady: hasManifest && hasCoreExtractionModules && hasBrowserCoreRuntime && hasServiceStateExtractionModules && hasUiFeatureModules && hasViewStateModules && forbiddenHits.length === 0
+  };
 }
 
 function bytes(text) {
@@ -391,6 +476,31 @@ function inventoryStorageFamilies(source) {
 }
 
 
+function inventoryPublicBuild() {
+  const packageJson = JSON.parse(read('package.json'));
+  const scripts = packageJson.scripts || {};
+  const workflowPath = join(root, '.github/workflows/publish-public.yml');
+  const workflow = existsSync(workflowPath) ? readFileSync(workflowPath, 'utf8') : '';
+  const buildScriptExists = existsSync(join(root, 'tools/build-public.mjs'));
+  const checkScriptExists = existsSync(join(root, 'tools/check-public-build.mjs'));
+  const hasBuildScript = scripts['build:public'] === 'node tools/build-public.mjs';
+  const hasCheckScript = scripts['public:check'] === 'node tools/check-public-build.mjs';
+  const testIncludesPublicCheck = scripts.test === 'node tools/validate-static.mjs && node tools/check-public-build.mjs';
+  const workflowPublishesBuildOutput = workflow.includes('npm run build:public')
+    && workflow.includes('publish_dir: .site-publish')
+    && !/rsync\b/u.test(workflow);
+  return {
+    buildScriptExists,
+    checkScriptExists,
+    hasBuildScript,
+    hasCheckScript,
+    testIncludesPublicCheck,
+    workflowExists: Boolean(workflow),
+    workflowPublishesBuildOutput,
+    publicBuildReady: buildScriptExists && checkScriptExists && hasBuildScript && hasCheckScript && testIncludesPublicCheck && workflowPublishesBuildOutput
+  };
+}
+
 function inventoryMarkdownContinuity() {
   const markdownFiles = relativePackageFiles().filter((path) => path.endsWith('.md'));
   const placeholderPattern = /^\s*-\s+Value:\s+(?:pending|test|placeholder|todo)\s*$/imu;
@@ -447,6 +557,8 @@ const renderPipeline = inventoryRenderPipeline(js);
 const scrollSystems = inventoryScrollSystems(js);
 const activeScrollSystems = scrollSystems.filter((family) => family.active);
 const storageFamilies = inventoryStorageFamilies(js);
+const architecture = inventoryArchitecture();
+const publicBuild = inventoryPublicBuild();
 
 const metrics = {
   appJs: {
@@ -482,10 +594,13 @@ const metrics = {
     families: scrollSystems
   },
   storageFamilies,
+  architecture,
+  publicBuild,
   markdownContinuity: inventoryMarkdownContinuity(),
   publicHygiene: inventoryPublicHygiene({
     'app.js': js,
     'styles.css': css,
+    ...Object.fromEntries(sourceModulePaths().map((path) => [path, read(path)])),
     'README.md': readme,
     'VALIDATION_NOTES.md': validationNotes,
     'llms.txt': llms,
@@ -493,6 +608,18 @@ const metrics = {
     'package.json': packageJson
   })
 };
+
+metrics.architecture.architectureReadyForProductWork = (
+  metrics.renderPipeline.structuralCleanup.cleanupReadyForProductWork
+  && metrics.architecture.architectureScaffoldReady
+  && metrics.architecture.coreExtractionReady
+  && metrics.architecture.serviceStateExtractionReady
+  && metrics.architecture.uiFeatureExtractionReady
+  && metrics.architecture.viewStateIsolationReady
+  && metrics.publicBuild.publicBuildReady
+  && metrics.architecture.forbiddenBoundaryHits.length === 0
+  && metrics.publicHygiene.hitCount === 0
+);
 
 const asJson = process.argv.includes('--json');
 if (asJson) {
@@ -542,6 +669,29 @@ if (asJson) {
   for (const item of metrics.storageFamilies) {
     console.log(`- ${item.name}: ${item.value} (constant refs ${item.constantReferences}, literal refs ${item.literalReferences})`);
   }
+  console.log('');
+  console.log('architecture');
+  console.log(`- sourceModuleFiles: ${metrics.architecture.sourceModuleFiles}`);
+  console.log(`- sourceModuleLines: ${metrics.architecture.sourceModuleLines}`);
+  console.log(`- declaredLayers: ${metrics.architecture.declaredLayers.join(', ')}`);
+  const layerModuleText = Object.entries(metrics.architecture.layerModuleCounts)
+    .map(([layer, count]) => `${layer}(${count})`)
+    .join(', ');
+  console.log(`- layerModuleCounts: ${layerModuleText}`);
+  console.log(`- forbiddenBoundaryHits: ${metrics.architecture.forbiddenBoundaryHits.length ? metrics.architecture.forbiddenBoundaryHits.join(', ') : 'none'}`);
+  console.log(`- architectureScaffoldReady: ${metrics.architecture.architectureScaffoldReady ? 'yes' : 'no'}`);
+  console.log(`- coreExtractionReady: ${metrics.architecture.coreExtractionReady ? 'yes' : 'no'}`);
+  console.log(`- serviceStateExtractionReady: ${metrics.architecture.serviceStateExtractionReady ? 'yes' : 'no'}`);
+  console.log(`- uiFeatureExtractionReady: ${metrics.architecture.uiFeatureExtractionReady ? 'yes' : 'no'}`);
+  console.log(`- viewStateIsolationReady: ${metrics.architecture.viewStateIsolationReady ? 'yes' : 'no'}`);
+  console.log(`- architectureReadyForProductWork: ${metrics.architecture.architectureReadyForProductWork ? 'yes' : 'no'}`);
+  console.log('');
+  console.log('public build');
+  console.log(`- buildScriptExists: ${metrics.publicBuild.buildScriptExists ? 'yes' : 'no'}`);
+  console.log(`- checkScriptExists: ${metrics.publicBuild.checkScriptExists ? 'yes' : 'no'}`);
+  console.log(`- workflowPublishesBuildOutput: ${metrics.publicBuild.workflowPublishesBuildOutput ? 'yes' : 'no'}`);
+  console.log(`- publicBuildReady: ${metrics.publicBuild.publicBuildReady ? 'yes' : 'no'}`);
+
   console.log('');
   console.log('markdown continuity');
   console.log(`- markdownFiles: ${metrics.markdownContinuity.markdownFileCount}`);

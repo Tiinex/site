@@ -12,15 +12,22 @@ Validated for this package:
 - `npm run storage:scan` reports browser storage usage and canonical storage key constants as a convenience alias.
 - `package.json` is maintainer tooling only; it is not a runtime, dependency, or build requirement.
 - `node --check app.js` passes.
+- Source module syntax under `src/` passes.
 - CSS brace balance passes.
 - Zip integrity test passes.
 - Static file structure remains suitable for GitHub Pages-style hosting.
 - Root markdown is intentional and limited to public-facing documentation.
-- Root package entries are checked against the intentional static-app file set.
+- Root package entries are checked against the intentional static-app file set, including `src/`.
 - Debug and dynamic-code surfaces are checked.
 - Public-facing scaffold wording is checked.
 - Wrapper and saved-function alias naming are checked.
 - Known single function reassignment inventory is checked so new hidden reassignment paths cannot appear silently.
+- Architecture boundary layers are checked from `src/architecture/boundaries.mjs`.
+- Core extraction contracts are checked from `src/core/text.mjs`, `src/core/path.mjs`, `src/core/markdown.mjs`, `src/core/schema.mjs`, and `src/app/core-runtime.js`.
+- Services/state contracts are checked from `src/services/storage.mjs`, `src/state/local-workspace.mjs`, `src/app/services-runtime.js`, and `src/app/state-runtime.js`.
+- UI helper contracts are checked from `src/ui/html.mjs`, `src/ui/evidence-attachments.mjs`, `src/ui/preview.mjs`, and `src/app/ui-runtime.js`.
+- View-state helper contracts are checked from `src/viewstate/lens.mjs` and `src/app/viewstate-runtime.js`.
+- Public build contracts are checked from `tools/build-public.mjs`, `tools/check-public-build.mjs`, and `.github/workflows/publish-public.yml`.
 - The only remaining ordinary function reassignments must be the parked scroll/viewState hooks.
 - Packaged continuity markdown is checked for pinned schema links and non-placeholder integrity values.
 - The embedded default workspace is checked against `.topics/.workspaces/viewer.workspace.md`.
@@ -62,6 +69,7 @@ The metrics output includes:
 - render and hook registration inventory
 - known single function reassignment inventory
 - product-work readiness from the structural cleanup inventory
+- architecture scaffold readiness, core extraction readiness, services/state extraction readiness, view-state isolation readiness, public build readiness, and source module inventory
 - active scroll-state family inventory
 - browser storage family inventory
 - packaged markdown continuity hygiene
@@ -83,6 +91,14 @@ npm run metrics
 node tools/inspect-storage.mjs
 # optional convenience alias
 npm run storage:scan
+
+node tools/build-public.mjs
+# optional convenience alias
+npm run build:public
+
+node tools/check-public-build.mjs
+# optional convenience alias
+npm run public:check
 ```
 
 This is a static quality gate only. It does not replace browser testing.
@@ -114,10 +130,17 @@ When running from `file://`, browser origin/storage warnings can be expected. Pu
 
 The package is clean enough to continue product development, but these improvements remain open:
 
-- split the single-file JavaScript runtime into modules after active call paths are mapped
+- continue moving JavaScript runtime responsibility from `app.js` into the validated `src/` layers
 - split the stylesheet into semantic files
 - keep the remaining five scroll/viewState hook assignments parked for a dedicated design pass
 - treat `cleanupReadyForProductWork: yes` as the static signal that non-scroll/viewState cleanup is clear
+- treat `architectureScaffoldReady: yes` as the static signal that the boundary map is active
+- treat `coreExtractionReady: yes` as the static signal that pure core helper extraction is active
+- treat `serviceStateExtractionReady: yes` as the static signal that storage/local workspace state helper extraction is active
+- treat `uiFeatureExtractionReady: yes` as the static signal that the first UI helper extraction is active
+- treat `viewStateIsolationReady: yes` as the static signal that route, lens, and scroll policy helpers have an owned module surface
+- treat `publicBuildReady: yes` as the static signal that publish output is built from a single local app bundle
+- treat `architectureReadyForProductWork: yes` as the static signal that the current module boundary, public build, and product-work readiness checks are green
 - consolidate scroll and view-state behavior deliberately instead of treating the current layered behavior as final
 - investigate render-pipeline performance and avoid full re-render churn where possible
 - add a browser test harness if the project moves beyond static manual validation

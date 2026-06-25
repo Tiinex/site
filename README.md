@@ -46,6 +46,14 @@ The package is intentionally simple and can be hosted as static files:
 index.html
 app.js
 styles.css
+src/
+  architecture/
+  app/
+  core/
+  state/
+  services/
+  ui/
+  viewstate/
 assets/
 samples/
 .topics/
@@ -79,7 +87,7 @@ node tools/validate-static.mjs
 npm test
 ```
 
-The tool checks JavaScript syntax, tool syntax, CSS brace balance, root package shape, root markdown shape, duplicate function declarations, ordinary app-level version-stamped identifiers/classes, debug console and dynamic-code surfaces, public-facing scaffold wording, wrapper naming hygiene, known single function reassignment inventory, pinned schema links in packaged continuity markdown, non-placeholder integrity values, and default workspace mirror consistency.
+The tool checks JavaScript syntax, tool and source-module syntax, CSS brace balance, root package shape, root markdown shape, architecture boundaries, duplicate function declarations, ordinary app-level version-stamped identifiers/classes, debug console and dynamic-code surfaces, public-facing scaffold wording, wrapper naming hygiene, known single function reassignment inventory, pinned schema links in packaged continuity markdown, non-placeholder integrity values, and default workspace mirror consistency.
 
 To inspect current static size and cleanup metrics:
 
@@ -120,9 +128,19 @@ This package is maintained as a public handoff candidate:
 
 ## Code navigation
 
-`app.js` and `styles.css` are still single-file runtime surfaces for the static package. Both files include semantic section dividers. Use those comments as navigation aids; do not treat them as permission to add another override layer.
+`app.js` and `styles.css` are still the runtime surfaces for the static package. Both files include semantic section dividers. Use those comments as navigation aids; do not treat them as permission to add another override layer.
 
-A module split should be treated as a separate architecture step after the active call paths are mapped and covered by stronger validation.
+`src/` now defines the intended architecture boundary map. Pure core helpers live in `src/core/` and are exposed to the classic browser app through `src/app/core-runtime.js`. Storage and local workspace state helpers live in `src/services/` and `src/state/` with classic browser bridges under `src/app/`. UI helpers live in `src/ui/` and are exposed through `src/app/ui-runtime.js`. Route, lens, and scroll policy helpers live in `src/viewstate/` and are exposed through `src/app/viewstate-runtime.js`. Further extraction can continue layer by layer while preserving browser behavior and file-open static usage.
+
+Architecture layer intent:
+
+- `src/architecture/` owns module boundary contracts.
+- `src/app/` is reserved for bootstrap and orchestration.
+- `src/core/` is for pure domain and markdown logic.
+- `src/state/` is for application state and store coordination.
+- `src/services/` is for browser adapters, source loading, archive, and export services.
+- `src/ui/` is for feature rendering and DOM event binding.
+- `src/viewstate/` is for route, lens, and scroll ownership.
 
 ## Development rules
 
@@ -135,6 +153,8 @@ A module split should be treated as a separate architecture step after the activ
 - Run `node tools/validate-static.mjs` or `npm test` after code or package-shape changes.
 - Run `npm run metrics` when checking size and quality numbers.
 - Run `npm run storage:scan` before changing browser storage behavior.
+Run `npm run build:public` to create the public `.site-publish/` bundle.
+Run `npm run public:check` to verify the public bundle without leaving generated files behind.
 - Run `node --check app.js` after JavaScript changes when you want the smallest possible syntax check.
 - Check CSS brace balance after CSS changes; the static validation tool includes this check.
 
@@ -158,11 +178,18 @@ After app-code changes, test at least:
 
 The package is clean enough to continue product development with less risk of old code paths winning over current behavior. Remaining improvement surfaces are structural or state-design oriented rather than blocker cleanup:
 
-- `app.js` is still a large monolith and could later be split into modules.
+- `app.js` is still a large monolith; `src/` now holds the validated module boundary map for continued extraction.
 - `styles.css` is version-clean but could later be grouped into smaller files.
 - Only five ordinary runtime hook assignments remain outside canonical wrapper registration; all five are parked scroll/viewState hooks.
 - Metrics report `cleanupReadyForProductWork: yes` for the current package state.
-- Scroll and view-state behavior still need a deliberate design pass before being treated as settled.
+- Metrics report `architectureScaffoldReady: yes` when the architecture boundary manifest is active.
+- Metrics report `coreExtractionReady: yes` when pure core helpers are sourced from `src/core/` through the classic browser core runtime.
+- Metrics report `serviceStateExtractionReady: yes` when the storage/local workspace state service slice is sourced through validated `src/` modules and classic browser bridges.
+- Metrics report `uiFeatureExtractionReady: yes` when the first UI helper slice is sourced through validated `src/ui/` modules and a classic browser bridge.
+- Metrics report `viewStateIsolationReady: yes` when route, lens, and scroll policy helpers are sourced through validated `src/viewstate/` modules and a classic browser bridge.
+- Metrics report `publicBuildReady: yes` when the public publish build produces a bundled site and the workflow publishes build output instead of the raw source tree.
+- Metrics report `architectureReadyForProductWork: yes` when the module boundary, core, services/state, UI, viewstate, public build, public hygiene, and cleanup readiness signals are all green.
+- Scroll and view-state behavior now has an owned module surface, but the browser restore behavior still needs a deliberate design pass before being treated as settled.
 
 ## Browser state notes
 

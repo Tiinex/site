@@ -1,6 +1,76 @@
 (function () {
   'use strict';
 
+  const TiinexCore = window.TiinexCore || {};
+  const TiinexServicesStorage = window.TiinexServicesStorage || {};
+  const TiinexUi = window.TiinexUi || {};
+  const TiinexStateLocal = window.TiinexStateLocal || {};
+  const {
+    canonicalWorkspacePath,
+    dirname,
+    extractBodySections,
+    fileNameFromPath,
+    isFetchableHttpUrl,
+    joinPath,
+    normalizeAssetPath,
+    normalizeLineEndings: normalizeNewlines,
+    parseMarkdownLink,
+    plainBlock,
+    relativePath,
+    schemaBadgeClass,
+    schemaIdFromText,
+    schemaKey,
+    sectionMap,
+    shortText,
+    singleFieldFromBullet,
+    slugify,
+    sourceUrlDirectory,
+    stripBodyTitle,
+    stripMarkdownInline,
+    stripTrailingBodySeparator,
+  } = TiinexCore;
+  const {
+    readJson: storageReadJson,
+    removeKeysWithPrefix: storageRemoveKeysWithPrefix,
+    textByteLength: storageTextByteLength,
+    writeJson: storageWriteJson,
+  } = TiinexServicesStorage;
+  const {
+    localStateAssetIsPersistent: stateLocalStateAssetIsPersistent,
+    localStateAssets: stateLocalStateAssets,
+    localStateDataKey: stateLocalStateDataKey,
+    localStateFileIsPersistent: stateLocalStateFileIsPersistent,
+    localStateFiles: stateLocalStateFiles,
+    localStateJsonSize: stateLocalStateJsonSize,
+    localStateSlug: stateLocalStateSlug,
+    localStateSourcesForWorkspace: stateLocalStateSourcesForWorkspace,
+    makeLocalStateId: stateMakeLocalStateId,
+    serializeAssetForLocalState: stateSerializeAssetForLocalState,
+    serializeFileForLocalState: stateSerializeFileForLocalState,
+    sourceSerializable: stateSourceSerializable,
+    workspaceHasLocalStateContent: stateWorkspaceHasLocalStateContent,
+  } = TiinexStateLocal;
+  const {
+    attachmentFileExtension,
+    attachmentMetaChips,
+    escapeAttr,
+    escapeHtml,
+    humanSize,
+    renderPreviewSections,
+    safeUrl,
+    shortMime,
+  } = TiinexUi;
+
+  if (!normalizeNewlines || !canonicalWorkspacePath || !parseMarkdownLink || !schemaKey) {
+    throw new Error('Tiinex core runtime did not load.');
+  }
+  if (!storageReadJson || !storageWriteJson || !storageTextByteLength || !stateLocalStateDataKey || !stateLocalStateFiles) {
+    throw new Error('Tiinex services/state runtime did not load.');
+  }
+  if (!escapeHtml || !escapeAttr || !safeUrl || !attachmentMetaChips || !renderPreviewSections) {
+    throw new Error('Tiinex UI runtime did not load.');
+  }
+
 
   /*
    * Code map for human maintainers
@@ -105,81 +175,6 @@
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
   };
 
-  function escapeHtml(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function escapeAttr(value) {
-    return escapeHtml(value).replace(/`/g, '&#096;');
-  }
-
-  function safeUrl(url) {
-    const s = String(url || '').trim();
-    if (!s) return '';
-    if (/^(https?:|mailto:)/i.test(s)) return s;
-    if (/^[./#][^\s]*$/i.test(s)) return s;
-    return '';
-  }
-
-  function normalizeNewlines(text) {
-    return String(text || '').replace(/\r\n?/g, '\n');
-  }
-
-  function shortText(text, max) {
-    const s = String(text || '').replace(/\s+/g, ' ').trim();
-    if (s.length <= max) return s;
-    return s.slice(0, Math.max(0, max - 1)).trimEnd() + '…';
-  }
-
-  function fileNameFromPath(path) {
-    return String(path || '').split('/').pop() || 'artifact.trace.md';
-  }
-
-  function dirname(path) {
-    const clean = String(path || '').replace(/\\/g, '/');
-    const i = clean.lastIndexOf('/');
-    return i >= 0 ? clean.slice(0, i) : '';
-  }
-
-  function joinPath(base, rel) {
-    if (!rel) return base || '';
-    if (/^[a-z]+:/i.test(rel) || rel.startsWith('/')) return rel;
-    const parts = [];
-    const source = (base ? base + '/' : '') + rel;
-    source.replace(/\\/g, '/').split('/').forEach((part) => {
-      if (!part || part === '.') return;
-      if (part === '..') parts.pop();
-      else parts.push(part);
-    });
-    return parts.join('/');
-  }
-
-  function relativePath(fromPath, toPath) {
-    const fromDir = dirname(fromPath).split('/').filter(Boolean);
-    const toParts = String(toPath || '').split('/').filter(Boolean);
-    while (fromDir.length && toParts.length && fromDir[0] === toParts[0]) {
-      fromDir.shift();
-      toParts.shift();
-    }
-    const up = fromDir.map(() => '..');
-    return up.concat(toParts).join('/') || fileNameFromPath(toPath);
-  }
-
-  function slugify(input) {
-    return String(input || '')
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 58);
-  }
-
   function b64UrlEncode(text) {
     const bytes = new TextEncoder().encode(text);
     let bin = '';
@@ -202,40 +197,6 @@
     let bin = '';
     arr.forEach((b) => { bin += String.fromCharCode(b); });
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-  }
-
-  function parseMarkdownLink(value) {
-    const s = String(value || '').trim();
-    const link = s.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (link) return { text: link[1].trim(), href: link[2].trim() };
-    return { text: s, href: '' };
-  }
-
-  function stripMarkdownInline(value) {
-    return String(value || '')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-      .replace(/`([^`]+)`/g, '$1')
-      .trim();
-  }
-
-  function schemaKey(schemaId) {
-    const s = String(schemaId || '').toLowerCase();
-    if (s.includes('topic')) return 'topic';
-    if (s.includes('task')) return 'task';
-    if (s.includes('decision')) return 'decision';
-    if (s.includes('evidence')) return 'evidence';
-    if (s.includes('feedback')) return 'feedback';
-    if (s.includes('reduction')) return 'reduction';
-    if (s.includes('runtime')) return 'runtime';
-    if (s.includes('signal')) return 'signal';
-    if (s.includes('pointer')) return 'pointer';
-    return schemaId ? 'unknown' : 'plain';
-  }
-
-  function schemaBadgeClass(schemaId) {
-    const key = schemaKey(schemaId);
-    if (['topic', 'task', 'decision', 'evidence', 'feedback', 'reduction'].includes(key)) return key;
-    return key === 'plain' ? 'plain' : 'unknown';
   }
 
   function convertSourceUrl(input) {
@@ -936,17 +897,6 @@
     return 'leaf candidate';
   }
 
-  function extractBodySections(markdown) {
-    const out = {};
-    let current = '';
-    for (const raw of normalizeNewlines(markdown || '').split('\n')) {
-      const m = raw.match(/^##\s+(.+)\s*$/);
-      if (m) { current = m[1].trim(); out[current] = ''; continue; }
-      if (current) out[current] += raw + '\n';
-    }
-    return out;
-  }
-
   function toggleNodeExpand(wsId, nodeId) {
     const ws = getWorkspace(wsId);
     const node = ws?.nodeById.get(nodeId);
@@ -1014,13 +964,6 @@
     return `<a class="ref-sup" href="${escapeAttr(href)}" target="_blank" rel="noopener" title="${escapeAttr(title)}">${escapeHtml(shortText(label, 18))}</a>`;
   }
 
-
-  function renderPreviewSections(sections, names) {
-    const html = names.filter((name) => sections[name] && sections[name].trim()).slice(0, 4).map((name) => {
-      return `<section class="preview-section"><h4>${escapeHtml(name)}</h4><p>${escapeHtml(shortText(stripMarkdownInline(sections[name]), 260))}</p></section>`;
-    }).join('');
-    return html || '<p class="preview-note">No prioritized continuity sections found for this schema.</p>';
-  }
 
   async function loadDemo() {
     if (app.workspaces.some((ws) => ws.label.startsWith('Tiinex/docs') || ws.repo === 'Tiinex/docs')) {
@@ -1120,28 +1063,6 @@
       };
     }
     return ws.lineageWindows[selectedId];
-  }
-
-
-
-
-
-  function canonicalWorkspacePath(path) {
-    const s = String(path || '').replace(/\\/g, '/').trim();
-    if (!s) return '';
-    if (/^[a-z]+:/i.test(s)) return s;
-    return joinPath('', s.replace(/^\/+/, '').replace(/^\.\//, ''));
-  }
-
-  function sourceUrlDirectory(url) {
-    const s = String(url || '');
-    if (!s) return '';
-    const i = s.lastIndexOf('/');
-    return i >= 0 ? s.slice(0, i + 1) : s;
-  }
-
-  function isFetchableHttpUrl(value) {
-    return /^https?:\/\//i.test(String(value || '').trim());
   }
 
   function originValueUrl(value) {
@@ -2998,13 +2919,6 @@
     return collected;
   }
 
-  function normalizeAssetPath(path) {
-    return String(path || '')
-      .replace(/\\/g, '/')
-      .replace(/^\/+/, '')
-      .replace(/\/+/g, '/')
-      .replace(/^\.\//, '');
-  }
   function materialHasOpenableSource(ref) {
     if (!ref) return false;
     if (ref.loadedNodeId) return true;
@@ -4396,34 +4310,25 @@
   }, app.localState || {});
 
   function localStateDataKey(id) {
-    return `${STORAGE_KEYS.localWorkspaceStatePrefix}${id}`;
+    return stateLocalStateDataKey(STORAGE_KEYS.localWorkspaceStatePrefix, id);
   }
 
   function localStateSlug(text) {
-    return String(text || 'local-workspace')
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 48) || 'local-workspace';
+    return stateLocalStateSlug(text);
   }
 
   function localStateId(displayName) {
-    const entropy = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    return `${localStateSlug(displayName)}-${entropy}`;
+    return stateMakeLocalStateId(displayName);
   }
 
   function readLocalStateRegistry() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(app.localState.registryKey) || '[]');
-      return Array.isArray(parsed) ? parsed.filter((item) => item && item.id) : [];
-    } catch (_) {
-      return [];
-    }
+    const parsed = storageReadJson(localStorage, app.localState.registryKey, []);
+    return Array.isArray(parsed) ? parsed.filter((item) => item && item.id) : [];
   }
 
   function writeLocalStateRegistry(entries) {
     try {
-      localStorage.setItem(app.localState.registryKey, JSON.stringify(entries || []));
+      storageWriteJson(localStorage, app.localState.registryKey, entries || []);
     } catch (error) {
       reportRuntimeError('Could not write local workspace registry', error);
       toast(`Could not write local workspace registry: ${error.message}`, 'warn');
@@ -4453,7 +4358,7 @@
   }
 
   function sourceSerializable(source) {
-    return Object.assign({}, source || {});
+    return stateSourceSerializable(source);
   }
 
   function workspaceHasRemoteContent(ws) {
@@ -4465,79 +4370,35 @@
   }
 
   function localStateFileIsPersistent(file) {
-    if (!file) return false;
-    if (file.isGenerated) return true;
-    const sourceId = String(file.sourceId || '').toLowerCase();
-    const sourceKind = String(file.sourceKind || '').toLowerCase();
-    return ['local', 'draft', 'upload', 'generated'].includes(sourceId)
-      || ['local', 'draft', 'upload', 'generated'].includes(sourceKind);
+    return stateLocalStateFileIsPersistent(file);
   }
 
   function localStateAssetIsPersistent(asset, savedFilePaths = new Set()) {
-    if (!asset || typeof asset.content !== 'string') return false;
-    if (savedFilePaths.has(canonicalWorkspacePath(asset.path || ''))) return false;
-    const sourceId = String(asset.sourceId || '').toLowerCase();
-    const source = String(asset.source || asset.sourceKind || '').toLowerCase();
-    return ['local', 'draft', 'upload', 'generated'].includes(sourceId)
-      || ['local', 'draft', 'upload', 'zip', 'generated'].includes(source);
+    return stateLocalStateAssetIsPersistent(asset, savedFilePaths);
   }
 
   function localStateFiles(ws) {
-    return Array.from(ws?.files?.values?.() || []).filter(localStateFileIsPersistent);
+    return stateLocalStateFiles(ws);
   }
 
   function localStateAssets(ws, files = localStateFiles(ws)) {
-    const savedPaths = new Set(files.map((file) => canonicalWorkspacePath(file.path || '')));
-    return Array.from(ws?.assets?.values?.() || []).filter((asset) => localStateAssetIsPersistent(asset, savedPaths));
+    return stateLocalStateAssets(ws, files);
   }
 
   function workspaceHasLocalStateContent(ws) {
-    if (!ws) return false;
-    return Boolean(localStateFiles(ws).length || localStateAssets(ws).length);
+    return stateWorkspaceHasLocalStateContent(ws);
   }
 
   function localStateSourcesForWorkspace(ws, files = localStateFiles(ws), assets = localStateAssets(ws, files)) {
-    const ids = new Set();
-    files.forEach((file) => { if (file.sourceId) ids.add(file.sourceId); });
-    assets.forEach((asset) => { if (asset.sourceId) ids.add(asset.sourceId); });
-    return Array.from(ws.sources?.values?.() || [])
-      .filter((source) => ids.has(source.id) || ['local', 'draft'].includes(source.kind) || ['local', 'draft'].includes(source.id))
-      .map(sourceSerializable);
+    return stateLocalStateSourcesForWorkspace(ws, files, assets);
   }
 
   function serializeFileForLocalState(file) {
-    return {
-      path: canonicalWorkspacePath(file.path || ''),
-      sourceId: file.sourceId || 'local',
-      sourceKind: file.sourceKind || '',
-      sourceLabel: file.sourceLabel || '',
-      storageKey: file.storageKey || '',
-      name: file.name || fileNameFromPath(file.path),
-      content: normalizeNewlines(file.content || file.text || ''),
-      rawUrl: '',
-      browseUrl: '',
-      repo: '',
-      ref: '',
-      isGenerated: Boolean(file.isGenerated),
-      generatedAt: file.generatedAt || ''
-    };
+    return stateSerializeFileForLocalState(file);
   }
 
   function serializeAssetForLocalState(asset) {
-    if (!asset || typeof asset.content !== 'string') return null;
-    return {
-      key: asset.key || '',
-      path: canonicalWorkspacePath(asset.path || asset.name || 'asset'),
-      sourceId: asset.sourceId || 'local',
-      sourceLabel: asset.sourceLabel || '',
-      name: asset.name || fileNameFromPath(asset.path),
-      content: asset.content,
-      type: asset.type || asset.mime || 'application/octet-stream',
-      size: asset.size || asset.content.length,
-      source: asset.source || 'local',
-      preserved: Boolean(asset.preserved),
-      updatedAt: asset.updatedAt || ''
-    };
+    return stateSerializeAssetForLocalState(asset);
   }
 
   function serializeWorkspaceForLocalState(ws) {
@@ -4919,20 +4780,14 @@
   }
 
   function localStateJsonSize(json) {
-    try {
-      return new TextEncoder().encode(String(json || '')).length;
-    } catch (_) {
-      return String(json || '').length;
-    }
+    return storageTextByteLength(json);
   }
 
   function pruneLocalStateStorage(keepId) {
     const prefix = STORAGE_KEYS.localWorkspaceStatePrefix;
     const keepKey = keepId ? localStateDataKey(keepId) : '';
     try {
-      Object.keys(localStorage)
-        .filter((key) => key.startsWith(prefix) && key !== keepKey)
-        .forEach((key) => localStorage.removeItem(key));
+      storageRemoveKeysWithPrefix(localStorage, prefix, keepKey);
     } catch (_) {}
     if (keepId) {
       const entry = readLocalStateRegistry().find((item) => item.id === keepId);
@@ -4965,8 +4820,7 @@
         rememberCurrentLocalStateId('');
         return;
       }
-      const json = JSON.stringify(state);
-      localStorage.setItem(key, json);
+      const json = storageWriteJson(localStorage, key, state);
       upsertLocalStateRegistry({
         id: app.localState.currentId,
         displayName: app.localState.currentDisplayName || state.displayName || 'Local workspace',
@@ -4981,8 +4835,7 @@
           try { localStorage.removeItem(key); } catch (_) {}
           pruneLocalStateStorage(app.localState.currentId);
           const retryState = serializeLocalState();
-          const retryJson = JSON.stringify(retryState);
-          localStorage.setItem(key, retryJson);
+          const retryJson = storageWriteJson(localStorage, key, retryState);
           upsertLocalStateRegistry({
             id: app.localState.currentId,
             displayName: app.localState.currentDisplayName || retryState.displayName || 'Local workspace',
@@ -10414,14 +10267,6 @@ ${integrityFooter('self', 'pending')}`;
     return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
   }
 
-  function schemaIdFromText(value, fallback = 'tiinex.topic.v1') {
-    const text = String(value || '').trim();
-    if (!text) return fallback;
-    const markdown = text.match(/\[([^\]]+)\]\([^)]+\)/);
-    if (markdown) return markdown[1].trim() || fallback;
-    return text.replace(/^Current Schema:\s*/i, '').trim() || fallback;
-  }
-
   function pathDirParts(path) {
     const clean = canonicalWorkspacePath(path || '');
     const parts = clean.split('/').filter(Boolean);
@@ -11943,52 +11788,6 @@ ${integrityFooterForPath(parent, path)}`,
 
 
 
-  function attachmentFileExtension(name) {
-    const m = String(name || '').match(/\.([a-z0-9]{1,12})$/i);
-    return m ? m[1].toUpperCase() : '';
-  }
-
-  function humanSize(bytes) {
-    const n = Number(bytes || 0);
-    if (!n) return '';
-    if (n < 1024) return `${n} B`;
-    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
-    return `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
-  }
-
-  function shortMime(type, name = '') {
-    const ext = attachmentFileExtension(name);
-    const t = String(type || '').toLowerCase();
-    if (t.startsWith('image/')) return ext || t.replace('image/', '').toUpperCase();
-    if (t.includes('html')) return 'HTML';
-    if (t.includes('markdown')) return 'MD';
-    if (t.includes('json')) return 'JSON';
-    if (t.includes('pdf')) return 'PDF';
-    if (t.includes('text')) return 'TEXT';
-    return ext || 'FILE';
-  }
-
-  function attachmentMetaChips(attachment) {
-    const chips = [];
-    if (attachment.kind === 'file') {
-      const kind = shortMime(attachment.type, attachment.name);
-      if (kind) chips.push(kind);
-      const size = humanSize(attachment.size);
-      if (size) chips.push(size);
-      if (attachment.width && attachment.height) chips.push(`${attachment.width}×${attachment.height}`);
-    } else if (attachment.kind === 'url') {
-      chips.push('URL');
-      try {
-        if (attachment.url) chips.push(new URL(attachment.url).hostname.replace(/^www\./, ''));
-      } catch (_) {}
-    }
-    const rep = String(attachment?.representation || '').trim();
-    if (rep && !chips.map((x) => String(x).toLowerCase()).includes(rep.toLowerCase())) {
-      chips.unshift(rep);
-    }
-    return chips;
-  }
-
   function attachmentMetaMarkdown(attachment) {
     const lines = [];
     if (attachment.kind === 'file') {
@@ -12294,43 +12093,6 @@ ${integrityFooterForPath(parent, path)}`,
     return Boolean(schemaId && knownHumanSchemaIds().has(schemaId) && schemaFormFor(schemaId));
   }
 
-  function stripBodyTitle(body) {
-    return String(body || '').replace(/^\s*#\s+.+(?:\n+|$)/, '').trim();
-  }
-
-  function sectionMap(body) {
-    const text = stripBodyTitle(body);
-    const re = /^##\s+(.+?)\s*$/gm;
-    const matches = Array.from(text.matchAll(re));
-    const map = { _intro: '' };
-    if (!matches.length) {
-      map._intro = text.trim();
-      return map;
-    }
-    map._intro = text.slice(0, matches[0].index).trim();
-    for (let i = 0; i < matches.length; i++) {
-      const key = matches[i][1].trim().toLowerCase();
-      const start = matches[i].index + matches[i][0].length;
-      const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
-      map[key] = text.slice(start, end).trim();
-    }
-    return map;
-  }
-
-  function plainBlock(value) {
-    return String(value || '')
-      .split(/\r?\n/)
-      .map((line) => line.replace(/^\s*-\s?/, '').trimEnd())
-      .join('\n')
-      .trim();
-  }
-
-  function singleFieldFromBullet(block, label) {
-    const re = new RegExp(`^\\s*-\\s*${label}\\s*:\\s*(.*)$`, 'im');
-    const m = String(block || '').match(re);
-    return m ? m[1].trim() : '';
-  }
-
   function formStateFromNode(node) {
     const schemaId = schemaIdForNode(node);
     const sections = sectionMap(node?.body || '');
@@ -12484,20 +12246,6 @@ ${integrityFooterForPath(parent, path)}`,
 
     return next(event);
   });
-
-
-
-
-  function stripTrailingBodySeparator(value) {
-    return String(value || '')
-      .replace(/\n\s*---\s*$/m, '')
-      .replace(/^\s*---\s*$/gm, '')
-      .trim();
-  }
-
-
-
-
 
   function normalizedFolderPath(path) {
     return canonicalWorkspacePath(path || '').replace(/\/+$/g, '') || '.topics';
@@ -14639,25 +14387,7 @@ See _tiinex/export.manifest.json for source and output path metadata.
   }
 
   function selectedRouteDescriptor(ws) {
-    const node = selectedNode(ws);
-    const pending = ws?.pendingSelectedRoute || null;
-    if (node) {
-      return {
-        selectedNodeId: node.id || '',
-        selectedPath: node.path || '',
-        selectedTitle: node.title || '',
-        mode: 'lineage'
-      };
-    }
-    if (pending?.mode === 'lineage' || pending?.selectedPath || pending?.selectedTitle || pending?.selectedNodeId) {
-      return {
-        selectedNodeId: pending.selectedNodeId || '',
-        selectedPath: pending.selectedPath || '',
-        selectedTitle: pending.selectedTitle || '',
-        mode: 'lineage'
-      };
-    }
-    return { selectedNodeId: '', selectedPath: '', selectedTitle: '', mode: 'discovery' };
+    return TiinexViewState.routeDescriptorFor(selectedNode(ws), ws?.pendingSelectedRoute || null);
   }
 
   function activeScrollableFeed(ws) {
@@ -14685,12 +14415,11 @@ See _tiinex/export.manifest.json for source and output path metadata.
     if (!source || !ws) return source;
     rememberLensScroll(ws);
     const selected = selectedRouteDescriptor(ws);
-    Object.assign(source, selected, {
-      scrollTop: Math.max(0, Math.round(ws.routeScrollTop || 0)),
-      scrollMode: ws.routeScrollMode || selected.mode || 'discovery',
-      scrollSelectedPath: ws.routeScrollSelectedPath || selected.selectedPath || ''
+    return TiinexViewState.decorateLensSource(source, selected, {
+      top: ws.routeScrollTop,
+      mode: ws.routeScrollMode || selected.mode || 'discovery',
+      selectedPath: ws.routeScrollSelectedPath || selected.selectedPath || ''
     });
-    return source;
   }
   registerRouteStateWrapper(function routeStateWithDurableLens(next) {
     const state = next();
@@ -14926,20 +14655,16 @@ See _tiinex/export.manifest.json for source and output path metadata.
     } catch (_) {
       nodes = ws.nodes || [];
     }
-    const paths = nodes
-      .map((node) => node?.path || node?.id || '')
-      .filter(Boolean)
-      .sort()
-      .join('\n');
-    return [
-      ws.discoveryView || 'feed',
-      ws.discoveryFilterSchema || ws.filterSchema || 'all',
-      ws.discoverySearch || '',
-      ws.previewMaterialMode ? 'preview' : 'normal',
-      typeof previewMaterialKind === 'function' ? previewMaterialKind(ws) : '',
-      nodes.length,
-      hashFast(paths)
-    ].join('::');
+    return TiinexViewState.discoveryScrollSignature({
+      discoveryView: ws.discoveryView || 'feed',
+      discoveryFilterSchema: ws.discoveryFilterSchema || ws.filterSchema || 'all',
+      discoverySearch: ws.discoverySearch || '',
+      previewMaterialMode: ws.previewMaterialMode,
+      previewMaterialKind: typeof previewMaterialKind === 'function' ? previewMaterialKind(ws) : '',
+      nodeKeys: nodes.map((node) => node?.path || node?.id || ''),
+      nodeCount: nodes.length,
+      hash: hashFast
+    });
   }
 
   const rememberLensScrollBeforeCancel = rememberLensScroll;
@@ -14965,7 +14690,7 @@ See _tiinex/export.manifest.json for source and output path metadata.
     if (!wantsLineage && source.scrollTop) {
       const currentSig = discoverySignatureForScroll(ws);
       const savedSig = source.discoveryScrollSignature || source.discoverySig || '';
-      if (savedSig && savedSig !== currentSig) {
+      if (TiinexViewState.shouldRejectDiscoveryScroll(savedSig, currentSig)) {
         ws.routeScrollTop = 0;
       }
     }
@@ -14992,8 +14717,13 @@ See _tiinex/export.manifest.json for source and output path metadata.
 
   const applyCurrentOrCachedLensBeforeCancel = applyCurrentOrCachedLens;
   applyCurrentOrCachedLens = function applyCurrentOrCachedLensOnce() {
-    if (app.userInteracted && !app.isBootingFromUrl && !app.routing?.restoring) return false;
-    if (app.durableLensApplied && !app.isBootingFromUrl && !app.routing?.restoring) return false;
+    const shouldApply = TiinexViewState.shouldApplyLens({
+      userInteracted: app.userInteracted,
+      durableLensApplied: app.durableLensApplied,
+      isBootingFromUrl: app.isBootingFromUrl,
+      routingRestoring: app.routing?.restoring
+    });
+    if (!shouldApply) return false;
     const ok = applyCurrentOrCachedLensBeforeCancel();
     if (ok) app.durableLensApplied = true;
     return ok;
@@ -15091,24 +14821,7 @@ See _tiinex/export.manifest.json for source and output path metadata.
       state = {};
     }
     const clone = JSON.parse(JSON.stringify(state || {}));
-
-    function stripVolatile(obj) {
-      if (!obj || typeof obj !== 'object') return obj;
-      delete obj.scrollTop;
-      delete obj.feedScrollTop;
-      delete obj.scrollMode;
-      delete obj.scrollSelectedPath;
-      delete obj.discoveryScrollSignature;
-      delete obj.discoverySig;
-      delete obj.previewFilterOpen;
-      delete obj.mobileChromeCompact;
-      delete obj.timestamp;
-      delete obj.createdAt;
-      Object.keys(obj).forEach((key) => stripVolatile(obj[key]));
-      return obj;
-    }
-
-    return stripVolatile(clone);
+    return TiinexViewState.stripVolatileLensState(clone);
   }
 
   function semanticLensSignature() {
@@ -15120,14 +14833,18 @@ See _tiinex/export.manifest.json for source and output path metadata.
   }
 
   function normalizeHistoryKind(kind) {
-    if (kind !== 'push') return kind;
     const sig = semanticLensSignature();
-    const now = performance.now();
-    const sameAsRecent = sig && app.lastPushedSemanticLens === sig && (now - (app.lastPushedSemanticLensAt || 0)) < 1200;
-    const sameAsCurrent = sig && history.state?.semanticLens === sig;
-    if (sameAsRecent || sameAsCurrent) return 'replace';
-    app.pendingPushedSemanticLens = sig;
-    return 'push';
+    const decision = TiinexViewState.normalizedHistoryKind({
+      kind,
+      signature: sig,
+      lastSignature: app.lastPushedSemanticLens,
+      lastAt: app.lastPushedSemanticLensAt || 0,
+      now: performance.now(),
+      currentHistorySignature: history.state?.semanticLens,
+      windowMs: 1200
+    });
+    if (decision.shouldRememberPending) app.pendingPushedSemanticLens = sig;
+    return decision.kind;
   }
   registerSetRouteStateWrapper(function setRouteStateWithHistoryDedupe(kind = 'push', next) {
     const normalized = normalizeHistoryKind(kind);
@@ -16947,12 +16664,7 @@ window.addEventListener('popstate', () => {
 
 
   function storageJsonGet(key, fallback = null) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (_) {
-      return fallback;
-    }
+    return storageReadJson(localStorage, key, fallback);
   }
 
   function storageKeyLabel(key) {
@@ -16964,8 +16676,7 @@ window.addEventListener('popstate', () => {
   function storageJsonSet(key, value) {
     let json = '';
     try {
-      json = JSON.stringify(value);
-      localStorage.setItem(key, json);
+      json = storageWriteJson(localStorage, key, value);
       return true;
     } catch (error) {
       const bytes = json ? localStateJsonSize(json) : 0;
@@ -16975,19 +16686,13 @@ window.addEventListener('popstate', () => {
   }
 
   function sessionStorageJsonGet(key, fallback = null) {
-    try {
-      const raw = sessionStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch (_) {
-      return fallback;
-    }
+    return storageReadJson(sessionStorage, key, fallback);
   }
 
   function sessionStorageJsonSet(key, value) {
     let json = '';
     try {
-      json = JSON.stringify(value);
-      sessionStorage.setItem(key, json);
+      json = storageWriteJson(sessionStorage, key, value);
       return true;
     } catch (error) {
       const bytes = json ? localStateJsonSize(json) : 0;

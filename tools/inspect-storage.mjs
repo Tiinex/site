@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const root = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
+const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const appPath = join(root, 'app.js');
 if (!existsSync(appPath)) throw new Error('Missing app.js');
 const source = readFileSync(appPath, 'utf8');

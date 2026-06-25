@@ -66,7 +66,7 @@ The viewer brand resolves through workspace markdown (`Viewer Identity` → `Ico
 
 Ordinary app identifiers, CSS classes, actions, and DOM data attributes should remain semantic. Use Git history for implementation history; do not put implementation chronology into runtime names.
 
-The current app is a static client-side package. Prefer improvements that preserve this shape unless the human explicitly chooses a larger architecture. Use the code maps in `app.js` and `styles.css` to navigate the monolith before changing behavior.
+The current app is a static client-side package. Prefer improvements that preserve this shape unless the human explicitly chooses a larger architecture. Use the code maps in `app.js` and `styles.css` to navigate current runtime behavior, and use `src/architecture/boundaries.mjs` for the intended module boundaries. Extracted pure helpers live in `src/core/`, storage/state helpers live in `src/services/` and `src/state/`, UI helpers live in `src/ui/`, and route/lens/scroll policy helpers live in `src/viewstate/`; browser bridges under `src/app/` let `app.js` remain a classic static script. Metrics should report `architectureReadyForProductWork: yes` before new product work relies on this architecture baseline.
 
 ## Development guidance
 
@@ -84,6 +84,8 @@ When changing code:
 - Run `node tools/collect-metrics.mjs` when updating documented size/quality numbers; `npm run metrics` is only a convenience alias.
 - Run `node tools/inspect-storage.mjs` before changing browser storage behavior; `npm run storage:scan` is only a convenience alias.
 - Run `node --check app.js` after JavaScript changes when a minimal syntax check is enough.
+- Keep `src/core/` free from DOM and browser storage access.
+- Keep `src/ui/` responsible for rendering helpers and DOM-facing presentation logic, not direct browser storage access.
 - Check CSS brace balance after CSS changes; the static validation tool includes this check.
 - Browser-test mobile action surfaces after UI changes.
 
@@ -119,12 +121,13 @@ The broader Tiinex docs/source lineage may live in public Git repositories or ex
 
 - sha256-base64url-c14n-v1
   - Towards: self
-  - Value: 3EGAi0P_5pU4f_b3IY7l0ZKFjVOCpQEUmoodZFafX9E
-
+dCbgbwXfSv_COyErT_sF5DoJMq9tJpKmgWkHaCBn8I
 ## Browser State
 
-Local workspace persistence stores local/draft deltas only. Remote/default workspace content must be reloaded from its source and then merged with saved local deltas. Scroll and lens state are session-scoped; treat them as an active design surface until the browser behavior is deliberately consolidated.
+Local workspace persistence stores local/draft deltas only. Remote/default workspace content must be reloaded from its source and then merged with saved local deltas. Scroll and lens state are session-scoped. Route, lens, and scroll policy helpers now have an owned `src/viewstate/` surface; treat browser restore behavior as active until it is deliberately consolidated.
 
 ## Runtime wrapper invariant
 
 Render wrappers are `(next, ...args)` continuations. Do not pass Promise callback values before `next`; startup/render wrappers must keep the continuation as the first argument.
+
+- `publicBuildReady: yes` means the publish path builds a bundled public site from the modular source.

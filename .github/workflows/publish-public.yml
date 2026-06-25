@@ -46,25 +46,16 @@ jobs:
           ref: ${{ steps.settings.outputs.source_ref }}
           fetch-depth: 0
 
-      - name: Prepare publish directory
-        shell: bash
-        run: |
-          rm -rf .site-publish
-          mkdir -p .site-publish
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-          rsync -av ./ .site-publish/ \
-            --exclude '.git/' \
-            --exclude '.github/' \
-            --exclude '.site-publish/' \
-            --exclude 'README.md' \
-            --exclude 'LICENSE' \
-            --exclude 'NOTICE'
+      - name: Validate source
+        run: npm test
 
-          touch .site-publish/.nojekyll
-
-          if [ -n "$PAGES_CNAME" ]; then
-            printf '%s\n' "$PAGES_CNAME" > .site-publish/CNAME
-          fi
+      - name: Build public site
+        run: npm run build:public
 
       - name: Publish public branch
         uses: peaceiris/actions-gh-pages@v4

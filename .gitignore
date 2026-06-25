@@ -8,3 +8,5 @@ Thumbs.db
 # Local package artifacts
 *.zip
 node_modules/
+.site-publish/
+.tmp-public-check/
