@@ -71,6 +71,8 @@ VALIDATION_NOTES.md
 
 No build step is required for ordinary local use. `package.json` is included only as a maintainer convenience for dependency-free validation and metrics commands; it is not required to run or host the app. The app remains a static frontend package.
 
+Source-control and hosting metadata can exist beside the static package in the GitHub repository. The validator allows repo-level metadata such as `CNAME`, `LICENSE`, `NOTICE`, and the project `discord/` folder while ignoring `.git/` internals for package-shape checks. The public workflow still publishes only the generated `.site-publish/` output, not the raw repository tree.
+
 ## Local use
 
 Open `index.html` in a browser.

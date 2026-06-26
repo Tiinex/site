@@ -1,23 +1,22 @@
 # Validation Notes
 
-Package: v6-405 product CP120
+Package: v6-406 product CP121
 
 ## Purpose
 
-CP120 is a wizard shell cleanup release after the CP119 browser-approved wizard registry baseline. It intentionally avoids new product concepts and preserves the current wizard flow. Its goal is to make the wizard and markdown fallback dialogs share a professional authoring shell before deeper flow redesign.
+CP121 is a GitHub Pages publish validation repair on top of the CP120 wizard-shell baseline. It intentionally avoids wizard/runtime behavior changes. Its goal is to make `npm test` pass both in the packaged zip shape and in the real GitHub Actions checkout, where repo-level metadata such as `.git`, `CNAME`, `LICENSE`, `NOTICE`, and `discord/` are present.
 
 ## Cleanup performed
 
-- Added shared `authoring-dialog-*` shell classes for authoring modals.
-- Applied the shared shell to the artifact wizard, Review Markdown/add-artifact fallback, and local markdown edit.
-- Moved Review Markdown and local edit footers out of their scroll bodies so header, body, and actions have the same layout contract as the wizard.
-- Reduced mobile header density with smaller kicker/title/lead spacing and clamped lead copy.
-- Gave the scroll body explicit ownership of overflow so footer actions no longer behave like body content.
-- Made mobile footer actions use a compact two-column grid, with primary actions spanning the row.
-- Kept schema registry ownership from CP119 unchanged.
+- Split root package-shape validation into app-package entries, repo metadata entries, and ignored infrastructure entries.
+- Allowed source-repo metadata required by the live repository: `CNAME`, `LICENSE`, `NOTICE`, and `discord/`.
+- Ignored `.git/` internals during recursive validation walks so GitHub checkout metadata does not become part of the app package surface.
+- Kept unexpected root entries blocked so accidental generated artifacts still fail validation.
+- Documented the distinction between static app package shape and source-repository metadata in README.
 
 ## Intentionally unchanged
 
+- wizard shell behavior from CP120
 - wizard step semantics and product flow
 - schema registry contents
 - create-intent semantics
@@ -63,15 +62,9 @@ node --check .site-publish/tiinex.bundle.js
 
 ## Browser validation focus
 
-Because CP120 changes the dialog shell, browser validation should focus on visual and layout behavior:
+CP121 does not change browser runtime behavior. Browser validation can be limited to a quick sanity check after applying the package:
 
-- desktop Continue opens the wizard and can create a child artifact
-- desktop Reference still asks for parent first, then opens the wizard
-- mobile Continue opens the same wizard flow
-- mobile Reference parent selection still uses the approved icon-only Select affordance
-- wizard type step has more usable body space on mobile
-- wizard details step has a compact header/footer and scrolls in the body
-- Evidence still shows supported claim plus URL/File attachment collector
-- Review Markdown uses the same header/body/footer shell and does not trap the footer inside the scroll body
-- schema-aware local edit opens the wizard with fields prefilled
-- quick sanity check that mobile badges and Discovery auto-more remain unchanged
+- app loads
+- desktop or mobile Discovery renders
+- Continue still opens the wizard
+- GitHub Pages publish workflow passes the `Validate source` step

@@ -37,8 +37,11 @@ function read(path) {
   return readFileSync(file(path), 'utf8');
 }
 
+const WALK_IGNORED_DIRECTORIES = new Set(['.git']);
+
 function walk(dir, output = []) {
   for (const entry of readdirSync(dir)) {
+    if (WALK_IGNORED_DIRECTORIES.has(entry)) continue;
     const full = join(dir, entry);
     const stats = statSync(full);
     if (stats.isDirectory()) walk(full, output);
@@ -909,7 +912,7 @@ function validatePublicBuildContracts() {
 }
 
 function validateRootPackageShape() {
-  const allowedRootEntries = new Set([
+  const appRootEntries = new Set([
     '.editorconfig',
     '.github',
     '.gitignore',
@@ -928,9 +931,29 @@ function validateRootPackageShape() {
     'VALIDATION_NOTES.md'
   ]);
 
+  const repoMetadataRootEntries = new Set([
+    'CNAME',
+    'LICENSE',
+    'NOTICE',
+    'discord'
+  ]);
+
+  const ignoredInfrastructureRootEntries = new Set([
+    '.git'
+  ]);
+
+  const allowedRootEntries = new Set([
+    ...appRootEntries,
+    ...repoMetadataRootEntries,
+    ...ignoredInfrastructureRootEntries
+  ]);
+
   const rootEntries = readdirSync(root).sort();
   const unexpected = rootEntries.filter((entry) => !allowedRootEntries.has(entry));
   if (unexpected.length) fail(`Unexpected root package entries: ${unexpected.join(', ')}`);
+
+  const appShapeEntries = rootEntries.filter((entry) => !ignoredInfrastructureRootEntries.has(entry));
+  note(`root app/package entries: ${appShapeEntries.join(', ')}`);
 
   const forbiddenPackageFiles = walk(root)
     .map((full) => relative(root, full))
@@ -965,8 +988,8 @@ function validateRootPackageShape() {
   if (storageScanScript !== 'node tools/inspect-storage.mjs') {
     fail('package.json must expose "storage:scan": "node tools/inspect-storage.mjs"');
   }
-  note(`root package entries: ${rootEntries.join(', ')}`);
 }
+
 
 function main() {
   validateRequiredFiles();
