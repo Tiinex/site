@@ -24,6 +24,6 @@ The old UI was not just a collection of cards. It was a tall, centered working w
 Height continuity is now paired with scroll ownership. The focused window still stretches vertically, but page-level multiverse scroll is prevented. Loaded feeds scroll inside the active workspace pane instead.
 
 
-## v103 fit and icon polish
+## v104 fit and icon polish
 
-v103 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.
+v104 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.

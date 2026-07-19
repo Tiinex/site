@@ -1,17 +1,19 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v103",
+  "version": "0.2.0-v109",
   "private": true,
-  "description": "Tiinex Site shell with Column-only runtime scope, focused Tiinex.dev pattern parity, UI-shape guards, legibility correction, source boundaries, artifact parsing, root fallback, audit skeleton, bundled public build, and legacy behavior reference.",
+  "description": "Tiinex Site UC-001 shell with runtime empty stage parity for empty/create/restore/close and source-clean public bundle.",
   "type": "module",
   "scripts": {
     "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs",
     "ui:shape": "node tools/check-ui-shape.mjs",
-    "test": "npm run validate && npm run ui:shape && npm run build:public && npm run public:check",
+    "test": "npm run validate && npm run ui:shape && npm run runtime:smoke && npm run usecase:uc001 && npm run build:public && npm run public:check",
     "metrics": "node tools/collect-metrics.mjs",
     "storage:scan": "node tools/inspect-storage.mjs",
     "build:public": "node tools/build-public.mjs",
-    "public:check": "node tools/check-public-build.mjs"
+    "public:check": "node tools/check-public-build.mjs",
+    "usecase:uc001": "node tools/check-uc001.mjs",
+    "runtime:smoke": "node tools/check-runtime-startup.mjs"
   },
   "engines": {
     "node": ">=18"

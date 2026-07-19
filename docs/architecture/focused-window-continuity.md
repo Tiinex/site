@@ -26,6 +26,6 @@ This is visual and interaction continuity, not legacy runtime reuse. `.old` rema
 v100 restored the old vertical stretch behavior; v101 preserves that while moving scroll ownership inside the active workspace pane. The focused window now uses a height-continuity class and dynamic viewport height so zoomed-out desktop views still read as one tall Tiinex workspace window, not a short card stack floating inside unused page space.
 
 
-## v103 fit and icon polish
+## v104 fit and icon polish
 
-v103 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.
+v104 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.

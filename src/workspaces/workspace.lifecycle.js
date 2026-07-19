@@ -1,0 +1,102 @@
+(function attachWorkspaceLifecycle(global) {
+  'use strict';
+
+  const WORKSPACE_NAME_MAX_LENGTH = 72;
+  const SESSION_SOURCE_KIND = 'local-session';
+
+  function nowIso(clock) {
+    return typeof clock === 'function' ? clock() : new Date().toISOString();
+  }
+
+  function normalizeWorkspaceName(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, WORKSPACE_NAME_MAX_LENGTH);
+  }
+
+  function makeWorkspaceId(name, createdAt) {
+    const slug = normalizeWorkspaceName(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'workspace';
+    const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
+    return `local-${slug}-${stamp}`;
+  }
+
+  function makeEmptyAppState() {
+    return {
+      version: 1,
+      activeWorkspaceId: '',
+      view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' },
+      workspaces: [],
+      audit: null
+    };
+  }
+
+  function createWorkspace(state, input = {}, options = {}) {
+    const name = normalizeWorkspaceName(input.name);
+    if (!name) return { ok: false, error: 'workspace.name.required', state };
+    const createdAt = nowIso(options.clock);
+    const workspace = {
+      id: input.id || makeWorkspaceId(name, createdAt),
+      name,
+      title: name,
+      createdAt,
+      kind: 'workspace',
+      source: {
+        kind: SESSION_SOURCE_KIND,
+        label: 'local session workspace',
+        boundary: 'browser-local session state; no source files or GitHub provenance inferred',
+        githubPolicy: 'not guessed',
+        sourceBacked: false,
+        writeCapability: 'session-local'
+      },
+      records: [],
+      mode: 'feed'
+    };
+    const next = cloneState(state);
+    next.workspaces = [workspace].concat(next.workspaces.filter((item) => item.id !== workspace.id));
+    next.activeWorkspaceId = workspace.id;
+    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
+    return { ok: true, workspace, state: next };
+  }
+
+  function closeWorkspace(state, workspaceId) {
+    const next = cloneState(state);
+    const targetId = workspaceId || next.activeWorkspaceId;
+    const closed = next.workspaces.find((item) => item.id === targetId) || null;
+    next.workspaces = next.workspaces.filter((item) => item.id !== targetId);
+    next.activeWorkspaceId = next.workspaces[0]?.id || '';
+    if (!next.activeWorkspaceId) {
+      next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'feed', query: '' });
+      next.audit = null;
+    }
+    return { ok: Boolean(closed), closed, state: next };
+  }
+
+  function setWorkspaceVerse(state, verse) {
+    const next = cloneState(state);
+    next.view = Object.assign({}, next.view || {}, { workspaceVerse: verse === 'tree' ? 'tree' : 'feed' });
+    return next;
+  }
+
+  function activeWorkspace(state) {
+    return (state.workspaces || []).find((workspace) => workspace.id === state.activeWorkspaceId) || null;
+  }
+
+  function cloneState(state) {
+    const base = state && typeof state === 'object' ? state : makeEmptyAppState();
+    return JSON.parse(JSON.stringify(Object.assign(makeEmptyAppState(), base)));
+  }
+
+  global.TiinexWorkspaceLifecycle = {
+    WORKSPACE_NAME_MAX_LENGTH,
+    SESSION_SOURCE_KIND,
+    activeWorkspace,
+    cloneState,
+    closeWorkspace,
+    createWorkspace,
+    makeEmptyAppState,
+    makeWorkspaceId,
+    normalizeWorkspaceName,
+    setWorkspaceVerse
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

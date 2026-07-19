@@ -1,0 +1,27 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
+
+const root = fileURLToPath(new URL('../..', import.meta.url)).replace(/[\\/]$/, '');
+const source = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
+const context = { window: {}, globalThis: {} };
+context.globalThis = context.window;
+vm.runInNewContext(source, context, { filename: 'src/workspaces/workspace.config.js' });
+const api = context.window.TiinexWorkspaceConfig;
+const parsed = api.createDefaultWorkspaceConfig();
+if (parsed.viewerIdentity.browserTitle !== 'Tiinex') throw new Error('viewer identity browser title did not parse');
+if (parsed.viewerIdentity.publicViewerUrl !== 'https://tiinex.dev/') throw new Error('public viewer URL did not parse');
+if (!parsed.emptyStage.subtitles.includes('Every handoff starts somewhere')) throw new Error('empty stage subtitles did not parse');
+if (api.emptyStageSubtitle(parsed) !== 'Every handoff starts somewhere') throw new Error('empty stage subtitle should use first configured subtitle by default');
+if (parsed.workspaceDiscovery[0]?.kind !== 'github-tree') throw new Error('workspace discovery group did not parse');
+if (parsed.workspaceEntrypoints[0]?.repository !== 'Tiinex/docs') throw new Error('workspace entrypoint repository did not parse');
+if (parsed.repositoryMirrors.length < 2) throw new Error('repository mirrors did not parse');
+if (parsed.repositoryTransports[0]?.kind !== 'git-proxy') throw new Error('repository transport did not parse');
+if (!parsed.help.some((item) => item.question === 'What should I trust?' && item.body.includes('Source'))) throw new Error('help subsections did not parse');
+const rooted = readFileSync(join(root, '.topics/.workspaces/viewer.workspace.md'), 'utf8');
+const rootedParsed = api.parseWorkspaceConfig(rooted);
+if (rootedParsed.workspaceEntrypoints[0]?.issueUrl !== 'https://github.com/Tiinex/docs/issues/9') throw new Error('root .workspace.md issue URL did not parse');
+const custom = api.parseWorkspaceConfig('## Empty Stage\n\n- Subtitle: Custom line\n- Empty Copy Link Behavior: clean-url\n');
+if (api.emptyStageSubtitle(custom) !== 'Custom line') throw new Error('custom .workspace.md subtitle did not parse');
+console.log('✓ workspace config parser passed');

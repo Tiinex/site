@@ -1,17 +1,42 @@
-# Tiinex Site v103
+# Tiinex Site v109
 
-Column-only Tiinex.dev fit/polish pass with viewport-owned shell, pane-owned scroll, normalized icon rhythm, Discovery/Lineage action parity, UI-shape guards, bundled public build, and legacy behavior reference.
+Source-clean Column-only runtime for UC-001: empty start, create browser-local workspace, restore view state through URL hash plus local storage cache, and close the workspace non-destructively.
 
-## Runtime scope
+## Local manual check
 
-The current product runtime is intentionally narrow:
+Open `index.html` directly in a browser.
 
-- Universe entry renders Column only.
-- Workspace panes support Feed and Tree only.
-- Map, Atlas, Desktop, Gallery, and renderer-specific work stay planned-only until Column happy path is stable.
+1. Start with no `#state=` hash and no local storage cache: the Column surface should be empty.
+2. Press Create.
+3. Enter a workspace name and create it.
+4. Refresh: the workspace should restore from the URL hash/local cache.
+5. Close the workspace and confirm: the app returns to the empty Column surface.
 
-The default entry is a focused Tiinex window with legacy-like Documentation/Start continuity cards, compact controls, badge-title-action card rhythm, secondary diagnostics hidden away, softer title typography, and an old-style action row. v103 keeps the old Tiinex.dev vertical workspace feel, keeps page-level scroll off, preserves compact reader-state chips, and restores audit/status disclosure as compact lineage rows rather than dashboard cards.
+## Validation
 
-## Delivery model
+```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+npm run build:public
+npm run public:check
+npm run metrics
+npm run storage:scan
+npm test
+```
 
-This is a source-clean repo replacement package. Q replaces the repo contents with this zip, opens/runs `index.html` locally for manual testing, and then pushes source if accepted. Public bundling is produced by workflow/CI after push; `.site-publish` is not included in this source zip.
+## Delivery rule
+
+This zip is a source-clean repo replacement package. It intentionally excludes `.site-publish`. CI/workflow owns bundled public output after push.
+
+
+## v108 update
+
+- Recreated the old quiet empty start: dock + configured subtitle + footer only.
+- Fixed unstyled empty dock buttons by giving the global dock a real button/icon vocabulary.
+- Kept Create workspace as the primary UC-001 affordance while preserving hash/localStorage restore.
+- Added `docs/architecture/old-empty-stage-parity.md`.
+
+## v109 UC-001 grounding
+
+v109 keeps the old quiet empty-stage visual baseline but restores `.workspace.md` as parsed configuration. The app now ships a root `.topics/.workspaces/viewer.workspace.md`, parses viewer identity, empty-stage copy, workspace discovery, entrypoints, mirrors, transports, and help, and wires global dock controls to actual behavior.
