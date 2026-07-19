@@ -1,10 +1,10 @@
-# Validation Notes v102
+# Validation Notes v103
 
 ## Scope
 
 - Column-only runtime.
 - Map/Atlas/Leaflet remain frozen and absent from runtime/source directories.
-- v102 fixes focused-window fit/polish: page-level scroll remains prevented, overflow belongs to the active workspace pane, reader-state badges do not stretch into tall blocks, and primary glyphs are normalized.
+- v103 fixes audit/status parity: page-level scroll remains prevented, overflow belongs to the active workspace pane, and audit disclosure is compact like old Tiinex.dev rather than dashboard-like.
 
 ## Commands run
 
@@ -25,7 +25,7 @@ node --check .site-publish/tiinex.bundle.js
 npm run metrics
 npm run storage:scan
 npm test
-unzip -tq tiinex-site-v102-source.zip
+unzip -tq tiinex-site-v103-source.zip
 ```
 
 ## Manual check requested

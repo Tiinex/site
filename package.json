@@ -1,6 +1,6 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v102",
+  "version": "0.2.0-v103",
   "private": true,
   "description": "Tiinex Site shell with Column-only runtime scope, focused Tiinex.dev pattern parity, UI-shape guards, legibility correction, source boundaries, artifact parsing, root fallback, audit skeleton, bundled public build, and legacy behavior reference.",
   "type": "module",

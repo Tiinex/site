@@ -60,7 +60,7 @@ Start keeps a compact continuity card available below Documentation in the defau
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-start-v102-not-authoritative
+  - Value: demo-start-v103-not-authoritative
 `,
     topic: `# Continuity Context
 
@@ -94,7 +94,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-topic-v102-not-authoritative
+  - Value: demo-topic-v103-not-authoritative
 `,
     evidence: `# Continuity Context
 
@@ -145,7 +145,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-evidence-v102-not-authoritative
+  - Value: demo-evidence-v103-not-authoritative
 `,
     unknown: `# Continuity Context
 
@@ -171,14 +171,14 @@ The shell should not pretend child-specific validation passed. It should use roo
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-unknown-v102-not-authoritative
+  - Value: demo-unknown-v103-not-authoritative
 `
   };
 
   const schemaIds = new Set(schemaModules.map((schema) => schema.id));
   const moduleById = new Map(schemaModules.map((schema) => [schema.id, schema]));
   const workspace = {
-    id: 'local-workspace-v102',
+    id: 'local-workspace-v103',
     name: 'Local parser workspace',
     mode: 'file-local',
     records: [],
@@ -241,7 +241,7 @@ The shell should not pretend child-specific validation passed. It should use roo
     { id: 'static-fixture', label: 'Static fixture', icon: '●', boundary: 'repo-bundled demo material', github: 'not guessed', write: 'none' },
     { id: 'local-file', label: 'Local file', icon: '◇', boundary: 'user-selected browser File object', github: 'not guessed', write: 'none' },
     { id: 'draft', label: 'Draft / pasted', icon: '✎', boundary: 'in-memory local draft text', github: 'not guessed', write: 'draft-only' },
-    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v102' }
+    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v103' }
   ];
 
   const sourceFilters = [
@@ -495,7 +495,7 @@ The shell should not pretend child-specific validation passed. It should use roo
         ? 'degraded-review'
         : 'scaffold-complete';
     return {
-      type: 'tiinex.web.audit.report.v102',
+      type: 'tiinex.web.audit.report.v103',
       status,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -504,7 +504,7 @@ The shell should not pretend child-specific validation passed. It should use roo
       loadedBoundaries: 0,
       networkFetches: 0,
       sourceBoundary: 'no hidden source traversal; local/static/draft remain local/static/draft',
-      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v102 preserves that shape while keeping verse scope context-bound',
+      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v103 preserves that shape while keeping verse scope context-bound',
       lineage,
       integrity,
       findings,
@@ -569,58 +569,44 @@ The shell should not pretend child-specific validation passed. It should use roo
         entries.push({ title, status: 'open', detail: 'Continuity Integrity footer missing.' });
       } else {
         counts.pending += 1;
-        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v102 skeleton.' });
+        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v103 skeleton.' });
       }
     }
     return counts.total ? Object.assign(counts, { entries }) : Object.assign(counts, { entries: [] });
   }
 
   function renderAuditReport() {
-    const target = document.getElementById('audit-report');
-    if (!target) return;
+    const banner = document.getElementById('audit-banner');
+    const terminal = document.getElementById('lineage-terminal');
     const report = state.auditReport;
-    if (!report) {
-      target.innerHTML = '<p class="tx-muted">Not run · loaded set only · no hidden fetches</p>';
-      return;
-    }
-    const boundaryRows = report.lineage.boundaries.map((boundary) => `
-      <div class="tx-audit-boundary">
-        <strong>${escapeHtml(boundary.artifact)}</strong>
-        <div class="tx-muted">${escapeHtml(boundary.parentSchema)} · ${escapeHtml(boundary.parentTrace)}</div>
-        <p>${escapeHtml(boundary.disclosure)}</p>
+    if (banner) banner.innerHTML = report ? renderAuditBanner(report) : '';
+    if (terminal) terminal.innerHTML = report ? renderAuditTerminal(report) : renderLineageRootReached();
+  }
+
+  function renderLineageRootReached() {
+    return `<div class="tx-lineage-terminal tx-legacy-terminal"><span aria-hidden="true">✓</span><span>Lineage root reached.</span></div>`;
+  }
+
+  function renderAuditTerminal(report) {
+    const label = report.lineage.open > 0 ? `${report.lineage.open} open parent boundary` : 'Lineage root reached.';
+    return `<div class="tx-lineage-terminal tx-legacy-terminal ${report.lineage.open > 0 ? 'tx-open' : ''}"><span aria-hidden="true">✓</span><span>${escapeHtml(label)}</span></div>`;
+  }
+
+  function renderAuditBanner(report) {
+    const ok = Math.max(0, report.recordsScanned - report.findingSummary.error - report.findingSummary.warning);
+    const mismatch = report.findingSummary.error + report.findingSummary.warning;
+    const open = report.lineage.open + report.integrity.open;
+    const pending = report.lineage.pending + report.integrity.pending;
+    const tone = mismatch || open || pending ? 'tx-audit-banner-review' : 'tx-audit-banner-ok';
+    return `
+      <div class="tx-audit-status-banner tx-legacy-audit-banner ${tone}" role="status">
+        <span class="tx-audit-banner-icon" aria-hidden="true">⚠</span>
+        <strong>Lineage audit complete</strong>
+        <span>${escapeHtml(`${ok} OK · ${mismatch} mismatch · ${open} open · ${pending} pending`)}</span>
       </div>
-    `).join('') || '<p class="tx-muted">No open parent boundaries in the currently loaded workspace records.</p>';
-    const integrityRows = report.integrity.entries.map((entry) => row(entry.title, entry.detail, [entry.status])).join('');
-    target.innerHTML = `
-      <div class="tx-audit-head">
-        <div>
-          <div class="tx-eyebrow">Audit report</div>
-          <h3>Loaded workspace audit</h3>
-          <p class="tx-muted">Loaded artifacts only · 0 network fetches</p>
-        </div>
-        <div class="tx-badges">${badge(report.status)}${badge(`${report.recordsScanned} scanned`)}${badge(`${report.networkFetches} network fetches`)}</div>
-      </div>
-      <div class="tx-audit-counts">
-        <div><span>Findings</span><strong>${escapeHtml(formatFindingSummary(report.findingSummary))}</strong></div>
-        <div><span>Lineage</span><strong>${escapeHtml(`${report.lineage.resolvedLoaded} resolved · ${report.lineage.open} open`)}</strong></div>
-        <div><span>Integrity</span><strong>${escapeHtml(`${report.integrity.verified} verified · ${report.integrity.mismatch} mismatch · ${report.integrity.pending} pending · ${report.integrity.open} open`)}</strong></div>
-        <div><span>Loaded parents</span><strong>${escapeHtml(String(report.loadedBoundaries))}</strong></div>
-      </div>
-      <details class="tx-details" open>
-        <summary>Open lineage boundaries</summary>
-        <div class="tx-list">${boundaryRows}</div>
-      </details>
-      <details class="tx-details">
-        <summary>Integrity status</summary>
-        <div class="tx-list">${integrityRows}</div>
-      </details>
-      <details class="tx-details">
-        <summary>Audit steps</summary>
-        <ol class="tx-steps">${report.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ol>
-      </details>
-      <details class="tx-details"><summary>Legacy lesson</summary><p class="tx-muted">${escapeHtml(report.legacyLesson)}</p></details>
     `;
   }
+
 
   function renderWorkspaceState() {
     const target = document.getElementById('workspace-state');
@@ -946,7 +932,7 @@ The shell should not pretend child-specific validation passed. It should use roo
       collapse: { icon: '⌄', label: 'Collapse', task: 'read', group: 'left', title: 'Collapse / expand card' },
       preview: { icon: '▭', label: 'Preview', task: 'read', group: 'left', title: 'Preview card material' },
       markdown: { icon: 'M+', label: 'Markdown', group: 'left', scaffold: true, title: 'Markdown/source preview scaffold' },
-      github: { icon: 'GH', label: 'GitHub', group: 'left', scaffold: true, title: 'GitHub source link scaffold' },
+      github: { icon: '⌂', label: 'Source', group: 'left', scaffold: true, title: 'Source link scaffold' },
       share: { icon: '↗', label: 'Share', group: 'middle', scaffold: true, title: 'Share scaffold' },
       edit: { icon: '✎', label: 'Edit', group: 'middle', scaffold: true, title: 'Edit scaffold' },
       continue: { icon: '⎇', label: 'Continue', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Continue/create child scaffold' },
@@ -1005,14 +991,7 @@ The shell should not pretend child-specific validation passed. It should use roo
     const mode = state.columnModes[pane.id] || 'feed';
     const body = mode === 'tree' ? renderTreeVerse(projections) : renderFeedVerse(projections);
     const isSite = pane.id === 'site';
-    const auditBlock = isSite ? `
-      <section class="tx-audit-surface tx-column-audit tx-legacy-inline-status" aria-label="Audit report surface">
-        <div class="tx-stage-subhead">
-          <div><strong>Audit</strong><div class="tx-muted">loaded · open stays open</div></div>
-          <button class="tx-icon-button" data-run-audit type="button" title="Run loaded workspace audit"><span>✓</span><small>Audit</small></button>
-        </div>
-        <div id="audit-report" class="tx-result tx-muted">Not run · loaded set only</div>
-      </section>` : '';
+    const auditBlock = isSite ? `<div id="lineage-terminal" class="tx-terminal-host">${state.auditReport ? renderAuditTerminal(state.auditReport) : renderLineageRootReached()}</div>` : '';
     const parserBlock = isSite ? `<details class="tx-column-drawer tx-legacy-drawer"><summary>Load / draft</summary>${renderQuickControls()}${renderParserControls()}</details>` : '';
     return `
       <section class="tx-universe-column tx-legacy-workspace-pane ${pane.active ? 'tx-active-column' : ''}" aria-label="${escapeHtml(pane.title)} workspace pane">
@@ -1103,14 +1082,14 @@ The shell should not pretend child-specific validation passed. It should use roo
     const readerRows = readers.map(([name, purpose]) => row(titleCase(name), purpose, ['reader'])).join('');
     const auditPlan = [
       'Audit remains a domain operation in src/audit/.',
-      'This v102 pass keeps Column as the only runtime verse, tightens scroll ownership, and polishes icon/action rhythm before adding feature breadth.',
+      'This v103 pass keeps Column as the only runtime verse, tightens scroll ownership, and aligns audit/status disclosure with the old Tiinex.dev pattern before adding feature breadth.',
       'Validation still runs on artifact load; audit rechecks loaded records and marks missing lineage as open.',
       'Root fallback cards disclose degraded state instead of claiming child-schema validity.',
       'Legacy lesson kept: old UI is pattern baseline; adapters are source/transport boundaries, renderers are UI/library choices, and Column happy path must be stable before sibling verses are built.'
     ].join('\n');
 
     return `
-      <main class="tx-shell tx-shell-workspace tx-shell-universe tx-shell-visual-continuity tx-shell-focused-window tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-column-action-parity tx-shell-lineage-discovery-parity tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish">
+      <main class="tx-shell tx-shell-workspace tx-shell-universe tx-shell-visual-continuity tx-shell-focused-window tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-column-action-parity tx-shell-lineage-discovery-parity tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-audit-status-parity">
         <header class="tx-global-dock tx-legacy-global-dock" aria-label="Global Tiinex controls">
           <button class="tx-round-nav" type="button" title="Previous workspace">‹</button>
           <nav class="tx-toolbar tx-dock-actions tx-legacy-top-actions">
@@ -1124,7 +1103,7 @@ The shell should not pretend child-specific validation passed. It should use roo
 
         <section class="tx-workspace-window tx-universe-window tx-legacy-main-window tx-focused-main-window" aria-label="Tiinex Universe">
           <div class="tx-window-titlebar tx-legacy-titlebar">
-            <div class="tx-window-title"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">v102 scroll ownership</span></div>
+            <div class="tx-window-title"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">v103 audit parity</span></div>
             <div class="tx-window-stats tx-badges">
               ${badge('file-local')}${badge('column')}
               <button class="tx-icon-button" type="button" title="Display"><span aria-hidden="true">☰</span><small>Display</small></button>
@@ -1149,6 +1128,7 @@ The shell should not pretend child-specific validation passed. It should use roo
             <input id="workspace-search" class="tx-search-input" type="search" placeholder="Search title/schema/source…" aria-label="Search loaded artifacts">
           </div>
 
+          <div id="audit-banner" class="tx-audit-banner-host">${state.auditReport ? renderAuditBanner(state.auditReport) : ''}</div>
           <div id="universe-root">${renderUniverse()}</div>
         </section>
 

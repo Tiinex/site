@@ -1,4 +1,4 @@
-# Tiinex Site v102
+# Tiinex Site v103
 
 Column-only Tiinex.dev fit/polish pass with viewport-owned shell, pane-owned scroll, normalized icon rhythm, Discovery/Lineage action parity, UI-shape guards, bundled public build, and legacy behavior reference.
 
@@ -10,7 +10,7 @@ The current product runtime is intentionally narrow:
 - Workspace panes support Feed and Tree only.
 - Map, Atlas, Desktop, Gallery, and renderer-specific work stay planned-only until Column happy path is stable.
 
-The default entry is a focused Tiinex window with legacy-like Documentation/Start continuity cards, compact controls, badge-title-action card rhythm, secondary diagnostics hidden away, softer title typography, and an old-style action row. v102 keeps the old Tiinex.dev vertical workspace feel while fixing two UX regressions: page-level scroll stays off, reader-state chips do not stretch into tall blocks, and action/dock glyphs use a single visual rhythm.
+The default entry is a focused Tiinex window with legacy-like Documentation/Start continuity cards, compact controls, badge-title-action card rhythm, secondary diagnostics hidden away, softer title typography, and an old-style action row. v103 keeps the old Tiinex.dev vertical workspace feel, keeps page-level scroll off, preserves compact reader-state chips, and restores audit/status disclosure as compact lineage rows rather than dashboard cards.
 
 ## Delivery model
 

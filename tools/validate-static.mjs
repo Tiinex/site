@@ -97,12 +97,14 @@ if (!main.includes('UX should clarify through layout')) failures.push('src/main.
 if (!main.includes('renderDiscoveryIconBar')) failures.push('src/main.js must render compact discovery icon controls');
 if (!main.includes('tx-action-spine')) failures.push('src/main.js must preserve interaction spine contract');
 if (!main.includes('tx-shell-visual-continuity')) failures.push('src/main.js must render focused window continuity shell');
-if (!main.includes('tx-shell-pattern-parity')) failures.push('src/main.js must render v102 pattern parity shell');
-if (!main.includes('tx-shell-legibility-corrected')) failures.push('src/main.js must render v102 legibility-corrected shell');
+if (!main.includes('tx-shell-pattern-parity')) failures.push('src/main.js must render v103 pattern parity shell');
+if (!main.includes('tx-shell-legibility-corrected')) failures.push('src/main.js must render v103 legibility-corrected shell');
 if (!main.includes('tx-shell-height-continuity')) failures.push('src/main.js must render old Tiinex.dev scroll ownership shell');
 if (!main.includes('tx-shell-scroll-owned')) failures.push('src/main.js must prevent page-level multiverse scroll');
-if (!main.includes('tx-shell-column-fit')) failures.push('src/main.js must render v102 Column fit shell');
-if (!main.includes('tx-shell-icon-polish')) failures.push('src/main.js must render v102 icon polish shell');
+if (!main.includes('tx-shell-column-fit')) failures.push('src/main.js must render v103 Column fit shell');
+if (!main.includes('tx-shell-icon-polish')) failures.push('src/main.js must render v103 icon polish shell');
+if (!main.includes('tx-shell-audit-status-parity')) failures.push('src/main.js must render v103 audit/status parity shell');
+if (!main.includes('Lineage root reached.')) failures.push('src/main.js must preserve compact lineage terminal row');
 if (!main.includes("activePane: 'site'")) failures.push('default active pane must be Tiinex/site so Documentation/Start are visible');
 if (!main.includes('data-task')) failures.push('src/main.js must expose task spine controls');
 if (!main.includes('tx-scaffold-action')) failures.push('src/main.js must visually mark scaffold actions');
@@ -112,7 +114,7 @@ if (!main.includes('Documentation') || !main.includes('Start')) failures.push('s
 if (!main.includes('first multiverse')) failures.push('src/main.js must disclose first Multiverse entry');
 if (!main.includes('plannedVerseContexts')) failures.push('src/main.js must carry planned Verse contexts without exposing them as primary ready actions');
 if (main.includes('renderMapVerse')) failures.push('src/main.js must not render Map before Column happy path is stable');
-if (main.includes('data-pane-verse="map"')) failures.push('Map must not be a primary workspace verse control in v102');
+if (main.includes('data-pane-verse="map"')) failures.push('Map must not be a primary workspace verse control in v103');
 if (!main.includes('data-pane-verse')) failures.push('src/main.js must scope Verse selection to a workspace pane');
 if (!main.includes('Map/Atlas/Desktop/Gallery stay planned')) failures.push('src/main.js must keep Map/Atlas/Desktop/Gallery planned, not runtime-ready');
 const registry = readFileSync(join(root, 'src/verses/registry.js'), 'utf8');

@@ -87,6 +87,6 @@ The GitHub workflow should:
 Q receives a source-clean repo replacement zip. Q does not receive or deploy a dist zip.
 
 
-## v102 fit and icon polish
+## v103 fit and icon polish
 
-v102 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.
+v103 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.

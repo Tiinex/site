@@ -10,9 +10,9 @@ The focused Column runtime should preserve the old Tiinex.dev reading shape whil
 - Icons should use one visual rhythm: same size, same optical center, no mixed emoji-style glyphs in primary actions.
 - Renderer/library concepts such as Leaflet stay out of runtime until Column happy path is stable.
 
-## v102 correction
+## v103 correction
 
-v102 adds `tx-shell-column-fit` and `tx-shell-icon-polish`.
+v103 adds `tx-shell-column-fit` and `tx-shell-icon-polish`.
 
 `tx-shell-column-fit` keeps the focused Tiinex window inside the viewport and lets the active feed own overflow.
 

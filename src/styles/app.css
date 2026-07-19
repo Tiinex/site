@@ -1089,3 +1089,84 @@ pre { white-space: pre-wrap; overflow:auto; }
     height: 40px;
   }
 }
+
+
+/* v103 audit/status parity: old Tiinex.dev audit results are compact status rows, not dashboard cards */
+.tx-shell-audit-status-parity .tx-audit-banner-host {
+  flex: 0 0 auto;
+}
+.tx-shell-audit-status-parity .tx-audit-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(29,14,22,.72);
+  color: #f4e7ff;
+  font-size: 13px;
+  line-height: 1.15;
+}
+.tx-shell-audit-status-parity .tx-audit-status-banner strong {
+  font-weight: 760;
+}
+.tx-shell-audit-status-parity .tx-audit-status-banner span:last-child {
+  color: #d8c8ea;
+}
+.tx-shell-audit-status-parity .tx-audit-banner-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  color: #ffd3d3;
+  font-size: 11px;
+}
+.tx-shell-audit-status-parity .tx-audit-banner-review {
+  border-color: rgba(255,126,150,.28);
+  box-shadow: inset 0 0 0 1px rgba(255,126,150,.08);
+}
+.tx-shell-audit-status-parity .tx-audit-banner-ok {
+  border-color: rgba(128,255,214,.24);
+  background: rgba(15,31,28,.68);
+}
+.tx-shell-audit-status-parity .tx-terminal-host {
+  flex: 0 0 auto;
+}
+.tx-shell-audit-status-parity .tx-lineage-terminal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px;
+  background: rgba(255,255,255,.035);
+  color: #cbc2d7;
+  font-size: 14px;
+}
+.tx-shell-audit-status-parity .tx-lineage-terminal span:first-child {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: #d9d0e6;
+  font-size: 11px;
+  font-weight: 800;
+}
+.tx-shell-audit-status-parity .tx-lineage-terminal.tx-open {
+  border-color: rgba(255,126,150,.22);
+  color: #f2d6df;
+}
+.tx-shell-audit-status-parity .tx-column-audit {
+  display: none;
+}
+.tx-shell-audit-status-parity .tx-legacy-stack {
+  gap: 10px;
+}
+.tx-shell-audit-status-parity .tx-legacy-action span {
+  font-size: 12px;
+}
