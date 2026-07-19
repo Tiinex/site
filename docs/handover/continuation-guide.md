@@ -2,7 +2,7 @@
 
 ## Current checkpoint
 
-v86 is a fresh runtime ownership checkpoint. The v79 app is archived under `.old/` as ignored local reference material. The active app starts from `index.html` through `src/main.js` and must remain file-local safe.
+v92 is a fresh runtime ownership checkpoint. The v79 app is archived under `.old/` as ignored local behavior reference material. The active app starts from `index.html` through `src/main.js` and must remain file-local safe.
 
 ## Discipline
 
@@ -11,10 +11,29 @@ v86 is a fresh runtime ownership checkpoint. The v79 app is archived under `.old
 - Do not infer GitHub source authority from local, pasted, draft, or static fixture material.
 - Keep audit as a domain operation in `src/audit/`, not as per-schema presentation code.
 - Keep Verse human-first: a bounded arrangement/experience of artifacts, not a framework component or hidden truth engine.
+- Keep UX fast: clarity should come from layout, affordance, color, position, rhythm, and consistency before explanatory prose.
+- Show only implemented verses as primary UI actions; planned verses belong in context docs until a concrete implementation slice exists.
+
+## Current scope
+
+v92 keeps Universe/Column as the default entry, removes unimplemented verse directories, and adds context availability for future verses.
+
+Implemented and visible:
+
+- Universe
+- Column
+- Feed
+- Tree
+
+Planned but not shown as ready primary actions:
+
+- Map as a workspace-level spatial verse
+- Atlas as a universe-level arrangement of one or more Maps
+- Gallery, game-engine rendering, and other future verses after concrete use-cases exist
 
 ## Next planned iteration
 
-v87 should implement the audit load-all skeleton: planning traversal, marking missing lineage, rechecking validation when more authority is loaded, and showing audit summary counts without claiming complete validation where authority is unavailable.
+v93 should begin the Map/Atlas path only after this scope cleanup is accepted. Start with Map as a workspace-level spatial verse or Atlas planning only if the interaction and renderer boundary are clear. Leaflet, SVG, Canvas, D3, WebGL, and game engines are renderer choices, not Verse semantics.
 
 ## Legacy behavior reference discipline
 

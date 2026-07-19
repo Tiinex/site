@@ -1,46 +1,36 @@
-# v88 Validation Notes
+# Validation Notes v92
 
-v88 adds the first audit load-all skeleton after the v87 UX reconstruction pass. It is not full source-backed traversal yet. It proves the operation shape before GitHub/source-backed read paths are reintroduced.
+## Scope
 
-## Local-open guard
+v92 is a Verse scope hygiene and context availability pass.
 
-- `index.html` loads `src/main.js` as a classic script.
-- `src/main.js` contains no import/export startup so Chrome can run it from `file://`.
-- Static and public checks fail if module startup is reintroduced.
+It removes future placeholder verse directories and keeps only implemented runtime-visible verses:
 
-## Audit skeleton scope
+- Universe
+- Column
+- Feed
+- Tree
 
-- Adds explicit `Audit loaded workspace` controls.
-- Scans the currently loaded workspace records.
-- Re-runs available scaffold validators for each loaded artifact.
-- Counts finding severities across the loaded set.
-- Detects declared parent edges whose target is not loaded and reports them as open parent boundaries.
-- Reports integrity footer state as pending/open. It does not claim byte verification yet.
-- Performs zero network fetches in v88.
+Map and Atlas are documented as planned contexts, not visible ready actions.
 
-## Legacy behavior evidence used
+## Validation Commands
 
-The archived `.old/app.js` lineage audit behavior influenced v88 without being imported. Useful lessons carried forward:
+```bash
+node --check src/main.js
+node --check tools/validate-static.mjs
+node --check tools/validate-schema-bindings.mjs
+node --check tools/check-public-build.mjs
+node --check tools/build-public.mjs
+npm run validate
+npm run build:public
+npm run public:check
+node --check .site-publish/src/main.js
+npm run metrics
+npm run storage:scan
+npm test
+unzip -tq tiinex-site-v92-source.zip
+```
 
-- audit is explicit and user-invoked;
-- missing parent lineage is an open boundary, not proof of absence;
-- audit should show loaded-boundary progress;
-- audit counts should distinguish OK/mismatch/open/pending-style states;
-- visible report feedback matters more than silent validation internals.
+## Expected Result
 
-## Parser/card/verse scope
-
-- Parses `# Continuity Context` envelope fields.
-- Resolves known schema modules by schema id.
-- Falls back to root when schema is missing or unknown.
-- Builds card view models for Topic, Evidence, and unknown-schema fallback.
-- Feed and Tree Verse use the same workspace records and parsed view models.
-- Switching Feed/Tree changes arrangement only. It must not change parsed artifact truth, validation state, source boundary, or root fallback disclosure.
-
-## Manual test expectation
-
-Open local `index.html`. A screenshot is enough for this pass: check that the workspace frame still renders, then click `Audit loaded workspace` or `Run audit` and confirm an audit report appears with counts and open/pending disclosure.
-
-## Source boundary discipline
-
-Workspace state records whether material came from a static fixture, a user-selected local file, pasted draft text, or an explicit source-backed descriptor. Local, draft, and static material must not be promoted into GitHub source authority by guesswork.
+All commands should pass. The source zip must not include `.site-publish`, `.git`, `node_modules`, `desktop.ini`, or unimplemented verse directories such as `src/verses/node-graph`, `src/verses/timeline`, or `src/verses/gantt`.

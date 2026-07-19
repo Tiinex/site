@@ -36,6 +36,25 @@ if (!existsSync(join(root, 'src/verses/contracts.js'))) failures.push('src/verse
 if (existsSync(join(root, 'src/leaflets'))) failures.push('src/leaflets must not exist; use human-first src/verses');
 if (!existsSync(join(root, 'docs/architecture/verse.md'))) failures.push('Verse concept doc missing');
 if (!existsSync(join(root, 'docs/architecture/legacy-behavior-reference.md'))) failures.push('Legacy behavior reference discipline doc missing');
+
+if (!existsSync(join(root, 'docs/architecture/ux-ergonomics.md'))) failures.push('UX ergonomics design rule doc missing');
+if (!existsSync(join(root, 'docs/architecture/source-settings-and-discovery-controls.md'))) failures.push('source/settings discovery controls doc missing');
+if (!existsSync(join(root, 'docs/architecture/multiverse.md'))) failures.push('Multiverse concept doc missing');
+if (!existsSync(join(root, 'docs/architecture/interaction-spine.md'))) failures.push('interaction spine concept doc missing');
+if (!existsSync(join(root, 'docs/architecture/universe.md'))) failures.push('Universe concept doc missing');
+if (!existsSync(join(root, 'src/verses/universe.model.js'))) failures.push('Universe verse model missing');
+if (!existsSync(join(root, 'src/verses/universe.project.js'))) failures.push('Universe verse projection missing');
+if (!existsSync(join(root, 'src/verses/column/column.model.js'))) failures.push('Column Verse model missing');
+if (!existsSync(join(root, 'src/verses/context.js'))) failures.push('Verse context availability model missing');
+if (!existsSync(join(root, 'docs/architecture/verse-context-availability.md'))) failures.push('Verse context availability doc missing');
+for (const staleVerse of ['node-graph', 'timeline', 'gantt']) {
+  if (existsSync(join(root, 'src/verses', staleVerse))) failures.push(`Unimplemented verse directory must not exist: src/verses/${staleVerse}`);
+}
+if (!existsSync(join(root, 'src/discovery/discovery.controls.js'))) failures.push('discovery controls contract missing');
+if (!existsSync(join(root, 'src/source-settings/sourceSettings.model.js'))) failures.push('source settings model missing');
+if (!existsSync(join(root, 'src/multiverse/multiverse.model.js'))) failures.push('multiverse concept scaffold missing');
+if (!existsSync(join(root, 'src/interaction/interaction.spine.js'))) failures.push('interaction spine scaffold missing');
+
 if (!readFileSync(join(root, 'src/artifacts/artifact.parse.js'), 'utf8').includes('parseArtifactMarkdown')) failures.push('artifact parser must expose parseArtifactMarkdown');
 if (!existsSync(join(root, 'src/artifacts/fixtures/topic.trace.md'))) failures.push('topic demo artifact fixture missing');
 if (!existsSync(join(root, 'src/artifacts/fixtures/unknown-schema.trace.md'))) failures.push('unknown schema fixture missing');
@@ -58,6 +77,20 @@ if (!main.includes('data-run-audit')) failures.push('src/main.js must expose exp
 if (!main.includes('runWorkspaceAudit')) failures.push('src/main.js must implement loaded-workspace audit skeleton');
 if (!main.includes('open-parent-boundary')) failures.push('src/main.js must mark missing lineage as open parent boundaries');
 if (!main.includes('Legacy lesson')) failures.push('src/main.js must preserve legacy audit behavior lessons visibly');
+
+if (!main.includes('workspace-search')) failures.push('src/main.js must expose in-memory workspace search');
+if (!main.includes('data-source-filter')) failures.push('src/main.js must expose source filter controls');
+if (!main.includes('UX should clarify through layout')) failures.push('src/main.js must carry v90 ergonomic control rule');
+if (!main.includes('renderDiscoveryIconBar')) failures.push('src/main.js must render compact discovery icon controls');
+if (!main.includes('tx-action-spine')) failures.push('src/main.js must render interaction spine');
+if (!main.includes('data-task')) failures.push('src/main.js must expose task spine controls');
+if (!main.includes('tx-scaffold-action')) failures.push('src/main.js must visually mark scaffold actions');
+if (!main.includes('renderUniverse')) failures.push('src/main.js must render Universe entry verse');
+if (!main.includes('Column Verse')) failures.push('src/main.js must default to Column Verse continuity');
+if (!main.includes('first multiverse')) failures.push('src/main.js must disclose first Multiverse entry');
+if (!main.includes('plannedVerseContexts')) failures.push('src/main.js must carry planned Verse contexts without exposing them as primary ready actions');
+if (main.includes('Node Graph Verse') || main.includes('Zoomable Multiverse')) failures.push('src/main.js must not show stale future verses as primary UI');
+
 
 if (existsSync(join(root, 'src/schemas/root.audit.presenter.js'))) failures.push('root.audit.presenter.js must not exist; audit is domain-owned');
 if (failures.length) {

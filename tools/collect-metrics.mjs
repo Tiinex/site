@@ -6,8 +6,8 @@ const root=fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/,'');
 function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:true})){ if(['.old','node_modules','.site-publish'].includes(e.name)) continue; const p=join(dir,e.name); if(e.isDirectory()) out=out.concat(walk(p)); else out.push(p);} return out;}
 const files=walk(root);
 console.log(JSON.stringify({
-  type:'tiinex.site.metrics.v88',
-  architectureReadyForProductWork:'audit-load-all-skeleton-scaffold',
+  type:'tiinex.site.metrics.v92',
+  architectureReadyForProductWork:'verse-scope-context-cleanup-scaffold',
   activeFiles:files.length,
   legacyArchived: statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
@@ -21,6 +21,19 @@ console.log(JSON.stringify({
   feedTreeParity:true,
   verseConcept:true,
   auditLoadAllSkeleton:true,
+  sourceDiscoveryControls:true,
+  ergonomicControlRule:true,
+  interactionSpine:true,
+  scaffoldActionsMarked:true,
+  multiverseConceptScaffold:true,
+  universeEntryVerse:true,
+  columnVerseDefault:true,
+  verseScopeCleaned:true,
+  visibleImplementedVersesOnly:true,
+  verseContextAvailability:true,
+  mapAtlasModeledAsPlannedContexts:true,
+  noArbitraryNestingDepth:true,
+  cycleRoundtripGuardModel:true,
   legacyBehaviorReference:true,
   localToGithubGuessing:false
 }, null, 2));

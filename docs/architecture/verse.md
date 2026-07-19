@@ -8,14 +8,14 @@ This is a provisional Tiinex Site architecture concept, not yet a maintained Tii
 
 A Verse helps a reader experience the same material through a specific arrangement.
 
-Examples:
+Examples currently implemented in runtime:
 
-- Feed Verse: artifacts arranged for fast scanning.
-- Tree Verse: artifacts arranged by declared parent/child continuity.
-- Node Graph Verse: artifacts arranged as nodes and edges.
-- Timeline Verse: artifacts arranged over time.
-- Gantt Verse: artifacts arranged by duration, dependency, or work span when such semantics exist.
-- Handover Verse: artifacts arranged for a person or LLM that needs to continue the work.
+- Universe: root entry verse that presents the first Multiverse.
+- Column Verse: workspace panes side by side.
+- Feed Verse: artifacts arranged for fast scanning inside one workspace.
+- Tree Verse: artifacts arranged by declared parent/child continuity inside one workspace.
+
+Future verses such as Map, Atlas, Gallery, game-engine rendering, Timeline, or Gantt should not appear in primary UI until a real use-case and implementation slice exist.
 
 ## What a Verse may do
 
@@ -26,7 +26,7 @@ A Verse may:
 - select or filter artifacts
 - compress or expand disclosure
 - choose an order
-- choose a projection such as card, tree, graph, timeline, or print
+- choose a projection such as card, tree, map, gallery, print, or another implemented context-appropriate renderer
 - point to an expansion path such as detail, lineage, source, or audit
 
 ## What a Verse must not do
@@ -72,3 +72,11 @@ A Verse should be explainable with these fields:
 In v86, Feed and Tree are the first active Verses.
 
 They use the same workspace artifact records and parsed view models. Switching between Feed and Tree changes the arrangement only. It must not alter parsed artifact truth, validation state, source boundary, or root fallback disclosure.
+
+## Universe
+
+Universe is the root entry verse. It is simpler than most verses because its job is to host the first Multiverse rather than to reinterpret artifact semantics itself. Universe files live directly under `src/verses/` because Universe is the parent/container concept for app verse presentation.
+
+## v92 scope cleanup
+
+Runtime-visible verses are intentionally limited to Universe, Column, Feed, and Tree. Planned verses are documented by context but not shown as ready primary actions.

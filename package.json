@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v88",
+  "version": "0.2.0-v92",
   "private": true,
-  "description": "Fresh Tiinex site shell with artifact parsing, root fallback, reader-aware cards, workspace-frame UX, source-boundary disclosure, Feed/Tree Verse parity, audit load-all skeleton, schema bindings, surfaces, i18n, audit ownership, and legacy archive reference.",
+  "description": "Fresh Tiinex site shell with Universe/Column Verse default workspace continuity, scoped implemented verses only, context-aware Verse availability, interaction spine, ergonomic source/discovery controls, artifact parsing, root fallback, source boundaries, audit skeleton, and legacy behavior reference.",
   "type": "module",
   "scripts": {
     "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs",

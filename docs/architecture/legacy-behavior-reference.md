@@ -33,3 +33,7 @@ The old lineage audit did three useful things that should survive the rewrite:
 3. It counted OK, mismatch, open, and pending states visibly.
 
 The v88 implementation keeps that shape at scaffold depth: it scans loaded workspace records, re-runs available validation, marks missing parent lineage as open, and avoids network traversal until source-backed read paths exist.
+
+## v89 Ergonomics Lesson
+
+The old workspace was compact because most repeated actions were carried by position, chips, icon buttons, and consistent visual rhythm rather than explanatory paragraphs. v89 carries that lesson by moving source/search/discovery controls into compact affordances and keeping long explanations in details/docs.
