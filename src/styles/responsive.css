@@ -1,0 +1,10 @@
+@media (max-width: 760px) {
+  .tx-shell { padding: 12px; }
+  .tx-grid { grid-template-columns: 1fr; }
+  .tx-toolbar { overflow-x: auto; justify-content: flex-start; }
+}
+@media (max-width: 900px) {
+  .tx-artifact-head { flex-direction:column; }
+  .tx-card-badges { max-width:none; justify-content:flex-start; }
+  .tx-artifact-meta { grid-template-columns:1fr; }
+}

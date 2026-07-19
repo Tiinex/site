@@ -1,0 +1,13 @@
+:root {
+  --tx-bg: #07050d;
+  --tx-panel: rgba(25, 20, 38, 0.92);
+  --tx-panel-soft: rgba(40, 31, 58, 0.72);
+  --tx-border: rgba(176, 112, 255, 0.35);
+  --tx-text: #f6efff;
+  --tx-muted: #b9a9ca;
+  --tx-accent: #bd73ff;
+  --tx-accent-2: #6ee7d8;
+  --tx-danger: #ff6b8a;
+  --tx-radius: 18px;
+  --tx-shadow: 0 24px 80px rgba(0,0,0,.45);
+}

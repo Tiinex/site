@@ -6,11 +6,13 @@ Thumbs.db
 *.tmp
 *.bak
 
-# Local package artifacts
-*.zip
+# Dependency/build output
 node_modules/
 .site-publish/
+dist/
 .tmp-public-check/
 
-# Local mirror worktrees are source/build inputs, not published source state
+# Source delivery archives and local mirrors
+*.zip
 .mirrors/
+.old/

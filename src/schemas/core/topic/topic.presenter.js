@@ -1,0 +1,1 @@
+export function topicPresent(artifact, context = {}) { return { title: artifact?.title || 'Topic', summary: artifact?.summary || 'Bounded topic-oriented lineage artifacts for live design and implementation threads.', badges: ['concrete', 'tiinex.topic.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }

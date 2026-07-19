@@ -1,0 +1,56 @@
+{
+  "type": "tiinex.web.schema-module.manifest.v1",
+  "version": "v82",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "52ecdea0a75893882ce282214d155f70e1309c2a",
+  "modules": [
+    {
+      "schemaId": "tiinex.evidence.v1",
+      "kind": "concrete",
+      "role": "core-evidence-artifact",
+      "path": "core/evidence/evidence.schema.json",
+      "checksum": "5251c60c79bbeb7cc78109fd7d0eb74cd5886c7240c5ec48ce1c4b306dcb9003",
+      "sourceBlobSha": "430367bb717d93e396a50c993dc011f8d129bf54"
+    },
+    {
+      "schemaId": "tiinex.preservation.v1",
+      "kind": "concrete",
+      "role": "core-preservation-artifact",
+      "path": "core/preservation/preservation.schema.json",
+      "checksum": "765969fc6abf3916ec1b3c13ac5cb4ba8b15f25f82c43ecee941fe17b859c7f6",
+      "sourceBlobSha": "0a2f653a7188defcdf8bd60d9b845c695438f6b4"
+    },
+    {
+      "schemaId": "tiinex.topic.v1",
+      "kind": "concrete",
+      "role": "core-topic-artifact",
+      "path": "core/topic/topic.schema.json",
+      "checksum": "dff9a84f6986c7ecbfeb31da65eb6967771e9c54157ff45490e5aea6afa53de3",
+      "sourceBlobSha": "c36472b0d20ad97d01cc1ca78a50fc69ce35fdae"
+    },
+    {
+      "schemaId": "tiinex.presentation.surface.v1",
+      "kind": "concrete",
+      "role": "presentation-surface-artifact",
+      "path": "presentation/surface/surface.schema.json",
+      "checksum": "f17e11f9e1ded8a35165045c51b3eda46f0cc52355706dfa4e741b5cf8ba0aa6",
+      "sourceBlobSha": "22636384bd70620edf488ef919719a3c5f395978"
+    },
+    {
+      "schemaId": "tiinex.root.v1",
+      "kind": "abstract",
+      "role": "envelope",
+      "path": "root.schema.json",
+      "checksum": "848d6f810295b5af5783a8b4feea90e0db9a835d5c10ffd12e35a85791302bc8",
+      "sourceBlobSha": "99fb6a5cbd11b7ec456208496316066b7dcee16f"
+    },
+    {
+      "schemaId": "tiinex.schema.module.v1",
+      "kind": "concrete",
+      "role": "schema-module-artifact",
+      "path": "schema/module/module.schema.json",
+      "checksum": "7ba71d49e607b84d746874f3eee82148478caceefb52a684134ea2899bea3bbf",
+      "sourceBlobSha": "b4283720ae22d6342c5087e10c7260fdf0989505"
+    }
+  ]
+}

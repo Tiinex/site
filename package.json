@@ -1,20 +1,26 @@
 {
-  "name": "tiinex-lineage-viewer",
-  "version": "0.1.0",
+  "name": "tiinex-site",
+  "version": "0.2.0-v85",
   "private": true,
-  "description": "Static client-side viewer for portable Tiinex markdown lineage and provenance workspaces.",
+  "description": "Fresh Tiinex site shell with artifact parsing, root fallback, reader-aware cards, workspace state, source-boundary disclosure, schema bindings, presentation surfaces, i18n, audit ownership, and legacy archive reference.",
+  "type": "module",
   "scripts": {
-    "validate": "node tools/validate-static.mjs",
-    "test": "node tools/validate-static.mjs && node tools/check-public-build.mjs",
+    "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs",
+    "test": "npm run validate && npm run build:public && npm run public:check",
     "metrics": "node tools/collect-metrics.mjs",
     "storage:scan": "node tools/inspect-storage.mjs",
     "build:public": "node tools/build-public.mjs",
-    "public:check": "node tools/check-public-build.mjs",
-    "issues:snapshot": "node tools/build-issue-snapshots.mjs",
-    "public:identity": "node tools/write-public-build-identity.mjs",
-    "issues:state": "node tools/write-issue-publish-state.mjs"
+    "public:check": "node tools/check-public-build.mjs"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {}
 }

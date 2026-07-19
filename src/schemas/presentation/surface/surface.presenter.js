@@ -1,0 +1,1 @@
+export function surfacePresent(artifact, context = {}) { return { title: artifact?.title || 'Presentation Surface', summary: artifact?.summary || 'Bounded implementation-neutral presentation or interaction surface.', badges: ['concrete', 'tiinex.presentation.surface.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }

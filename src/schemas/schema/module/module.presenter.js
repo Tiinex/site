@@ -1,0 +1,1 @@
+export function modulePresent(artifact, context = {}) { return { title: artifact?.title || 'Schema Module', summary: artifact?.summary || 'Capability bundle around schema interpretation, viewing, validation, forms, and fallback behavior.', badges: ['concrete', 'tiinex.schema.module.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }

@@ -1,0 +1,1 @@
+export function surfaceValidate(artifact) { return [{ severity: 'info', code: 'tiinex.presentation.surface.v1.validation.scaffold', message: 'Initial schema validation scaffold; authoritative contract parsing comes next.' }]; }
