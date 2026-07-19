@@ -5,7 +5,7 @@
   const route = window.TiinexWorkspaceRoute;
   const persistence = window.TiinexWorkspacePersistence;
   const root = document.getElementById('root');
-  const VERSION_LABEL = 'v111 workspace fit';
+  const VERSION_LABEL = 'v112 column actions';
   const workspaceConfig = window.TiinexWorkspaceConfig?.createDefaultWorkspaceConfig?.() || { emptyStage: { subtitles: ['Everything starts from somewhere.'] }, viewerIdentity: { browserTitle: 'Tiinex' }, help: [] };
   const iconPaths = window.TiinexIconPaths || {};
   if (workspaceConfig.viewerIdentity?.browserTitle && document?.title !== undefined) document.title = workspaceConfig.viewerIdentity.browserTitle;
@@ -57,6 +57,7 @@
     root.querySelectorAll('[data-share]').forEach((button) => button.addEventListener('click', () => openDialog('share')));
     root.querySelectorAll('[data-copy-share]').forEach((button) => button.addEventListener('click', () => copyShareUrl(button.getAttribute('data-copy-share'))));
     root.querySelectorAll('[data-verse]').forEach((button) => button.addEventListener('click', () => commit(lifecycle.setWorkspaceVerse(state, button.getAttribute('data-verse')), 'push')));
+    root.querySelectorAll('[data-workspace-action]').forEach((button) => button.addEventListener('click', () => openWorkspaceAction(button.getAttribute('data-workspace-action'), button.getAttribute('data-workspace-id'))));
     const search = root.querySelector('#workspace-search');
     if (search) search.addEventListener('input', () => {
       const next = lifecycle.cloneState(state);
@@ -65,6 +66,10 @@
     });
     const createForm = root.querySelector('#create-workspace-form');
     if (createForm) createForm.addEventListener('submit', (event) => submitCreateWorkspace(event, createForm));
+    const addMaterialForm = root.querySelector('#add-material-form');
+    if (addMaterialForm) addMaterialForm.addEventListener('submit', (event) => submitAddRecord(event, addMaterialForm, 'local.material'));
+    const continueForm = root.querySelector('#continue-form');
+    if (continueForm) continueForm.addEventListener('submit', (event) => submitAddRecord(event, continueForm, 'continuation'));
     root.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => { dialog = null; notice = ''; render(); }));
     root.querySelectorAll('[data-confirm-close]').forEach((button) => button.addEventListener('click', () => {
       const result = lifecycle.closeWorkspace(state, button.getAttribute('data-confirm-close'));
@@ -104,6 +109,39 @@
     render();
   }
 
+  function openWorkspaceAction(action, workspaceId) {
+    const workspace = state.workspaces.find((item) => item.id === workspaceId) || lifecycle.activeWorkspace(state);
+    if (!workspace) return;
+    if (action === 'add-material') dialog = { type: 'add-material', workspace };
+    else if (action === 'continue') dialog = { type: 'continue', workspace };
+    else if (action === 'open') dialog = { type: 'open-workspace', workspace };
+    else dialog = { type: 'command-info', workspace, action };
+    render();
+    root.querySelector('[name="recordTitle"]')?.focus();
+  }
+
+  function submitAddRecord(event, form, kind) {
+    event.preventDefault();
+    const workspaceId = form.getAttribute('data-workspace-id') || state.activeWorkspaceId;
+    const titleInput = form.querySelector('[name="recordTitle"]');
+    const summaryInput = form.querySelector('[name="recordSummary"]');
+    const fallbackTitle = kind === 'continuation' ? 'Continuation leaf' : 'Local material';
+    const result = lifecycle.addWorkspaceRecord(state, workspaceId, {
+      title: titleInput?.value || fallbackTitle,
+      summary: summaryInput?.value || '',
+      kind,
+      status: kind === 'continuation' ? 'draft' : 'local'
+    });
+    if (!result.ok && result.error === 'record.title.required') {
+      form.querySelector('[data-form-error]').textContent = 'Title is required.';
+      titleInput?.focus();
+      return;
+    }
+    dialog = null;
+    notice = '';
+    commit(result.state, 'push');
+  }
+
   function copyShareUrl(url) {
     const value = url || cleanShareUrl();
     notice = 'Copy this URL from the field if clipboard access is blocked.';
@@ -118,7 +156,7 @@
     const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE' : 'DISCOVERY MODE';
     const emptyClass = active ? '' : ' tx-empty-stage-mode';
     return `
-      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
+      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-shell-v112-live-workspace tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
         ${renderGlobalDock(Boolean(active))}
         ${active ? `
         <section class="tx-workspace-window tx-focused-main-window tx-uc001-window" aria-label="Tiinex workspace window">
@@ -170,20 +208,32 @@
   }
 
   function renderWorkspaceEmptyState(workspace) {
-    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-workspace-empty-card"><div class="tx-legacy-card-badges">${badge('empty')}${badge('workspace')}${badge('local/session')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(workspace.name)}</h3><p>No artifacts loaded yet. Next step: add local markdown or create a continuation leaf.</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('load', 'Add material', true)}${actionButton('lineage', 'Continue', true)}${actionButton('open', 'Open', true)}</footer></article>`;
+    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-workspace-empty-card"><div class="tx-legacy-card-badges">${badge('empty')}${badge('workspace')}${badge('local/session')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(workspace.name)}</h3><p>No artifacts loaded yet. Next step: add local markdown or create a continuation leaf.</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('load', 'Add material', true, 'add-material', workspace.id)}${actionButton('lineage', 'Continue', true, 'continue', workspace.id)}${actionButton('open', 'Open', true, 'open', workspace.id)}</footer></article>`;
   }
 
   function renderRecordCard(record) {
-    return `<article class="tx-artifact-card tx-legacy-artifact-card"><div class="tx-legacy-card-badges">${badge(record.status || 'open')}${badge(record.kind || 'artifact')}${badge(record.createdAt || 'local')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(record.title || 'Untitled')}</h3><p>${escapeHtml(record.summary || '')}</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('preview', 'Preview')}${actionButton('open', 'Open', true)}${actionButton('merge', 'Merge', true)}</footer></article>`;
+    return `<article class="tx-artifact-card tx-legacy-artifact-card"><div class="tx-legacy-card-badges">${badge(record.status || 'open')}${badge(record.kind || 'artifact')}${badge(record.createdAt || 'local')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(record.title || 'Untitled')}</h3><p>${escapeHtml(record.summary || '')}</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('preview', 'Preview', false, 'preview', state.activeWorkspaceId)}${actionButton('open', 'Open', true, 'open', state.activeWorkspaceId)}${actionButton('merge', 'Merge', true, 'merge', state.activeWorkspaceId)}</footer></article>`;
   }
 
   function renderLineageRootTrailingCard() { return `<article class="tx-lineage-terminal tx-lineage-root-card"><span>${icon('audit')}</span><p>Lineage root reached.</p></article>`; }
+
+  function dialogPresenter() {
+    return window.TiinexDialogPresenter || {};
+  }
+
+  function presenterContext() {
+    return { icon, badge, escapeHtml };
+  }
 
   function renderDialog() {
     if (dialog.type === 'close-workspace') return renderCloseDialog(dialog.workspace);
     if (dialog.type === 'multiverse') return renderMultiverseDialog();
     if (dialog.type === 'help') return renderHelpDialog();
     if (dialog.type === 'share') return renderShareDialog();
+    if (dialog.type === 'add-material') return dialogPresenter().renderAddMaterialDialog(dialog.workspace, presenterContext());
+    if (dialog.type === 'continue') return dialogPresenter().renderContinueDialog(dialog.workspace, presenterContext());
+    if (dialog.type === 'open-workspace') return dialogPresenter().renderOpenWorkspaceDialog(dialog.workspace, presenterContext());
+    if (dialog.type === 'command-info') return dialogPresenter().renderCommandInfoDialog(dialog, presenterContext());
     return renderCreateDialog();
   }
 
@@ -221,7 +271,7 @@
     return `${record.title || ''} ${record.summary || ''} ${record.kind || ''}`.toLowerCase().includes(query);
   }
 
-  function actionButton(iconName, label, labeled = false) { return `<button class="tx-action-button tx-legacy-action ${labeled ? 'tx-labeled-action' : ''}" type="button" title="${escapeHtml(label)}">${icon(iconName)}${labeled ? `<strong>${escapeHtml(label)}</strong>` : ''}</button>`; }
+  function actionButton(iconName, label, labeled = false, action = '', workspaceId = '') { return `<button class="tx-action-button tx-legacy-action ${labeled ? 'tx-labeled-action' : ''}" type="button" title="${escapeHtml(label)}" ${action ? `data-workspace-action="${escapeHtml(action)}" data-workspace-id="${escapeHtml(workspaceId)}"` : ''}>${icon(iconName)}${labeled ? `<strong>${escapeHtml(label)}</strong>` : ''}</button>`; }
   function icon(name) { return `<svg class="tx-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${iconPaths[name] || iconPaths.preview}</svg>`; }
   function badge(text) { return `<span class="tx-badge">${escapeHtml(text)}</span>`; }
   function escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }

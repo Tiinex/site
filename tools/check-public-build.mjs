@@ -15,7 +15,7 @@ try {
   const build = spawnSync(process.execPath, ['tools/build-public.mjs', '--out', out], { cwd: root, encoding: 'utf8' });
   if (build.status !== 0) fail(build.stderr || build.stdout);
   for (const required of [
-    'index.html', 'src/main.js', 'src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js',
+    'index.html', 'src/main.js', 'src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js', 'src/ui/dialog.presenter.js',
     '.topics/.workspaces/viewer.workspace.md', 'docs/architecture/uc001-workspace-lifecycle.md', 'README.md', 'llms.txt', 'tiinex.build.json', 'tiinex.bundle.css', 'tiinex.bundle.js', '.nojekyll'
   ]) if (!existsSync(join(out, required))) fail(`Missing public output: ${required}`);
   for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini', 'src/adapters/leaflet', 'src/verses/map']) {
@@ -39,7 +39,7 @@ try {
     const identity = JSON.parse(read(identityPath));
     if (identity.type !== 'tiinex.public.build.identity.v1') fail('Missing public build identity type');
     if (identity.publicRuntime !== 'bundled-css-and-js') fail('Public build identity must disclose bundled runtime');
-    if (!String(identity.source || '').includes('v111')) fail('Public build identity should disclose v111 source shell');
+    if (!String(identity.source || '').includes('v112')) fail('Public build identity should disclose v112 source shell');
   }
   if (failures.length) {
     console.error(failures.map((f) => `- ${f}`).join('\n'));

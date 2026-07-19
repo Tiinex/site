@@ -27,7 +27,7 @@ if (!readFileSync(path('.gitignore'), 'utf8').includes('.old/')) failures.push('
 const index = readFileSync(path('index.html'), 'utf8');
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (index.includes('type="module"') || index.includes("type='module'")) failures.push('index.html must remain file-local safe and not use ES module startup');
-if (!index.includes('./src/ui/icon.paths.js') || !index.includes('./src/workspaces/workspace.config.js') || !index.includes('./src/workspaces/workspace.lifecycle.js') || !index.includes('./src/workspaces/workspace.route.js') || !index.includes('./src/workspaces/workspace.persistence.js') || !index.includes('./src/main.js')) failures.push('index.html must load UC-001 scripts in order');
+if (!index.includes('./src/ui/icon.paths.js') || !index.includes('./src/workspaces/workspace.config.js') || !index.includes('./src/workspaces/workspace.lifecycle.js') || !index.includes('./src/workspaces/workspace.route.js') || !index.includes('./src/workspaces/workspace.persistence.js') || !index.includes('./src/ui/dialog.presenter.js') || !index.includes('./src/main.js')) failures.push('index.html must load UC-001 scripts in order');
 
 const main = readFileSync(path('src/main.js'), 'utf8');
 if (/^\s*import\s/m.test(main) || /^\s*export\s/m.test(main)) failures.push('src/main.js must remain file-local safe with no import/export startup');
@@ -36,6 +36,7 @@ if (main.split('\n').length > 420) failures.push('src/main.js exceeds v111 size 
 for (const required of [
   'src/ui/icon.paths.js',
   'src/ui/icon.paths.test.mjs',
+  'src/ui/dialog.presenter.js',
   'src/workspaces/workspace.config.js',
   'src/workspaces/workspace.config.test.mjs',
   'src/workspaces/workspace.lifecycle.js',

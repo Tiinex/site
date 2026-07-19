@@ -47,6 +47,7 @@ function runStartup(hash = '') {
   runScript(context, 'src/workspaces/workspace.lifecycle.js');
   runScript(context, 'src/workspaces/workspace.route.js');
   runScript(context, 'src/workspaces/workspace.persistence.js');
+  runScript(context, 'src/ui/dialog.presenter.js');
   runScript(context, 'src/main.js');
   return rootElement.innerHTML;
 }
