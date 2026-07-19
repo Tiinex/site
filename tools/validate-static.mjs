@@ -46,6 +46,15 @@ if (!existsSync(join(root, 'src/verses/universe.model.js'))) failures.push('Univ
 if (!existsSync(join(root, 'src/verses/universe.project.js'))) failures.push('Universe verse projection missing');
 if (!existsSync(join(root, 'src/verses/column/column.model.js'))) failures.push('Column Verse model missing');
 if (!existsSync(join(root, 'src/verses/context.js'))) failures.push('Verse context availability model missing');
+if (!existsSync(join(root, 'src/verses/map/map.model.js'))) failures.push('Map Verse model missing');
+if (!existsSync(join(root, 'src/verses/map/map.project.js'))) failures.push('Map Verse projection missing');
+if (!existsSync(join(root, 'docs/architecture/map-and-atlas.md'))) failures.push('Map/Atlas boundary doc missing');
+if (!existsSync(join(root, 'docs/architecture/desktop-verse-note.md'))) failures.push('Desktop Verse note missing');
+if (!existsSync(join(root, 'docs/architecture/visual-continuity.md'))) failures.push('Visual continuity doc missing');
+if (!existsSync(join(root, 'docs/architecture/mobile-transport-lessons.md'))) failures.push('Mobile/transport lessons doc missing');
+if (!existsSync(join(root, 'docs/architecture/testing-strategy.md'))) failures.push('Testing strategy doc missing');
+if (!existsSync(join(root, 'tools/check-ui-shape.mjs'))) failures.push('UI shape guard missing');
+if (!existsSync(join(root, 'src/adapters/leaflet/leaflet.boundary.js'))) failures.push('Leaflet renderer boundary missing');
 if (!existsSync(join(root, 'docs/architecture/verse-context-availability.md'))) failures.push('Verse context availability doc missing');
 for (const staleVerse of ['node-graph', 'timeline', 'gantt']) {
   if (existsSync(join(root, 'src/verses', staleVerse))) failures.push(`Unimplemented verse directory must not exist: src/verses/${staleVerse}`);
@@ -66,7 +75,7 @@ if (!main.includes('tx-artifact-card')) failures.push('src/main.js must visibly 
 if (!main.includes('workspace-state')) failures.push('src/main.js must render workspace state');
 if (!main.includes('no local→github guess')) failures.push('src/main.js must disclose no local to GitHub source guessing');
 if (!main.includes('sourceForLocalFile')) failures.push('src/main.js must distinguish local file source boundaries');
-if (!main.includes('data-verse')) failures.push('src/main.js must expose Feed/Tree Verse controls');
+if (!main.includes('data-pane-verse')) failures.push('src/main.js must expose workspace-scoped Feed/Tree/Map Verse controls');
 if (!main.includes('renderFeedVerse') || !main.includes('renderTreeVerse')) failures.push('src/main.js must render Feed and Tree Verse parity');
 if (!main.includes('without changing source truth')) failures.push('src/main.js must disclose Verse source-truth boundary');
 if (!main.includes('tx-workspace-window')) failures.push('src/main.js must render Tiinex workspace window frame');
@@ -82,13 +91,19 @@ if (!main.includes('workspace-search')) failures.push('src/main.js must expose i
 if (!main.includes('data-source-filter')) failures.push('src/main.js must expose source filter controls');
 if (!main.includes('UX should clarify through layout')) failures.push('src/main.js must carry v90 ergonomic control rule');
 if (!main.includes('renderDiscoveryIconBar')) failures.push('src/main.js must render compact discovery icon controls');
-if (!main.includes('tx-action-spine')) failures.push('src/main.js must render interaction spine');
+if (!main.includes('tx-action-spine')) failures.push('src/main.js must preserve interaction spine contract');
+if (!main.includes('tx-shell-visual-continuity')) failures.push('src/main.js must render focused window continuity shell');
+if (!main.includes('tx-shell-pattern-parity')) failures.push('src/main.js must render v96 pattern parity shell');
 if (!main.includes('data-task')) failures.push('src/main.js must expose task spine controls');
 if (!main.includes('tx-scaffold-action')) failures.push('src/main.js must visually mark scaffold actions');
 if (!main.includes('renderUniverse')) failures.push('src/main.js must render Universe entry verse');
 if (!main.includes('Column Verse')) failures.push('src/main.js must default to Column Verse continuity');
+if (!main.includes('Documentation') || !main.includes('Start')) failures.push('src/main.js must seed old Tiinex.dev default Documentation/Start card rhythm');
 if (!main.includes('first multiverse')) failures.push('src/main.js must disclose first Multiverse entry');
 if (!main.includes('plannedVerseContexts')) failures.push('src/main.js must carry planned Verse contexts without exposing them as primary ready actions');
+if (!main.includes('renderMapVerse')) failures.push('src/main.js must render workspace-level Map Verse scaffold');
+if (!main.includes('data-pane-verse')) failures.push('src/main.js must scope Verse selection to a workspace pane');
+if (!main.includes('Atlas/Desktop stay planned')) failures.push('src/main.js must keep Atlas/Desktop planned, not primary-ready');
 if (main.includes('Node Graph Verse') || main.includes('Zoomable Multiverse')) failures.push('src/main.js must not show stale future verses as primary UI');
 
 

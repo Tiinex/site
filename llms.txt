@@ -8,3 +8,5 @@
 6. Read `docs/handover/continuation-guide.md`.
 
 Important: `.old/` is ignored legacy reference and must not be treated as active runtime.
+
+7. Read `docs/architecture/testing-strategy.md`.

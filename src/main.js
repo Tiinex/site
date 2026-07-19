@@ -11,6 +11,57 @@
   ];
 
   const demoArtifacts = {
+    documentation: `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](../../.topics/.schemas/tiinex.root.v1.schema.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](../../.topics/.schemas/core/topic/tiinex.topic.v1.schema.md)
+  - Created At: 2026-07-18 00:00:00
+  - Summary: The heart of Tiinex
+
+---
+
+# Documentation
+
+The heart of Tiinex
+
+## Workspace Entry
+
+This entry mirrors the old Tiinex.dev starting rhythm: badges first, title second, actions close to the card.
+
+## Reference Material
+
+- Tiinex docs workspaces
+- checkpoint continuity
+- source boundary visible
+
+`,
+    start: `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](../../.topics/.schemas/tiinex.root.v1.schema.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](../../.topics/.schemas/core/topic/tiinex.topic.v1.schema.md)
+  - Created At: 2026-07-18 00:00:00
+  - Summary: This is the first workspace loaded when the web viewer starts
+
+---
+
+# Start
+
+This is the first workspace loaded when the web viewer starts
+
+## Workspace Entry
+
+Start keeps a compact continuity card available below Documentation in the default focused window.
+
+---
+
+# Continuity Integrity
+
+- sha256-base64url-c14n-v2
+  - Towards: self
+  - Value: demo-start-v96-not-authoritative
+`,
     topic: `# Continuity Context
 
 - Envelope Schema: [tiinex.root.v1](../../.topics/.schemas/tiinex.root.v1.schema.md)
@@ -43,7 +94,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-topic-v92-not-authoritative
+  - Value: demo-topic-v96-not-authoritative
 `,
     evidence: `# Continuity Context
 
@@ -94,7 +145,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-evidence-v92-not-authoritative
+  - Value: demo-evidence-v96-not-authoritative
 `,
     unknown: `# Continuity Context
 
@@ -120,14 +171,14 @@ The shell should not pretend child-specific validation passed. It should use roo
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-unknown-v92-not-authoritative
+  - Value: demo-unknown-v96-not-authoritative
 `
   };
 
   const schemaIds = new Set(schemaModules.map((schema) => schema.id));
   const moduleById = new Map(schemaModules.map((schema) => [schema.id, schema]));
   const workspace = {
-    id: 'local-workspace-v92',
+    id: 'local-workspace-v96',
     name: 'Local parser workspace',
     mode: 'file-local',
     records: [],
@@ -136,13 +187,15 @@ The shell should not pretend child-specific validation passed. It should use roo
   const state = {
     reader: 'scan',
     verse: 'feed',
-    markdown: demoArtifacts.topic,
-    label: 'topic demo fixture',
-    source: sourceForSample('topic'),
+    markdown: demoArtifacts.documentation,
+    label: 'Documentation',
+    source: sourceForSample('documentation'),
     auditReport: null,
     searchQuery: '',
     sourceFilter: 'all',
     activeTask: 'read',
+    activePane: 'docs',
+    columnModes: { site: 'feed', docs: 'feed' },
     workspace
   };
 
@@ -173,12 +226,13 @@ The shell should not pretend child-specific validation passed. It should use roo
     { id: 'universe', label: 'Universe', context: 'root entry', kind: 'entry', purpose: 'Root entry verse that presents the first Multiverse to the reader without changing source truth.' },
     { id: 'column', label: 'Column Verse', context: 'universe', kind: 'multiverse', purpose: 'Implemented universe-level multiverse: workspace panes side by side with each pane keeping its own source boundary and mode state.' },
     { id: 'feed', label: 'Feed Verse', context: 'workspace', kind: 'scan', purpose: 'Implemented workspace-level verse: arrange the current artifact set for quick human scanning without changing source truth.' },
-    { id: 'tree', label: 'Tree Verse', context: 'workspace', kind: 'continuity', purpose: 'Implemented workspace-level verse: arrange the same artifact set by declared parent/child continuity without claiming missing parents are absent.' }
+    { id: 'tree', label: 'Tree Verse', context: 'workspace', kind: 'continuity', purpose: 'Implemented workspace-level verse: arrange the same artifact set by declared parent/child continuity without claiming missing parents are absent.' },
+    { id: 'map', label: 'Map Verse', context: 'workspace', kind: 'spatial', purpose: 'Implemented scaffold workspace-level spatial verse: arrange one workspace on a bounded plane without map tiles or source promotion.' }
   ];
 
   const plannedVerseContexts = [
-    { id: 'map', label: 'Map', context: 'workspace', purpose: 'Planned spatial verse for one workspace; not shown as a ready primary action yet.' },
     { id: 'atlas', label: 'Atlas', context: 'universe', purpose: 'Planned universe-level arrangement of one or more Maps; not shown as a ready primary action yet.' },
+    { id: 'desktop', label: 'Desktop', context: 'workspace or universe', purpose: 'Future familiar desktop metaphor verse: folders/files/windows over Tiinex material; not implemented yet.' },
     { id: 'gallery', label: 'Gallery', context: 'workspace or artifact-set', purpose: 'Future media-focused verse after a concrete evidence/gallery use-case exists.' },
     { id: 'game-engine-renderer', label: 'Game engine renderer', context: 'renderer', purpose: 'Future renderer possibility for a Verse; not Verse semantics.' }
   ];
@@ -187,7 +241,7 @@ The shell should not pretend child-specific validation passed. It should use roo
     { id: 'static-fixture', label: 'Static fixture', icon: '●', boundary: 'repo-bundled demo material', github: 'not guessed', write: 'none' },
     { id: 'local-file', label: 'Local file', icon: '◇', boundary: 'user-selected browser File object', github: 'not guessed', write: 'none' },
     { id: 'draft', label: 'Draft / pasted', icon: '✎', boundary: 'in-memory local draft text', github: 'not guessed', write: 'draft-only' },
-    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v92' }
+    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v96' }
   ];
 
   const sourceFilters = [
@@ -228,6 +282,8 @@ The shell should not pretend child-specific validation passed. It should use roo
   root.innerHTML = renderShell();
   bindDemo();
   loadArtifact(state.markdown, state.label, state.source);
+  seedLegacyContinuityRecords();
+  renderCurrentArtifact();
 
   function bindDemo() {
     const textarea = document.getElementById('artifact-input');
@@ -256,14 +312,18 @@ The shell should not pretend child-specific validation passed. It should use roo
         renderCurrentArtifact();
       });
     });
-    document.querySelectorAll('[data-verse]').forEach((button) => {
-      button.addEventListener('click', () => {
-        state.verse = button.getAttribute('data-verse') || 'feed';
-        state.activeTask = state.verse === 'tree' ? 'trace' : 'read';
-        syncVerseButtons();
-        syncTaskSpineButtons();
-        renderVerseParity();
-      });
+    root.addEventListener('click', (event) => {
+      const verseButton = event.target.closest('[data-pane-verse]');
+      if (!verseButton) return;
+      const pane = verseButton.getAttribute('data-pane') || 'site';
+      const verse = verseButton.getAttribute('data-pane-verse') || 'feed';
+      state.columnModes[pane] = verse;
+      if (pane === 'site') state.verse = verse;
+      state.activePane = pane;
+      state.activeTask = verse === 'tree' ? 'trace' : 'read';
+      syncVerseButtons();
+      syncTaskSpineButtons();
+      renderCurrentArtifact();
     });
     document.getElementById('workspace-search')?.addEventListener('input', (event) => {
       state.searchQuery = event.target.value || '';
@@ -312,8 +372,10 @@ The shell should not pretend child-specific validation passed. It should use roo
   }
 
   function syncVerseButtons() {
-    document.querySelectorAll('[data-verse]').forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.getAttribute('data-verse') === state.verse));
+    document.querySelectorAll('[data-pane-verse]').forEach((button) => {
+      const pane = button.getAttribute('data-pane') || 'site';
+      const mode = state.columnModes[pane] || 'feed';
+      button.setAttribute('aria-pressed', String(button.getAttribute('data-pane-verse') === mode));
     });
   }
 
@@ -375,11 +437,33 @@ The shell should not pretend child-specific validation passed. It should use roo
     renderCurrentArtifact();
   }
 
+  function renderUniverseSurface() {
+    const target = document.getElementById('universe-root');
+    if (!target) return;
+    target.innerHTML = renderUniverse();
+    syncVerseButtons();
+  }
+
   function renderCurrentArtifact() {
+    renderUniverseSurface();
     renderArtifactResult(state.markdown, state.label, state.reader, state.source);
     renderWorkspaceState();
     renderVerseParity();
     renderAuditReport();
+  }
+
+  function seedLegacyContinuityRecords() {
+    const startSource = sourceForSample('start');
+    const startId = artifactRecordId(demoArtifacts.start, 'Start', startSource);
+    if (!state.workspace.records.some((item) => item.id === startId)) {
+      state.workspace.records.push({
+        id: startId,
+        label: 'Start',
+        source: startSource,
+        loadedAt: new Date().toISOString(),
+        markdown: demoArtifacts.start
+      });
+    }
   }
 
 
@@ -397,7 +481,7 @@ The shell should not pretend child-specific validation passed. It should use roo
         ? 'degraded-review'
         : 'scaffold-complete';
     return {
-      type: 'tiinex.web.audit.report.v92',
+      type: 'tiinex.web.audit.report.v96',
       status,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -406,7 +490,7 @@ The shell should not pretend child-specific validation passed. It should use roo
       loadedBoundaries: 0,
       networkFetches: 0,
       sourceBoundary: 'no hidden source traversal; local/static/draft remain local/static/draft',
-      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v92 preserves that shape while keeping verse scope context-bound',
+      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v96 preserves that shape while keeping verse scope context-bound',
       lineage,
       integrity,
       findings,
@@ -471,7 +555,7 @@ The shell should not pretend child-specific validation passed. It should use roo
         entries.push({ title, status: 'open', detail: 'Continuity Integrity footer missing.' });
       } else {
         counts.pending += 1;
-        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v92 skeleton.' });
+        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v96 skeleton.' });
       }
     }
     return counts.total ? Object.assign(counts, { entries }) : Object.assign(counts, { entries: [] });
@@ -807,43 +891,56 @@ The shell should not pretend child-specific validation passed. It should use roo
   }
 
   function renderArtifactCard(model, readerMode) {
-    const visibleFields = readerMode === 'scan' ? model.fields.slice(0, 2) : model.fields.filter((field) => field[1]);
-    const actionLimit = readerMode === 'scan' ? 2 : model.actions.length;
+    const compactBadges = [statusLabel(model), model.kind === 'fallback' ? 'root fallback' : model.kind, compactDate(model.createdAt), compactSource(model.sourceBoundary.kind)];
+    const hiddenCount = Math.max(0, model.fields.filter((field) => field[1]).length - 2);
+    const visibleFields = readerMode === 'scan' ? model.fields.slice(0, 1) : model.fields.filter((field) => field[1]).slice(0, 3);
     return `
-      <article class="tx-artifact-card tx-reader-${escapeHtml(readerMode)} tx-artifact-${escapeHtml(model.kind)}">
-        <header class="tx-artifact-head">
-          <div>
-            <div class="tx-eyebrow">${escapeHtml(model.kind)} · ${escapeHtml(model.status)}</div>
-            <h3>${escapeHtml(model.title)}</h3>
-            <p>${escapeHtml(model.primary || model.subtitle)}</p>
-          </div>
-          <div class="tx-badges tx-card-badges">${badge(model.schemaId)}${badge(model.schemaKind)}${badge(model.sourceBoundary.kind)}${model.resolution.fallbackUsed ? badge('root fallback') : ''}</div>
+      <article class="tx-artifact-card tx-legacy-artifact-card tx-reader-${escapeHtml(readerMode)} tx-artifact-${escapeHtml(model.kind)}">
+        <div class="tx-legacy-card-badges">${compactBadges.map(badge).join('')}${hiddenCount ? badge(`+${hiddenCount}`) : ''}</div>
+        <header class="tx-legacy-card-body">
+          <h3>${escapeHtml(model.title)}</h3>
+          <p>${escapeHtml(model.primary || model.subtitle)}</p>
         </header>
-        <div class="tx-artifact-meta">
-          <div><span>Parent</span><strong>${escapeHtml(model.parentLabel)}</strong></div>
-          <div><span>Created</span><strong>${escapeHtml(model.createdAt)}</strong></div>
-          <div><span>Source</span><strong>${escapeHtml(model.sourceBoundary.label)}</strong></div>
-          <div><span>Findings</span><strong>${escapeHtml(formatFindingSummary(model.findingSummary))}</strong></div>
-        </div>
-        <div class="tx-artifact-fields">${visibleFields.map(([name, value]) => `<div><span>${escapeHtml(name)}</span><p>${escapeHtml(value || 'not declared')}</p></div>`).join('')}</div>
-        <div class="tx-power-only tx-artifact-sections"><span>Source boundary</span><p>${escapeHtml(model.sourceBoundary.disclosure)}</p></div>
-        <div class="tx-power-only tx-artifact-sections"><span>Sections</span><p>${escapeHtml(model.sections.join(' · ') || 'none')}</p></div>
-        <footer class="tx-artifact-actions">${model.actions.slice(0, actionLimit).map(renderArtifactAction).join('')}</footer>
+        <div class="tx-legacy-field-strip tx-power-only">${visibleFields.map(([name, value]) => `<div><span>${escapeHtml(name)}</span><strong>${escapeHtml(value || 'not declared')}</strong></div>`).join('')}</div>
+        <footer class="tx-artifact-actions tx-legacy-action-row">${model.actions.map(renderArtifactAction).join('')}</footer>
       </article>
     `;
   }
 
+  function statusLabel(model) {
+    if (model.status === 'readable') return model.findingSummary.warning ? 'mismatch' : 'byte ok';
+    if (model.status === 'degraded') return 'mismatch';
+    if (model.status === 'invalid-or-incomplete') return 'open';
+    return model.status;
+  }
+
+  function compactDate(value) {
+    const text = String(value || 'missing');
+    const match = text.match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : text;
+  }
+
+  function compactSource(kind) {
+    if (kind === 'static-fixture') return 'fixture';
+    if (kind === 'local-file') return 'local';
+    if (kind === 'github-source-backed') return 'source';
+    return kind || 'draft';
+  }
+
   function renderArtifactAction(action) {
     const map = {
-      'open detail': { icon: '▣', label: 'Detail', task: 'read' },
-      'open lineage': { icon: '⛓', label: 'Lineage', task: 'trace' },
-      'run audit': { icon: '✓', label: 'Audit', task: 'audit' },
-      'source settings': { icon: '◈', label: 'Source', scaffold: true },
-      'copy reference': { icon: '⧉', label: 'Copy', scaffold: true }
+      'open detail': { icon: '▰', label: 'Detail', task: 'read', title: 'Open detail' },
+      'open lineage': { icon: '⛓', label: 'Lineage', task: 'trace', title: 'Open lineage' },
+      'run audit': { icon: '✓', label: 'Audit', task: 'audit', title: 'Audit loaded workspace' },
+      'source settings': { icon: '◈', label: 'Source', scaffold: true, title: 'Source settings scaffold' },
+      'copy reference': { icon: '🔗', label: 'Reference', scaffold: true, title: 'Copy reference scaffold' },
+      'copy evidence reference': { icon: '🔗', label: 'Reference', scaffold: true, title: 'Copy evidence reference scaffold' },
+      'open preservation': { icon: '↩', label: 'Preserve', scaffold: true, title: 'Open preservation scaffold' },
+      'inspect envelope': { icon: '☷', label: 'Envelope', task: 'read', title: 'Inspect envelope' }
     };
-    const cfg = map[action] || { icon: '•', label: action, scaffold: true };
+    const cfg = map[action] || { icon: '⋯', label: action, scaffold: true, title: action };
     const attrs = cfg.task ? ` data-task="${escapeHtml(cfg.task)}"` : ' aria-disabled="true"';
-    return `<button class="tx-action-chip ${cfg.scaffold ? 'tx-scaffold-action' : ''}" type="button" title="${escapeHtml(action)}"${attrs}><span>${escapeHtml(cfg.icon)}</span><strong>${escapeHtml(cfg.label)}</strong></button>`;
+    return `<button class="tx-action-chip tx-legacy-action ${cfg.scaffold ? 'tx-scaffold-action' : ''}" type="button" title="${escapeHtml(cfg.title)}"${attrs}><span>${escapeHtml(cfg.icon)}</span><strong>${escapeHtml(cfg.label)}</strong></button>`;
   }
 
   function getVisibleProjections() {
@@ -888,43 +985,88 @@ The shell should not pretend child-specific validation passed. It should use roo
 
   function renderUniverseColumn(pane) {
     const projections = getColumnPaneProjections(pane.id);
+    const mode = state.columnModes[pane.id] || 'feed';
+    const body = mode === 'tree' ? renderTreeVerse(projections) : mode === 'map' ? renderMapVerse(projections, pane) : renderFeedVerse(projections);
     const isSite = pane.id === 'site';
-    const mode = isSite ? state.verse : 'feed';
-    const body = mode === 'tree' ? renderTreeVerse(projections) : renderFeedVerse(projections);
     const auditBlock = isSite ? `
-      <section class="tx-audit-surface tx-column-audit" aria-label="Audit report surface">
+      <section class="tx-audit-surface tx-column-audit tx-legacy-inline-status" aria-label="Audit report surface">
         <div class="tx-stage-subhead">
           <div><strong>Audit</strong><div class="tx-muted">loaded · open stays open</div></div>
-          <button class="tx-button" data-run-audit type="button">✓</button>
+          <button class="tx-icon-button" data-run-audit type="button" title="Run loaded workspace audit"><span>✓</span><small>Audit</small></button>
         </div>
-        <div id="audit-report" class="tx-result tx-muted">Audit report will render after artifact load.</div>
+        <div id="audit-report" class="tx-result tx-muted">Not run · loaded set only</div>
       </section>` : '';
-    const parserBlock = isSite ? `<details class="tx-column-drawer"><summary>Load / draft</summary>${renderQuickControls()}${renderParserControls()}</details>` : '';
+    const parserBlock = isSite ? `<details class="tx-column-drawer tx-legacy-drawer"><summary>Load / draft</summary>${renderQuickControls()}${renderParserControls()}</details>` : '';
     return `
-      <section class="tx-universe-column ${pane.active ? 'tx-active-column' : ''}" aria-label="${escapeHtml(pane.title)} workspace pane">
-        <header class="tx-column-header">
+      <section class="tx-universe-column tx-legacy-workspace-pane ${pane.active ? 'tx-active-column' : ''}" aria-label="${escapeHtml(pane.title)} workspace pane">
+        <header class="tx-column-header tx-legacy-pane-header">
           <div>
             <strong>${escapeHtml(pane.title)}</strong>
             <div class="tx-muted">${escapeHtml(pane.subtitle)}</div>
           </div>
-          <div class="tx-badges">${badge(`${projections.length}`)}${badge(pane.source)}${pane.active ? badge('active') : ''}</div>
+          <div class="tx-window-stats tx-badges">${badge(`${projections.length}`)}${badge(pane.source)}<button class="tx-icon-button" type="button" title="Pin workspace"><span>◆</span><small>Pin</small></button><button class="tx-icon-button" type="button" title="Close workspace"><span>×</span><small>Close</small></button></div>
         </header>
-        <div class="tx-column-tabs">
+        <div class="tx-column-tabs tx-legacy-source-tabs">
           <button class="tx-chip" type="button">${escapeHtml(pane.repo)}</button>
           <button class="tx-chip" type="button">${escapeHtml(pane.mode)}</button>
           <span class="tx-chip tx-badge-soft">${escapeHtml(pane.boundary)}</span>
         </div>
-        <div class="tx-column-mode">
-          <div class="tx-segment" aria-label="${escapeHtml(pane.title)} mode">
-            <button class="tx-button" data-verse="feed" type="button">Feed</button>
-            <button class="tx-button" data-verse="tree" type="button">Tree</button>
+        <div class="tx-column-mode tx-legacy-mode-row">
+          <div class="tx-mode-name">${mode === 'tree' ? 'LINEAGE MODE' : mode === 'map' ? 'MAP MODE' : 'DISCOVERY MODE'}</div>
+          <div class="tx-segment" aria-label="${escapeHtml(pane.title)} workspace verse">
+            <button class="tx-button" data-pane="${escapeHtml(pane.id)}" data-pane-verse="feed" type="button">Feed</button>
+            <button class="tx-button" data-pane="${escapeHtml(pane.id)}" data-pane-verse="tree" type="button">Tree</button>
+            <button class="tx-button" data-pane="${escapeHtml(pane.id)}" data-pane-verse="map" type="button">Map</button>
           </div>
-          <div class="tx-badges">${badge(mode)}${badge('truth kept')}</div>
         </div>
-        <div class="tx-column-feed">${body}</div>
+        <div class="tx-column-feed tx-legacy-card-feed">${body}</div>
         ${auditBlock}
         ${parserBlock}
       </section>`;
+  }
+
+  function renderMapVerse(projections, pane) {
+    const nodes = projections.map((projection, index) => {
+      const model = projection.viewModel;
+      const point = mapPoint(index, projections.length);
+      return `
+        <article class="tx-map-node ${model.schemaId.includes('unknown') ? 'tx-map-node-warn' : ''}" style="left:${point.x}%; top:${point.y}%" title="${escapeHtml(model.title)}">
+          <span class="tx-map-kind">${escapeHtml(mapKindLabel(model))}</span>
+          <strong>${escapeHtml(model.title)}</strong>
+          <small>${escapeHtml(model.schemaId)}</small>
+        </article>`;
+    }).join('');
+    const edges = projections.map((projection, index) => {
+      const point = mapPoint(index, projections.length);
+      return `<span class="tx-map-edge" style="left:${Math.max(8, point.x - 12)}%; top:${Math.max(12, point.y - 1)}%; width:${Math.min(28, 12 + index * 4)}%; transform:rotate(${index % 2 ? -18 : 18}deg)"></span>`;
+    }).join('');
+    return `
+      <div class="tx-map-verse" aria-label="${escapeHtml(pane.title)} Map Verse">
+        <div class="tx-map-toolbar">
+          <div class="tx-badges">${badge('map')}${badge(`${projections.length} nodes`)}${badge('no tiles')}${badge('no zoom')}</div>
+          <span class="tx-muted">workspace plane · renderer neutral</span>
+        </div>
+        <div class="tx-map-plane">
+          ${edges}${nodes || '<p class="tx-empty tx-map-empty">No mapped artifacts.</p>'}
+        </div>
+      </div>`;
+  }
+
+  function mapPoint(index, total) {
+    const positions = [
+      { x: 50, y: 22 }, { x: 28, y: 48 }, { x: 70, y: 50 }, { x: 48, y: 76 },
+      { x: 18, y: 24 }, { x: 82, y: 26 }, { x: 22, y: 76 }, { x: 78, y: 76 }
+    ];
+    if (total <= positions.length) return positions[index] || positions[0];
+    const angle = (Math.PI * 2 * index) / total;
+    return { x: 50 + Math.cos(angle) * 34, y: 50 + Math.sin(angle) * 34 };
+  }
+
+  function mapKindLabel(model) {
+    if (model.schemaId.includes('evidence')) return 'evidence';
+    if (model.schemaId.includes('topic')) return 'topic';
+    if (model.schemaId.includes('unknown')) return 'fallback';
+    return 'artifact';
   }
 
   function renderUniverse() {
@@ -932,17 +1074,15 @@ The shell should not pretend child-specific validation passed. It should use roo
       { id: 'site', title: 'Tiinex/site', subtitle: 'local parser workspace', repo: 'Tiinex/site', mode: 'mirror', boundary: 'no local→github guess', source: 'local/static', active: true },
       { id: 'docs', title: 'Documentation', subtitle: 'docs fixture workspace', repo: 'Tiinex/docs', mode: 'cache', boundary: 'fixture source only', source: 'static-fixture', active: false }
     ];
+    const activePane = panes.find((pane) => pane.id === state.activePane) || panes[0];
     return `
-      <section class="tx-universe tx-primary-stage" aria-label="Universe entry verse">
-        <div class="tx-universe-head">
-          <div>
-            <div class="tx-eyebrow">Universe</div>
-            <h1>Column Verse</h1>
-          </div>
-          <div class="tx-badges">${badge('root entry')}${badge('first multiverse')}${badge('cycle guard')}</div>
+      <section class="tx-universe tx-primary-stage tx-focused-universe" aria-label="Universe entry verse">
+        <div class="tx-focus-switcher" aria-label="Workspace switcher">
+          ${panes.map((pane) => `<button class="tx-chip ${pane.id === activePane.id ? 'tx-primary' : ''}" type="button" title="${escapeHtml(pane.subtitle)}">${escapeHtml(pane.title)}</button>`).join('')}
+          <span class="tx-muted">Column Verse · focused pane · first multiverse</span>
         </div>
-        <div class="tx-universe-grid">
-          ${panes.map(renderUniverseColumn).join('')}
+        <div class="tx-universe-grid tx-focused-grid">
+          ${renderUniverseColumn(activePane)}
         </div>
       </section>`;
   }
@@ -951,34 +1091,34 @@ The shell should not pretend child-specific validation passed. It should use roo
     const target = document.getElementById('verse-surface');
     if (!target) return;
     const title = document.getElementById('verse-title');
-    if (title) title.textContent = state.verse === 'tree' ? 'Tree' : 'Feed';
+    if (title) title.textContent = state.verse === 'tree' ? 'Tree' : state.verse === 'map' ? 'Map' : 'Feed';
     const projections = getVisibleProjections();
-    target.innerHTML = state.verse === 'tree' ? renderTreeVerse(projections) : renderFeedVerse(projections);
+    target.innerHTML = state.verse === 'tree' ? renderTreeVerse(projections) : state.verse === 'map' ? renderMapVerse(projections, { id: 'site', title: 'Tiinex/site' }) : renderFeedVerse(projections);
   }
 
   function renderFeedVerse(projections) {
     const cards = projections.map((projection) => renderArtifactCard(projection.viewModel, state.reader)).join('');
     return `
-      <div class="tx-reader-state tx-compact-state">${badge('feed')}${badge(`${projections.length} shown`)}${state.searchQuery ? badge(`search: ${state.searchQuery}`) : ''}${state.sourceFilter !== 'all' ? badge(state.sourceFilter) : ''}</div>
-      <div class="tx-verse-stack">${cards || '<p class="tx-empty">No matching artifacts.</p>'}</div>
+      <div class="tx-reader-state tx-compact-state tx-legacy-feed-state">${badge('feed')}${badge(`${projections.length} shown`)}${state.searchQuery ? badge(`search`) : ''}${state.sourceFilter !== 'all' ? badge(state.sourceFilter) : ''}</div>
+      <div class="tx-verse-stack tx-legacy-stack">${cards || '<p class="tx-empty">No matching artifacts.</p>'}</div>
     `;
   }
 
   function renderTreeVerse(projections) {
     const rows = projections.map((projection) => {
       const model = projection.viewModel;
-      return `<div class="tx-tree-row"><div><strong>${escapeHtml(model.title)}</strong><div class="tx-muted">${escapeHtml(model.parentLabel)} → ${escapeHtml(model.schemaId)}</div></div><div class="tx-badges">${badge(model.status)}${badge(model.sourceBoundary.kind)}</div></div>`;
+      return `<article class="tx-artifact-card tx-legacy-artifact-card tx-tree-artifact"><div class="tx-legacy-card-badges">${badge(model.status)}${badge(model.kind)}${badge(compactDate(model.createdAt))}${badge(model.sourceBoundary.kind)}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(model.title)}</h3><p>${escapeHtml(model.parentLabel)} → ${escapeHtml(model.schemaId)}</p></header><footer class="tx-artifact-actions tx-legacy-action-row"><button class="tx-action-chip tx-legacy-action" data-task="read" type="button" title="Open detail"><span>▰</span><strong>Detail</strong></button><button class="tx-action-chip tx-legacy-action" data-task="trace" type="button" title="Open lineage"><span>⛓</span><strong>Lineage</strong></button></footer></article>`;
     }).join('');
     return `
-      <div class="tx-reader-state tx-compact-state">${badge('tree')}${badge(`${projections.length} shown`)}${badge('declared edges')}</div>
-      <div class="tx-tree">${rows || '<p class="tx-empty">No matching artifacts.</p>'}</div>
+      <div class="tx-reader-state tx-compact-state tx-legacy-feed-state">${badge('tree')}${badge(`${projections.length} shown`)}${badge('declared edges')}</div>
+      <div class="tx-verse-stack tx-legacy-stack">${rows || '<p class="tx-empty">No matching artifacts.</p>'}</div>
     `;
   }
 
   function renderVerseConcept() {
     const verseRows = verses.map((verse) => row(verse.label, verse.purpose, [verse.context, verse.kind])).join('');
     const plannedRows = plannedVerseContexts.map((verse) => row(verse.label, verse.purpose, [verse.context, 'planned'])).join('');
-    return `<details open><summary>Verse contract</summary><p class="tx-muted"><strong>Universe:</strong> root entry. <strong>Column:</strong> implemented universe-level Multiverse. <strong>Feed/Tree:</strong> implemented workspace-level verses. Future verses stay out of primary UI until implemented.</p><div class="tx-list">${verseRows}</div></details><details class="tx-secondary-details"><summary>Planned contexts</summary><div class="tx-list">${plannedRows}</div></details>`;
+    return `<details open><summary>Verse contract</summary><p class="tx-muted"><strong>Universe:</strong> root entry. <strong>Column:</strong> implemented universe-level Multiverse. <strong>Feed/Tree/Map:</strong> implemented workspace-level verses. Atlas/Desktop stay planned until their owning use-case and renderer boundary are ready.</p><div class="tx-list">${verseRows}</div></details><details class="tx-secondary-details"><summary>Planned contexts</summary><div class="tx-list">${plannedRows}</div></details>`;
   }
 
   function summarizeFindings(findings) {
@@ -991,68 +1131,70 @@ The shell should not pretend child-specific validation passed. It should use roo
     const readerRows = readers.map(([name, purpose]) => row(titleCase(name), purpose, ['reader'])).join('');
     const auditPlan = [
       'Audit remains a domain operation in src/audit/.',
-      'This v92 pass keeps only implemented runtime-visible verses before Map/Atlas work.',
+      'This v96 pass refines focused Tiinex.dev pattern parity and adds UI-shape guards before adding more feature breadth.',
       'Validation still runs on artifact load; audit rechecks loaded records and marks missing lineage as open.',
       'Root fallback cards disclose degraded state instead of claiming child-schema validity.',
-      'Legacy lesson kept: start in workspace columns, and show only implemented paths in primary UI.'
+      'Legacy lesson kept: old UI is pattern baseline; boilerplate text stays out of primary workspace.'
     ].join('\n');
 
     return `
-      <main class="tx-shell tx-shell-workspace tx-shell-universe">
-        <header class="tx-global-dock" aria-label="Global Tiinex controls">
-          <div class="tx-brand"><img class="tx-logo" src="./public/assets/tiinex-logo-white-transparent.png" alt=""><span>Tiinex Site</span></div>
-          <nav class="tx-toolbar tx-dock-actions">
-            <button class="tx-button" type="button">+ Create</button>
-            <button class="tx-button" type="button">Share</button>
-            <button class="tx-button" type="button">?</button>
+      <main class="tx-shell tx-shell-workspace tx-shell-universe tx-shell-visual-continuity tx-shell-focused-window tx-shell-pattern-parity">
+        <header class="tx-global-dock tx-legacy-global-dock" aria-label="Global Tiinex controls">
+          <button class="tx-round-nav" type="button" title="Previous workspace">‹</button>
+          <nav class="tx-toolbar tx-dock-actions tx-legacy-top-actions">
+            <button class="tx-button tx-icon-plus" type="button" title="Create">+</button>
+            <img class="tx-logo tx-logo-center" src="./public/assets/tiinex-logo-white-transparent.png" alt="Tiinex">
+            <button class="tx-button" type="button" title="Share">↗</button>
+            <button class="tx-button" type="button" title="Help">?</button>
           </nav>
+          <button class="tx-round-nav" type="button" title="Next workspace">›</button>
         </header>
 
-        <section class="tx-workspace-window tx-universe-window" aria-label="Tiinex Universe">
-          <div class="tx-window-titlebar">
-            <div class="tx-window-title">
-              <strong>Universe</strong>
-              <span class="tx-badge tx-badge-soft">v92 verse scope</span>
-            </div>
+        <section class="tx-workspace-window tx-universe-window tx-legacy-main-window tx-focused-main-window" aria-label="Tiinex Universe">
+          <div class="tx-window-titlebar tx-legacy-titlebar">
+            <div class="tx-window-title"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">v96 parity guard</span></div>
             <div class="tx-window-stats tx-badges">
-              ${badge('file-local')}${badge('column default')}${badge('source rows kept')}
+              ${badge('file-local')}${badge('column')}${badge('source kept')}
+              <button class="tx-icon-button" type="button" title="Display"><span>☷</span><small>Display</small></button>
+              <button class="tx-icon-button" data-run-audit type="button" title="Audit"><span>✓</span><small>Audit</small></button>
+              <button class="tx-icon-button" type="button" title="Expand"><span>↗</span><small>Expand</small></button>
+              <button class="tx-icon-button" type="button" title="Close"><span>×</span><small>Close</small></button>
             </div>
           </div>
 
-          <div class="tx-source-strip" aria-label="Source row">
-            <div class="tx-source-primary"><span class="tx-source-dot"></span><strong>Column Multiverse</strong><span class="tx-muted">workspaces remain separate</span></div>
+          <div class="tx-source-strip tx-legacy-source-strip" aria-label="Source row">
+            <div class="tx-source-primary"><span class="tx-source-dot"></span><button class="tx-chip" type="button">Tiinex/site</button><button class="tx-chip" type="button">mirror</button><span class="tx-muted">mirror</span></div>
             <div class="tx-source-tools">${renderSourceFilterControls()}${renderDiscoveryIconBar()}</div>
           </div>
 
-          ${renderActionSpine()}
-
-          <div class="tx-mode-strip" aria-label="Mode controls">
-            <div class="tx-mode-name">DISCOVERY</div>
-            <div class="tx-segment" aria-label="Universe projection"><button class="tx-button tx-primary" type="button">Column</button></div>
+          <div class="tx-mode-strip tx-legacy-main-mode" aria-label="Mode controls">
+            <div class="tx-mode-name">DISCOVERY MODE</div>
+            <div class="tx-segment" aria-label="Workspace verse">
+              <button class="tx-button" data-pane="site" data-pane-verse="feed" type="button">Feed</button>
+              <button class="tx-button" data-pane="site" data-pane-verse="tree" type="button">Tree</button>
+              <button class="tx-button" data-pane="site" data-pane-verse="map" type="button">Map</button>
+            </div>
             <div class="tx-segment" aria-label="Reader density"><button class="tx-button" data-reader="scan" type="button">Scan</button><button class="tx-button" data-reader="power" type="button">Power</button><button class="tx-button" data-reader="audit" type="button">Audit</button></div>
-            <button class="tx-button tx-audit-run" data-run-audit type="button" title="Audit loaded workspace">✓ Audit</button>
             <input id="workspace-search" class="tx-search-input" type="search" placeholder="Search title/schema/source…" aria-label="Search loaded artifacts">
           </div>
 
-          ${renderUniverse()}
+          <div id="universe-root">${renderUniverse()}</div>
         </section>
 
-        <section class="tx-after-universe" aria-label="Secondary controls and grounding">
-          <article class="tx-card tx-compact-card">
-            <h2>Workspace state</h2>
-            <div id="workspace-state" class="tx-result tx-muted">Workspace state will render after artifact load.</div>
-          </article>
-          <article class="tx-card tx-compact-card tx-inspector-card">
-            <h2>Artifact inspector</h2>
-            <div id="artifact-result" class="tx-result tx-muted">Select or load artifact.</div>
-          </article>
-          <article class="tx-card"><h2>Verse concept</h2>${renderVerseConcept()}</article>
-          <article class="tx-card"><h2>Schema module projection</h2><div class="tx-list">${schemaRows}</div></article>
-          <article class="tx-card tx-collapsible-card"><details><summary>Presentation surfaces</summary><div class="tx-list">${surfaceRows}</div></details></article>
-          <article class="tx-card tx-collapsible-card"><details><summary>Reader modes</summary><div class="tx-list">${readerRows}</div></details></article>
-          <article class="tx-card"><h2>Audit ownership</h2><pre>${escapeHtml(auditPlan)}</pre></article>
-          <article class="tx-card tx-warning"><h2>Boundary</h2><p class="tx-muted">The v79 app is archived in <code>.old/</code> for UX and behavior reference. It is ignored by git and not imported by this runtime.</p></article>
-        </section>
+        <details class="tx-legacy-secondary-drawer" aria-label="Secondary diagnostics">
+          <summary>Diagnostics / concepts</summary>
+          <section class="tx-after-universe tx-secondary-basement" aria-label="Secondary controls and grounding">
+            <article class="tx-card tx-compact-card"><h2>Workspace state</h2><div id="workspace-state" class="tx-result tx-muted">Workspace state will render after artifact load.</div></article>
+            <article class="tx-card tx-compact-card tx-inspector-card"><h2>Artifact inspector</h2><div id="artifact-result" class="tx-result tx-muted">Select or load artifact.</div></article>
+            <article class="tx-card"><h2>Verse concept</h2>${renderVerseConcept()}</article>
+            <article class="tx-card"><h2>Schema module projection</h2><div class="tx-list">${schemaRows}</div></article>
+            <article class="tx-card tx-collapsible-card"><details><summary>Presentation surfaces</summary><div class="tx-list">${surfaceRows}</div></details></article>
+            <article class="tx-card tx-collapsible-card"><details><summary>Reader modes</summary><div class="tx-list">${readerRows}</div></details></article>
+            <article class="tx-card"><h2>Audit ownership</h2><pre>${escapeHtml(auditPlan)}</pre></article>
+            <article class="tx-card tx-warning"><h2>Boundary</h2><p class="tx-muted">The v79 app is archived in <code>.old/</code> for UX and behavior reference. It is ignored by git and not imported by this runtime.</p></article>
+          </section>
+        </details>
+        <footer class="tx-footer">Powered by <strong>Tiinex</strong></footer>
       </main>`;
   }
 
@@ -1072,6 +1214,8 @@ The shell should not pretend child-specific validation passed. It should use roo
   function renderQuickControls() {
     return `
       <div class="tx-toolbar tx-toolbar-local tx-sample-row">
+        <button class="tx-button" data-sample="documentation" title="Documentation fixture">Documentation</button>
+        <button class="tx-button" data-sample="start" title="Start fixture">Start</button>
         <button class="tx-button" data-sample="topic" title="Topic fixture">Topic</button>
         <button class="tx-button" data-sample="evidence" title="Evidence fixture">Evidence</button>
         <button class="tx-button" data-sample="unknown" title="Unknown schema fixture">Unknown</button>

@@ -6,8 +6,8 @@ const root=fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/,'');
 function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:true})){ if(['.old','node_modules','.site-publish'].includes(e.name)) continue; const p=join(dir,e.name); if(e.isDirectory()) out=out.concat(walk(p)); else out.push(p);} return out;}
 const files=walk(root);
 console.log(JSON.stringify({
-  type:'tiinex.site.metrics.v92',
-  architectureReadyForProductWork:'verse-scope-context-cleanup-scaffold',
+  type:'tiinex.site.metrics.v96',
+  architectureReadyForProductWork:'pattern-parity-and-ui-shape-guard',
   activeFiles:files.length,
   legacyArchived: statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
@@ -31,7 +31,13 @@ console.log(JSON.stringify({
   verseScopeCleaned:true,
   visibleImplementedVersesOnly:true,
   verseContextAvailability:true,
-  mapAtlasModeledAsPlannedContexts:true,
+  workspaceMapVerseScaffold:true,
+  visualContinuityPass:true,
+  legacyPatternBaseline:true,
+  primaryDiagnosticsCollapsed:true,
+  mobileTransportLessonsCaptured:true,
+  atlasModeledAsPlannedUniverseContext:true,
+  desktopVersePlannedContext:true,
   noArbitraryNestingDepth:true,
   cycleRoundtripGuardModel:true,
   legacyBehaviorReference:true,

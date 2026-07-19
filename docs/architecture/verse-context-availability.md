@@ -15,6 +15,7 @@ Implemented:
 Planned, not shown as ready:
 
 - Atlas
+- Desktop
 
 ### Workspace context
 
@@ -22,14 +23,16 @@ Implemented:
 
 - Feed
 - Tree
+- Map
 
 Planned, not shown as ready:
 
-- Map
+- Desktop
+- Gallery
 
 ## Map and Atlas
 
-Map is a workspace-level spatial verse: one workspace arranged on a bounded plane.
+Map is a workspace-level spatial verse: one workspace arranged on a bounded plane. It is implemented as an initial renderer-neutral scaffold in v93.
 
 Atlas is a universe-level verse: multiple Maps arranged together across one or more workspaces.
 
@@ -45,4 +48,4 @@ Renderer choice must not become source truth, validation truth, or schema author
 
 ## UX rule
 
-Do not show future or scaffolded verses as normal primary actions. A user should see the working path first, not a roadmap disguised as UI.
+Do not show future verses as normal primary actions. A user should see the working path first, not a roadmap disguised as UI.

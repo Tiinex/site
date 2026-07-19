@@ -6,7 +6,7 @@ on:
     branches: [ master, main ]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -18,11 +18,70 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Validate source
+      - name: Validate, bundle, and check public output
         run: |
-          npm run validate
-          npm run build:public
-          npm run public:check
+          npm test
+          npm run metrics
+          npm run storage:scan
+          node --check .site-publish/tiinex.bundle.js
+      - name: Mirror public branch
+        if: github.repository_owner == 'Tiinex'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cp -a .site-publish/. "$tmp/"
+          cd "$tmp"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b public
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No public output changes to mirror."
+            exit 0
+          fi
+          git commit -q -m "Publish public site"
+          git push -q --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" public
+      - name: Optional repository mirrors
+        if: github.repository_owner == 'Tiinex'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TIINEX_REPOSITORY_MIRRORS: ${{ vars.TIINEX_REPOSITORY_MIRRORS || secrets.TIINEX_REPOSITORY_MIRRORS || '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${TIINEX_REPOSITORY_MIRRORS:-}" ]; then
+            echo "No additional repository mirrors configured."
+            exit 0
+          fi
+          while IFS= read -r mirror; do
+            mirror="$(printf '%s' "$mirror" | sed 's/#.*$//' | xargs || true)"
+            [ -z "$mirror" ] && continue
+            case "$mirror" in
+              https://*|git@*) remote="$mirror" ;;
+              */*) remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${mirror}.git" ;;
+              *) echo "Skipping invalid mirror target: $mirror"; continue ;;
+            esac
+            tmp="$(mktemp -d)"
+            cp -a .site-publish/. "$tmp/"
+            cd "$tmp"
+            git init -q
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -q -b public
+            git add -A
+            if git diff --cached --quiet; then
+              echo "No mirror changes for $mirror."
+              cd "$GITHUB_WORKSPACE"
+              continue
+            fi
+            git commit -q -m "Mirror Tiinex public site"
+            git push -q --force "$remote" public
+            cd "$GITHUB_WORKSPACE"
+          done <<< "$TIINEX_REPOSITORY_MIRRORS"
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -42,4 +101,4 @@ jobs:
     if: github.repository_owner != 'Tiinex'
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Skipping deploy outside Tiinex owner; build succeeded."
+      - run: echo "Skipping deploy outside Tiinex owner; build, tests, and public bundling succeeded."

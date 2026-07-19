@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-console.log('✓ no storage scan issues in v92 verse-context scaffold');
+console.log('✓ no storage scan issues in v96 focused window pattern parity pass');

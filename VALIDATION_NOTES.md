@@ -1,36 +1,25 @@
-# Validation Notes v92
+# Validation Notes v96
 
-## Scope
+Goal: focused Tiinex.dev pattern parity refinement plus machine UI-shape guard and public bundling/mirroring workflow expectations.
 
-v92 is a Verse scope hygiene and context availability pass.
+Validated commands:
 
-It removes future placeholder verse directories and keeps only implemented runtime-visible verses:
+- node --check src/main.js
+- node --check tools/validate-static.mjs
+- node --check tools/validate-schema-bindings.mjs
+- node --check tools/check-ui-shape.mjs
+- node --check tools/check-public-build.mjs
+- node --check tools/build-public.mjs
+- node --check tools/collect-metrics.mjs
+- node --check tools/inspect-storage.mjs
+- npm run validate
+- npm run ui:shape
+- npm run build:public
+- npm run public:check
+- node --check .site-publish/tiinex.bundle.js
+- npm run metrics
+- npm run storage:scan
+- npm test
+- unzip -tq tiinex-site-v96-source.zip
 
-- Universe
-- Column
-- Feed
-- Tree
-
-Map and Atlas are documented as planned contexts, not visible ready actions.
-
-## Validation Commands
-
-```bash
-node --check src/main.js
-node --check tools/validate-static.mjs
-node --check tools/validate-schema-bindings.mjs
-node --check tools/check-public-build.mjs
-node --check tools/build-public.mjs
-npm run validate
-npm run build:public
-npm run public:check
-node --check .site-publish/src/main.js
-npm run metrics
-npm run storage:scan
-npm test
-unzip -tq tiinex-site-v92-source.zip
-```
-
-## Expected Result
-
-All commands should pass. The source zip must not include `.site-publish`, `.git`, `node_modules`, `desktop.ini`, or unimplemented verse directories such as `src/verses/node-graph`, `src/verses/timeline`, or `src/verses/gantt`.
+Manual checkpoint: open index.html locally and compare the default start shape against the old Tiinex.dev centered workspace window. This is still visual parity work, not feature parity.

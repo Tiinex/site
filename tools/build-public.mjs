@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,15 +16,30 @@ function copy(source, target = source) {
   ensureParent(to);
   cpSync(from, to, { recursive: true });
 }
+
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 for (const entry of ['index.html', 'README.md', 'llms.txt', 'favicon.ico', 'robots.txt', 'public', 'src', 'docs']) copy(entry);
+
+const cssInputs = ['src/styles/tokens.css', 'src/styles/theme.css', 'src/styles/responsive.css', 'src/styles/app.css'];
+const bundleCss = cssInputs.map((file) => `/* ${file} */\n${readFileSync(path(file), 'utf8')}`).join('\n\n');
+writeFileSync(join(out, 'tiinex.bundle.css'), bundleCss, 'utf8');
+writeFileSync(join(out, 'tiinex.bundle.js'), `/* bundled by tools/build-public.mjs; source remains in src/ for auditability */\n${readFileSync(path('src/main.js'), 'utf8')}`, 'utf8');
+
+let html = readFileSync(join(out, 'index.html'), 'utf8');
+html = html
+  .replace(/\s*<link rel="stylesheet" href="\.\/src\/styles\/(?:tokens|theme|responsive|app)\.css">/g, '')
+  .replace('</head>', '  <link rel="stylesheet" href="./tiinex.bundle.css">\n</head>')
+  .replace('<script src="./src/main.js"></script>', '<script src="./tiinex.bundle.js"></script>');
+writeFileSync(join(out, 'index.html'), html, 'utf8');
+
 writeFileSync(join(out, '.nojekyll'), '', 'utf8');
 writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v92-source-shell',
-  releaseCacheKey: `v92-${Date.now()}`
+  source: 'v96-source-shell',
+  publicRuntime: 'bundled-css-and-js',
+  releaseCacheKey: `v96-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
-console.log(`Built public shell to ${out}`);
+console.log(`Built bundled public shell to ${out}`);
