@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-console.log('✓ no storage scan issues in v99 Column-only parity and mode rhythm pass');
+console.log('✓ no storage scan issues in v100 Column-only height continuity pass');

@@ -20,3 +20,7 @@ v98 tightens the pattern baseline and freezes sibling verses:
 ## Boundary
 
 This is visual and interaction continuity, not legacy runtime reuse. `.old` remains evidence and behavior reference only.
+
+## v100 height continuity
+
+v100 restores the old vertical stretch behavior. The focused window now uses a height-continuity class and dynamic viewport height so zoomed-out desktop views still read as one tall Tiinex workspace window, not a short card stack floating inside unused page space.

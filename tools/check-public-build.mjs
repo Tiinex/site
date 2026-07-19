@@ -46,10 +46,11 @@ if (!main.includes('data-source-filter')) fail('Fresh public runtime must expose
 if (!main.includes('UX should clarify through layout')) fail('Fresh public runtime must carry v90 ergonomic control rule');
 if (!main.includes('tx-action-spine')) fail('Fresh public runtime must preserve interaction spine contract');
 if (!main.includes('tx-shell-visual-continuity')) fail('Fresh public runtime must render focused window continuity shell');
-if (!main.includes('tx-shell-pattern-parity')) fail('Fresh public runtime must render v99 pattern parity shell');
-if (!main.includes('tx-shell-legibility-corrected')) fail('Fresh public runtime must render v99 legibility-corrected shell');
+if (!main.includes('tx-shell-pattern-parity')) fail('Fresh public runtime must render v100 pattern parity shell');
+if (!main.includes('tx-shell-legibility-corrected')) fail('Fresh public runtime must render v100 legibility-corrected shell');
+if (!main.includes('tx-shell-height-continuity')) fail('Fresh public runtime must render old Tiinex.dev height continuity shell');
 if (!main.includes("activePane: 'site'")) fail('Fresh public runtime must default to the Tiinex/site pane');
-if (!main.includes('v99 column rhythm')) fail('Fresh public runtime must disclose v99 Column rhythm scope');
+if (!main.includes('v100 height continuity')) fail('Fresh public runtime must disclose v100 height continuity scope');
 if (!main.includes('data-task')) fail('Fresh public runtime must expose task spine controls');
 if (!main.includes('tx-scaffold-action')) fail('Fresh public runtime must visually mark scaffold actions');
 if (!main.includes('renderUniverse')) fail('Fresh public runtime must render Universe entry verse');

@@ -37,7 +37,7 @@ has(css, '.tx-shell-focused-window .tx-legacy-secondary-drawer', 'secondary diag
 lacks(main, 'Node Graph Verse', 'stale Node Graph Verse must not appear in runtime UI');
 lacks(main, 'Zoomable Multiverse', 'stale Zoomable Multiverse must not appear in runtime UI');
 lacks(main, 'renderMapVerse', 'Map runtime must stay frozen until Column happy path is stable');
-lacks(main, 'data-pane-verse="map"', 'Map must not be a primary workspace verse control in v99');
+lacks(main, 'data-pane-verse="map"', 'Map must not be a primary workspace verse control in v100');
 has(css, '.tx-shell-legibility-corrected', 'legibility correction CSS missing');
 has(css, '.tx-shell-column-action-parity', 'Column action parity CSS missing');
 has(css, 'font-weight: 640', 'title typography should stay softer than bold-white');

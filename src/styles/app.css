@@ -546,7 +546,7 @@ pre { white-space: pre-wrap; overflow:auto; }
   width: min(650px, calc(100vw - 32px));
 }
 .tx-focused-main-window {
-  min-height: min(900px, calc(100vh - 104px));
+  min-height: max(560px, calc(100dvh - 104px));
   border-radius: 20px;
 }
 .tx-focused-main-window .tx-window-titlebar {
@@ -577,7 +577,7 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-focused-universe {
   border: 0;
   padding: 0;
-  min-height: calc(min(900px, 100vh) - 226px);
+  min-height: max(390px, calc(100dvh - 226px));
   background: transparent;
 }
 .tx-focus-switcher { display:none; }
@@ -586,7 +586,7 @@ pre { white-space: pre-wrap; overflow:auto; }
 }
 .tx-focused-grid .tx-universe-column {
   display:block;
-  min-height: calc(min(900px, 100vh) - 228px);
+  min-height: max(390px, calc(100dvh - 228px));
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -861,4 +861,51 @@ pre { white-space: pre-wrap; overflow:auto; }
     grid-template-columns: 1fr auto;
   }
   .tx-legacy-counter-bar { display: none; }
+}
+
+
+/* v100 height continuity: old Tiinex.dev window stretches vertically instead of becoming a short card stack */
+.tx-shell-height-continuity {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tx-shell-height-continuity .tx-legacy-global-dock,
+.tx-shell-height-continuity .tx-footer {
+  flex: 0 0 auto;
+}
+.tx-shell-height-continuity .tx-focused-main-window {
+  min-height: max(560px, calc(100dvh - 112px));
+  display: flex;
+  flex-direction: column;
+}
+.tx-shell-height-continuity .tx-focused-main-window #universe-root,
+.tx-shell-height-continuity .tx-focused-universe {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tx-shell-height-continuity .tx-focused-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tx-shell-height-continuity .tx-focused-grid .tx-universe-column {
+  flex: 1 1 auto;
+  min-height: max(390px, calc(100dvh - 250px));
+}
+.tx-shell-height-continuity .tx-focused-grid .tx-column-feed {
+  flex: 0 0 auto;
+}
+@supports not (height: 100dvh) {
+  .tx-shell-height-continuity { min-height: 100vh; }
+  .tx-shell-height-continuity .tx-focused-main-window { min-height: max(560px, calc(100vh - 112px)); }
+  .tx-shell-height-continuity .tx-focused-grid .tx-universe-column { min-height: max(390px, calc(100vh - 250px)); }
+}
+@media (max-width: 760px) {
+  .tx-shell-height-continuity .tx-focused-main-window { min-height: max(620px, calc(100dvh - 74px)); }
+  .tx-shell-height-continuity .tx-focused-grid .tx-universe-column { min-height: max(420px, calc(100dvh - 210px)); }
 }
