@@ -32,6 +32,10 @@ if (!existsSync(join(root, 'src/audit/audit.run.js'))) failures.push('src/audit 
 if (!existsSync(join(root, 'src/artifacts/artifact.parse.js'))) failures.push('artifact parser module missing');
 if (!existsSync(join(root, 'src/workspaces/workspace.model.js'))) failures.push('workspace model module missing');
 if (!existsSync(join(root, 'src/sources/source.boundaries.js'))) failures.push('source boundary module missing');
+if (!existsSync(join(root, 'src/verses/contracts.js'))) failures.push('src/verses must own Verse projection contracts');
+if (existsSync(join(root, 'src/leaflets'))) failures.push('src/leaflets must not exist; use human-first src/verses');
+if (!existsSync(join(root, 'docs/architecture/verse.md'))) failures.push('Verse concept doc missing');
+if (!existsSync(join(root, 'docs/architecture/legacy-behavior-reference.md'))) failures.push('Legacy behavior reference discipline doc missing');
 if (!readFileSync(join(root, 'src/artifacts/artifact.parse.js'), 'utf8').includes('parseArtifactMarkdown')) failures.push('artifact parser must expose parseArtifactMarkdown');
 if (!existsSync(join(root, 'src/artifacts/fixtures/topic.trace.md'))) failures.push('topic demo artifact fixture missing');
 if (!existsSync(join(root, 'src/artifacts/fixtures/unknown-schema.trace.md'))) failures.push('unknown schema fixture missing');
@@ -43,6 +47,17 @@ if (!main.includes('tx-artifact-card')) failures.push('src/main.js must visibly 
 if (!main.includes('workspace-state')) failures.push('src/main.js must render workspace state');
 if (!main.includes('no local→github guess')) failures.push('src/main.js must disclose no local to GitHub source guessing');
 if (!main.includes('sourceForLocalFile')) failures.push('src/main.js must distinguish local file source boundaries');
+if (!main.includes('data-verse')) failures.push('src/main.js must expose Feed/Tree Verse controls');
+if (!main.includes('renderFeedVerse') || !main.includes('renderTreeVerse')) failures.push('src/main.js must render Feed and Tree Verse parity');
+if (!main.includes('without changing source truth')) failures.push('src/main.js must disclose Verse source-truth boundary');
+if (!main.includes('tx-workspace-window')) failures.push('src/main.js must render Tiinex workspace window frame');
+if (!main.includes('tx-source-strip')) failures.push('src/main.js must render source row/strip');
+if (!main.includes('tx-mode-strip')) failures.push('src/main.js must render mode row/strip');
+if (!main.includes('tx-primary-stage')) failures.push('src/main.js must make Feed/Tree the primary workspace stage');
+if (!main.includes('data-run-audit')) failures.push('src/main.js must expose explicit audit load-all command');
+if (!main.includes('runWorkspaceAudit')) failures.push('src/main.js must implement loaded-workspace audit skeleton');
+if (!main.includes('open-parent-boundary')) failures.push('src/main.js must mark missing lineage as open parent boundaries');
+if (!main.includes('Legacy lesson')) failures.push('src/main.js must preserve legacy audit behavior lessons visibly');
 
 if (existsSync(join(root, 'src/schemas/root.audit.presenter.js'))) failures.push('root.audit.presenter.js must not exist; audit is domain-owned');
 if (failures.length) {

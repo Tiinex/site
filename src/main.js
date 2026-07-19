@@ -43,7 +43,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-topic-v85-not-authoritative
+  - Value: demo-topic-v88-not-authoritative
 `,
     evidence: `# Continuity Context
 
@@ -94,7 +94,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-evidence-v85-not-authoritative
+  - Value: demo-evidence-v88-not-authoritative
 `,
     unknown: `# Continuity Context
 
@@ -120,14 +120,14 @@ The shell should not pretend child-specific validation passed. It should use roo
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-unknown-v85-not-authoritative
+  - Value: demo-unknown-v88-not-authoritative
 `
   };
 
   const schemaIds = new Set(schemaModules.map((schema) => schema.id));
   const moduleById = new Map(schemaModules.map((schema) => [schema.id, schema]));
   const workspace = {
-    id: 'local-workspace-v85',
+    id: 'local-workspace-v88',
     name: 'Local parser workspace',
     mode: 'file-local',
     records: [],
@@ -135,9 +135,11 @@ The shell should not pretend child-specific validation passed. It should use roo
   };
   const state = {
     reader: 'scan',
+    verse: 'feed',
     markdown: demoArtifacts.topic,
     label: 'topic demo fixture',
     source: sourceForSample('topic'),
+    auditReport: null,
     workspace
   };
 
@@ -164,11 +166,17 @@ The shell should not pretend child-specific validation passed. It should use roo
     ['print', 'portable static reading']
   ];
 
+  const verses = [
+    { id: 'feed', label: 'Feed Verse', kind: 'scan', purpose: 'Arrange the current artifact set for quick human scanning without changing source truth.' },
+    { id: 'tree', label: 'Tree Verse', kind: 'continuity', purpose: 'Arrange the same artifact set by declared parent/child continuity without claiming missing parents are absent.' },
+    { id: 'node-graph', label: 'Node Graph Verse', kind: 'projection', purpose: 'Future graph arrangement over lineage nodes and edges.' }
+  ];
+
   const sourceModes = [
     { id: 'static-fixture', label: 'Static fixture', boundary: 'repo-bundled demo material', github: 'not guessed', write: 'none' },
     { id: 'local-file', label: 'Local file', boundary: 'user-selected browser File object', github: 'not guessed', write: 'none' },
     { id: 'draft', label: 'Draft / pasted', boundary: 'in-memory local draft text', github: 'not guessed', write: 'draft-only' },
-    { id: 'github-source-backed', label: 'GitHub source-backed', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v85' }
+    { id: 'github-source-backed', label: 'GitHub source-backed', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v88' }
   ];
 
   const root = document.getElementById('root');
@@ -189,6 +197,19 @@ The shell should not pretend child-specific validation passed. It should use roo
         renderCurrentArtifact();
       });
     });
+    document.querySelectorAll('[data-verse]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.verse = button.getAttribute('data-verse') || 'feed';
+        syncVerseButtons();
+        renderVerseParity();
+      });
+    });
+    document.querySelectorAll('[data-run-audit]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.auditReport = runWorkspaceAudit();
+        renderAuditReport();
+      });
+    });
     document.getElementById('parse-artifact')?.addEventListener('click', () => {
       loadArtifact(textarea.value, 'pasted/local input', sourceForPastedInput());
     });
@@ -201,6 +222,7 @@ The shell should not pretend child-specific validation passed. It should use roo
     });
     textarea.value = state.markdown;
     syncReaderButtons();
+    syncVerseButtons();
   }
 
   function runDemo(name) {
@@ -217,7 +239,14 @@ The shell should not pretend child-specific validation passed. It should use roo
     });
   }
 
+  function syncVerseButtons() {
+    document.querySelectorAll('[data-verse]').forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.getAttribute('data-verse') === state.verse));
+    });
+  }
+
   function loadArtifact(markdown, label, source) {
+    state.auditReport = null;
     state.markdown = markdown;
     state.label = label;
     state.source = source || sourceForPastedInput();
@@ -235,8 +264,151 @@ The shell should not pretend child-specific validation passed. It should use roo
   function renderCurrentArtifact() {
     renderArtifactResult(state.markdown, state.label, state.reader, state.source);
     renderWorkspaceState();
+    renderVerseParity();
+    renderAuditReport();
   }
 
+
+
+  function runWorkspaceAudit() {
+    const startedAt = new Date().toISOString();
+    const projections = state.workspace.records.map(viewModelFromRecord);
+    const findings = projections.flatMap((projection) => projection.findings.map((item) => Object.assign({ artifactTitle: projection.viewModel.title }, item)));
+    const findingSummary = summarizeFindings(findings);
+    const lineage = summarizeAuditLineage(projections);
+    const integrity = summarizeAuditIntegrity(projections);
+    const status = findingSummary.error > 0
+      ? 'attention-required'
+      : (findingSummary.warning > 0 || lineage.open > 0 || integrity.open > 0)
+        ? 'degraded-review'
+        : 'scaffold-complete';
+    return {
+      type: 'tiinex.web.audit.report.v88',
+      status,
+      startedAt,
+      completedAt: new Date().toISOString(),
+      selectedWorkspace: state.workspace.id,
+      recordsScanned: projections.length,
+      loadedBoundaries: 0,
+      networkFetches: 0,
+      sourceBoundary: 'no hidden source traversal; local/static/draft remain local/static/draft',
+      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v88 preserves that shape without network fetch yet',
+      lineage,
+      integrity,
+      findings,
+      findingSummary,
+      steps: [
+        'scan loaded workspace records',
+        'resolve current schema module for each loaded artifact',
+        're-run available load-time validators',
+        'identify declared parent edges whose target is not loaded',
+        'summarize integrity footer state without claiming byte verification',
+        'report missing lineage as open/pending, not absent'
+      ]
+    };
+  }
+
+  function summarizeAuditLineage(projections) {
+    let declaredParents = 0;
+    let localRoots = 0;
+    let resolvedLoaded = 0;
+    let open = 0;
+    const boundaries = [];
+    const byTraceOrSchema = new Map();
+    for (const projection of projections) {
+      const artifact = projection.artifact;
+      if (artifact.envelope.current.schema.id) byTraceOrSchema.set(artifact.envelope.current.schema.id, projection);
+      if (artifact.envelope.parent.trace) byTraceOrSchema.set(artifact.envelope.parent.trace, projection);
+    }
+    for (const projection of projections) {
+      const artifact = projection.artifact;
+      const model = projection.viewModel;
+      const parentSchema = artifact.envelope.parent.schema.id;
+      const parentTrace = artifact.envelope.parent.trace;
+      if (!parentSchema && !parentTrace) {
+        localRoots += 1;
+        continue;
+      }
+      declaredParents += 1;
+      const resolved = (parentTrace && byTraceOrSchema.has(parentTrace)) || (parentSchema && byTraceOrSchema.has(parentSchema));
+      if (resolved) resolvedLoaded += 1;
+      else {
+        open += 1;
+        boundaries.push({
+          artifact: model.title,
+          parentSchema: parentSchema || 'unknown parent schema',
+          parentTrace: parentTrace || 'no trace declared',
+          state: 'open-parent-boundary',
+          disclosure: 'Parent edge is declared but the parent artifact is not loaded in this workspace audit skeleton.'
+        });
+      }
+    }
+    return { declaredParents, localRoots, resolvedLoaded, open, pending: open, boundaries };
+  }
+
+  function summarizeAuditIntegrity(projections) {
+    const counts = { total: projections.length, verified: 0, mismatch: 0, open: 0, pending: 0 };
+    const entries = [];
+    for (const projection of projections) {
+      const artifact = projection.artifact;
+      const title = projection.viewModel.title;
+      if (!artifact.hasIntegrity) {
+        counts.open += 1;
+        entries.push({ title, status: 'open', detail: 'Continuity Integrity footer missing.' });
+      } else {
+        counts.pending += 1;
+        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v88 skeleton.' });
+      }
+    }
+    return counts.total ? Object.assign(counts, { entries }) : Object.assign(counts, { entries: [] });
+  }
+
+  function renderAuditReport() {
+    const target = document.getElementById('audit-report');
+    if (!target) return;
+    const report = state.auditReport;
+    if (!report) {
+      target.innerHTML = '<p class="tx-muted">Audit has not run yet. Use Audit loaded workspace to traverse the loaded set without hidden source fetches.</p>';
+      return;
+    }
+    const boundaryRows = report.lineage.boundaries.map((boundary) => `
+      <div class="tx-audit-boundary">
+        <strong>${escapeHtml(boundary.artifact)}</strong>
+        <div class="tx-muted">${escapeHtml(boundary.parentSchema)} · ${escapeHtml(boundary.parentTrace)}</div>
+        <p>${escapeHtml(boundary.disclosure)}</p>
+      </div>
+    `).join('') || '<p class="tx-muted">No open parent boundaries in the currently loaded workspace records.</p>';
+    const integrityRows = report.integrity.entries.map((entry) => row(entry.title, entry.detail, [entry.status])).join('');
+    target.innerHTML = `
+      <div class="tx-audit-head">
+        <div>
+          <div class="tx-eyebrow">Audit report</div>
+          <h3>Loaded workspace audit</h3>
+          <p class="tx-muted">Load-all skeleton: scans loaded artifacts, marks missing lineage as open, and preserves source boundaries. No network traversal yet.</p>
+        </div>
+        <div class="tx-badges">${badge(report.status)}${badge(`${report.recordsScanned} scanned`)}${badge(`${report.networkFetches} network fetches`)}</div>
+      </div>
+      <div class="tx-audit-counts">
+        <div><span>Findings</span><strong>${escapeHtml(formatFindingSummary(report.findingSummary))}</strong></div>
+        <div><span>Lineage</span><strong>${escapeHtml(`${report.lineage.resolvedLoaded} resolved · ${report.lineage.open} open`)}</strong></div>
+        <div><span>Integrity</span><strong>${escapeHtml(`${report.integrity.verified} verified · ${report.integrity.mismatch} mismatch · ${report.integrity.pending} pending · ${report.integrity.open} open`)}</strong></div>
+        <div><span>Loaded parents</span><strong>${escapeHtml(String(report.loadedBoundaries))}</strong></div>
+      </div>
+      <details class="tx-details" open>
+        <summary>Open lineage boundaries</summary>
+        <div class="tx-list">${boundaryRows}</div>
+      </details>
+      <details class="tx-details">
+        <summary>Integrity status</summary>
+        <div class="tx-list">${integrityRows}</div>
+      </details>
+      <details class="tx-details">
+        <summary>Audit steps</summary>
+        <ol class="tx-steps">${report.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ol>
+      </details>
+      <p class="tx-muted"><strong>Legacy lesson:</strong> ${escapeHtml(report.legacyLesson)}</p>
+    `;
+  }
 
   function renderWorkspaceState() {
     const target = document.getElementById('workspace-state');
@@ -487,14 +659,20 @@ The shell should not pretend child-specific validation passed. It should use roo
     return base;
   }
 
-  function renderArtifactResult(markdown, label, readerMode, source) {
-    const artifact = parseArtifactMarkdown(markdown);
+  function viewModelFromRecord(record) {
+    const artifact = parseArtifactMarkdown(record.markdown);
     const resolution = resolveSchemaModule(artifact.envelope.current.schema.id);
     const findings = validateArtifact(artifact, resolution);
     const summary = summarizeFindings(findings);
     const status = findings.some((item) => item.severity === 'error') ? 'invalid-or-incomplete' : resolution.fallbackUsed ? 'degraded' : 'readable';
-    const sourceBoundary = resolveSourceBoundary(source, artifact);
+    const sourceBoundary = resolveSourceBoundary(record.source, artifact);
     const viewModel = buildArtifactViewModel(artifact, resolution, findings, summary, status, sourceBoundary);
+    return { record, artifact, resolution, findings, summary, status, sourceBoundary, viewModel };
+  }
+
+  function renderArtifactResult(markdown, label, readerMode, source) {
+    const projection = viewModelFromRecord({ markdown, label, source });
+    const { artifact, findings, summary, status, viewModel } = projection;
     const target = document.getElementById('artifact-result');
     if (!target) return;
     target.innerHTML = `
@@ -541,6 +719,39 @@ The shell should not pretend child-specific validation passed. It should use roo
     `;
   }
 
+  function renderVerseParity() {
+    const target = document.getElementById('verse-surface');
+    if (!target) return;
+    const projections = state.workspace.records.map(viewModelFromRecord);
+    target.innerHTML = state.verse === 'tree' ? renderTreeVerse(projections) : renderFeedVerse(projections);
+  }
+
+  function renderFeedVerse(projections) {
+    const cards = projections.map((projection) => renderArtifactCard(projection.viewModel, state.reader)).join('');
+    return `
+      <div class="tx-reader-state">${badge('verse: feed')}${badge('surface parity')}${badge(`${projections.length} artifact${projections.length === 1 ? '' : 's'}`)}</div>
+      <p class="tx-muted">Feed Verse scans the workspace artifact set as cards. It changes arrangement and disclosure, not source truth.</p>
+      <div class="tx-verse-stack">${cards || '<p class="tx-muted">No artifacts loaded yet.</p>'}</div>
+    `;
+  }
+
+  function renderTreeVerse(projections) {
+    const rows = projections.map((projection) => {
+      const model = projection.viewModel;
+      return `<div class="tx-tree-row"><div><strong>${escapeHtml(model.title)}</strong><div class="tx-muted">${escapeHtml(model.parentLabel)} → ${escapeHtml(model.schemaId)}</div></div><div class="tx-badges">${badge(model.status)}${badge(model.sourceBoundary.kind)}</div></div>`;
+    }).join('');
+    return `
+      <div class="tx-reader-state">${badge('verse: tree')}${badge('same artifact set')}${badge('declared edges only')}</div>
+      <p class="tx-muted">Tree Verse arranges records by declared continuity. Missing parents remain unknown; they are not treated as absent until audit has more authority.</p>
+      <div class="tx-tree">${rows || '<p class="tx-muted">No artifacts loaded yet.</p>'}</div>
+    `;
+  }
+
+  function renderVerseConcept() {
+    const verseRows = verses.map((verse) => row(verse.label, verse.purpose, [verse.kind])).join('');
+    return `<p class="tx-muted"><strong>Verse:</strong> a bounded way to express, arrange, or experience one or more Tiinex artifacts without changing their source truth.</p><div class="tx-list">${verseRows}</div>`;
+  }
+
   function summarizeFindings(findings) {
     return findings.reduce((acc, item) => { acc[item.severity] = (acc[item.severity] || 0) + 1; return acc; }, { error: 0, warning: 0, info: 0, preserve: 0 });
   }
@@ -551,52 +762,124 @@ The shell should not pretend child-specific validation passed. It should use roo
     const readerRows = readers.map(([name, purpose]) => row(titleCase(name), purpose, ['reader'])).join('');
     const auditPlan = [
       'Audit remains a domain operation in src/audit/.',
-      'This v85 pass adds workspace state and explicit source-boundary disclosure to parsed artifact cards.',
-      'Validation still runs on artifact load; full lineage load-all audit remains v87 scope.',
-      'Root fallback cards disclose degraded state instead of claiming child-schema validity.'
+      'This v88 pass adds a loaded-workspace audit skeleton after reconstructing the workspace UX.',
+      'Validation still runs on artifact load; audit rechecks loaded records and marks missing lineage as open.',
+      'Root fallback cards disclose degraded state instead of claiming child-schema validity.',
+      'Legacy lesson kept: audit counts OK/mismatch/open/pending and shows loaded boundary progress.'
     ].join('\n');
 
     return `
-      <main class="tx-shell">
-        <header class="tx-topbar">
+      <main class="tx-shell tx-shell-workspace">
+        <header class="tx-global-dock" aria-label="Global Tiinex controls">
           <div class="tx-brand"><img class="tx-logo" src="./public/assets/tiinex-logo-white-transparent.png" alt=""><span>Tiinex Site</span></div>
-          <nav class="tx-toolbar"><span class="tx-pill">fresh v85 shell</span><span class="tx-pill">file-local safe</span><span class="tx-pill">workspace state</span><span class="tx-pill">source boundaries</span></nav>
+          <nav class="tx-toolbar tx-dock-actions">
+            <button class="tx-button" type="button">+ Create</button>
+            <button class="tx-button" type="button">Share</button>
+            <button class="tx-button" type="button">?</button>
+          </nav>
         </header>
-        <section class="tx-hero">
-          <h1>Tiinex Site workspace shell</h1>
-          <p class="tx-muted">A file-local runtime scaffold that keeps parsed Tiinex artifacts inside an explicit workspace and preserves source/draft boundaries without guessing GitHub provenance.</p>
-          <div class="tx-badges">${badge('app.js not loaded')}${badge('no ES module startup')}${badge('workspace cards')}${badge('source boundaries')}</div>
+
+        <section class="tx-workspace-window" aria-label="Tiinex workspace">
+          <div class="tx-window-titlebar">
+            <div class="tx-window-title">
+              <strong>Tiinex workspace</strong>
+              <span class="tx-badge tx-badge-soft">v88 UX reconstruction</span>
+            </div>
+            <div class="tx-window-stats tx-badges">
+              ${badge('file-local safe')}${badge('workspace frame')}${badge('app.js not loaded')}${badge('source rows kept')}${badge('audit load-all skeleton')}
+            </div>
+          </div>
+
+          <div class="tx-source-strip" aria-label="Source row">
+            <div class="tx-source-primary"><span class="tx-source-dot"></span><strong>Local parser workspace</strong><span class="tx-muted">explicit source boundary · no local→github guess</span></div>
+            <div class="tx-badges">${badge('static-fixture')}${badge('draft/local safe')}${badge('cache: none')}</div>
+          </div>
+
+          <div class="tx-mode-strip" aria-label="Mode controls">
+            <div class="tx-mode-name">DISCOVERY MODE</div>
+            <div class="tx-segment" aria-label="Verse projection"><button class="tx-button" data-verse="feed" type="button">Feed</button><button class="tx-button" data-verse="tree" type="button">Tree</button></div>
+            <div class="tx-segment" aria-label="Reader density"><button class="tx-button" data-reader="scan" type="button">Scan</button><button class="tx-button" data-reader="power" type="button">Power</button><button class="tx-button" data-reader="audit" type="button">Audit</button></div>
+            <button class="tx-button tx-audit-run" data-run-audit type="button">Audit loaded workspace</button>
+            <div class="tx-search-pill">Search title/body/schema…</div>
+          </div>
+
+          <div class="tx-workspace-body">
+            <aside class="tx-rail tx-left-rail" aria-label="Workspace controls">
+              <article class="tx-mini-card">
+                <h2>Sources</h2>
+                ${renderQuickControls()}
+              </article>
+              <article class="tx-mini-card">
+                <h2>Workspace state</h2>
+                <div id="workspace-state" class="tx-result tx-muted">Workspace state will render after artifact load.</div>
+              </article>
+              <article class="tx-mini-card tx-collapsible-card">
+                <details>
+                  <summary>Source boundary modes</summary>
+                  <div class="tx-list">${renderSourceModes()}</div>
+                </details>
+              </article>
+              <article class="tx-mini-card tx-collapsible-card">
+                ${renderParserControls()}
+              </article>
+            </aside>
+
+            <section class="tx-primary-stage" aria-label="Primary artifact verse">
+              <div class="tx-stage-header">
+                <div>
+                  <div class="tx-eyebrow">Workspace verse</div>
+                  <h1>Feed / Tree</h1>
+                </div>
+                <div class="tx-badges">${badge('same artifacts')}${badge('arrangement only')}${badge('source truth preserved')}</div>
+              </div>
+              <div id="verse-surface" class="tx-result tx-muted">Verse projection will render after artifact load.</div>
+              <section class="tx-audit-surface" aria-label="Audit report surface">
+                <div class="tx-stage-subhead">
+                  <div><strong>Audit load-all skeleton</strong><div class="tx-muted">Loaded workspace audit; missing parent lineage stays open until source traversal exists.</div></div>
+                  <button class="tx-button" data-run-audit type="button">Run audit</button>
+                </div>
+                <div id="audit-report" class="tx-result tx-muted">Audit report will render after artifact load.</div>
+              </section>
+            </section>
+
+            <aside class="tx-rail tx-inspector" aria-label="Artifact inspector">
+              <article class="tx-mini-card tx-inspector-card">
+                <h2>Artifact inspector</h2>
+                <div id="artifact-result" class="tx-result tx-muted">Choose a sample or load a local Markdown file.</div>
+              </article>
+            </aside>
+          </div>
         </section>
-        <section class="tx-grid tx-grid-wide">
-          <article class="tx-card"><h2>Artifact parser demo</h2>${renderParserControls()}</article>
-          <article class="tx-card"><h2>Artifact card surface</h2><div id="artifact-result" class="tx-result tx-muted">Choose a sample or load a local Markdown file.</div></article>
-          <article class="tx-card"><h2>Workspace state</h2><div id="workspace-state" class="tx-result tx-muted">Workspace state will render after artifact load.</div></article>
-          <article class="tx-card"><h2>Source boundary modes</h2><div class="tx-list">${renderSourceModes()}</div></article>
+
+        <section class="tx-secondary-grid" aria-label="Secondary grounding">
+          <article class="tx-card"><h2>Verse concept</h2>${renderVerseConcept()}</article>
           <article class="tx-card"><h2>Schema module projection</h2><div class="tx-list">${schemaRows}</div></article>
-          <article class="tx-card"><h2>Presentation surfaces</h2><div class="tx-list">${surfaceRows}</div></article>
-          <article class="tx-card"><h2>Reader modes</h2><div class="tx-list">${readerRows}</div></article>
+          <article class="tx-card tx-collapsible-card"><details><summary>Presentation surfaces</summary><div class="tx-list">${surfaceRows}</div></details></article>
+          <article class="tx-card tx-collapsible-card"><details><summary>Reader modes</summary><div class="tx-list">${readerRows}</div></details></article>
           <article class="tx-card"><h2>Audit ownership</h2><pre>${escapeHtml(auditPlan)}</pre></article>
           <article class="tx-card tx-warning"><h2>Boundary</h2><p class="tx-muted">The v79 app is archived in <code>.old/</code> for UX and behavior reference. It is ignored by git and not imported by this runtime.</p></article>
         </section>
       </main>`;
   }
 
-  function renderParserControls() {
+  function renderQuickControls() {
     return `
-      <div class="tx-toolbar tx-toolbar-local">
+      <div class="tx-toolbar tx-toolbar-local tx-sample-row">
         <button class="tx-button" data-sample="topic">Topic sample</button>
         <button class="tx-button" data-sample="evidence">Evidence sample</button>
-        <button class="tx-button" data-sample="unknown">Unknown schema sample</button>
+        <button class="tx-button" data-sample="unknown">Unknown schema</button>
       </div>
-      <div class="tx-reader-picker" aria-label="Reader density">
-        <span>Reader density</span>
-        <button class="tx-button" data-reader="scan" type="button">Scan</button>
-        <button class="tx-button" data-reader="power" type="button">Power</button>
-        <button class="tx-button" data-reader="audit" type="button">Audit</button>
-      </div>
-      <label class="tx-file"><span>Load local Markdown</span><input id="artifact-file" type="file" accept=".md,.markdown,text/markdown,text/plain"></label>
-      <textarea id="artifact-input" spellcheck="false"></textarea>
-      <button id="parse-artifact" class="tx-button tx-primary">Parse artifact</button>
+      <label class="tx-file tx-file-compact"><span>Load Markdown</span><input id="artifact-file" type="file" accept=".md,.markdown,text/markdown,text/plain"></label>
+    `;
+  }
+
+  function renderParserControls() {
+    return `
+      <details>
+        <summary>Draft / pasted artifact input</summary>
+        <textarea id="artifact-input" spellcheck="false"></textarea>
+        <button id="parse-artifact" class="tx-button tx-primary">Parse artifact</button>
+      </details>
     `;
   }
 

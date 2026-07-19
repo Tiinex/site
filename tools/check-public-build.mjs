@@ -14,10 +14,10 @@ function read(p) { return readFileSync(p, 'utf8'); }
 try {
   const build = spawnSync(process.execPath, ['tools/build-public.mjs', '--out', out], { cwd: root, encoding: 'utf8' });
   if (build.status !== 0) fail(build.stderr || build.stdout);
-  for (const required of ['index.html', 'src/main.js', 'src/artifacts/fixtures/topic.trace.md', 'src/artifacts/fixtures/unknown-schema.trace.md', 'src/schemas/root.schema.json', 'src/audit/audit.run.js', 'src/workspaces/workspace.model.js', 'src/sources/source.boundaries.js', 'docs/architecture/audit-ownership.md', 'README.md', 'llms.txt', 'tiinex.build.json', '.nojekyll']) {
+  for (const required of ['index.html', 'src/main.js', 'src/artifacts/fixtures/topic.trace.md', 'src/artifacts/fixtures/unknown-schema.trace.md', 'src/schemas/root.schema.json', 'src/audit/audit.run.js', 'src/workspaces/workspace.model.js', 'src/sources/source.boundaries.js', 'docs/architecture/audit-ownership.md', 'docs/architecture/verse.md', 'src/verses/contracts.js', 'src/verses/registry.js', 'README.md', 'llms.txt', 'tiinex.build.json', '.nojekyll']) {
     if (!existsSync(join(out, required))) fail(`Missing public output: ${required}`);
   }
-  for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini']) {
+  for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini', 'src/leaflets']) {
     if (existsSync(join(out, forbidden))) fail(`Public output must not contain ${forbidden}`);
   }
   const html = existsSync(join(out, 'index.html')) ? read(join(out, 'index.html')) : '';
@@ -30,6 +30,12 @@ try {
   if (!main.includes('data-reader')) fail('Fresh public runtime must expose reader density controls');
   if (!main.includes('workspace-state')) fail('Fresh public runtime must render workspace state');
   if (!main.includes('no local→github guess')) fail('Fresh public runtime must preserve source boundary disclosure');
+  if (!main.includes('data-verse')) fail('Fresh public runtime must expose Feed/Tree Verse controls');
+  if (!main.includes('renderFeedVerse') || !main.includes('renderTreeVerse')) fail('Fresh public runtime must render Feed and Tree Verse parity');
+if (!main.includes('tx-workspace-window')) fail('Fresh public runtime must render Tiinex workspace window frame');
+if (!main.includes('tx-source-strip')) fail('Fresh public runtime must render source row/strip');
+if (!main.includes('tx-mode-strip')) fail('Fresh public runtime must render mode row/strip');
+if (!main.includes('tx-primary-stage')) fail('Fresh public runtime must make Feed/Tree the primary workspace stage');
   if (html.includes('type="module"') || html.includes("type='module'")) fail('Fresh public index must be file-local safe and not use ES module startup');
   const identityPath = join(out, 'tiinex.build.json');
   if (existsSync(identityPath)) {

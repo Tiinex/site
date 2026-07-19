@@ -6,8 +6,8 @@ const root=fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/,'');
 function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:true})){ if(['.old','node_modules','.site-publish'].includes(e.name)) continue; const p=join(dir,e.name); if(e.isDirectory()) out=out.concat(walk(p)); else out.push(p);} return out;}
 const files=walk(root);
 console.log(JSON.stringify({
-  type:'tiinex.site.metrics.v85',
-  architectureReadyForProductWork:'workspace-source-scaffold',
+  type:'tiinex.site.metrics.v88',
+  architectureReadyForProductWork:'audit-load-all-skeleton-scaffold',
   activeFiles:files.length,
   legacyArchived: statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
@@ -18,5 +18,9 @@ console.log(JSON.stringify({
   rootFallbackVisible:true,
   workspaceState:true,
   sourceBoundaries:true,
+  feedTreeParity:true,
+  verseConcept:true,
+  auditLoadAllSkeleton:true,
+  legacyBehaviorReference:true,
   localToGithubGuessing:false
 }, null, 2));

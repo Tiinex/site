@@ -1,15 +1,21 @@
 # Continuation Guide
 
-Start by reading `README.md`, `docs/architecture/*.md`, and `src/schemas/README.md`.
+## Current checkpoint
 
-Do not import from `.old/`. Treat `.old/` as legacy evidence only. Keep v82 focused on schema binding hardening until the shell, bindings, validators, surfaces, readers, i18n, and audit boundaries are accepted.
+v86 is a fresh runtime ownership checkpoint. The v79 app is archived under `.old/` as ignored local reference material. The active app starts from `index.html` through `src/main.js` and must remain file-local safe.
 
+## Discipline
 
-## v82 local-open correction
+- Do not develop new architecture inside `.old/` or `app.js`.
+- Preserve local `index.html` testing unless Q explicitly approves a different loop.
+- Do not infer GitHub source authority from local, pasted, draft, or static fixture material.
+- Keep audit as a domain operation in `src/audit/`, not as per-schema presentation code.
+- Keep Verse human-first: a bounded arrangement/experience of artifacts, not a framework component or hidden truth engine.
 
-The active reset shell must open directly through local `index.html`. Do not make the first visible startup path depend on ES module loading, a dev server, generated `.site-publish`, or legacy `.old/app.js`. Future React/TypeScript ownership can be added behind a build/dev path, but Q's manual validation loop must keep a file-local entrypoint until explicitly changed.
+## Next planned iteration
 
+v87 should implement the audit load-all skeleton: planning traversal, marking missing lineage, rechecking validation when more authority is loaded, and showing audit summary counts without claiming complete validation where authority is unavailable.
 
-## v85 Source Boundary Discipline
+## Legacy behavior reference discipline
 
-Workspace state now records whether material came from a static fixture, a user-selected local file, pasted draft text, or an explicit source-backed descriptor. Local, draft, and static material must not be promoted into GitHub source authority by guesswork.
+During the refactor, `.old/` is not runtime and must not be imported. It is still behavior evidence. For every rebuilt feature slice, inspect the corresponding legacy flow first, identify which behavior existed for a reason, and carry that lesson into the new owner structure without copying the monolith.
