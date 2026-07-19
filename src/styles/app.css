@@ -1551,3 +1551,26 @@ pre { white-space: pre-wrap; overflow:auto; }
   }
   .tx-shell-config-grounded .tx-dock-right { gap: 5px; }
 }
+
+/* v110: route-grounded dock ordering. Create sits left of the centered logo; logo is a home/reset route command. */
+.tx-shell-route-grounded .tx-logo-home {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  cursor: pointer;
+}
+.tx-shell-route-grounded .tx-logo-home:focus-visible {
+  outline: 2px solid rgba(220,176,255,.9);
+  outline-offset: 3px;
+}
+.tx-shell-route-grounded .tx-centered-dock-core {
+  grid-template-columns: minmax(170px, 1fr) 44px minmax(170px, 1fr);
+}
+.tx-shell-route-grounded .tx-dock-left { justify-content: flex-end; }
+.tx-shell-route-grounded .tx-dock-right { justify-content: flex-start; }
+@media (max-width: 640px) {
+  .tx-shell-route-grounded .tx-centered-dock-core {
+    grid-template-columns: minmax(86px, 1fr) 42px minmax(86px, 1fr);
+  }
+  .tx-shell-route-grounded .tx-multiverse-switch + .tx-primary-orb strong { display: none; }
+}

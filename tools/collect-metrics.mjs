@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/,'');
 function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:true})){ if(['.old','node_modules','.site-publish','.git'].includes(e.name)) continue; const p=join(dir,e.name); if(e.isDirectory()) out=out.concat(walk(p)); else out.push(p);} return out;}
 const files=walk(root);
 console.log(JSON.stringify({
-  type:'tiinex.site.metrics.v109',
+  type:'tiinex.site.metrics.v110',
   architectureReadyForProductWork:'uc001-empty-create-restore-close',
   activeFiles:files.length,
   legacyArchived: statSync(join(root,'.old')).isDirectory(),
@@ -22,6 +22,9 @@ console.log(JSON.stringify({
   uc001WorkspaceNameRequired:true,
   uc001HashState:true,
   uc001LocalStorageCache:true,
+  uc001CleanUrlIgnoresStaleCache:true,
+  uc001RouteBackForward:true,
+  schemaOriginsExplicit:true,
   uc001CloseWorkspaceConfirm:true,
   uc001CloseIsNonDestructive:true,
   coLocatedWorkspaceTests: existsSync(join(root,'src/workspaces/workspace.lifecycle.test.mjs')),

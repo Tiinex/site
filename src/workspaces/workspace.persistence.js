@@ -37,31 +37,53 @@
     const storage = env.storage || global.localStorage;
     const locationLike = env.location || global.location;
     const historyLike = env.history || global.history;
-    const encoded = encodeState(state);
-    try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+    const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(state) || state;
+    const encoded = encodeState(routeState);
+    try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(routeState)); } catch (_) {}
     const nextHash = `${HASH_PREFIX}${encoded}`;
-    try {
-      const pathname = locationLike?.pathname || '';
-      const search = locationLike?.search || '';
-      historyLike?.replaceState?.(null, '', `${pathname}${search}${nextHash}`);
-      if (!historyLike?.replaceState && locationLike) locationLike.hash = nextHash;
-    } catch (_) {}
+    const mode = env.mode === 'push' ? 'push' : 'replace';
+    writeUrlHash(nextHash, { mode, locationLike, historyLike, historyState: routeHistoryState(routeState, env.historyIndex) });
     return nextHash;
   }
 
+  function writeUrlHash(nextHash, options = {}) {
+    const mode = options.mode === 'push' ? 'push' : 'replace';
+    const locationLike = options.locationLike || global.location;
+    const historyLike = options.historyLike || global.history;
+    const pathname = locationLike?.pathname || '';
+    const search = locationLike?.search || '';
+    const url = `${pathname}${search}${nextHash || ''}`;
+    try {
+      if (mode === 'push' && historyLike?.pushState) historyLike.pushState(options.historyState || null, '', url);
+      else if (historyLike?.replaceState) historyLike.replaceState(options.historyState || null, '', url);
+      else if (locationLike) locationLike.hash = nextHash || '';
+    } catch (_) {}
+  }
+
+  function routeHistoryState(routeState, explicitIndex) {
+    const index = Number.isFinite(Number(explicitIndex)) ? Number(explicitIndex) : Date.now();
+    return Object.assign({}, global.TiinexWorkspaceRoute?.routeSummary?.(routeState) || {}, { __tiinexRouteIndex: index });
+  }
+
   function readInitialState(env = {}) {
-    return readHashState(env.location || global.location) || readStoredState(env.storage || global.localStorage) || null;
+    const hashState = readHashState(env.location || global.location);
+    if (hashState) return hashState;
+    return null;
   }
 
   function clearState(env = {}) {
     const storage = env.storage || global.localStorage;
     const locationLike = env.location || global.location;
     const historyLike = env.history || global.history;
+    const mode = env.mode === 'push' ? 'push' : 'replace';
     try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
     try {
       const pathname = locationLike?.pathname || '';
       const search = locationLike?.search || '';
-      historyLike?.replaceState?.(null, '', `${pathname}${search}`);
+      const url = `${pathname}${search}`;
+      if (mode === 'push' && historyLike?.pushState) historyLike.pushState({ v: 'empty', workspaces: 0 }, '', url);
+      else historyLike?.replaceState?.({ v: 'empty', workspaces: 0 }, '', url);
+      if (!historyLike?.replaceState && locationLike) locationLike.hash = '';
     } catch (_) {}
   }
 
@@ -88,6 +110,7 @@
     readHashState,
     readInitialState,
     readStoredState,
-    writeState
+    writeState,
+    writeUrlHash
   };
 })(typeof window !== 'undefined' ? window : globalThis);

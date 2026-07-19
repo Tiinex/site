@@ -28,7 +28,7 @@ function makeContext(hash = '') {
       removeItem: (key) => storage.delete(key)
     },
     location: { pathname: '/index.html', search: '', hash },
-    history: { replaceState: (_state, _title, url) => { context.location.hash = String(url).split('#')[1] ? `#${String(url).split('#')[1]}` : ''; } }
+    history: { replaceState: (_state, _title, url) => { context.location.hash = String(url).split('#')[1] ? `#${String(url).split('#')[1]}` : ''; }, pushState: (_state, _title, url) => { context.location.hash = String(url).split('#')[1] ? `#${String(url).split('#')[1]}` : ''; } }, addEventListener: () => {}
   };
   context.window = context;
   context.globalThis = context;
@@ -45,6 +45,7 @@ function runStartup(hash = '') {
   runScript(context, 'src/ui/icon.paths.js');
   runScript(context, 'src/workspaces/workspace.config.js');
   runScript(context, 'src/workspaces/workspace.lifecycle.js');
+  runScript(context, 'src/workspaces/workspace.route.js');
   runScript(context, 'src/workspaces/workspace.persistence.js');
   runScript(context, 'src/main.js');
   return rootElement.innerHTML;
@@ -57,6 +58,7 @@ try {
   if (!html.includes('tx-centered-dock-core')) failures.push('empty startup did not render centered dock');
   if (!html.includes('data-multiverse')) failures.push('empty startup did not render real multiverse control');
   if (!html.includes('data-create-workspace')) failures.push('empty startup did not keep dock create affordance');
+  if (!html.includes('data-home')) failures.push('empty startup did not keep centered logo home affordance');
 } catch (error) {
   failures.push(`fresh startup threw: ${error.stack || error.message}`);
 }
@@ -72,6 +74,7 @@ const main = readFileSync(join(root, 'src/main.js'), 'utf8');
 if (!main.includes('window.TiinexIconPaths')) failures.push('main must read icon paths from the UI vocabulary module');
 if (!main.includes('window.TiinexWorkspaceConfig')) failures.push('main must read empty-stage config from the workspace config parser');
 if (!main.includes('workspaceConfig.help')) failures.push('main must expose parsed workspace help');
+if (!main.includes('TiinexWorkspaceRoute')) failures.push('main must use route normalization module');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));

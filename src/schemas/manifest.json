@@ -1,6 +1,6 @@
 {
   "type": "tiinex.web.schema-module.manifest.v1",
-  "version": "v82",
+  "version": "v110",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "52ecdea0a75893882ce282214d155f70e1309c2a",
   "modules": [
@@ -51,6 +51,26 @@
       "path": "schema/module/module.schema.json",
       "checksum": "7ba71d49e607b84d746874f3eee82148478caceefb52a684134ea2899bea3bbf",
       "sourceBlobSha": "b4283720ae22d6342c5087e10c7260fdf0989505"
+    }
+  ],
+  "originPolicy": "multi-origin-explicit",
+  "origins": [
+    {
+      "id": "tiinex-docs",
+      "label": "Tiinex docs schemas",
+      "kind": "github-tree",
+      "repository": "Tiinex/docs",
+      "ref": "master",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core"
+    },
+    {
+      "id": "viewer-local",
+      "label": "Viewer local schemas",
+      "kind": "app-local",
+      "repository": "Tiinex/site",
+      "rootPath": "src/schemas",
+      "trustRole": "viewer-extension"
     }
   ]
 }

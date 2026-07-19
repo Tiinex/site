@@ -1,29 +1,35 @@
-# Validation Notes v109
+# Validation Notes v110
 
 ## Status
 
-UC-001 desktop shell is implemented:
+UC-001 desktop shell is implemented with route-grounded behavior:
 
 - empty Column start
 - create local/session workspace
 - workspace name required
 - no local/session to GitHub provenance guess
 - URL hash view-state ownership
-- local storage recovery cache
+- local storage cache mirror for hash-owned state
+- clean URL ignores stale localStorage cache
+- browser back/forward restores route states
+- centered Tiinex logo returns to clean home route
 - non-destructive close confirmation
 - return to empty state after close
 
 ## Co-located tests
 
+- `src/schemas/origins.test.mjs`
+- `src/workspaces/workspace.config.test.mjs`
 - `src/workspaces/workspace.lifecycle.test.mjs`
 - `src/workspaces/workspace.persistence.test.mjs`
+- `src/workspaces/workspace.route.test.mjs`
 
 ## Commands run
 
 ```bash
-node --check all src/tools js/mjs
 npm run validate
 npm run ui:shape
+npm run runtime:smoke
 npm run usecase:uc001
 npm run build:public
 npm run public:check
@@ -39,16 +45,10 @@ npm test
 - Add/import local markdown into a created workspace is not yet implemented.
 - Map/Atlas/Leaflet remain frozen until Column happy path has proved old use-cases.
 
+## v110 note
 
-## v108 validation
-
-Passed validate, ui:shape, runtime:smoke, usecase:uc001, build:public, public:check, metrics, storage:scan, npm test, and zip integrity.
-
-Manual focus for Q: empty start should now match the old Tiinex.dev blank start much more closely: no workspace shell, no onboarding card, no default button styling leak.
-
-## v109 note
-
-- Restored `.topics/.workspaces/viewer.workspace.md` as root config material outside `.old`.
-- Expanded `.workspace.md` parsing for viewer identity, empty stage, discovery, entrypoints, mirrors, transports, and help.
-- Added runtime behavior for global multiverse/help/share controls instead of leaving them as visual-only scaffolds.
-- Re-centered the empty-stage dock around the Tiinex logo.
+- Added `src/workspaces/workspace.route.js` so route shape is explicit and portable.
+- Changed clean startup so stale localStorage does not reopen a workspace without `#state=`.
+- Added push/replace history modes so create/close/verse changes can participate in browser back/forward.
+- Moved Create to the left of the centered logo; logo is now a home route control.
+- Added schema-origin support for Tiinex/docs plus viewer/fork extension schemas.

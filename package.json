@@ -1,6 +1,6 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v109",
+  "version": "0.2.0-v110",
   "private": true,
   "description": "Tiinex Site UC-001 shell with runtime empty stage parity for empty/create/restore/close and source-clean public bundle.",
   "type": "module",

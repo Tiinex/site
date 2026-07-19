@@ -27,6 +27,22 @@
 - Subtitle: A thread is waiting
 - Subtitle: Nothing starts from nothing
 
+## Schema Origins
+
+- [Tiinex docs schemas](https://github.com/Tiinex/docs/tree/master/.topics/.schemas)
+  - Kind: github-tree
+  - Repository: Tiinex/docs
+  - Ref: master
+  - Root Path: .topics/.schemas
+  - Trust Role: canonical-core
+
+- [Viewer local schemas](../../src/schemas)
+  - Kind: app-local
+  - Repository: Tiinex/site
+  - Root Path: src/schemas
+  - Trust Role: viewer-extension
+  - Purpose: app-specific schema projections and viewer-only modules
+
 ## Workspace Discovery
 
 - [Tiinex docs workspaces](https://github.com/Tiinex/docs)

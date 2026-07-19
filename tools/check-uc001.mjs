@@ -19,9 +19,11 @@ function lacks(text, needle, label = needle) { if (text.includes(needle)) failur
 has(index, './src/ui/icon.paths.js', 'index must load icon vocabulary before main');
 has(index, './src/workspaces/workspace.config.js', 'index must load workspace config before lifecycle/main');
 has(index, './src/workspaces/workspace.lifecycle.js', 'index must load workspace lifecycle before main');
+has(index, './src/workspaces/workspace.route.js', 'index must load workspace route before main');
 has(index, './src/workspaces/workspace.persistence.js', 'index must load workspace persistence before main');
 has(icons, 'multiverse', 'icon vocabulary must include multiverse switch icon');
 has(config, 'parseWorkspaceConfig', '.workspace.md config parser missing');
+has(config, 'schemaOrigins', '.workspace.md schema origin parser missing');
 has(config, 'workspaceEntrypoints', '.workspace.md entrypoint parser missing');
 has(config, 'repositoryMirrors', '.workspace.md mirror parser missing');
 has(config, 'repositoryTransports', '.workspace.md transport parser missing');
@@ -29,6 +31,7 @@ has(config, 'Every handoff starts somewhere', 'default empty-stage subtitle miss
 has(lifecycle, 'createWorkspace', 'workspace lifecycle must own createWorkspace');
 has(lifecycle, 'closeWorkspace', 'workspace lifecycle must own closeWorkspace');
 has(lifecycle, 'no source files or GitHub provenance inferred', 'workspace creation must preserve no-GitHub boundary');
+has(readFileSync(join(root, 'src/workspaces/workspace.route.js'), 'utf8'), 'makeRouteState', 'workspace route module must own URL view state shape');
 has(persistence, 'HASH_PREFIX', 'workspace persistence must own URL hash state');
 has(persistence, 'localStorage', 'workspace persistence must cache state in local storage');
 has(main, 'tx-empty-stage', 'quiet empty stage missing');
@@ -38,6 +41,7 @@ has(main, 'data-multiverse', 'multiverse switch must open a real dialog');
 has(main, 'data-help', 'help button must open parsed workspace help');
 has(main, 'data-share', 'share button must open share behavior');
 has(main, 'tx-centered-dock-core', 'empty dock must center the logo');
+has(main, 'data-home', 'center logo must route home like legacy viewer brand');
 has(main, 'data-create-workspace', 'create workspace affordance missing');
 has(main, 'create-workspace-form', 'create workspace form missing');
 has(main, 'workspace.name.required', 'workspace name validation missing');
@@ -53,7 +57,7 @@ lacks(main, 'tx-empty-card', 'empty startup must not use large onboarding card')
 lacks(main, 'demoArtifacts', 'v109 UC-001 must not boot from demo fixture artifacts');
 lacks(main, 'renderMapVerse', 'Map must stay frozen during Column happy path');
 
-for (const test of ['src/ui/icon.paths.test.mjs', 'src/workspaces/workspace.config.test.mjs', 'src/workspaces/workspace.lifecycle.test.mjs', 'src/workspaces/workspace.persistence.test.mjs']) {
+for (const test of ['src/ui/icon.paths.test.mjs', 'src/schemas/origins.test.mjs', 'src/workspaces/workspace.config.test.mjs', 'src/workspaces/workspace.lifecycle.test.mjs', 'src/workspaces/workspace.route.test.mjs', 'src/workspaces/workspace.persistence.test.mjs']) {
   const result = spawnSync(process.execPath, [join(root, test)], { encoding: 'utf8' });
   if (result.status !== 0) failures.push(`${test} failed:\n${result.stdout}\n${result.stderr}`);
 }

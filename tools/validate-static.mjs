@@ -27,11 +27,11 @@ if (!readFileSync(path('.gitignore'), 'utf8').includes('.old/')) failures.push('
 const index = readFileSync(path('index.html'), 'utf8');
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (index.includes('type="module"') || index.includes("type='module'")) failures.push('index.html must remain file-local safe and not use ES module startup');
-if (!index.includes('./src/ui/icon.paths.js') || !index.includes('./src/workspaces/workspace.config.js') || !index.includes('./src/workspaces/workspace.lifecycle.js') || !index.includes('./src/workspaces/workspace.persistence.js') || !index.includes('./src/main.js')) failures.push('index.html must load UC-001 scripts in order');
+if (!index.includes('./src/ui/icon.paths.js') || !index.includes('./src/workspaces/workspace.config.js') || !index.includes('./src/workspaces/workspace.lifecycle.js') || !index.includes('./src/workspaces/workspace.route.js') || !index.includes('./src/workspaces/workspace.persistence.js') || !index.includes('./src/main.js')) failures.push('index.html must load UC-001 scripts in order');
 
 const main = readFileSync(path('src/main.js'), 'utf8');
 if (/^\s*import\s/m.test(main) || /^\s*export\s/m.test(main)) failures.push('src/main.js must remain file-local safe with no import/export startup');
-if (main.split('\n').length > 420) failures.push('src/main.js exceeds v109 size ceiling; extract more code before continuing');
+if (main.split('\n').length > 420) failures.push('src/main.js exceeds v110 size ceiling; extract more code before continuing');
 
 for (const required of [
   'src/ui/icon.paths.js',
@@ -39,7 +39,9 @@ for (const required of [
   'src/workspaces/workspace.config.js',
   'src/workspaces/workspace.config.test.mjs',
   'src/workspaces/workspace.lifecycle.js',
+  'src/workspaces/workspace.route.js',
   'src/workspaces/workspace.persistence.js',
+  'src/workspaces/workspace.route.test.mjs',
   'src/workspaces/workspace.lifecycle.test.mjs',
   'src/workspaces/workspace.persistence.test.mjs',
   'src/commands/command.vocabulary.js',
@@ -56,6 +58,11 @@ has('src/workspaces/workspace.config.js', 'workspaceEntrypoints', 'workspace con
 has('src/workspaces/workspace.config.js', 'repositoryMirrors', 'workspace config parser must parse mirrors');
 has('src/workspaces/workspace.config.js', 'repositoryTransports', 'workspace config parser must parse transports');
 has('src/workspaces/workspace.config.js', 'parseHelp', 'workspace config parser must parse help entries');
+has('src/workspaces/workspace.config.js', 'schemaOrigins', 'workspace config parser must parse schema origins');
+has('src/workspaces/workspace.route.js', 'makeRouteState', 'workspace route module must own compact route state');
+has('src/workspaces/workspace.route.js', 'normalizeRouteState', 'workspace route module must own route restoration');
+has('src/schemas/README.md', 'not the only allowed origin', 'schema README must avoid Tiinex/docs lock-in');
+has('src/schemas/origins.js', 'schemaOriginsFromWorkspaceConfig', 'schema origin module missing');
 has('src/workspaces/workspace.lifecycle.js', 'createWorkspace', 'workspace lifecycle must own creation');
 has('src/workspaces/workspace.lifecycle.js', 'closeWorkspace', 'workspace lifecycle must own closing');
 has('src/workspaces/workspace.persistence.js', 'HASH_PREFIX', 'workspace persistence must own hash state');
@@ -64,6 +71,8 @@ has('src/main.js', 'tx-empty-stage', 'main must render quiet empty workspace sta
 has('src/main.js', 'TiinexWorkspaceConfig', 'main must use workspace config for empty stage');
 has('src/main.js', 'tx-multiverse-switch', 'main must expose multiverse switch left of logo');
 has('src/main.js', 'tx-shell-config-grounded', 'main must opt into workspace config grounded shell');
+has('src/main.js', 'tx-shell-route-grounded', 'main must opt into route-grounded shell');
+has('src/main.js', 'data-home', 'logo must be a route-home command');
 has('src/main.js', 'data-help', 'global help control must have runtime behavior');
 has('src/main.js', 'data-share', 'global share control must have runtime behavior');
 has('src/main.js', 'data-multiverse', 'multiverse control must have runtime behavior');

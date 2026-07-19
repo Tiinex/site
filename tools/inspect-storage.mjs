@@ -10,4 +10,4 @@ if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));
   process.exit(1);
 }
-console.log('✓ storage scan passed for v109 hash/local-storage workspace lifecycle');
+console.log('✓ storage scan passed for v110 hash/local-storage workspace lifecycle');

@@ -14,6 +14,8 @@ if (parsed.viewerIdentity.browserTitle !== 'Tiinex') throw new Error('viewer ide
 if (parsed.viewerIdentity.publicViewerUrl !== 'https://tiinex.dev/') throw new Error('public viewer URL did not parse');
 if (!parsed.emptyStage.subtitles.includes('Every handoff starts somewhere')) throw new Error('empty stage subtitles did not parse');
 if (api.emptyStageSubtitle(parsed) !== 'Every handoff starts somewhere') throw new Error('empty stage subtitle should use first configured subtitle by default');
+if (parsed.schemaOrigins[0]?.repository !== 'Tiinex/docs') throw new Error('schema origins did not parse canonical origin');
+if (parsed.schemaOrigins[1]?.trustRole !== 'viewer-extension') throw new Error('schema origins did not parse viewer extension origin');
 if (parsed.workspaceDiscovery[0]?.kind !== 'github-tree') throw new Error('workspace discovery group did not parse');
 if (parsed.workspaceEntrypoints[0]?.repository !== 'Tiinex/docs') throw new Error('workspace entrypoint repository did not parse');
 if (parsed.repositoryMirrors.length < 2) throw new Error('repository mirrors did not parse');

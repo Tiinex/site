@@ -1,6 +1,6 @@
 # Workspace config grounding
 
-v109 restores the `.workspace.md` entrypoint as runtime input instead of treating empty-start copy and viewer help as hardcoded UI strings.
+v109/v110 restores the `.workspace.md` entrypoint as runtime input instead of treating empty-start copy and viewer help as hardcoded UI strings.
 
 ## Contract
 
@@ -13,3 +13,8 @@ v109 restores the `.workspace.md` entrypoint as runtime input instead of treatin
 ## File-size boundary
 
 `src/main.js` stays under the current 420-line ceiling. Config parsing, lifecycle, persistence, and icon vocabulary remain separated so the UI behavior can be ported to CLI or remote renderers without scraping DOM text.
+
+
+## v110 extension
+
+v110 adds explicit Schema Origins so app-specific and fork-local schema modules can be declared without pretending they came from Tiinex/docs.

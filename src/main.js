@@ -2,36 +2,44 @@
   'use strict';
 
   const lifecycle = window.TiinexWorkspaceLifecycle;
+  const route = window.TiinexWorkspaceRoute;
   const persistence = window.TiinexWorkspacePersistence;
   const root = document.getElementById('root');
-  const VERSION_LABEL = 'v109 workspace config';
+  const VERSION_LABEL = 'v110 route grounded';
   const workspaceConfig = window.TiinexWorkspaceConfig?.createDefaultWorkspaceConfig?.() || { emptyStage: { subtitles: ['Everything starts from somewhere.'] }, viewerIdentity: { browserTitle: 'Tiinex' }, help: [] };
   const iconPaths = window.TiinexIconPaths || {};
   if (workspaceConfig.viewerIdentity?.browserTitle && document?.title !== undefined) document.title = workspaceConfig.viewerIdentity.browserTitle;
-  if (!root || !lifecycle || !persistence) return;
+  if (!root || !lifecycle || !persistence || !route) return;
 
   let state = hydrateState();
   let dialog = null;
   let notice = '';
 
   render();
+  bindRouteEvents();
 
   function hydrateState() {
-    const restored = persistence.readInitialState() || lifecycle.makeEmptyAppState();
-    const base = lifecycle.cloneState(restored);
-    base.workspaces = Array.isArray(base.workspaces) ? base.workspaces : [];
-    base.activeWorkspaceId = base.workspaces.some((item) => item.id === base.activeWorkspaceId)
-      ? base.activeWorkspaceId
-      : (base.workspaces[0]?.id || '');
-    base.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, base.view || {});
-    return base;
+    const restored = persistence.readInitialState();
+    return route.normalizeRouteState(restored, lifecycle);
   }
 
-  function commit(next) {
-    state = lifecycle.cloneState(next);
-    if (state.workspaces?.length) persistence.writeState(state);
-    else persistence.clearState?.();
+  function commit(next, mode = 'replace') {
+    state = route.normalizeRouteState(next, lifecycle);
+    if (state.workspaces?.length) persistence.writeState(state, { mode });
+    else persistence.clearState?.({ mode });
     render();
+  }
+
+  function restoreFromLocation() {
+    state = hydrateState();
+    dialog = null;
+    notice = '';
+    render();
+  }
+
+  function bindRouteEvents() {
+    window.addEventListener?.('popstate', restoreFromLocation);
+    window.addEventListener?.('hashchange', restoreFromLocation);
   }
 
   function render() {
@@ -41,18 +49,19 @@
   }
 
   function bindEvents() {
+    root.querySelectorAll('[data-home]').forEach((button) => button.addEventListener('click', goHome));
     root.querySelectorAll('[data-create-workspace]').forEach((button) => button.addEventListener('click', () => openDialog('create-workspace')));
     root.querySelectorAll('[data-close-workspace]').forEach((button) => button.addEventListener('click', () => openCloseDialog(button.getAttribute('data-close-workspace'))));
     root.querySelectorAll('[data-multiverse]').forEach((button) => button.addEventListener('click', () => openDialog('multiverse')));
     root.querySelectorAll('[data-help]').forEach((button) => button.addEventListener('click', () => openDialog('help')));
     root.querySelectorAll('[data-share]').forEach((button) => button.addEventListener('click', () => openDialog('share')));
     root.querySelectorAll('[data-copy-share]').forEach((button) => button.addEventListener('click', () => copyShareUrl(button.getAttribute('data-copy-share'))));
-    root.querySelectorAll('[data-verse]').forEach((button) => button.addEventListener('click', () => commit(lifecycle.setWorkspaceVerse(state, button.getAttribute('data-verse')))));
+    root.querySelectorAll('[data-verse]').forEach((button) => button.addEventListener('click', () => commit(lifecycle.setWorkspaceVerse(state, button.getAttribute('data-verse')), 'push')));
     const search = root.querySelector('#workspace-search');
     if (search) search.addEventListener('input', () => {
       const next = lifecycle.cloneState(state);
       next.view.query = search.value;
-      commit(next);
+      commit(next, 'replace');
     });
     const createForm = root.querySelector('#create-workspace-form');
     if (createForm) createForm.addEventListener('submit', (event) => submitCreateWorkspace(event, createForm));
@@ -60,8 +69,14 @@
     root.querySelectorAll('[data-confirm-close]').forEach((button) => button.addEventListener('click', () => {
       const result = lifecycle.closeWorkspace(state, button.getAttribute('data-confirm-close'));
       dialog = null;
-      commit(result.state);
+      commit(result.state, 'push');
     }));
+  }
+
+  function goHome() {
+    dialog = null;
+    notice = '';
+    commit(lifecycle.makeEmptyAppState(), 'push');
   }
 
   function submitCreateWorkspace(event, createForm) {
@@ -74,7 +89,7 @@
       return;
     }
     dialog = null;
-    commit(result.state);
+    commit(result.state, 'push');
   }
 
   function openDialog(type) {
@@ -103,7 +118,7 @@
     const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE' : 'DISCOVERY MODE';
     const emptyClass = active ? '' : ' tx-empty-stage-mode';
     return `
-      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
+      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
         ${renderGlobalDock(Boolean(active))}
         ${active ? `
         <section class="tx-workspace-window tx-focused-main-window tx-uc001-window" aria-label="Tiinex workspace window">
@@ -122,13 +137,9 @@
       <nav class="tx-legacy-global-dock ${hasWorkspace ? 'tx-active-global-dock' : 'tx-empty-global-dock'}" aria-label="Global actions">
         ${hasWorkspace ? `<button class="tx-nav-button tx-round-nav" type="button" title="Previous">${icon('previous')}</button>` : ''}
         <span class="tx-dock-core tx-centered-dock-core">
-          <span class="tx-dock-left"><button class="tx-nav-button tx-multiverse-switch" type="button" data-multiverse title="Change multiverse" aria-label="Change multiverse">${icon('multiverse')}</button></span>
-          <span class="tx-logo-orb" aria-label="Tiinex"><img src="./public/assets/tiinex-logo-white-transparent.png" alt=""></span>
-          <span class="tx-dock-right">
-            <button class="tx-nav-button tx-primary-orb" type="button" data-create-workspace title="Create workspace">${icon('create')}<strong>Create</strong></button>
-            <button class="tx-nav-button tx-share-action" type="button" data-share title="Share">${icon('share')}<strong>Share</strong></button>
-            <button class="tx-nav-button" type="button" data-help title="Help" aria-label="Help">${icon('help')}</button>
-          </span>
+          <span class="tx-dock-left"><button class="tx-nav-button tx-multiverse-switch" type="button" data-multiverse title="Change multiverse" aria-label="Change multiverse">${icon('multiverse')}</button><button class="tx-nav-button tx-primary-orb" type="button" data-create-workspace title="Create workspace">${icon('create')}<strong>Create</strong></button></span>
+          <button class="tx-logo-orb tx-logo-home" type="button" data-home title="Tiinex home" aria-label="Tiinex home"><img src="./public/assets/tiinex-logo-white-transparent.png" alt=""></button>
+          <span class="tx-dock-right"><button class="tx-nav-button tx-share-action" type="button" data-share title="Share">${icon('share')}<strong>Share</strong></button><button class="tx-nav-button" type="button" data-help title="Help" aria-label="Help">${icon('help')}</button></span>
         </span>
         ${hasWorkspace ? `<button class="tx-nav-button tx-round-nav" type="button" title="Next">${icon('next')}</button>` : ''}
       </nav>`;
