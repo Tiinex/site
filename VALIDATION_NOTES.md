@@ -1,6 +1,6 @@
-# Validation Notes v96
+# Validation Notes v99
 
-Goal: focused Tiinex.dev pattern parity refinement plus machine UI-shape guard and public bundling/mirroring workflow expectations.
+Goal: Column-only Tiinex.dev parity with old card action rhythm, title legibility correction, adapter/renderer terminology cleanup, UI-shape guard hardening, and continued public bundling/mirroring workflow expectations.
 
 Validated commands:
 
@@ -20,6 +20,6 @@ Validated commands:
 - npm run metrics
 - npm run storage:scan
 - npm test
-- unzip -tq tiinex-site-v96-source.zip
+- unzip -tq tiinex-site-v99-source.zip
 
-Manual checkpoint: open index.html locally and compare the default start shape against the old Tiinex.dev centered workspace window. This is still visual parity work, not feature parity.
+Manual checkpoint: open index.html locally and compare the default start shape against the old Tiinex.dev centered workspace window. This is still visual/action parity work, not full feature parity. Map/Atlas/Leaflet remain intentionally not runtime-visible.

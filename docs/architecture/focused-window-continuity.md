@@ -2,11 +2,11 @@
 
 ## Purpose
 
-The default Tiinex Site entry must feel like the old Tiinex.dev focused workspace window before deeper Map, Atlas, create, and transport work is added.
+The default Tiinex Site entry must feel like the old Tiinex.dev focused workspace window before deeper create, transport, and later sibling Verse work is added.
 
-## v96 refinement
+## v98 refinement
 
-v96 tightens the pattern baseline:
+v98 tightens the pattern baseline and freezes sibling verses:
 
 - default content starts with Documentation and Start cards,
 - the runtime opens as one focused workspace window, not a dashboard,
@@ -14,6 +14,8 @@ v96 tightens the pattern baseline:
 - badges/title/body/action-row rhythm follows the old Tiinex.dev cards,
 - diagnostics and concept explanations stay behind secondary disclosure,
 - UI-shape guards make this default form testable in CI.
+- Map/Atlas stay planned-only until Column happy path is stable.
+- Title typography is softened so bold white text does not visually merge.
 
 ## Boundary
 

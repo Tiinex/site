@@ -33,6 +33,8 @@ npm test
 - action row at the card bottom,
 - diagnostics behind secondary disclosure,
 - implemented verses only in primary controls.
+- default active pane is Tiinex/site so the legacy Documentation/Start rhythm is visible.
+- Map runtime is absent until Column is stable.
 
 This prevents the refactor from silently drifting back into a dashboard/scaffold page.
 
@@ -56,7 +58,7 @@ The tests should protect these invariants as first-class Tiinex behavior:
 - source-backed material requires an explicit source descriptor,
 - unimplemented verses must not appear as ready primary flows,
 - audit must not claim full lineage traversal before traversal exists,
-- Map/Atlas/Column must preserve source truth rather than create it.
+- Column must preserve source truth rather than create it. Planned Map/Atlas must not become runtime-visible until Column happy path is stable and tested.
 
 ### Visual parity
 

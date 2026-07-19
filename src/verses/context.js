@@ -6,8 +6,8 @@ export const verseContextAvailability = Object.freeze({
   }),
   workspace: Object.freeze({
     meaning: 'single workspace context with its own source boundary',
-    implemented: ['feed', 'tree', 'map'],
-    planned: ['desktop', 'gallery']
+    implemented: ['feed', 'tree'],
+    planned: ['map', 'desktop', 'gallery']
   }),
   artifact: Object.freeze({
     meaning: 'single artifact context',

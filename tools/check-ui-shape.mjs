@@ -11,17 +11,24 @@ const has = (text, needle, label = needle) => { if (!text.includes(needle)) fail
 const lacks = (text, needle, label = needle) => { if (text.includes(needle)) failures.push(label); };
 
 has(main, 'tx-shell-pattern-parity', 'default shell must opt into pattern parity class');
+has(main, 'tx-shell-legibility-corrected', 'default shell must opt into legibility correction class');
+has(main, 'tx-shell-column-action-parity', 'default shell must opt into old action rhythm parity class');
 has(main, 'tx-focused-main-window', 'default shell must render one focused Tiinex window');
 has(main, 'tx-legacy-global-dock', 'global dock must remain a recognizable Tiinex landmark');
 has(main, 'tx-legacy-source-strip', 'source strip must remain above mode row');
 has(main, 'tx-legacy-main-mode', 'mode row must remain a primary landmark');
 has(main, 'renderUniverseColumn(activePane)', 'Universe default should render one active pane, not the full multiverse dashboard');
+has(main, "activePane: 'site'", 'default pane must be Tiinex/site so legacy Documentation/Start cards are visible');
 has(main, 'Documentation', 'default continuity baseline should include Documentation card');
 has(main, 'Start', 'default continuity baseline should include Start card');
 has(main, 'tx-legacy-artifact-card', 'artifact cards must use legacy card skeleton');
 has(main, 'tx-legacy-card-badges', 'artifact cards must preserve badges-before-title rhythm');
 has(main, 'tx-legacy-card-body', 'artifact cards must preserve title/subtitle body rhythm');
 has(main, 'tx-legacy-action-row', 'artifact cards must preserve bottom action row');
+has(main, 'tx-labeled-action', 'old primary actions such as Continue/Reference/Open/Merge must stay text-labeled');
+has(main, 'Continue', 'artifact action rhythm should include Continue');
+has(main, 'Reference', 'artifact action rhythm should include Reference');
+has(main, 'Merge', 'artifact action rhythm should include Merge');
 has(main, 'tx-legacy-secondary-drawer', 'diagnostics should be behind secondary disclosure');
 has(css, '.tx-shell-pattern-parity', 'pattern parity CSS contract missing');
 has(css, '.tx-focused-main-window', 'focused window CSS missing');
@@ -29,6 +36,11 @@ has(css, '.tx-focused-grid .tx-column-header', 'column dashboard chrome must be 
 has(css, '.tx-shell-focused-window .tx-legacy-secondary-drawer', 'secondary diagnostics must not dominate default view');
 lacks(main, 'Node Graph Verse', 'stale Node Graph Verse must not appear in runtime UI');
 lacks(main, 'Zoomable Multiverse', 'stale Zoomable Multiverse must not appear in runtime UI');
+lacks(main, 'renderMapVerse', 'Map runtime must stay frozen until Column happy path is stable');
+lacks(main, 'data-pane-verse="map"', 'Map must not be a primary workspace verse control in v99');
+has(css, '.tx-shell-legibility-corrected', 'legibility correction CSS missing');
+has(css, '.tx-shell-column-action-parity', 'Column action parity CSS missing');
+has(css, 'font-weight: 640', 'title typography should stay softer than bold-white');
 
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));

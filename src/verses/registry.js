@@ -1,14 +1,15 @@
 export const verseRegistry = Object.freeze({
   root: 'universe',
   defaultMultiverse: 'column',
-  visibleImplementedVerses: ['universe', 'column', 'feed', 'tree', 'map'],
+  visibleImplementedVerses: ['universe', 'column', 'feed', 'tree'],
   contexts: Object.freeze({
     universe: Object.freeze({ implemented: ['column'], planned: ['atlas', 'desktop'] }),
-    workspace: Object.freeze({ implemented: ['feed', 'tree', 'map'], planned: ['desktop', 'gallery'] }),
+    workspace: Object.freeze({ implemented: ['feed', 'tree'], planned: ['map', 'desktop', 'gallery'] }),
     artifact: Object.freeze({ implemented: [], planned: ['detail', 'lineage', 'preview'] }),
     report: Object.freeze({ implemented: [], planned: ['audit-report'] })
   }),
-  renderersAreAdapters: true,
+  adaptersAreSourceTransportBoundaries: true,
+  renderersAreAdapters: false,
   showOnlyImplementedInPrimaryUi: true
 });
 

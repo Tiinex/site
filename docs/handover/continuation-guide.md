@@ -33,7 +33,7 @@ Planned but not shown as ready primary actions:
 
 ## Next planned iteration
 
-v93 should begin the Map/Atlas path only after this scope cleanup is accepted. Start with Map as a workspace-level spatial verse or Atlas planning only if the interaction and renderer boundary are clear. Leaflet, SVG, Canvas, D3, WebGL, and game engines are renderer choices, not Verse semantics.
+Current priority is Column happy-path parity. Map/Atlas, Gallery, Desktop, and renderer experiments stay planned until Column is stable and tested. Leaflet, SVG, Canvas, D3, WebGL, and game engines are renderer choices, not Verse semantics.
 
 ## Legacy behavior reference discipline
 

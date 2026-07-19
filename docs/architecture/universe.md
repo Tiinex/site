@@ -9,7 +9,7 @@ It is the first arrangement a reader sees. Its job is to present the first Multi
 - Start with workspaces, not explanations.
 - Show column workspaces as the default continuity surface.
 - Keep each workspace source boundary visible and separate.
-- Let Feed, Tree, and future Verse selectors live inside a workspace pane.
+- Let Feed and Tree live inside a workspace pane; future Verse selectors wait until Column is stable.
 - Do not change source truth by arranging panes.
 
 ## Relationship
@@ -25,4 +25,4 @@ Universe and Verse are Tiinex concepts. Leaflet, SVG, Canvas, D3, WebGL, DOM car
 
 ## v92 context correction
 
-Universe-level verses currently include Column only. Atlas is planned but not runtime-visible until a Map/Atlas slice exists. Workspace-level verses currently include Feed and Tree only. Map is planned as a workspace-level spatial verse; Atlas is a universe-level arrangement of one or more Maps.
+Universe-level runtime currently includes Column only. Workspace-level runtime inside Column currently includes Feed and Tree only. Map, Atlas, Desktop, Gallery, and renderer experiments stay planned until Column happy path is stable and tested.

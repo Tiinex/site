@@ -32,11 +32,11 @@ Planned, not shown as ready:
 
 ## Map and Atlas
 
-Map is a workspace-level spatial verse: one workspace arranged on a bounded plane. It is implemented as an initial renderer-neutral scaffold in v93.
+Map is a planned workspace-level spatial verse: one workspace arranged on a bounded plane. It is not runtime-visible until Column happy path is stable.
 
-Atlas is a universe-level verse: multiple Maps arranged together across one or more workspaces.
+Atlas is a planned universe-level verse: multiple Maps arranged together across one or more workspaces.
 
-Atlas is therefore not a replacement name for Node Graph. It is a container/arrangement of Maps.
+Atlas is therefore not a replacement name for Node Graph. It is a container/arrangement of Maps, but remains planned-only for now.
 
 ## Renderer boundary
 

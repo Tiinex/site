@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v96",
+  "version": "0.2.0-v99",
   "private": true,
-  "description": "Fresh Tiinex site shell with focused Tiinex.dev pattern parity and UI-shape guards, Universe/Column Verse default workspace continuity, workspace-level Map Verse scaffold, context-aware Verse availability, renderer boundaries, source controls, artifact parsing, root fallback, source boundaries, audit skeleton, and legacy behavior reference.",
+  "description": "Tiinex Site shell with Column-only runtime scope, focused Tiinex.dev pattern parity, UI-shape guards, legibility correction, source boundaries, artifact parsing, root fallback, audit skeleton, bundled public build, and legacy behavior reference.",
   "type": "module",
   "scripts": {
     "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs",

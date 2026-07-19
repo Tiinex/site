@@ -14,10 +14,10 @@ function read(p) { return readFileSync(p, 'utf8'); }
 try {
   const build = spawnSync(process.execPath, ['tools/build-public.mjs', '--out', out], { cwd: root, encoding: 'utf8' });
   if (build.status !== 0) fail(build.stderr || build.stdout);
-  for (const required of ['index.html', 'src/main.js', 'src/artifacts/fixtures/topic.trace.md', 'src/artifacts/fixtures/unknown-schema.trace.md', 'src/schemas/root.schema.json', 'src/audit/audit.run.js', 'src/workspaces/workspace.model.js', 'src/sources/source.boundaries.js', 'docs/architecture/audit-ownership.md', 'docs/architecture/verse.md', 'src/verses/contracts.js', 'src/verses/registry.js', 'src/discovery/discovery.controls.js', 'src/source-settings/sourceSettings.model.js', 'src/multiverse/multiverse.model.js', 'src/interaction/interaction.spine.js', 'docs/architecture/ux-ergonomics.md', 'docs/architecture/source-settings-and-discovery-controls.md', 'docs/architecture/multiverse.md', 'docs/architecture/interaction-spine.md', 'docs/architecture/universe.md', 'src/verses/universe.model.js', 'src/verses/universe.project.js', 'src/verses/column/column.model.js', 'src/verses/context.js', 'docs/architecture/verse-context-availability.md', 'src/verses/map/map.model.js', 'src/verses/map/map.project.js', 'docs/architecture/map-and-atlas.md', 'docs/architecture/desktop-verse-note.md', 'src/adapters/leaflet/leaflet.boundary.js', 'docs/architecture/visual-continuity.md', 'docs/architecture/mobile-transport-lessons.md', 'README.md', 'llms.txt', 'tiinex.build.json', 'tiinex.bundle.css', 'tiinex.bundle.js', '.nojekyll']) {
+  for (const required of ['index.html', 'src/main.js', 'src/artifacts/fixtures/topic.trace.md', 'src/artifacts/fixtures/unknown-schema.trace.md', 'src/schemas/root.schema.json', 'src/audit/audit.run.js', 'src/workspaces/workspace.model.js', 'src/sources/source.boundaries.js', 'docs/architecture/audit-ownership.md', 'docs/architecture/verse.md', 'src/verses/contracts.js', 'src/verses/registry.js', 'src/discovery/discovery.controls.js', 'src/source-settings/sourceSettings.model.js', 'src/multiverse/multiverse.model.js', 'src/interaction/interaction.spine.js', 'docs/architecture/ux-ergonomics.md', 'docs/architecture/source-settings-and-discovery-controls.md', 'docs/architecture/multiverse.md', 'docs/architecture/interaction-spine.md', 'docs/architecture/universe.md', 'src/verses/universe.model.js', 'src/verses/universe.project.js', 'src/verses/column/column.model.js', 'src/verses/context.js', 'docs/architecture/verse-context-availability.md', 'docs/architecture/map-and-atlas.md', 'docs/architecture/desktop-verse-note.md', 'docs/architecture/visual-continuity.md', 'docs/architecture/mobile-transport-lessons.md', 'docs/architecture/adapters-and-renderers.md', 'README.md', 'llms.txt', 'tiinex.build.json', 'tiinex.bundle.css', 'tiinex.bundle.js', '.nojekyll']) {
     if (!existsSync(join(out, required))) fail(`Missing public output: ${required}`);
   }
-  for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini', 'src/leaflets', 'src/verses/node-graph', 'src/verses/timeline', 'src/verses/gantt']) {
+  for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini', 'src/leaflets', 'src/verses/node-graph', 'src/verses/timeline', 'src/verses/gantt', 'src/adapters/leaflet', 'src/adapters/d3', 'src/adapters/canvas', 'src/adapters/webgl', 'src/adapters/renderer']) {
     if (existsSync(join(out, forbidden))) fail(`Public output must not contain ${forbidden}`);
   }
   const html = existsSync(join(out, 'index.html')) ? read(join(out, 'index.html')) : '';
@@ -35,7 +35,7 @@ try {
   if (!main.includes('data-reader')) fail('Fresh public runtime must expose reader density controls');
   if (!main.includes('workspace-state')) fail('Fresh public runtime must render workspace state');
   if (!main.includes('no local→github guess')) fail('Fresh public runtime must preserve source boundary disclosure');
-  if (!main.includes('data-pane-verse')) fail('Fresh public runtime must expose workspace-scoped Feed/Tree/Map Verse controls');
+  if (!main.includes('data-pane-verse')) fail('Fresh public runtime must expose workspace-scoped Feed/Tree controls');
   if (!main.includes('renderFeedVerse') || !main.includes('renderTreeVerse')) fail('Fresh public runtime must render Feed and Tree Verse parity');
 if (!main.includes('tx-workspace-window')) fail('Fresh public runtime must render Tiinex workspace window frame');
 if (!main.includes('tx-source-strip')) fail('Fresh public runtime must render source row/strip');
@@ -46,17 +46,22 @@ if (!main.includes('data-source-filter')) fail('Fresh public runtime must expose
 if (!main.includes('UX should clarify through layout')) fail('Fresh public runtime must carry v90 ergonomic control rule');
 if (!main.includes('tx-action-spine')) fail('Fresh public runtime must preserve interaction spine contract');
 if (!main.includes('tx-shell-visual-continuity')) fail('Fresh public runtime must render focused window continuity shell');
-if (!main.includes('tx-shell-pattern-parity')) fail('Fresh public runtime must render v96 pattern parity shell');
-if (!main.includes('pattern parity')) fail('Fresh public runtime must disclose v96 pattern parity scope');
+if (!main.includes('tx-shell-pattern-parity')) fail('Fresh public runtime must render v99 pattern parity shell');
+if (!main.includes('tx-shell-legibility-corrected')) fail('Fresh public runtime must render v99 legibility-corrected shell');
+if (!main.includes("activePane: 'site'")) fail('Fresh public runtime must default to the Tiinex/site pane');
+if (!main.includes('v99 column rhythm')) fail('Fresh public runtime must disclose v99 Column rhythm scope');
 if (!main.includes('data-task')) fail('Fresh public runtime must expose task spine controls');
 if (!main.includes('tx-scaffold-action')) fail('Fresh public runtime must visually mark scaffold actions');
 if (!main.includes('renderUniverse')) fail('Fresh public runtime must render Universe entry verse');
 if (!main.includes('Column Verse')) fail('Fresh public runtime must default to Column Verse continuity');
 if (!main.includes('first multiverse')) fail('Fresh public runtime must disclose first Multiverse entry');
 if (!main.includes('plannedVerseContexts')) fail('Fresh public runtime must carry planned Verse contexts without exposing stale primary actions');
-if (!main.includes('renderMapVerse')) fail('Fresh public runtime must render workspace-level Map Verse scaffold');
+if (main.includes('renderMapVerse')) fail('Fresh public runtime must not render Map before Column happy path is stable');
+if (main.includes('data-pane-verse="map"')) fail('Fresh public runtime must not expose Map as a primary workspace verse control');
 if (!main.includes('data-pane-verse')) fail('Fresh public runtime must scope Verse selection to a workspace pane');
-if (!main.includes('Atlas/Desktop stay planned')) fail('Fresh public runtime must keep Atlas/Desktop planned, not primary-ready');
+if (!main.includes('Map/Atlas/Desktop/Gallery stay planned')) fail('Fresh public runtime must keep Map/Atlas/Desktop/Gallery planned, not runtime-ready');
+if (!main.includes('tx-shell-column-action-parity')) fail('Fresh public runtime must keep old action rhythm parity class');
+if (!main.includes('Continue') || !main.includes('Reference') || !main.includes('Merge')) fail('Fresh public runtime must preserve old primary action rhythm labels');
 if (main.includes('Node Graph Verse') || main.includes('Zoomable Multiverse')) fail('Fresh public runtime must not show stale future verses as primary UI');
   if (html.includes('type="module"') || html.includes("type='module'")) fail('Fresh public index must be file-local safe and not use ES module startup');
   const identityPath = join(out, 'tiinex.build.json');
