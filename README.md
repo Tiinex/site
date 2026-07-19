@@ -265,3 +265,7 @@ Post-publication verification is live-source only: guided GitHub export verifica
 #### Hosted issue mirror freshness
 
 When multiple hosted issue mirrors exist for the same GitHub-backed source, Tiinex does not stop at the first `200 OK`. It checks the bounded candidate set and chooses the freshest valid snapshot by `sourceUpdatedAt`/`generatedAt`. This lets a viewer-owned mirror continue to work when it is current, while allowing a source repository's own GitHub Pages issue snapshot to take over when it has newer issue/comment state.
+
+### v75 integrity boundary note
+
+Recovered GitHub issue artifacts may declare parents that are adapter-materialized rather than repository files. The viewer resolves those validation targets from loaded artifact self-digest hints first and does not fetch unloaded remote targets during background verification. Deep validation remains available through lineage audit or integrity diagnostics.

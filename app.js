@@ -2531,7 +2531,7 @@
           label: 'self'
         };
       } else {
-        result = await hashIntegrityTarget(ws, node, target, options);
+        result = await hashIntegrityTarget(ws, node, target, Object.assign({}, options, { expectedIntegrityValue: entry.value, expectedIntegrityEntryIndex: entry.index }));
       }
 
       if (result?.status === 'unavailable') {
@@ -23204,8 +23204,82 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
     return candidates;
   }
 
-  function loadedIntegrityTarget(ws, node, target, converted = null) {
+  function nodeDeclaredV2SelfIntegrityValues(node = null) {
+    const values = [];
+    const add = (value) => {
+      const clean = String(value || '').trim();
+      if (clean && !values.includes(clean)) values.push(clean);
+    };
+    add(node?.embeddedSelfIntegrity);
+    add(node?.file?.embeddedSelfIntegrity);
+    const entries = Array.isArray(node?.integrity?.entries) ? node.integrity.entries : [];
+    for (const entry of entries) {
+      if (entry?.method === TIINEX_SHA256_C14N_V2_METHOD_ID && integrityTowardsIsSelf(entry.towards) && entry.value && !entry.placeholderValue) add(entry.value);
+    }
+    try {
+      const raw = node?.rawMarkdown || node?.file?.rawMarkdown || node?.file?.content || node?.file?.text || '';
+      const parsed = raw && parseIntegrity(raw);
+      for (const entry of parsed?.entries || []) {
+        if (entry?.method === TIINEX_SHA256_C14N_V2_METHOD_ID && integrityTowardsIsSelf(entry.towards) && entry.value && !entry.placeholderValue) add(entry.value);
+      }
+    } catch (_) {}
+    return values;
+  }
+
+  function integrityTargetPathReferencesCandidate(ws, child, target, candidate) {
+    if (!candidate) return false;
+    if (integrityTargetReferencesNode(ws, child, target, candidate)) return true;
+    const refs = integrityTargetExactReferenceValues(ws, child, target).map((value) => canonicalWorkspacePath(value));
+    const names = new Set(refs.map(fileNameFromPath).filter(Boolean).map((name) => name.toLowerCase()));
+    const candidateValues = [
+      candidate.path, candidate.file?.path, candidate.recoveredFromPath, candidate.file?.recoveredFromPath,
+      candidate.embeddedSourcePath, candidate.file?.embeddedSourcePath, candidate.rawUrl, candidate.browseUrl,
+      candidate.recoveredFromUrl, candidate.sourceOrigin, candidate.file?.recoveredFromUrl, candidate.file?.sourceOrigin
+    ].filter(Boolean).map((value) => String(value || '').trim());
+    for (const value of candidateValues) {
+      const canonical = canonicalWorkspacePath(value);
+      if (refs.some((ref) => ref && canonical && (sameImportedPath(ref, canonical) || canonical.endsWith(`/${ref}`)))) return true;
+      const name = fileNameFromPath(canonical || value).toLowerCase();
+      if (name && names.has(name)) return true;
+    }
+    return false;
+  }
+
+  function loadedIntegrityTargetByDeclaredDigest(ws, node, target, expectedValue = '') {
+    const expected = String(expectedValue || '').trim();
+    if (!ws || !expected) return null;
+    const matches = [];
+    for (const item of ws.nodes || []) {
+      if (!item || item === node) continue;
+      if (!nodeDeclaredV2SelfIntegrityValues(item).includes(expected)) continue;
+      const referencesTarget = integrityTargetPathReferencesCandidate(ws, node, target, item);
+      const path = item.path || item.file?.path || '';
+      const isRecovered = pathLooksLikeRecoveredIssueAdapterArtifact(path) || pathLooksLikeRecoveredIssueAdapterArtifact(item.recoveredFromPath || item.file?.recoveredFromPath || '');
+      const schema = schemaKey(item.currentSchemaText || item.currentSchema || item.file?.currentSchema || '');
+      const adapterShell = isAdapterDiscoveryFindingNode(item);
+      const score = (referencesTarget ? 100 : 0) + (isRecovered ? 20 : 0) + (schema && schema !== 'discovery.finding' ? 10 : 0) - (adapterShell ? 80 : 0);
+      matches.push({ item, score, referencesTarget, isRecovered, adapterShell });
+    }
+    if (!matches.length) return null;
+    matches.sort((a, b) => b.score - a.score);
+    const best = matches[0];
+    const second = matches[1];
+    if (best.referencesTarget || best.isRecovered || matches.length === 1) {
+      if (!second || best.score > second.score || nodeDeclaredV2SelfIntegrityValues(second.item).includes(expected)) return best.item;
+    }
+    return null;
+  }
+
+  function loadedIntegrityTarget(ws, node, target, converted = null, options = {}) {
     const candidates = integrityTargetPathCandidates(ws, node, target);
+    const expectedValue = String(options.expectedIntegrityValue || '').trim();
+    const targetValue = target?.href || target?.text || target?.raw || '';
+    const joinedTargetValue = node?.path ? joinPath(dirname(node.path), targetValue) : targetValue;
+    const recoveredTarget = pathLooksLikeRecoveredIssueAdapterArtifact(targetValue) || pathLooksLikeRecoveredIssueAdapterArtifact(joinedTargetValue);
+    if (expectedValue && recoveredTarget) {
+      const digestTarget = loadedIntegrityTargetByDeclaredDigest(ws, node, target, expectedValue);
+      if (digestTarget) return digestTarget;
+    }
 
     if (converted?.rawUrl || converted?.browseUrl) {
       const exact = Array.from(ws?.nodeById?.values?.() || []).find((item) =>
@@ -23226,13 +23300,25 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
 
     for (const candidate of candidates) {
       const found = sameWorkspacePathLookup(ws, candidate);
-      if (found) return found;
+      if (found) {
+        if (!isAdapterDiscoveryFindingNode(found) || !expectedValue) return found;
+        const digestTarget = loadedIntegrityTargetByDeclaredDigest(ws, node, target, expectedValue);
+        return digestTarget || found;
+      }
     }
 
     const wantedNames = new Set(candidates.map(fileNameFromPath).filter(Boolean).map((name) => name.toLowerCase()));
     for (const item of ws?.nodes || []) {
       const name = fileNameFromPath(item.path || '').toLowerCase();
-      if (wantedNames.has(name)) return item;
+      if (!wantedNames.has(name)) continue;
+      if (!isAdapterDiscoveryFindingNode(item) || !expectedValue) return item;
+      const digestTarget = loadedIntegrityTargetByDeclaredDigest(ws, node, target, expectedValue);
+      return digestTarget || item;
+    }
+
+    if (expectedValue) {
+      const digestTarget = loadedIntegrityTargetByDeclaredDigest(ws, node, target, expectedValue);
+      if (digestTarget) return digestTarget;
     }
 
     return null;
@@ -24083,7 +24169,7 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
     const declaredDefinitionUrl = validationMethodDefinitionUrl(declaredMethod, node?.integrity?.methodHref || '');
     const declaredDefinitionStatus = validationMethodDefinitionStatus(declaredMethod, declaredDefinitionUrl);
     const declaredDefinitionNode = findValidationMethodDefinitionNode(ws, declaredMethod, declaredDefinitionUrl);
-    const entryAudit = await evaluateIntegrityEntriesForNode(ws, node, { allowHistoricalNetwork: true, reason: 'user-opened-integrity-diagnostics' });
+    const entryAudit = await evaluateIntegrityEntriesForNode(ws, node, { allowIntegrityNetwork: true, allowHistoricalNetwork: true, reason: 'user-opened-integrity-diagnostics' });
     const aggregateIntegrity = integrityOverallFromEntryAudit(entryAudit, initialStatus);
     const initialLifecycle = integrityClaimLifecycleForStatus(aggregateIntegrity.status || initialStatus, node?.integrity);
     const base = {
@@ -24187,7 +24273,7 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
 
     let result = null;
     try {
-      result = await hashIntegrityTarget(ws, node, target, { allowHistoricalNetwork: true, reason: 'user-opened-integrity-diagnostics' });
+      result = await hashIntegrityTarget(ws, node, target, { allowIntegrityNetwork: true, allowHistoricalNetwork: true, reason: 'user-opened-integrity-diagnostics' });
     } catch (error) {
       result = {
         status: 'target-unavailable',
@@ -24580,13 +24666,14 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
       };
     }
 
+    const expectedIntegrityValue = String(options.expectedIntegrityValue || node?.integrity?.value || '').trim();
     const remote = remoteIntegrityTarget(ws, node, target);
-    const loaded = loadedIntegrityTarget(ws, node, target, remote);
+    const loaded = loadedIntegrityTarget(ws, node, target, remote, { expectedIntegrityValue });
 
     if (loaded) {
       const confidence = loadedTargetConfidence(loaded, remote, target);
       const loadedResult = await hashLoadedTarget(loaded);
-      const loadedMatch = matchingIntegrityHash(loadedResult, node.integrity.value);
+      const loadedMatch = matchingIntegrityHash(loadedResult, expectedIntegrityValue);
       if (loadedMatch) {
         return {
           status: 'ok',
@@ -24610,9 +24697,21 @@ ${lineagePolicyBoundaryLinesFor(ws, null) ? '- Preserve the workspace lineage po
     }
 
     if (remote?.rawUrl) {
+      const mayReadRemoteIntegrityTarget = options.allowIntegrityNetwork === true || options.allowRemoteIntegrityTarget === true;
+      if (!mayReadRemoteIntegrityTarget) {
+        return {
+          status: loaded ? 'unresolved' : 'unavailable',
+          confidence: loaded ? loadedTargetConfidence(loaded, remote, target) : 'none',
+          authority: loaded ? 'local-loaded-network-suppressed' : 'remote-suppressed',
+          hashes: loaded ? (await hashLoadedTarget(loaded)).hashes : [],
+          label: loaded
+            ? `integrity target network suppressed; using loaded candidate only (${loaded.path || 'candidate'})`
+            : 'integrity target not loaded; network verification deferred until lineage audit or diagnostics'
+        };
+      }
       try {
         const remoteHashes = await hashRemoteTarget(remote, Object.assign({}, options, { ws, node }));
-        const remoteMatch = matchingIntegrityHash({ hashes: remoteHashes }, node.integrity.value);
+        const remoteMatch = matchingIntegrityHash({ hashes: remoteHashes }, expectedIntegrityValue);
         if (remoteMatch) {
           return {
             status: 'ok',
@@ -28634,7 +28733,7 @@ This removes the imported file and its preserved local asset copy from the curre
       const traversal = lineageTraversal(current);
       const nodes = traversal?.nodes || [];
       for (const node of nodes) {
-        const result = await verifyNodeIntegrity(node, ws);
+        const result = await verifyNodeIntegrity(node, ws, { allowIntegrityNetwork: true, allowHistoricalNetwork: true, reason: 'lineage-audit' });
         node.integrityStatus = result.status;
         node.integrityStatusLabel = result.label;
         ws.integrityCache = ws.integrityCache || {};

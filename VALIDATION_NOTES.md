@@ -319,3 +319,8 @@ The publish workflow now updates the inspectable `public` branch, uploads the sa
 - Integrity verification is sliced through an idle/yield boundary (`requestIdleCallback` with frame/timeout fallback), so large workspaces such as `Tiinex/docs` can keep painting and accepting input while byte-integrity statuses settle.
 - Repeated index/import events while an integrity pass is running coalesce into one rescan instead of stacking parallel verifier passes.
 - The change is runtime scheduling only: checksum semantics, parent-target validation, and exact-target rules are unchanged.
+
+## v75 notes
+
+- Integrity target resolution now prefers loaded artifact v2 self-digest hints for recovered GitHub issue parents before falling back to path/name heuristics.
+- Background integrity verification remains loaded-material-only; unloaded remote target reads are deferred to lineage audit or explicit integrity diagnostics.

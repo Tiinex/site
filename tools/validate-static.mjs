@@ -2495,6 +2495,10 @@ function validateWorkspaceShareAndIssueOpenContracts(source) {
   if (!source.includes('pruneLocalDraftShadowsAfterSourceMaterial(ws, `GitHub issue ${spec.repo}#${spec.issueNumber}`)')) fail('GitHub issue import must run verified publication receipt reconciliation after source material arrives.');
   if (!source.includes('updatedAt > verifiedAt + 1000')) fail('publication receipt reconciliation must preserve local edits created after verification.');
   if (!source.includes('Imported material') || !source.includes('node?.rawMarkdown || file.rawMarkdown || file.content')) fail('source-backed integrity validation must prefer exact recovered source markdown over restored mutable text.');
+  for (const token of ['nodeDeclaredV2SelfIntegrityValues', 'loadedIntegrityTargetByDeclaredDigest', 'expectedIntegrityValue: entry.value']) {
+    if (!source.includes(token)) fail(`Integrity target resolution must use loaded v2 self-digest hints before falling back to path/name heuristics: ${token}`);
+  }
+  if (!source.includes('integrity target not loaded; network verification deferred until lineage audit or diagnostics')) fail('Background integrity verification must not fetch unloaded remote targets; deep reads belong to lineage audit or diagnostics.');
   const localStateModule = read('src/state/local-workspace.mjs');
   if (!localStateModule.includes("content: normalizeLineEndings(file.text || file.rawMarkdown || file.content || '')")) fail('local state serialization must persist current authoring text before stale file.content.');
   if (!localStateModule.includes("updatedAt: file.updatedAt || ''")) fail('local draft persistence must retain updatedAt so verified publication reconciliation can preserve newer unpublished edits.');
