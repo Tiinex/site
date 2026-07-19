@@ -57,6 +57,7 @@ if (!existsSync(join(root, 'docs/architecture/visual-continuity.md'))) failures.
 if (!existsSync(join(root, 'docs/architecture/mobile-transport-lessons.md'))) failures.push('Mobile/transport lessons doc missing');
 if (!existsSync(join(root, 'docs/architecture/testing-strategy.md'))) failures.push('Testing strategy doc missing');
 if (!existsSync(join(root, 'docs/architecture/adapters-and-renderers.md'))) failures.push('Adapter/renderer boundary doc missing');
+if (!existsSync(join(root, 'docs/architecture/icon-polish-and-column-fit.md'))) failures.push('Icon polish and Column fit doc missing');
 if (!existsSync(join(root, 'tools/check-ui-shape.mjs'))) failures.push('UI shape guard missing');
 if (!existsSync(join(root, 'docs/architecture/verse-context-availability.md'))) failures.push('Verse context availability doc missing');
 for (const staleVerse of ['node-graph', 'timeline', 'gantt']) {
@@ -96,9 +97,12 @@ if (!main.includes('UX should clarify through layout')) failures.push('src/main.
 if (!main.includes('renderDiscoveryIconBar')) failures.push('src/main.js must render compact discovery icon controls');
 if (!main.includes('tx-action-spine')) failures.push('src/main.js must preserve interaction spine contract');
 if (!main.includes('tx-shell-visual-continuity')) failures.push('src/main.js must render focused window continuity shell');
-if (!main.includes('tx-shell-pattern-parity')) failures.push('src/main.js must render v100 pattern parity shell');
-if (!main.includes('tx-shell-legibility-corrected')) failures.push('src/main.js must render v100 legibility-corrected shell');
-if (!main.includes('tx-shell-height-continuity')) failures.push('src/main.js must render old Tiinex.dev height continuity shell');
+if (!main.includes('tx-shell-pattern-parity')) failures.push('src/main.js must render v102 pattern parity shell');
+if (!main.includes('tx-shell-legibility-corrected')) failures.push('src/main.js must render v102 legibility-corrected shell');
+if (!main.includes('tx-shell-height-continuity')) failures.push('src/main.js must render old Tiinex.dev scroll ownership shell');
+if (!main.includes('tx-shell-scroll-owned')) failures.push('src/main.js must prevent page-level multiverse scroll');
+if (!main.includes('tx-shell-column-fit')) failures.push('src/main.js must render v102 Column fit shell');
+if (!main.includes('tx-shell-icon-polish')) failures.push('src/main.js must render v102 icon polish shell');
 if (!main.includes("activePane: 'site'")) failures.push('default active pane must be Tiinex/site so Documentation/Start are visible');
 if (!main.includes('data-task')) failures.push('src/main.js must expose task spine controls');
 if (!main.includes('tx-scaffold-action')) failures.push('src/main.js must visually mark scaffold actions');
@@ -108,7 +112,7 @@ if (!main.includes('Documentation') || !main.includes('Start')) failures.push('s
 if (!main.includes('first multiverse')) failures.push('src/main.js must disclose first Multiverse entry');
 if (!main.includes('plannedVerseContexts')) failures.push('src/main.js must carry planned Verse contexts without exposing them as primary ready actions');
 if (main.includes('renderMapVerse')) failures.push('src/main.js must not render Map before Column happy path is stable');
-if (main.includes('data-pane-verse="map"')) failures.push('Map must not be a primary workspace verse control in v100');
+if (main.includes('data-pane-verse="map"')) failures.push('Map must not be a primary workspace verse control in v102');
 if (!main.includes('data-pane-verse')) failures.push('src/main.js must scope Verse selection to a workspace pane');
 if (!main.includes('Map/Atlas/Desktop/Gallery stay planned')) failures.push('src/main.js must keep Map/Atlas/Desktop/Gallery planned, not runtime-ready');
 const registry = readFileSync(join(root, 'src/verses/registry.js'), 'utf8');

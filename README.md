@@ -1,11 +1,17 @@
-# Tiinex Site v100
+# Tiinex Site v102
 
-Column-only Tiinex.dev height continuity plus Discovery/Lineage action rhythm and stronger UI-shape guards.
+Column-only Tiinex.dev fit/polish pass with viewport-owned shell, pane-owned scroll, normalized icon rhythm, Discovery/Lineage action parity, UI-shape guards, bundled public build, and legacy behavior reference.
 
-This source package keeps the fresh runtime ownership from the refactor, but narrows the runtime to the first proven path: Universe → Column Verse with workspace-level Feed/Tree. Map, Atlas, Desktop, Gallery, and renderer experiments remain planned contexts only until the Column happy path is stable and tested.
+## Runtime scope
 
-The default entry is a focused Tiinex window with legacy-like Documentation/Start continuity cards, compact controls, badge-title-action card rhythm, secondary diagnostics hidden away, softer title typography, and an old-style action row. v100 restores the old Tiinex.dev height behavior: the focused window stretches vertically with the viewport instead of collapsing into a short card stack with unused page space.
+The current product runtime is intentionally narrow:
 
-Adapters explicitly mean artifact/source/storage/transport boundaries. Visual libraries such as Leaflet are renderer dependencies, not adapters, and are not included in runtime while Map/Atlas are frozen.
+- Universe entry renders Column only.
+- Workspace panes support Feed and Tree only.
+- Map, Atlas, Desktop, Gallery, and renderer-specific work stay planned-only until Column happy path is stable.
 
-The public build emits bundled `tiinex.bundle.css` and `tiinex.bundle.js` for faster CI/CD-published loading while keeping the source tree auditable. The delivered zip is still a source-clean repo replacement package. It is not a dist/deploy artifact. CI/CD builds public output after push and keeps the public mirroring workflow path.
+The default entry is a focused Tiinex window with legacy-like Documentation/Start continuity cards, compact controls, badge-title-action card rhythm, secondary diagnostics hidden away, softer title typography, and an old-style action row. v102 keeps the old Tiinex.dev vertical workspace feel while fixing two UX regressions: page-level scroll stays off, reader-state chips do not stretch into tall blocks, and action/dock glyphs use a single visual rhythm.
+
+## Delivery model
+
+This is a source-clean repo replacement package. Q replaces the repo contents with this zip, opens/runs `index.html` locally for manual testing, and then pushes source if accepted. Public bundling is produced by workflow/CI after push; `.site-publish` is not included in this source zip.

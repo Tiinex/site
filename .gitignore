@@ -1,18 +1,6 @@
-# Local development noise
-.DS_Store
-Thumbs.db
-[Dd]esktop.ini
-*.log
-*.tmp
-*.bak
-
-# Dependency/build output
-node_modules/
-.site-publish/
-dist/
-.tmp-public-check/
-
-# Source delivery archives and local mirrors
-*.zip
-.mirrors/
 .old/
+.site-publish/
+node_modules/
+desktop.ini
+*.log
+.DS_Store

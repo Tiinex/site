@@ -864,7 +864,7 @@ pre { white-space: pre-wrap; overflow:auto; }
 }
 
 
-/* v100 height continuity: old Tiinex.dev window stretches vertically instead of becoming a short card stack */
+/* v100/v101 height continuity and scroll ownership: old Tiinex.dev window stretches vertically instead of becoming a short card stack */
 .tx-shell-height-continuity {
   min-height: 100dvh;
   display: flex;
@@ -908,4 +908,184 @@ pre { white-space: pre-wrap; overflow:auto; }
 @media (max-width: 760px) {
   .tx-shell-height-continuity .tx-focused-main-window { min-height: max(620px, calc(100dvh - 74px)); }
   .tx-shell-height-continuity .tx-focused-grid .tx-universe-column { min-height: max(420px, calc(100dvh - 210px)); }
+}
+
+/* v101 scroll ownership: the Universe/Multiverse shell must not create page scroll.
+   Scroll belongs inside the active workspace column/pane. */
+.tx-shell-scroll-owned {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tx-shell-scroll-owned .tx-focused-main-window {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  overflow: hidden;
+}
+.tx-shell-scroll-owned .tx-focused-main-window #universe-root,
+.tx-shell-scroll-owned .tx-focused-universe,
+.tx-shell-scroll-owned .tx-focused-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tx-shell-scroll-owned .tx-focused-grid .tx-universe-column {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tx-shell-scroll-owned .tx-focused-grid .tx-column-feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.tx-shell-scroll-owned .tx-focused-grid .tx-column-audit,
+.tx-shell-scroll-owned .tx-focused-grid .tx-column-drawer {
+  flex: 0 0 auto;
+}
+@supports not (height: 100dvh) {
+  .tx-shell-scroll-owned { height: 100vh; }
+}
+
+/* v102 column fit and icon polish: no page scroll, no stretched state pills, consistent glyph rhythm */
+.tx-shell-column-fit {
+  height: 100dvh;
+  max-height: 100dvh;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  overflow: hidden;
+}
+.tx-shell-column-fit .tx-legacy-global-dock {
+  margin-bottom: 7px;
+}
+.tx-shell-column-fit .tx-focused-main-window {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+.tx-shell-column-fit .tx-footer {
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.tx-shell-column-fit .tx-focused-grid .tx-column-feed {
+  display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  align-items: start;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.tx-shell-column-fit .tx-focused-grid .tx-reader-state {
+  align-self: start;
+  align-items: center;
+  min-height: 0;
+  height: auto;
+  line-height: 1;
+}
+.tx-shell-column-fit .tx-focused-grid .tx-reader-state .tx-badge {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  line-height: 1;
+  padding-block: 4px;
+}
+.tx-shell-column-fit .tx-focused-grid .tx-legacy-stack {
+  align-self: stretch;
+}
+.tx-shell-column-fit .tx-focused-grid .tx-column-audit {
+  margin-bottom: 10px;
+}
+.tx-shell-icon-polish .tx-button,
+.tx-shell-icon-polish .tx-icon-button,
+.tx-shell-icon-polish .tx-legacy-action,
+.tx-shell-icon-polish .tx-round-nav {
+  line-height: 1;
+}
+.tx-shell-icon-polish .tx-icon-button span,
+.tx-shell-icon-polish .tx-legacy-action span,
+.tx-shell-icon-polish .tx-dock-icon span {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35em;
+  min-width: 1.35em;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+}
+.tx-shell-icon-polish .tx-legacy-action span {
+  color: #dec0ff;
+}
+.tx-shell-icon-polish .tx-action-right span {
+  color: #9cc8ff;
+}
+.tx-shell-icon-polish .tx-icon-button {
+  width: 32px;
+  height: 32px;
+  border-color: rgba(189,115,255,.34);
+  background: rgba(189,115,255,.08);
+}
+.tx-shell-icon-polish .tx-dock-icon {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.tx-shell-icon-polish .tx-dock-icon small {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.tx-shell-icon-polish .tx-icon-plus,
+.tx-shell-icon-polish .tx-logo-center {
+  width: 42px;
+  height: 42px;
+}
+.tx-shell-icon-polish .tx-legacy-action {
+  border-color: rgba(189,115,255,.33);
+  background: rgba(189,115,255,.075);
+}
+.tx-shell-icon-polish .tx-legacy-action:hover,
+.tx-shell-icon-polish .tx-icon-button:hover,
+.tx-shell-icon-polish .tx-dock-icon:hover {
+  border-color: rgba(189,115,255,.68);
+  background: rgba(189,115,255,.15);
+}
+.tx-shell-icon-polish .tx-scaffold-action {
+  opacity: .68;
+}
+.tx-shell-icon-polish .tx-labeled-action {
+  min-width: 82px;
+}
+@supports not (height: 100dvh) {
+  .tx-shell-column-fit {
+    height: 100vh;
+    max-height: 100vh;
+  }
+}
+@media (max-width: 760px) {
+  .tx-shell-column-fit {
+    padding: 8px;
+  }
+  .tx-shell-icon-polish .tx-dock-icon,
+  .tx-shell-icon-polish .tx-icon-plus,
+  .tx-shell-icon-polish .tx-logo-center {
+    width: 40px;
+    height: 40px;
+  }
 }

@@ -1,25 +1,38 @@
-# Validation Notes v100
+# Validation Notes v102
 
-Goal: Column-only Tiinex.dev parity with old vertical window stretch restored, old card action rhythm, title legibility correction, adapter/renderer terminology cleanup, UI-shape guard hardening, and continued public bundling/mirroring workflow expectations.
+## Scope
 
-Validated commands:
+- Column-only runtime.
+- Map/Atlas/Leaflet remain frozen and absent from runtime/source directories.
+- v102 fixes focused-window fit/polish: page-level scroll remains prevented, overflow belongs to the active workspace pane, reader-state badges do not stretch into tall blocks, and primary glyphs are normalized.
 
-- node --check src/main.js
-- node --check tools/validate-static.mjs
-- node --check tools/validate-schema-bindings.mjs
-- node --check tools/check-ui-shape.mjs
-- node --check tools/check-public-build.mjs
-- node --check tools/build-public.mjs
-- node --check tools/collect-metrics.mjs
-- node --check tools/inspect-storage.mjs
-- npm run validate
-- npm run ui:shape
-- npm run build:public
-- npm run public:check
-- node --check .site-publish/tiinex.bundle.js
-- npm run metrics
-- npm run storage:scan
-- npm test
-- unzip -tq tiinex-site-v100-source.zip
+## Commands run
 
-Manual checkpoint: open index.html locally and compare the default start shape against the old Tiinex.dev centered workspace window, especially at zoomed-out desktop scale. This is still visual/action parity work, not full feature parity. Map/Atlas/Leaflet remain intentionally not runtime-visible.
+```bash
+node --check src/main.js
+node --check tools/validate-static.mjs
+node --check tools/validate-schema-bindings.mjs
+node --check tools/check-ui-shape.mjs
+node --check tools/check-public-build.mjs
+node --check tools/build-public.mjs
+node --check tools/collect-metrics.mjs
+node --check tools/inspect-storage.mjs
+npm run validate
+npm run ui:shape
+npm run build:public
+npm run public:check
+node --check .site-publish/tiinex.bundle.js
+npm run metrics
+npm run storage:scan
+npm test
+unzip -tq tiinex-site-v102-source.zip
+```
+
+## Manual check requested
+
+Open `index.html` locally and check only:
+
+1. No browser/page-scroll appears in the default Column view.
+2. Documentation and Start remain visible.
+3. Reader-state badges stay compact; no tall feed/count pillars.
+4. Dock/action icons look less mixed or placeholder-like.

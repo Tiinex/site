@@ -38,8 +38,8 @@ writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v100-source-shell',
+  source: 'v102-source-shell',
   publicRuntime: 'bundled-css-and-js',
-  releaseCacheKey: `v100-${Date.now()}`
+  releaseCacheKey: `v102-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built bundled public shell to ${out}`);

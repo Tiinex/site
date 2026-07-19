@@ -60,7 +60,7 @@ Start keeps a compact continuity card available below Documentation in the defau
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-start-v100-not-authoritative
+  - Value: demo-start-v102-not-authoritative
 `,
     topic: `# Continuity Context
 
@@ -94,7 +94,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-topic-v100-not-authoritative
+  - Value: demo-topic-v102-not-authoritative
 `,
     evidence: `# Continuity Context
 
@@ -145,7 +145,7 @@ Keep root fallback visible when a child schema module is unavailable.
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-evidence-v100-not-authoritative
+  - Value: demo-evidence-v102-not-authoritative
 `,
     unknown: `# Continuity Context
 
@@ -171,14 +171,14 @@ The shell should not pretend child-specific validation passed. It should use roo
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: demo-unknown-v100-not-authoritative
+  - Value: demo-unknown-v102-not-authoritative
 `
   };
 
   const schemaIds = new Set(schemaModules.map((schema) => schema.id));
   const moduleById = new Map(schemaModules.map((schema) => [schema.id, schema]));
   const workspace = {
-    id: 'local-workspace-v100',
+    id: 'local-workspace-v102',
     name: 'Local parser workspace',
     mode: 'file-local',
     records: [],
@@ -241,7 +241,7 @@ The shell should not pretend child-specific validation passed. It should use roo
     { id: 'static-fixture', label: 'Static fixture', icon: '●', boundary: 'repo-bundled demo material', github: 'not guessed', write: 'none' },
     { id: 'local-file', label: 'Local file', icon: '◇', boundary: 'user-selected browser File object', github: 'not guessed', write: 'none' },
     { id: 'draft', label: 'Draft / pasted', icon: '✎', boundary: 'in-memory local draft text', github: 'not guessed', write: 'draft-only' },
-    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v100' }
+    { id: 'github-source-backed', label: 'GitHub source-backed', icon: '◆', boundary: 'explicit source descriptor only', github: 'allowed only when declared', write: 'none in v102' }
   ];
 
   const sourceFilters = [
@@ -495,7 +495,7 @@ The shell should not pretend child-specific validation passed. It should use roo
         ? 'degraded-review'
         : 'scaffold-complete';
     return {
-      type: 'tiinex.web.audit.report.v100',
+      type: 'tiinex.web.audit.report.v102',
       status,
       startedAt,
       completedAt: new Date().toISOString(),
@@ -504,7 +504,7 @@ The shell should not pretend child-specific validation passed. It should use roo
       loadedBoundaries: 0,
       networkFetches: 0,
       sourceBoundary: 'no hidden source traversal; local/static/draft remain local/static/draft',
-      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v100 preserves that shape while keeping verse scope context-bound',
+      legacyLesson: 'old lineage audit loaded open parent boundaries, then counted OK/mismatch/open/pending; v102 preserves that shape while keeping verse scope context-bound',
       lineage,
       integrity,
       findings,
@@ -569,7 +569,7 @@ The shell should not pretend child-specific validation passed. It should use roo
         entries.push({ title, status: 'open', detail: 'Continuity Integrity footer missing.' });
       } else {
         counts.pending += 1;
-        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v100 skeleton.' });
+        entries.push({ title, status: 'pending', detail: 'Integrity footer present, but byte/c14n verification is not implemented in this v102 skeleton.' });
       }
     }
     return counts.total ? Object.assign(counts, { entries }) : Object.assign(counts, { entries: [] });
@@ -944,15 +944,15 @@ The shell should not pretend child-specific validation passed. It should use roo
   function renderArtifactAction(action) {
     const map = {
       collapse: { icon: '⌄', label: 'Collapse', task: 'read', group: 'left', title: 'Collapse / expand card' },
-      preview: { icon: '▰', label: 'Preview', task: 'read', group: 'left', title: 'Preview card material' },
-      markdown: { icon: 'M↔', label: 'Markdown', group: 'left', scaffold: true, title: 'Markdown/source preview scaffold' },
-      github: { icon: '◖', label: 'GitHub', group: 'left', scaffold: true, title: 'GitHub source link scaffold' },
+      preview: { icon: '▭', label: 'Preview', task: 'read', group: 'left', title: 'Preview card material' },
+      markdown: { icon: 'M+', label: 'Markdown', group: 'left', scaffold: true, title: 'Markdown/source preview scaffold' },
+      github: { icon: 'GH', label: 'GitHub', group: 'left', scaffold: true, title: 'GitHub source link scaffold' },
       share: { icon: '↗', label: 'Share', group: 'middle', scaffold: true, title: 'Share scaffold' },
       edit: { icon: '✎', label: 'Edit', group: 'middle', scaffold: true, title: 'Edit scaffold' },
-      continue: { icon: '⛓', label: 'Continue', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Continue/create child scaffold' },
-      reference: { icon: '🔗', label: 'Reference', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Reference scaffold' },
+      continue: { icon: '⎇', label: 'Continue', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Continue/create child scaffold' },
+      reference: { icon: '⛓', label: 'Reference', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Reference scaffold' },
       open: { icon: '▰', label: 'Open', task: 'read', group: 'right', labeled: true, title: 'Open workspace/detail' },
-      merge: { icon: '⛓', label: 'Merge', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Merge scaffold' }
+      merge: { icon: '⎇', label: 'Merge', task: 'act', group: 'right', scaffold: true, labeled: true, title: 'Merge scaffold' }
     };
     const cfg = map[action] || { icon: '⋯', label: action, group: 'middle', scaffold: true, title: action };
     const attrs = cfg.task ? ` data-task="${escapeHtml(cfg.task)}"` : ' aria-disabled="true"';
@@ -1103,34 +1103,34 @@ The shell should not pretend child-specific validation passed. It should use roo
     const readerRows = readers.map(([name, purpose]) => row(titleCase(name), purpose, ['reader'])).join('');
     const auditPlan = [
       'Audit remains a domain operation in src/audit/.',
-      'This v100 pass keeps Column as the only runtime verse and restores old Tiinex.dev height behavior so the focused window stretches vertically before adding feature breadth.',
+      'This v102 pass keeps Column as the only runtime verse, tightens scroll ownership, and polishes icon/action rhythm before adding feature breadth.',
       'Validation still runs on artifact load; audit rechecks loaded records and marks missing lineage as open.',
       'Root fallback cards disclose degraded state instead of claiming child-schema validity.',
       'Legacy lesson kept: old UI is pattern baseline; adapters are source/transport boundaries, renderers are UI/library choices, and Column happy path must be stable before sibling verses are built.'
     ].join('\n');
 
     return `
-      <main class="tx-shell tx-shell-workspace tx-shell-universe tx-shell-visual-continuity tx-shell-focused-window tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-column-action-parity tx-shell-lineage-discovery-parity tx-shell-height-continuity">
+      <main class="tx-shell tx-shell-workspace tx-shell-universe tx-shell-visual-continuity tx-shell-focused-window tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-column-action-parity tx-shell-lineage-discovery-parity tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish">
         <header class="tx-global-dock tx-legacy-global-dock" aria-label="Global Tiinex controls">
           <button class="tx-round-nav" type="button" title="Previous workspace">‹</button>
           <nav class="tx-toolbar tx-dock-actions tx-legacy-top-actions">
             <button class="tx-button tx-icon-plus" type="button" title="Create">+</button>
             <img class="tx-logo tx-logo-center" src="./public/assets/tiinex-logo-white-transparent.png" alt="Tiinex">
-            <button class="tx-button" type="button" title="Share">↗</button>
-            <button class="tx-button" type="button" title="Help">?</button>
+            <button class="tx-button tx-dock-icon" type="button" title="Share"><span aria-hidden="true">↗</span><small>Share</small></button>
+            <button class="tx-button tx-dock-icon" type="button" title="Help"><span aria-hidden="true">?</span><small>Help</small></button>
           </nav>
           <button class="tx-round-nav" type="button" title="Next workspace">›</button>
         </header>
 
         <section class="tx-workspace-window tx-universe-window tx-legacy-main-window tx-focused-main-window" aria-label="Tiinex Universe">
           <div class="tx-window-titlebar tx-legacy-titlebar">
-            <div class="tx-window-title"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">v100 height continuity</span></div>
+            <div class="tx-window-title"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">v102 scroll ownership</span></div>
             <div class="tx-window-stats tx-badges">
-              ${badge('file-local')}${badge('column')}${badge('source kept')}
-              <button class="tx-icon-button" type="button" title="Display"><span>☷</span><small>Display</small></button>
-              <button class="tx-icon-button" data-run-audit type="button" title="Audit"><span>✓</span><small>Audit</small></button>
-              <button class="tx-icon-button" type="button" title="Expand"><span>↗</span><small>Expand</small></button>
-              <button class="tx-icon-button" type="button" title="Close"><span>×</span><small>Close</small></button>
+              ${badge('file-local')}${badge('column')}
+              <button class="tx-icon-button" type="button" title="Display"><span aria-hidden="true">☰</span><small>Display</small></button>
+              <button class="tx-icon-button" data-run-audit type="button" title="Audit"><span aria-hidden="true">✓</span><small>Audit</small></button>
+              <button class="tx-icon-button" type="button" title="Expand"><span aria-hidden="true">↗</span><small>Expand</small></button>
+              <button class="tx-icon-button" type="button" title="Close"><span aria-hidden="true">×</span><small>Close</small></button>
             </div>
           </div>
 
@@ -1205,7 +1205,7 @@ The shell should not pretend child-specific validation passed. It should use roo
   }
 
   function renderDiscoveryIconBar() {
-    return `<div class="tx-iconbar" aria-label="Discovery actions">${discoveryActions.map((action) => `<button class="tx-icon-button" type="button" ${action.id === 'audit' ? 'data-run-audit' : ''} title="${escapeHtml(action.title)}"><span>${escapeHtml(action.icon)}</span><small>${escapeHtml(action.label)}</small></button>`).join('')}</div>`;
+    return `<div class="tx-iconbar" aria-label="Discovery actions">${discoveryActions.map((action) => `<button class="tx-icon-button" type="button" ${action.id === 'audit' ? 'data-run-audit' : ''} title="${escapeHtml(action.title)}"><span aria-hidden="true">${escapeHtml(action.icon)}</span><small>${escapeHtml(action.label)}</small></button>`).join('')}</div>`;
   }
 
   function renderDiscoveryControls() {

@@ -32,12 +32,24 @@ has(main, 'Merge', 'artifact action rhythm should include Merge');
 has(main, 'tx-legacy-secondary-drawer', 'diagnostics should be behind secondary disclosure');
 has(css, '.tx-shell-pattern-parity', 'pattern parity CSS contract missing');
 has(css, '.tx-focused-main-window', 'focused window CSS missing');
+
+has(main, 'tx-shell-scroll-owned', 'default shell must opt into scroll ownership class');
+has(main, 'tx-shell-column-fit', 'default shell must opt into v102 Column fit class');
+has(main, 'tx-shell-icon-polish', 'default shell must opt into v102 icon polish class');
+has(css, '.tx-shell-column-fit', 'Column fit CSS contract missing');
+has(css, '.tx-shell-icon-polish', 'icon polish CSS contract missing');
+has(css, 'grid-auto-rows: max-content', 'reader-state badges must not stretch into tall grid rows');
+has(css, 'overscroll-behavior: contain', 'pane-local scroll should be contained');
+has(css, '.tx-shell-scroll-owned', 'scroll ownership CSS contract missing');
+has(css, '.tx-shell-scroll-owned .tx-focused-grid .tx-column-feed', 'column feed must own pane-local scrolling');
+has(css, 'overflow: auto', 'active column feed should own overflow instead of page scroll');
+
 has(css, '.tx-focused-grid .tx-column-header', 'column dashboard chrome must be hidden in focused default');
 has(css, '.tx-shell-focused-window .tx-legacy-secondary-drawer', 'secondary diagnostics must not dominate default view');
 lacks(main, 'Node Graph Verse', 'stale Node Graph Verse must not appear in runtime UI');
 lacks(main, 'Zoomable Multiverse', 'stale Zoomable Multiverse must not appear in runtime UI');
 lacks(main, 'renderMapVerse', 'Map runtime must stay frozen until Column happy path is stable');
-lacks(main, 'data-pane-verse="map"', 'Map must not be a primary workspace verse control in v100');
+lacks(main, 'data-pane-verse="map"', 'Map must not be a primary workspace verse control in v102');
 has(css, '.tx-shell-legibility-corrected', 'legibility correction CSS missing');
 has(css, '.tx-shell-column-action-parity', 'Column action parity CSS missing');
 has(css, 'font-weight: 640', 'title typography should stay softer than bold-white');

@@ -18,3 +18,12 @@ The default Column runtime uses one focused workspace window. That window should
 ## Legacy lesson
 
 The old UI was not just a collection of cards. It was a tall, centered working window. The refactor should preserve that spatial expectation while improving source boundaries, tests, and maintainability.
+
+## v101 refinement
+
+Height continuity is now paired with scroll ownership. The focused window still stretches vertically, but page-level multiverse scroll is prevented. Loaded feeds scroll inside the active workspace pane instead.
+
+
+## v102 fit and icon polish
+
+v102 keeps the page-scroll contract but fixes polish regressions seen after v101: reader-state chips must stay compact, Column content must align to the top of the pane, and primary action/dock icons should share one visual rhythm instead of mixing emoji-like and placeholder glyphs.
