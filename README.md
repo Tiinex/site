@@ -1,4 +1,4 @@
-# Tiinex Site v110
+# Tiinex Site v111
 
 Source-clean Column-only runtime for UC-001: empty start, create browser-local workspace, restore view state through URL hash plus local storage cache, use browser back/forward for route states, and close the workspace non-destructively.
 
@@ -31,8 +31,15 @@ npm test
 
 This zip is a source-clean repo replacement package. It intentionally excludes `.site-publish`. CI/workflow owns bundled public output after push.
 
-## v110 UC-001 route grounding
+## v111 UC-001 route grounding
 
-v110 keeps the old quiet empty-stage visual baseline and moves from generic persistence to explicit route ownership. The URL hash is the source of visible view state; localStorage is a cache mirror, not an implicit clean-URL restore source. The centered logo now acts as a home/clean-route control, while Create sits to the left of the logo.
+v111 keeps the old quiet empty-stage visual baseline and moves from generic persistence to explicit route ownership. The URL hash is the source of visible view state; localStorage is a cache mirror, not an implicit clean-URL restore source. The centered logo now acts as a home/clean-route control, while Create sits to the left of the logo.
 
 Schema support is also made multi-origin by design: Tiinex/docs remains canonical core, while viewer-local and fork-specific schema origins can be declared explicitly instead of being guessed as Tiinex/docs material.
+
+
+## v111 workspace fit
+
+- Global dock now fits actual controls and only renders previous/next workspace paging when more than one workspace exists.
+- Created local workspace actions use the legacy Tiinex action styling instead of native browser buttons.
+- UC-001 remains grounded in hash route state with localStorage as cache mirror, not clean-URL bootstrap.

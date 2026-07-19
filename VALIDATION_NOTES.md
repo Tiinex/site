@@ -1,4 +1,4 @@
-# Validation Notes v110
+# Validation Notes v111
 
 ## Status
 
@@ -45,10 +45,15 @@ npm test
 - Add/import local markdown into a created workspace is not yet implemented.
 - Map/Atlas/Leaflet remain frozen until Column happy path has proved old use-cases.
 
-## v110 note
+## v111 note
 
 - Added `src/workspaces/workspace.route.js` so route shape is explicit and portable.
 - Changed clean startup so stale localStorage does not reopen a workspace without `#state=`.
 - Added push/replace history modes so create/close/verse changes can participate in browser back/forward.
 - Moved Create to the left of the centered logo; logo is now a home route control.
 - Added schema-origin support for Tiinex/docs plus viewer/fork extension schemas.
+
+
+## v111 validation focus
+
+Validated fitted global dock semantics, styled created-workspace empty state, and conditional workspace pager guards.

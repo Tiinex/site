@@ -1574,3 +1574,143 @@ pre { white-space: pre-wrap; overflow:auto; }
   }
   .tx-shell-route-grounded .tx-multiverse-switch + .tx-primary-orb strong { display: none; }
 }
+
+/* v111: fitted global dock and created-workspace parity.
+   The global dock should wrap its controls, not grow to a fake header width.
+   Previous/next controls are only rendered when there are multiple workspaces. */
+.tx-shell-v111-workspace-fit .tx-legacy-global-dock {
+  width: fit-content;
+  max-width: calc(100vw - 28px);
+  margin-left: auto;
+  margin-right: auto;
+  justify-content: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tx-shell-v111-workspace-fit .tx-legacy-global-dock::-webkit-scrollbar { display: none; }
+.tx-shell-v111-workspace-fit .tx-centered-dock-core {
+  --tx-dock-side: clamp(124px, 15vw, 148px);
+  min-width: 0;
+  width: auto;
+  grid-template-columns: var(--tx-dock-side) 44px var(--tx-dock-side);
+  padding-inline: 10px;
+}
+.tx-shell-v111-workspace-fit .tx-dock-left,
+.tx-shell-v111-workspace-fit .tx-dock-right {
+  overflow: visible;
+}
+.tx-shell-v111-workspace-fit .tx-active-global-dock:not(.tx-global-dock-paged) .tx-round-nav {
+  display: none;
+}
+.tx-shell-v111-workspace-fit .tx-focused-main-window {
+  width: min(650px, calc(100vw - 32px));
+}
+.tx-shell-v111-workspace-fit .tx-window-titlebar {
+  min-height: 44px;
+  padding: 10px 14px;
+}
+.tx-shell-v111-workspace-fit .tx-source-strip {
+  min-height: 38px;
+  padding: 9px 14px;
+}
+.tx-shell-v111-workspace-fit .tx-legacy-main-mode {
+  padding: 10px 14px;
+}
+.tx-shell-v111-workspace-fit .tx-uc001-created-workspace {
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tx-shell-v111-workspace-fit .tx-reader-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin: 0;
+}
+.tx-shell-v111-workspace-fit .tx-workspace-empty-card {
+  border-style: dashed;
+  border-color: rgba(189,115,255,.26);
+  background: linear-gradient(180deg, rgba(20,23,34,.72), rgba(15,17,27,.82));
+  box-shadow: inset 0 1px rgba(255,255,255,.035);
+  margin-top: 4px;
+}
+.tx-shell-v111-workspace-fit .tx-workspace-empty-card .tx-legacy-card-body h3 {
+  font-size: 22px;
+  font-weight: 660;
+  color: #f1eafd;
+}
+.tx-shell-v111-workspace-fit .tx-workspace-empty-card .tx-legacy-card-body p {
+  max-width: 54ch;
+  color: #cabfda;
+}
+.tx-shell-v111-workspace-fit .tx-action-button {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 38px;
+  min-height: 34px;
+  border: 1px solid rgba(189,115,255,.34);
+  border-radius: 999px;
+  background: rgba(189,115,255,.075);
+  color: var(--tx-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  font: 750 12px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+.tx-shell-v111-workspace-fit .tx-action-button:hover {
+  border-color: rgba(189,115,255,.68);
+  background: rgba(189,115,255,.16);
+}
+.tx-shell-v111-workspace-fit .tx-action-button .tx-svg-icon {
+  width: 16px;
+  height: 16px;
+}
+.tx-shell-v111-workspace-fit .tx-labeled-action {
+  width: auto;
+  min-width: 92px;
+  padding: 0 14px;
+}
+.tx-shell-v111-workspace-fit .tx-labeled-action strong {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: nowrap;
+}
+.tx-shell-v111-workspace-fit .tx-legacy-action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .tx-shell-v111-workspace-fit .tx-centered-dock-core {
+    --tx-dock-side: clamp(92px, 34vw, 118px);
+    padding-inline: 6px;
+    gap: 5px;
+  }
+  .tx-shell-v111-workspace-fit .tx-focused-main-window {
+    width: calc(100vw - 20px);
+  }
+  .tx-shell-v111-workspace-fit .tx-uc001-created-workspace {
+    padding: 14px 12px 16px;
+  }
+  .tx-shell-v111-workspace-fit .tx-labeled-action {
+    min-width: 44px;
+  }
+  .tx-shell-v111-workspace-fit .tx-labeled-action strong {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}

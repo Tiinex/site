@@ -31,7 +31,7 @@ if (!index.includes('./src/ui/icon.paths.js') || !index.includes('./src/workspac
 
 const main = readFileSync(path('src/main.js'), 'utf8');
 if (/^\s*import\s/m.test(main) || /^\s*export\s/m.test(main)) failures.push('src/main.js must remain file-local safe with no import/export startup');
-if (main.split('\n').length > 420) failures.push('src/main.js exceeds v110 size ceiling; extract more code before continuing');
+if (main.split('\n').length > 420) failures.push('src/main.js exceeds v111 size ceiling; extract more code before continuing');
 
 for (const required of [
   'src/ui/icon.paths.js',

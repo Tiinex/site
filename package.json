@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v110",
+  "version": "0.2.0-v111",
   "private": true,
-  "description": "Tiinex Site UC-001 shell with runtime empty stage parity for empty/create/restore/close and source-clean public bundle.",
+  "description": "Tiinex Site UC-001 shell with empty/create/restore/close route grounding and fitted Column workspace chrome.",
   "type": "module",
   "scripts": {
     "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs",

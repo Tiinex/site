@@ -5,7 +5,7 @@
   const route = window.TiinexWorkspaceRoute;
   const persistence = window.TiinexWorkspacePersistence;
   const root = document.getElementById('root');
-  const VERSION_LABEL = 'v110 route grounded';
+  const VERSION_LABEL = 'v111 workspace fit';
   const workspaceConfig = window.TiinexWorkspaceConfig?.createDefaultWorkspaceConfig?.() || { emptyStage: { subtitles: ['Everything starts from somewhere.'] }, viewerIdentity: { browserTitle: 'Tiinex' }, help: [] };
   const iconPaths = window.TiinexIconPaths || {};
   if (workspaceConfig.viewerIdentity?.browserTitle && document?.title !== undefined) document.title = workspaceConfig.viewerIdentity.browserTitle;
@@ -118,7 +118,7 @@
     const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE' : 'DISCOVERY MODE';
     const emptyClass = active ? '' : ' tx-empty-stage-mode';
     return `
-      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
+      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
         ${renderGlobalDock(Boolean(active))}
         ${active ? `
         <section class="tx-workspace-window tx-focused-main-window tx-uc001-window" aria-label="Tiinex workspace window">
@@ -133,15 +133,16 @@
   }
 
   function renderGlobalDock(hasWorkspace) {
+    const showPager = hasWorkspace && state.workspaces.length > 1;
     return `
-      <nav class="tx-legacy-global-dock ${hasWorkspace ? 'tx-active-global-dock' : 'tx-empty-global-dock'}" aria-label="Global actions">
-        ${hasWorkspace ? `<button class="tx-nav-button tx-round-nav" type="button" title="Previous">${icon('previous')}</button>` : ''}
+      <nav class="tx-legacy-global-dock ${hasWorkspace ? 'tx-active-global-dock' : 'tx-empty-global-dock'} ${showPager ? 'tx-global-dock-paged' : 'tx-global-dock-fit'}" aria-label="Global actions">
+        ${showPager ? `<button class="tx-nav-button tx-round-nav" type="button" title="Previous workspace">${icon('previous')}</button>` : ''}
         <span class="tx-dock-core tx-centered-dock-core">
           <span class="tx-dock-left"><button class="tx-nav-button tx-multiverse-switch" type="button" data-multiverse title="Change multiverse" aria-label="Change multiverse">${icon('multiverse')}</button><button class="tx-nav-button tx-primary-orb" type="button" data-create-workspace title="Create workspace">${icon('create')}<strong>Create</strong></button></span>
           <button class="tx-logo-orb tx-logo-home" type="button" data-home title="Tiinex home" aria-label="Tiinex home"><img src="./public/assets/tiinex-logo-white-transparent.png" alt=""></button>
           <span class="tx-dock-right"><button class="tx-nav-button tx-share-action" type="button" data-share title="Share">${icon('share')}<strong>Share</strong></button><button class="tx-nav-button" type="button" data-help title="Help" aria-label="Help">${icon('help')}</button></span>
         </span>
-        ${hasWorkspace ? `<button class="tx-nav-button tx-round-nav" type="button" title="Next">${icon('next')}</button>` : ''}
+        ${showPager ? `<button class="tx-nav-button tx-round-nav" type="button" title="Next workspace">${icon('next')}</button>` : ''}
       </nav>`;
   }
 
@@ -220,7 +221,7 @@
     return `${record.title || ''} ${record.summary || ''} ${record.kind || ''}`.toLowerCase().includes(query);
   }
 
-  function actionButton(iconName, label, labeled = false) { return `<button class="tx-action-button ${labeled ? 'tx-labeled-action' : ''}" type="button" title="${escapeHtml(label)}">${icon(iconName)}${labeled ? `<strong>${escapeHtml(label)}</strong>` : ''}</button>`; }
+  function actionButton(iconName, label, labeled = false) { return `<button class="tx-action-button tx-legacy-action ${labeled ? 'tx-labeled-action' : ''}" type="button" title="${escapeHtml(label)}">${icon(iconName)}${labeled ? `<strong>${escapeHtml(label)}</strong>` : ''}</button>`; }
   function icon(name) { return `<svg class="tx-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${iconPaths[name] || iconPaths.preview}</svg>`; }
   function badge(text) { return `<span class="tx-badge">${escapeHtml(text)}</span>`; }
   function escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }

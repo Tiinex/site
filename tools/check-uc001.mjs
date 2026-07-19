@@ -41,8 +41,10 @@ has(main, 'data-multiverse', 'multiverse switch must open a real dialog');
 has(main, 'data-help', 'help button must open parsed workspace help');
 has(main, 'data-share', 'share button must open share behavior');
 has(main, 'tx-centered-dock-core', 'empty dock must center the logo');
+has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'global dock pager arrows should be conditional, not always-on');
 has(main, 'data-home', 'center logo must route home like legacy viewer brand');
 has(main, 'data-create-workspace', 'create workspace affordance missing');
+has(main, 'tx-action-button tx-legacy-action', 'created workspace actions must use legacy-styled command buttons');
 has(main, 'create-workspace-form', 'create workspace form missing');
 has(main, 'workspace.name.required', 'workspace name validation missing');
 has(main, 'data-close-workspace', 'close workspace command missing');
@@ -51,6 +53,7 @@ has(main, 'does not delete source files', 'close confirmation must disclose non-
 has(main, 'persistence.writeState', 'workspace mutations must persist to hash/local cache');
 has(main, 'persistence.clearState', 'closing last workspace must clean empty URL/storage state');
 has(css, '.tx-dialog-backdrop', 'desktop/mobile dialog shell CSS missing');
+has(css, '.tx-shell-v111-workspace-fit .tx-action-button', 'created workspace action CSS missing');
 has(css, '@media (max-width: 640px)', 'mobile create/close sheet CSS missing');
 lacks(main, 'Create your first workspace', 'empty startup must not use onboarding card copy');
 lacks(main, 'tx-empty-card', 'empty startup must not use large onboarding card');
