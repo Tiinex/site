@@ -39,7 +39,7 @@ try {
     const identity = JSON.parse(read(identityPath));
     if (identity.type !== 'tiinex.public.build.identity.v1') fail('Missing public build identity type');
     if (identity.publicRuntime !== 'bundled-css-and-js') fail('Public build identity must disclose bundled runtime');
-    if (!String(identity.source || '').includes('v112')) fail('Public build identity should disclose v112 source shell');
+    if (!String(identity.source || '').includes('v113')) fail('Public build identity should disclose v113 source shell');
   }
   if (failures.length) {
     console.error(failures.map((f) => `- ${f}`).join('\n'));

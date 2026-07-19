@@ -24,7 +24,8 @@ has(main, 'tx-multiverse-switch', 'global dock must expose multiverse switch lef
 has(main, 'data-home', 'center logo must act as home route control');
 has(main, 'tx-logo-home', 'center logo must be styled as a route command');
 has(main, 'tx-shell-route-grounded', 'shell must disclose route-grounded behavior');
-has(main, 'tx-shell-v111-workspace-fit', 'v111 shell must opt into fitted workspace chrome');
+has(main, 'tx-shell-v111-workspace-fit', 'fitted workspace chrome must remain active');
+has(main, 'tx-shell-v113-action-clarity', 'shell must opt into v113 action clarity review fixes');
 has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'workspace pager arrows must only render when multiple workspaces exist');
 has(main, 'tx-uc001-created-workspace', 'created workspace must render inside Column');
 has(main, 'tx-legacy-artifact-card', 'workspace cards must keep legacy card skeleton');
@@ -43,11 +44,14 @@ has(css, '.tx-dialog', 'create/close dialog CSS missing');
 has(css, 'overflow: hidden', 'page/multiverse scroll ownership must be explicit');
 has(css, 'overscroll-behavior: contain', 'pane-local scroll should be contained');
 has(css, '.tx-shell-v111-workspace-fit .tx-action-button', 'created workspace actions must be styled, not native buttons');
+has(css, '.tx-shell-v113-action-clarity .tx-workspace-ready-card', 'v113 action clarity CSS missing');
 lacks(main, 'data-verse="map"', 'Map must not be a primary workspace verse control');
 lacks(main, 'Node Graph Verse', 'stale Node Graph Verse must not appear in runtime UI');
 lacks(main, 'tx-empty-card', 'empty start must not render large card');
 lacks(main, 'Create your first workspace', 'empty start must not use onboarding-card copy');
 lacks(main, 'demoArtifacts', 'default should not be fixture-owned in UC-001');
+lacks(main, "actionButton('lineage', 'Continue'", 'empty workspace must not expose continuation before that use-case exists');
+lacks(main, "actionButton('merge', 'Merge'", 'local/session record cards must not expose merge before source-bound use-case exists');
 
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));

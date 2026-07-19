@@ -48,7 +48,11 @@ has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'glob
 has(main, 'data-home', 'center logo must route home like legacy viewer brand');
 has(main, 'data-create-workspace', 'create workspace affordance missing');
 has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'renderAddMaterialDialog', 'workspace action dialogs must be extracted from main');
+has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'not a file import and not a GitHub source', 'local note dialog must not imply source import');
 has(main, 'data-workspace-action', 'created workspace action buttons must be live commands');
+has(main, 'Add local note', 'created empty workspace must expose clear local note action');
+has(main, 'Open workspace', 'created empty workspace must expose clear workspace summary action');
+has(main, 'tx-shell-v113-action-clarity', 'v113 video-reviewed action clarity class missing');
 has(main, 'submitAddRecord', 'add material and continue actions must mutate workspace state through lifecycle');
 has(main, 'tx-action-button tx-legacy-action', 'created workspace actions must use legacy-styled command buttons');
 has(main, 'create-workspace-form', 'create workspace form missing');
@@ -60,11 +64,14 @@ has(main, 'persistence.writeState', 'workspace mutations must persist to hash/lo
 has(main, 'persistence.clearState', 'closing last workspace must clean empty URL/storage state');
 has(css, '.tx-dialog-backdrop', 'desktop/mobile dialog shell CSS missing');
 has(css, '.tx-shell-v111-workspace-fit .tx-action-button', 'created workspace action CSS missing');
+has(css, '.tx-shell-v113-action-clarity .tx-workspace-ready-card', 'v113 action clarity CSS missing');
 has(css, '@media (max-width: 640px)', 'mobile create/close sheet CSS missing');
 lacks(main, 'Create your first workspace', 'empty startup must not use onboarding card copy');
 lacks(main, 'tx-empty-card', 'empty startup must not use large onboarding card');
 lacks(main, 'demoArtifacts', 'v109 UC-001 must not boot from demo fixture artifacts');
 lacks(main, 'renderMapVerse', 'Map must stay frozen during Column happy path');
+lacks(main, "actionButton('lineage', 'Continue'", 'empty workspace must not expose continuation before UC-002');
+lacks(main, "actionButton('merge', 'Merge'", 'local/session record card must not expose Merge before source-bound use-case');
 
 for (const test of ['src/ui/icon.paths.test.mjs', 'src/schemas/origins.test.mjs', 'src/workspaces/workspace.config.test.mjs', 'src/workspaces/workspace.lifecycle.test.mjs', 'src/workspaces/workspace.route.test.mjs', 'src/workspaces/workspace.persistence.test.mjs']) {
   const result = spawnSync(process.execPath, [join(root, test)], { encoding: 'utf8' });

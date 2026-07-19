@@ -5,7 +5,7 @@
   const route = window.TiinexWorkspaceRoute;
   const persistence = window.TiinexWorkspacePersistence;
   const root = document.getElementById('root');
-  const VERSION_LABEL = 'v112 column actions';
+  const VERSION_LABEL = 'v113 action clarity';
   const workspaceConfig = window.TiinexWorkspaceConfig?.createDefaultWorkspaceConfig?.() || { emptyStage: { subtitles: ['Everything starts from somewhere.'] }, viewerIdentity: { browserTitle: 'Tiinex' }, help: [] };
   const iconPaths = window.TiinexIconPaths || {};
   if (workspaceConfig.viewerIdentity?.browserTitle && document?.title !== undefined) document.title = workspaceConfig.viewerIdentity.browserTitle;
@@ -156,7 +156,7 @@
     const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE' : 'DISCOVERY MODE';
     const emptyClass = active ? '' : ' tx-empty-stage-mode';
     return `
-      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-shell-v112-live-workspace tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
+      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-shell-v112-live-workspace tx-shell-v113-action-clarity tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
         ${renderGlobalDock(Boolean(active))}
         ${active ? `
         <section class="tx-workspace-window tx-focused-main-window tx-uc001-window" aria-label="Tiinex workspace window">
@@ -204,15 +204,15 @@
   function renderWorkspace(workspace) {
     const isTree = state.view.workspaceVerse === 'tree';
     const records = (workspace.records || []).filter(recordMatchesQuery);
-    return `<section class="tx-column-feed tx-uc001-created-workspace" data-workspace-id="${escapeHtml(workspace.id)}"><div class="tx-reader-state">${badge(state.view.workspaceVerse)}${badge(`${records.length} shown`)}${badge('local/session')}${badge('no github guess')}</div>${records.length ? records.map(renderRecordCard).join('') : renderWorkspaceEmptyState(workspace)}${isTree ? renderLineageRootTrailingCard() : ''}</section>`;
+    return `<section class="tx-column-feed tx-uc001-created-workspace" data-workspace-id="${escapeHtml(workspace.id)}"><div class="tx-reader-state">${badge(state.view.workspaceVerse)}${badge(`${records.length} shown`)}${badge('local/session')}${badge('no GitHub guess')}</div>${records.length ? records.map(renderRecordCard).join('') : renderWorkspaceEmptyState(workspace)}${isTree ? renderLineageRootTrailingCard() : ''}</section>`;
   }
 
   function renderWorkspaceEmptyState(workspace) {
-    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-workspace-empty-card"><div class="tx-legacy-card-badges">${badge('empty')}${badge('workspace')}${badge('local/session')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(workspace.name)}</h3><p>No artifacts loaded yet. Next step: add local markdown or create a continuation leaf.</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('load', 'Add material', true, 'add-material', workspace.id)}${actionButton('lineage', 'Continue', true, 'continue', workspace.id)}${actionButton('open', 'Open', true, 'open', workspace.id)}</footer></article>`;
+    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-workspace-empty-card tx-workspace-ready-card"><div class="tx-legacy-card-badges">${badge('empty')}${badge('workspace')}${badge('local/session')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(workspace.name)}</h3><p>Workspace ready. Add a local note or open the workspace summary.</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('load', 'Add local note', true, 'add-material', workspace.id)}${actionButton('open', 'Open workspace', true, 'open', workspace.id)}</footer></article>`;
   }
 
   function renderRecordCard(record) {
-    return `<article class="tx-artifact-card tx-legacy-artifact-card"><div class="tx-legacy-card-badges">${badge(record.status || 'open')}${badge(record.kind || 'artifact')}${badge(record.createdAt || 'local')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(record.title || 'Untitled')}</h3><p>${escapeHtml(record.summary || '')}</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('preview', 'Preview', false, 'preview', state.activeWorkspaceId)}${actionButton('open', 'Open', true, 'open', state.activeWorkspaceId)}${actionButton('merge', 'Merge', true, 'merge', state.activeWorkspaceId)}</footer></article>`;
+    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-record-card"><div class="tx-legacy-card-badges">${badge(record.status || 'open')}${badge(record.kind || 'artifact')}${badge(record.createdAt || 'local')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(record.title || 'Untitled')}</h3><p>${escapeHtml(record.summary || '')}</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('open', 'Open record', true, 'open', state.activeWorkspaceId)}</footer></article>`;
   }
 
   function renderLineageRootTrailingCard() { return `<article class="tx-lineage-terminal tx-lineage-root-card"><span>${icon('audit')}</span><p>Lineage root reached.</p></article>`; }

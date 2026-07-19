@@ -1865,3 +1865,38 @@ pre { white-space: pre-wrap; overflow:auto; }
   }
   .tx-action-summary { grid-template-columns: 1fr; }
 }
+
+/* v113: action clarity after video review.
+   Primary Column workspace actions should name the thing they do and hide
+   deferred/source-bound commands until their matching use-case exists. */
+.tx-shell-v113-action-clarity .tx-workspace-ready-card {
+  border-color: rgba(255,255,255,.085);
+  border-style: solid;
+}
+.tx-shell-v113-action-clarity .tx-workspace-ready-card .tx-legacy-card-body p {
+  max-width: 48ch;
+}
+.tx-shell-v113-action-clarity .tx-workspace-ready-card .tx-legacy-action-row,
+.tx-shell-v113-action-clarity .tx-record-card .tx-legacy-action-row {
+  align-items: center;
+  gap: 9px;
+}
+.tx-shell-v113-action-clarity .tx-workspace-ready-card .tx-labeled-action,
+.tx-shell-v113-action-clarity .tx-record-card .tx-labeled-action {
+  min-width: auto;
+  padding-inline: 14px;
+}
+.tx-shell-v113-action-clarity .tx-record-card {
+  border-color: rgba(255,255,255,.105);
+  background: linear-gradient(180deg, rgba(18,21,31,.95), rgba(14,17,27,.96));
+}
+.tx-local-note-dialog .tx-badges .tx-badge:nth-child(2) {
+  border-color: rgba(128,255,214,.32);
+  background: rgba(128,255,214,.075);
+}
+@media (max-width: 640px) {
+  .tx-shell-v113-action-clarity .tx-workspace-ready-card .tx-labeled-action,
+  .tx-shell-v113-action-clarity .tx-record-card .tx-labeled-action {
+    min-width: 44px;
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.0-v112",
+  "version": "0.2.0-v113",
   "private": true,
   "description": "Tiinex Site UC-001 shell with empty/create/restore/close route grounding and live Column workspace actions and fitted chrome.",
   "type": "module",
