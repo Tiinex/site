@@ -5,7 +5,7 @@
   const route = window.TiinexWorkspaceRoute;
   const persistence = window.TiinexWorkspacePersistence;
   const root = document.getElementById('root');
-  const VERSION_LABEL = 'v113 action clarity';
+  const VERSION_LABEL = 'v115 source progress parity';
   const workspaceConfig = window.TiinexWorkspaceConfig?.createDefaultWorkspaceConfig?.() || { emptyStage: { subtitles: ['Everything starts from somewhere.'] }, viewerIdentity: { browserTitle: 'Tiinex' }, help: [] };
   const iconPaths = window.TiinexIconPaths || {};
   if (workspaceConfig.viewerIdentity?.browserTitle && document?.title !== undefined) document.title = workspaceConfig.viewerIdentity.browserTitle;
@@ -58,6 +58,7 @@
     root.querySelectorAll('[data-copy-share]').forEach((button) => button.addEventListener('click', () => copyShareUrl(button.getAttribute('data-copy-share'))));
     root.querySelectorAll('[data-verse]').forEach((button) => button.addEventListener('click', () => commit(lifecycle.setWorkspaceVerse(state, button.getAttribute('data-verse')), 'push')));
     root.querySelectorAll('[data-workspace-action]').forEach((button) => button.addEventListener('click', () => openWorkspaceAction(button.getAttribute('data-workspace-action'), button.getAttribute('data-workspace-id'))));
+    root.querySelectorAll('[data-close-source]').forEach((button) => button.addEventListener('click', () => closeWorkspaceSource(button.getAttribute('data-workspace-id'), button.getAttribute('data-close-source'))));
     const search = root.querySelector('#workspace-search');
     if (search) search.addEventListener('input', () => {
       const next = lifecycle.cloneState(state);
@@ -70,6 +71,8 @@
     if (addMaterialForm) addMaterialForm.addEventListener('submit', (event) => submitAddRecord(event, addMaterialForm, 'local.material'));
     const continueForm = root.querySelector('#continue-form');
     if (continueForm) continueForm.addEventListener('submit', (event) => submitAddRecord(event, continueForm, 'continuation'));
+    const sourceForm = root.querySelector('#add-source-form');
+    if (sourceForm) sourceForm.addEventListener('submit', (event) => submitAddConfiguredSource(event, sourceForm));
     root.querySelectorAll('[data-dialog-close]').forEach((button) => button.addEventListener('click', () => { dialog = null; notice = ''; render(); }));
     root.querySelectorAll('[data-confirm-close]').forEach((button) => button.addEventListener('click', () => {
       const result = lifecycle.closeWorkspace(state, button.getAttribute('data-confirm-close'));
@@ -113,6 +116,7 @@
     const workspace = state.workspaces.find((item) => item.id === workspaceId) || lifecycle.activeWorkspace(state);
     if (!workspace) return;
     if (action === 'add-material') dialog = { type: 'add-material', workspace };
+    else if (action === 'add-source') dialog = { type: 'add-source', workspace };
     else if (action === 'continue') dialog = { type: 'continue', workspace };
     else if (action === 'open') dialog = { type: 'open-workspace', workspace };
     else dialog = { type: 'command-info', workspace, action };
@@ -142,6 +146,30 @@
     commit(result.state, 'push');
   }
 
+
+  function submitAddConfiguredSource(event, form) {
+    event.preventDefault();
+    const workspaceId = form.getAttribute('data-workspace-id') || state.activeWorkspaceId;
+    const entry = sourcePresenter().configuredEntrypoint(workspaceConfig);
+    const result = lifecycle.addWorkspaceSource(state, workspaceId, {
+      label: entry.label || entry.repository || 'Tiinex/docs',
+      repository: entry.repository || 'Tiinex/docs',
+      ref: entry.ref || 'master',
+      rootPath: entry.rootPath || '.topics',
+      transportLabel: sourcePresenter().configuredMirrorLabel(workspaceConfig, entry.repository || 'Tiinex/docs')
+    });
+    if (!result.ok) return;
+    dialog = null;
+    notice = '';
+    commit(result.state, 'push');
+  }
+
+  function closeWorkspaceSource(workspaceId, sourceId) {
+    const result = lifecycle.closeWorkspaceSource?.(state, workspaceId, sourceId);
+    if (!result?.ok) return;
+    commit(result.state, 'push');
+  }
+
   function copyShareUrl(url) {
     const value = url || cleanShareUrl();
     notice = 'Copy this URL from the field if clipboard access is blocked.';
@@ -153,16 +181,18 @@
   }
 
   function renderApp(active) {
-    const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE' : 'DISCOVERY MODE';
+    const mode = 'DISCOVERY MODE';
     const emptyClass = active ? '' : ' tx-empty-stage-mode';
     return `
-      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-shell-v112-live-workspace tx-shell-v113-action-clarity tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
+      <main class="tx-app tx-shell-visual-continuity tx-shell-pattern-parity tx-shell-legibility-corrected tx-shell-height-continuity tx-shell-scroll-owned tx-shell-column-fit tx-shell-icon-polish tx-shell-command-portable tx-shell-config-grounded tx-shell-route-grounded tx-shell-v111-workspace-fit tx-shell-v112-live-workspace tx-shell-v113-action-clarity tx-shell-v114-old-empty-workspace tx-shell-v115-source-progress tx-uc001-shell tx-uc001-empty-stage-parity${emptyClass}" data-uc="UC-001-empty-create-restore-close">
         ${renderGlobalDock(Boolean(active))}
         ${active ? `
         <section class="tx-workspace-window tx-focused-main-window tx-uc001-window" aria-label="Tiinex workspace window">
-          ${renderWindowHeader(active)}
-          ${renderSourceStrip(active)}
+          ${sourcePresenter().renderWindowHeader(active, sourceContext())}
+          ${sourcePresenter().renderSourceStrip(active, sourceContext())}
+          ${active.discoveryProgress ? '' : renderWorkspaceDropHint(active)}
           ${renderModeStrip(mode)}
+          ${sourcePresenter().renderProgress(active, sourceContext())}
           <div class="tx-primary-stage tx-column-primary-stage">${renderWorkspace(active)}</div>
         </section>
         <footer class="tx-footer">Powered by <strong>Tiinex</strong></footer>` : `${renderEmptyStage()}<footer class="tx-footer tx-empty-footer">Powered by <strong>Tiinex</strong></footer>`}
@@ -184,12 +214,9 @@
       </nav>`;
   }
 
-  function renderWindowHeader(active) {
-    return `<header class="tx-window-titlebar"><div class="tx-window-identity"><strong>Tiinex</strong><span class="tx-badge tx-badge-soft">${VERSION_LABEL}</span></div><div class="tx-window-stats tx-badges">${badge('file-local')}${badge('column')}${active ? badge('session workspace') : badge('empty')}<button class="tx-icon-button" type="button" title="Display">${icon('display')}</button><button class="tx-icon-button" type="button" title="Audit disabled until workspace has material">${icon('audit')}</button><button class="tx-icon-button" type="button" title="Expand">${icon('external')}</button>${active ? `<button class="tx-icon-button" type="button" data-close-workspace="${escapeHtml(active.id)}" title="Close workspace">${icon('close')}</button>` : ''}</div></header>`;
-  }
-
-  function renderSourceStrip(active) {
-    return `<div class="tx-source-strip tx-legacy-source-strip" aria-label="Source row"><div class="tx-source-primary"><span class="tx-source-dot"></span>${active ? `<button class="tx-chip" type="button">${escapeHtml(active.name)}</button><button class="tx-chip" type="button">local/session</button><span class="tx-muted">no GitHub guess</span>` : `<button class="tx-chip" type="button">No workspace</button><span class="tx-muted">create local workspace to begin</span>`}</div><div class="tx-source-tools"><button class="tx-icon-button" type="button" title="Column view">${icon('display')}</button><button class="tx-icon-button" type="button" title="Source boundary">${icon('source')}</button></div></div>`;
+  function renderWorkspaceDropHint(workspace) {
+    if (!workspace || (workspace.records || []).length) return '';
+    return `<div class="tx-workspace-drop-hint">Drop lineage files, configs, folders, or zips into this workspace · or use the source button above.</div>`;
   }
 
   function renderModeStrip(mode) {
@@ -202,13 +229,12 @@
   }
 
   function renderWorkspace(workspace) {
-    const isTree = state.view.workspaceVerse === 'tree';
     const records = (workspace.records || []).filter(recordMatchesQuery);
-    return `<section class="tx-column-feed tx-uc001-created-workspace" data-workspace-id="${escapeHtml(workspace.id)}"><div class="tx-reader-state">${badge(state.view.workspaceVerse)}${badge(`${records.length} shown`)}${badge('local/session')}${badge('no GitHub guess')}</div>${records.length ? records.map(renderRecordCard).join('') : renderWorkspaceEmptyState(workspace)}${isTree ? renderLineageRootTrailingCard() : ''}</section>`;
+    return `<section class="tx-column-feed tx-uc001-created-workspace" data-workspace-id="${escapeHtml(workspace.id)}"><div class="tx-reader-state">${badge(state.view.workspaceVerse)}${badge(`${records.length} shown`)}</div>${records.length ? records.map(renderRecordCard).join('') : renderWorkspaceEmptyState(workspace)}</section>`;
   }
 
   function renderWorkspaceEmptyState(workspace) {
-    return `<article class="tx-artifact-card tx-legacy-artifact-card tx-workspace-empty-card tx-workspace-ready-card"><div class="tx-legacy-card-badges">${badge('empty')}${badge('workspace')}${badge('local/session')}</div><header class="tx-legacy-card-body"><h3>${escapeHtml(workspace.name)}</h3><p>Workspace ready. Add a local note or open the workspace summary.</p></header><footer class="tx-artifact-actions tx-legacy-action-row">${actionButton('load', 'Add local note', true, 'add-material', workspace.id)}${actionButton('open', 'Open workspace', true, 'open', workspace.id)}</footer></article>`;
+    return `<div class="tx-empty-node-state" role="status" aria-live="polite">No nodes match this view.</div>`;
   }
 
   function renderRecordCard(record) {
@@ -225,12 +251,21 @@
     return { icon, badge, escapeHtml };
   }
 
+  function sourcePresenter() {
+    return window.TiinexSourcePresenter || {};
+  }
+
+  function sourceContext() {
+    return { icon, badge, statPill, escapeHtml, workspaceConfig };
+  }
+
   function renderDialog() {
     if (dialog.type === 'close-workspace') return renderCloseDialog(dialog.workspace);
     if (dialog.type === 'multiverse') return renderMultiverseDialog();
     if (dialog.type === 'help') return renderHelpDialog();
     if (dialog.type === 'share') return renderShareDialog();
     if (dialog.type === 'add-material') return dialogPresenter().renderAddMaterialDialog(dialog.workspace, presenterContext());
+    if (dialog.type === 'add-source') return sourcePresenter().renderAddSourceDialog(dialog.workspace, sourceContext());
     if (dialog.type === 'continue') return dialogPresenter().renderContinueDialog(dialog.workspace, presenterContext());
     if (dialog.type === 'open-workspace') return dialogPresenter().renderOpenWorkspaceDialog(dialog.workspace, presenterContext());
     if (dialog.type === 'command-info') return dialogPresenter().renderCommandInfoDialog(dialog, presenterContext());
@@ -240,6 +275,7 @@
   function renderCreateDialog() {
     return `<div class="tx-dialog-backdrop" role="presentation"><section class="tx-dialog tx-workspace-create-dialog" role="dialog" aria-modal="true" aria-labelledby="create-workspace-title"><button class="tx-dialog-close" type="button" data-dialog-close aria-label="Close">${icon('close')}</button><div class="tx-mini-label">Workspace</div><h2 id="create-workspace-title">Create workspace</h2><p class="tx-muted">Name a local workspace. Add sources and files after it opens.</p><form id="create-workspace-form"><label class="tx-field"><span>Workspace name</span><input name="workspaceName" autocomplete="off" maxlength="72" required placeholder="Example: Documentation"></label><div class="tx-badges">${badge('local/session')}${badge('no GitHub guess')}${badge('hash + storage restore')}</div><p class="tx-form-error" data-form-error aria-live="polite"></p><button class="tx-button tx-primary tx-dialog-primary" type="submit">${icon('create')} Create workspace</button></form></section></div>`;
   }
+
 
   function renderCloseDialog(workspace) {
     return `<div class="tx-dialog-backdrop" role="presentation"><section class="tx-dialog tx-workspace-close-dialog" role="dialog" aria-modal="true" aria-labelledby="close-workspace-title"><button class="tx-dialog-close" type="button" data-dialog-close aria-label="Close">${icon('close')}</button><div class="tx-mini-label">Close</div><h2 id="close-workspace-title">Close workspace?</h2><p>This closes <strong>${escapeHtml(workspace?.name || 'this workspace')}</strong> from the current browser session. It does not delete source files, GitHub material, or local downloads.</p><div class="tx-dialog-actions"><button class="tx-button" type="button" data-dialog-close>Cancel</button><button class="tx-button tx-danger" type="button" data-confirm-close="${escapeHtml(workspace?.id || '')}">Close workspace</button></div></section></div>`;
@@ -273,6 +309,11 @@
 
   function actionButton(iconName, label, labeled = false, action = '', workspaceId = '') { return `<button class="tx-action-button tx-legacy-action ${labeled ? 'tx-labeled-action' : ''}" type="button" title="${escapeHtml(label)}" ${action ? `data-workspace-action="${escapeHtml(action)}" data-workspace-id="${escapeHtml(workspaceId)}"` : ''}>${icon(iconName)}${labeled ? `<strong>${escapeHtml(label)}</strong>` : ''}</button>`; }
   function icon(name) { return `<svg class="tx-svg-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${iconPaths[name] || iconPaths.preview}</svg>`; }
+
+  function statPill(iconName, count, title) {
+    return `<span class="stat-pill tx-counter-pill" title="${escapeHtml(title || '')}">${icon(iconName)}<strong>${Number(count || 0)}</strong></span>`;
+  }
+
   function badge(text) { return `<span class="tx-badge">${escapeHtml(text)}</span>`; }
   function escapeHtml(value) { return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
 })();

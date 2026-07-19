@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/, '');
 const main = readFileSync(join(root, 'src/main.js'), 'utf8');
 const css = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
+const sourcePresenter = readFileSync(join(root, 'src/sources/source.presenter.js'), 'utf8');
 const failures = [];
 const has = (text, needle, label = needle) => { if (!text.includes(needle)) failures.push(label); };
 const lacks = (text, needle, label = needle) => { if (text.includes(needle)) failures.push(label); };
@@ -15,7 +16,7 @@ has(main, 'tx-legacy-global-dock', 'global dock must remain a recognizable Tiine
 has(main, 'tx-centered-dock-core', 'global dock must keep logo-centered layout');
 has(main, 'tx-dock-left', 'create and multiverse controls must live left of centered logo');
 has(main, 'tx-dock-right', 'share/help controls must live right of centered logo');
-has(main, 'tx-legacy-source-strip', 'source strip must remain above mode row');
+has(sourcePresenter, 'tx-legacy-source-strip', 'source strip must remain above mode row');
 has(main, 'tx-legacy-main-mode', 'mode row must remain a primary landmark when workspace exists');
 has(main, 'tx-empty-stage', 'empty start must be a quiet stage, not an onboarding card');
 has(main, 'tx-shell-config-grounded', 'empty start must be grounded from .workspace.md config');

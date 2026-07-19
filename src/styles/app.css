@@ -1900,3 +1900,288 @@ pre { white-space: pre-wrap; overflow:auto; }
     min-width: 44px;
   }
 }
+
+/* v114: old empty-workspace parity from side-by-side video.
+   A newly created workspace should look like an empty Column workspace, not an
+   onboarding/material card. Discovery Feed/Tree are still discovery, not lineage. */
+.tx-shell-v114-old-empty-workspace .tx-active-global-dock {
+  width: fit-content;
+  max-width: calc(100vw - 28px);
+  margin: 0 auto 10px;
+}
+.tx-shell-v114-old-empty-workspace .tx-focused-main-window {
+  width: min(560px, calc(100vw - 32px));
+  min-height: min(730px, calc(100dvh - 126px));
+}
+.tx-shell-v114-old-empty-workspace .tx-window-titlebar,
+.tx-shell-v114-old-empty-workspace .tx-source-strip,
+.tx-shell-v114-old-empty-workspace .tx-legacy-main-mode {
+  padding-inline: 14px;
+}
+.tx-shell-v114-old-empty-workspace .tx-workspace-drop-hint {
+  margin: 14px 14px 0;
+  border: 1px dashed rgba(189,115,255,.24);
+  border-radius: 14px;
+  padding: 16px 18px;
+  color: rgba(229,217,255,.74);
+  text-align: center;
+  background: linear-gradient(180deg, rgba(255,255,255,.026), rgba(255,255,255,.012));
+}
+.tx-shell-v114-old-empty-workspace .tx-uc001-created-workspace {
+  padding: 14px 14px 18px;
+}
+.tx-shell-v114-old-empty-workspace .tx-reader-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tx-shell-v114-old-empty-workspace .tx-empty-node-state {
+  min-height: 92px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: rgba(229,217,255,.68);
+  background: rgba(255,255,255,.02);
+  font-size: 14px;
+}
+.tx-shell-v114-old-empty-workspace .tx-workspace-empty-card,
+.tx-shell-v114-old-empty-workspace .tx-workspace-ready-card {
+  display: none;
+}
+.tx-shell-v114-old-empty-workspace .tx-source-tools [data-workspace-action="add-material"] {
+  border-color: rgba(82,168,255,.42);
+  background: rgba(30,105,215,.13);
+}
+@media (max-width: 640px) {
+  .tx-shell-v114-old-empty-workspace .tx-focused-main-window {
+    width: calc(100vw - 18px);
+    min-height: calc(100dvh - 104px);
+  }
+  .tx-shell-v114-old-empty-workspace .tx-workspace-drop-hint {
+    margin-inline: 10px;
+    padding: 13px 12px;
+  }
+}
+
+/* v115: source/progress parity and tighter active Column chrome.
+   Old viewer behavior: one compact workspace header, source row only when sources exist,
+   progress disclosure when a repository/source preparation is active. */
+.tx-shell-v115-source-progress:not(.tx-empty-stage-mode) {
+  padding-top: 6px;
+  padding-bottom: 8px;
+}
+.tx-shell-v115-source-progress .tx-active-global-dock {
+  margin-bottom: 4px;
+}
+.tx-shell-v115-source-progress .tx-focused-main-window {
+  width: min(650px, calc(100vw - 32px));
+  min-height: max(560px, calc(100dvh - 82px));
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header {
+  min-height: 44px;
+  padding: 8px 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-window-identity strong {
+  font-size: 16px;
+  font-weight: 760;
+  color: #f1eafd;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-window-stats {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-counter-pill {
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  justify-content: center;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-counter-pill .tx-svg-icon {
+  width: 14px;
+  height: 14px;
+  color: #a99db6;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-counter-pill strong {
+  color: #d8cfec;
+  font-size: 12px;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-old-icon-button {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.035);
+  color: #b8aec9;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-old-icon-button .tx-svg-icon {
+  width: 15px;
+  height: 15px;
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-download-button {
+  color: #68ffd2;
+  border-color: rgba(104,255,210,.28);
+}
+.tx-shell-v115-source-progress .tx-v115-workspace-header .tx-add-source-button {
+  color: #9cc8ff;
+  border-color: rgba(75,145,255,.42);
+  background: rgba(38,95,183,.14);
+}
+.tx-shell-v115-source-progress .tx-v115-source-strip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: rgba(8,7,15,.58);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tx-shell-v115-source-progress .tx-v115-source-strip::-webkit-scrollbar { display: none; }
+.tx-shell-v115-source-progress .workspace-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #ddd5ec;
+  background: rgba(255,255,255,.04);
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1;
+}
+.tx-shell-v115-source-progress .workspace-source-pill .tx-svg-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+.tx-shell-v115-source-progress .workspace-source-pill small {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.09);
+  color: #cbc2d7;
+  font-size: 11px;
+  font-weight: 800;
+}
+.tx-shell-v115-source-progress .workspace-source-pill.source-local {
+  border-color: rgba(255,255,255,.14);
+}
+.tx-shell-v115-source-progress .workspace-source-pill.source-github {
+  border-color: rgba(134,172,255,.25);
+  background: rgba(39,67,137,.12);
+}
+.tx-shell-v115-source-progress .source-close-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-left: 1px solid rgba(255,255,255,.10);
+  margin: 0 -3px 0 1px;
+  padding: 0 0 0 5px;
+  background: transparent;
+  color: #a99db6;
+  cursor: pointer;
+}
+.tx-shell-v115-source-progress .source-close-btn .tx-svg-icon {
+  width: 12px;
+  height: 12px;
+}
+.tx-shell-v115-source-progress .tx-workspace-drop-hint {
+  margin: 10px 12px 8px;
+  padding: 16px 18px;
+}
+.tx-shell-v115-source-progress .tx-legacy-main-mode {
+  padding: 8px 12px;
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress {
+  margin: 10px 12px 0;
+  padding: 12px 14px 14px;
+  border: 1px solid rgba(189,115,255,.28);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(42,27,57,.76), rgba(25,22,35,.82));
+  box-shadow: inset 0 1px rgba(255,255,255,.05);
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress .progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #efe8fb;
+  font-size: 15px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress .progress-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress .progress-head .tx-svg-icon {
+  width: 16px;
+  height: 16px;
+  color: #c58cff;
+  animation: tx-spin 1.2s linear infinite;
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress small {
+  color: #d8c8ea;
+  font-size: 13px;
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress .progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.tx-shell-v115-source-progress .tx-v115-loading-progress .progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9b56ff, #d8a6ff);
+}
+.tx-shell-v115-source-progress .tx-column-primary-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.tx-shell-v115-source-progress .tx-uc001-created-workspace {
+  padding: 12px;
+}
+.tx-shell-v115-source-progress .tx-empty-node-state {
+  min-height: 72px;
+}
+.tx-shell-v115-source-progress .tx-source-choice {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(189,115,255,.26);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.tx-shell-v115-source-progress .tx-source-choice strong { color: #f1eafd; }
+.tx-shell-v115-source-progress .tx-source-choice span { color: #c8b9db; font-size: 13px; }
+@keyframes tx-spin { to { transform: rotate(360deg); } }
+@media (max-width: 760px) {
+  .tx-shell-v115-source-progress:not(.tx-empty-stage-mode) { padding-top: 4px; }
+  .tx-shell-v115-source-progress .tx-focused-main-window { width: calc(100vw - 16px); min-height: calc(100dvh - 68px); }
+  .tx-shell-v115-source-progress .tx-v115-workspace-header { grid-template-columns: 1fr auto; padding: 8px 10px; }
+  .tx-shell-v115-source-progress .tx-v115-workspace-header .tx-counter-pill:nth-child(n+3),
+  .tx-shell-v115-source-progress .tx-v115-workspace-header .tx-old-icon-button:nth-of-type(n+5) { display: none; }
+  .tx-shell-v115-source-progress .tx-v115-source-strip { padding-inline: 10px; }
+}

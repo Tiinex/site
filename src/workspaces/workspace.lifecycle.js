@@ -5,6 +5,7 @@
   const RECORD_TITLE_MAX_LENGTH = 96;
   const RECORD_SUMMARY_MAX_LENGTH = 280;
   const SESSION_SOURCE_KIND = 'local-session';
+  const CONFIGURED_SOURCE_KIND = 'github-tree';
 
   function nowIso(clock) {
     return typeof clock === 'function' ? clock() : new Date().toISOString();
@@ -61,6 +62,9 @@
       createdAt,
       kind: 'workspace',
       source: makeSessionSource(),
+      sources: [makeLocalSource()],
+      sourceOrder: ['local'],
+      discoveryProgress: null,
       records: [],
       mode: 'feed'
     };
@@ -89,9 +93,37 @@
       source: makeSessionSource()
     };
     workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+    workspace.sources = ensureWorkspaceSources(workspace);
+    upsertSource(workspace, makeLocalSource({ count: workspace.records.length }));
     next.activeWorkspaceId = workspace.id;
     next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
     return { ok: true, record, workspace, state: next };
+  }
+
+  function addWorkspaceSource(state, workspaceId, input = {}, options = {}) {
+    const next = cloneState(state);
+    const targetId = workspaceId || next.activeWorkspaceId;
+    const workspace = next.workspaces.find((item) => item.id === targetId);
+    if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    const source = makeConfiguredSource(input, options);
+    workspace.sources = ensureWorkspaceSources(workspace);
+    upsertSource(workspace, source);
+    workspace.discoveryProgress = sourceProgress(input.progress || {}, source);
+    next.activeWorkspaceId = workspace.id;
+    return { ok: true, source, workspace, state: next };
+  }
+
+  function closeWorkspaceSource(state, workspaceId, sourceId) {
+    const next = cloneState(state);
+    const targetId = workspaceId || next.activeWorkspaceId;
+    const workspace = next.workspaces.find((item) => item.id === targetId);
+    if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    const cleanId = String(sourceId || '').trim();
+    if (!cleanId || cleanId === 'local') return { ok: false, error: 'source.close.refused', state };
+    workspace.sources = ensureWorkspaceSources(workspace).filter((source) => source.id !== cleanId);
+    workspace.sourceOrder = workspace.sources.map((source) => source.id);
+    if (workspace.discoveryProgress?.sourceId === cleanId) workspace.discoveryProgress = null;
+    return { ok: true, workspace, state: next };
   }
 
   function closeWorkspace(state, workspaceId) {
@@ -122,6 +154,59 @@
     return JSON.parse(JSON.stringify(Object.assign(makeEmptyAppState(), base)));
   }
 
+  function ensureWorkspaceSources(workspace) {
+    const sources = Array.isArray(workspace?.sources) ? workspace.sources.slice() : [];
+    if (!sources.some((source) => source.id === 'local')) sources.unshift(makeLocalSource({ count: Array.isArray(workspace?.records) ? workspace.records.length : 0 }));
+    return sources.map((source) => Object.assign({}, source));
+  }
+
+  function upsertSource(workspace, source) {
+    const sources = ensureWorkspaceSources(workspace).filter((item) => item.id !== source.id);
+    sources.push(Object.assign({}, source));
+    workspace.sources = sources;
+    workspace.sourceOrder = sources.map((item) => item.id);
+    return source;
+  }
+
+  function makeLocalSource(input = {}) {
+    return {
+      id: 'local',
+      kind: 'local',
+      label: 'Local',
+      count: Number(input.count || 0),
+      boundary: 'browser-local session material',
+      closeable: false
+    };
+  }
+
+  function makeConfiguredSource(input = {}, options = {}) {
+    const repo = String(input.repository || input.repo || 'Tiinex/docs').trim();
+    const label = String(input.label || repo || 'Source').trim();
+    return {
+      id: input.id || `github:${repo.toLowerCase()}`,
+      kind: input.kind || CONFIGURED_SOURCE_KIND,
+      label,
+      repo,
+      ref: input.ref || 'master',
+      rootPath: input.rootPath || '.topics',
+      count: Number(input.count || 0),
+      boundary: 'configured source; no material is trusted until loaded',
+      transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',
+      closeable: true
+    };
+  }
+
+  function sourceProgress(progress = {}, source = {}) {
+    const percent = Math.max(0, Math.min(100, Number(progress.percent ?? 48)));
+    return {
+      sourceId: source.id || '',
+      phase: progress.phase || 'snapshot-processing',
+      label: progress.label || `Preparing repository snapshot from ${source.transportLabel || 'repository mirror'}`,
+      percent,
+      active: progress.active !== false
+    };
+  }
+
   function makeSessionSource() {
     return {
       kind: SESSION_SOURCE_KIND,
@@ -137,13 +222,18 @@
     RECORD_SUMMARY_MAX_LENGTH,
     RECORD_TITLE_MAX_LENGTH,
     WORKSPACE_NAME_MAX_LENGTH,
+    CONFIGURED_SOURCE_KIND,
     SESSION_SOURCE_KIND,
     activeWorkspace,
     addWorkspaceRecord,
+    addWorkspaceSource,
     cloneState,
     closeWorkspace,
+    closeWorkspaceSource,
     createWorkspace,
     makeEmptyAppState,
+    makeConfiguredSource,
+    makeLocalSource,
     makeRecordId,
     makeWorkspaceId,
     normalizeRecordSummary,

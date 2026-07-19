@@ -10,6 +10,7 @@ const main = readFileSync(join(root, 'src/main.js'), 'utf8');
 const css = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
 const index = readFileSync(join(root, 'index.html'), 'utf8');
 const icons = readFileSync(join(root, 'src/ui/icon.paths.js'), 'utf8');
+const sourcePresenter = readFileSync(join(root, 'src/sources/source.presenter.js'), 'utf8');
 const config = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
 const lifecycle = readFileSync(join(root, 'src/workspaces/workspace.lifecycle.js'), 'utf8');
 const persistence = readFileSync(join(root, 'src/workspaces/workspace.persistence.js'), 'utf8');
@@ -22,6 +23,7 @@ has(index, './src/workspaces/workspace.lifecycle.js', 'index must load workspace
 has(index, './src/workspaces/workspace.route.js', 'index must load workspace route before main');
 has(index, './src/workspaces/workspace.persistence.js', 'index must load workspace persistence before main');
 has(index, './src/ui/dialog.presenter.js', 'index must load dialog presenter before main');
+has(index, './src/sources/source.presenter.js', 'index must load source presenter before main');
 has(icons, 'multiverse', 'icon vocabulary must include multiverse switch icon');
 has(config, 'parseWorkspaceConfig', '.workspace.md config parser missing');
 has(config, 'schemaOrigins', '.workspace.md schema origin parser missing');
@@ -48,11 +50,18 @@ has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'glob
 has(main, 'data-home', 'center logo must route home like legacy viewer brand');
 has(main, 'data-create-workspace', 'create workspace affordance missing');
 has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'renderAddMaterialDialog', 'workspace action dialogs must be extracted from main');
-has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'not a file import and not a GitHub source', 'local note dialog must not imply source import');
+has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'does not infer GitHub provenance', 'local markdown dialog must disclose source boundary');
 has(main, 'data-workspace-action', 'created workspace action buttons must be live commands');
-has(main, 'Add local note', 'created empty workspace must expose clear local note action');
-has(main, 'Open workspace', 'created empty workspace must expose clear workspace summary action');
+lacks(main, 'Workspace ready. Add a local note', 'new workspace must not render onboarding-style ready card');
+lacks(main, 'Add local note', 'new workspace should not expose local note card action in primary empty view');
 has(main, 'tx-shell-v113-action-clarity', 'v113 video-reviewed action clarity class missing');
+has(main, 'tx-shell-v114-old-empty-workspace', 'v114 old empty workspace parity class missing');
+has(main, 'renderWorkspaceDropHint', 'new workspace must expose old drop/source hint');
+has(sourcePresenter, 'renderSourceStrip', 'source presenter must render old source strip');
+has(sourcePresenter, 'renderProgress', 'source presenter must render old loading progress disclosure');
+has(sourcePresenter, 'workspace-source-pill', 'source presenter must render source pills with counts');
+has(main, 'Drop lineage files, configs, folders, or zips into this workspace', 'old empty workspace drop hint missing');
+has(main, 'No nodes match this view.', 'new empty workspace must match old empty discovery result');
 has(main, 'submitAddRecord', 'add material and continue actions must mutate workspace state through lifecycle');
 has(main, 'tx-action-button tx-legacy-action', 'created workspace actions must use legacy-styled command buttons');
 has(main, 'create-workspace-form', 'create workspace form missing');
@@ -70,6 +79,7 @@ lacks(main, 'Create your first workspace', 'empty startup must not use onboardin
 lacks(main, 'tx-empty-card', 'empty startup must not use large onboarding card');
 lacks(main, 'demoArtifacts', 'v109 UC-001 must not boot from demo fixture artifacts');
 lacks(main, 'renderMapVerse', 'Map must stay frozen during Column happy path');
+lacks(main, "const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE'", 'Tree discovery must not be mislabeled as Lineage mode');
 lacks(main, "actionButton('lineage', 'Continue'", 'empty workspace must not expose continuation before UC-002');
 lacks(main, "actionButton('merge', 'Merge'", 'local/session record card must not expose Merge before source-bound use-case');
 

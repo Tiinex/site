@@ -15,7 +15,7 @@ try {
   const build = spawnSync(process.execPath, ['tools/build-public.mjs', '--out', out], { cwd: root, encoding: 'utf8' });
   if (build.status !== 0) fail(build.stderr || build.stdout);
   for (const required of [
-    'index.html', 'src/main.js', 'src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js', 'src/ui/dialog.presenter.js',
+    'index.html', 'src/main.js', 'src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js', 'src/ui/dialog.presenter.js', 'src/sources/source.presenter.js',
     '.topics/.workspaces/viewer.workspace.md', 'docs/architecture/uc001-workspace-lifecycle.md', 'README.md', 'llms.txt', 'tiinex.build.json', 'tiinex.bundle.css', 'tiinex.bundle.js', '.nojekyll'
   ]) if (!existsSync(join(out, required))) fail(`Missing public output: ${required}`);
   for (const forbidden of ['.old', '.git', 'node_modules', '.site-publish', 'desktop.ini', 'src/adapters/leaflet', 'src/verses/map']) {
@@ -30,7 +30,7 @@ try {
   for (const needle of [
     'TiinexIconPaths', 'TiinexWorkspaceConfig', 'TiinexWorkspaceLifecycle', 'TiinexWorkspaceRoute', 'TiinexWorkspacePersistence', 'HASH_PREFIX', 'STORAGE_KEY',
     'tx-empty-stage', 'tx-uc001-empty-stage-parity', 'tx-shell-config-grounded', 'tx-shell-route-grounded', 'data-home', 'data-create-workspace', 'create-workspace-form', 'data-confirm-close',
-    'does not delete source files', 'no GitHub guess', 'tx-workspace-window', 'tx-source-strip',
+    'does not delete source files', 'no GitHub guess', 'tx-workspace-window', 'workspace-source-strip',
     'tx-mode-strip', 'tx-primary-stage', 'Lineage root reached.', 'tx-shell-command-portable', 'tx-svg-icon'
   ]) if (!runtime.includes(needle)) fail(`Fresh public runtime missing ${needle}`);
   if (runtime.includes('renderMapVerse') || runtime.includes('data-verse="map"')) fail('Map must stay frozen in public runtime');
@@ -39,7 +39,7 @@ try {
     const identity = JSON.parse(read(identityPath));
     if (identity.type !== 'tiinex.public.build.identity.v1') fail('Missing public build identity type');
     if (identity.publicRuntime !== 'bundled-css-and-js') fail('Public build identity must disclose bundled runtime');
-    if (!String(identity.source || '').includes('v113')) fail('Public build identity should disclose v113 source shell');
+    if (!String(identity.source || '').includes('v115')) fail('Public build identity should disclose v115 source shell');
   }
   if (failures.length) {
     console.error(failures.map((f) => `- ${f}`).join('\n'));

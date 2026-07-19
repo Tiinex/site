@@ -22,8 +22,26 @@
       createdAt: workspace.createdAt || '',
       kind: workspace.kind || 'workspace',
       source: Object.assign({}, workspace.source || {}),
+      sources: Array.isArray(workspace.sources) ? workspace.sources.map(compactSource) : [],
+      sourceOrder: Array.isArray(workspace.sourceOrder) ? workspace.sourceOrder.slice() : [],
+      discoveryProgress: workspace.discoveryProgress ? Object.assign({}, workspace.discoveryProgress) : null,
       records: Array.isArray(workspace.records) ? workspace.records.map(compactRecord) : [],
       mode: workspace.mode || 'feed'
+    };
+  }
+
+  function compactSource(source) {
+    return {
+      id: source.id || '',
+      kind: source.kind || '',
+      label: source.label || '',
+      repo: source.repo || '',
+      ref: source.ref || '',
+      rootPath: source.rootPath || '',
+      count: Number(source.count || 0),
+      boundary: source.boundary || '',
+      transportLabel: source.transportLabel || '',
+      closeable: Boolean(source.closeable)
     };
   }
 
@@ -68,6 +86,7 @@
     HASH_PREFIX,
     STATE_VERSION,
     compactRecord,
+    compactSource,
     compactWorkspace,
     makeRouteState,
     normalizeRouteState,

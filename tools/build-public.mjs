@@ -22,7 +22,7 @@ mkdirSync(out, { recursive: true });
 for (const entry of ['index.html', 'README.md', 'llms.txt', 'favicon.ico', 'robots.txt', 'public', 'src', 'docs', '.topics']) copy(entry);
 
 const cssInputs = ['src/styles/tokens.css', 'src/styles/theme.css', 'src/styles/responsive.css', 'src/styles/app.css'];
-const jsInputs = ['src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js', 'src/ui/dialog.presenter.js', 'src/main.js'];
+const jsInputs = ['src/ui/icon.paths.js', 'src/workspaces/workspace.config.js', 'src/workspaces/workspace.lifecycle.js', 'src/workspaces/workspace.route.js', 'src/workspaces/workspace.persistence.js', 'src/ui/dialog.presenter.js', 'src/sources/source.presenter.js', 'src/main.js'];
 const bundleCss = cssInputs.map((file) => `/* ${file} */\n${readFileSync(path(file), 'utf8')}`).join('\n\n');
 const bundleJs = jsInputs.map((file) => `/* ${file} */\n${readFileSync(path(file), 'utf8')}`).join('\n\n');
 writeFileSync(join(out, 'tiinex.bundle.css'), bundleCss, 'utf8');
@@ -35,6 +35,7 @@ html = html
   .replace(/\s*<script src="\.\/src\/ui\/icon\.paths\.js"><\/script>/g, '')
   .replace(/\s*<script src="\.\/src\/workspaces\/workspace\.(?:config|lifecycle|route|persistence)\.js"><\/script>/g, '')
   .replace(/\s*<script src="\.\/src\/ui\/dialog\.presenter\.js"><\/script>/g, '')
+  .replace(/\s*<script src="\.\/src\/sources\/source\.presenter\.js"><\/script>/g, '')
   .replace('<script src="./src/main.js"></script>', '<script src="./tiinex.bundle.js"></script>');
 writeFileSync(join(out, 'index.html'), html, 'utf8');
 
@@ -43,8 +44,8 @@ writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v113-source-shell',
+  source: 'v115-source-shell',
   publicRuntime: 'bundled-css-and-js',
-  releaseCacheKey: `v113-${Date.now()}`
+  releaseCacheKey: `v115-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built bundled public shell to ${out}`);
