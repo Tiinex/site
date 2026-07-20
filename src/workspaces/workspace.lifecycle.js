@@ -23,6 +23,59 @@
     return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_SUMMARY_MAX_LENGTH);
   }
 
+  // Canonicalize a source-backed input path for deterministic identity.
+  // Rules:
+  // - collapse duplicate slashes
+  // - remove leading './' and leading '/'
+  // - treat rootPath '.' as empty
+  // - avoid double-prefixing rootPath
+  // - do not lowercase file paths
+  // - for raw GitHub URLs, extract the path after owner/repo/ref
+  function canonicalizeSourcePath(inputPath, source = {}) {
+    let p = String(inputPath || '').trim();
+    if (!p) return '';
+    try {
+      const url = new URL(p);
+      const host = String(url.hostname || '').toLowerCase();
+      if (host === 'raw.githubusercontent.com') {
+        const parts = url.pathname.split('/').filter(Boolean);
+        p = parts.length >= 4 ? parts.slice(3).join('/') : parts.join('/');
+      } else if (host.endsWith('github.com')) {
+        const parts = url.pathname.split('/').filter(Boolean);
+        const blobIndex = parts.indexOf('blob');
+        p = (blobIndex >= 0 && parts.length > blobIndex + 2) ? parts.slice(blobIndex + 2).join('/') : parts.join('/');
+      } else {
+        p = url.pathname.replace(/^\/+/, '');
+      }
+    } catch (e) {
+      // Not a URL; keep p as-is
+    }
+    // Normalize and collapse dot segments
+    p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+    const parts = p.split('/');
+    const out = [];
+    for (const part of parts) {
+      if (!part || part === '.') continue;
+      if (part === '..') {
+        out.pop();
+        continue;
+      }
+      out.push(part);
+    }
+    p = out.join('/');
+
+    const root = String(source.rootPath || '').trim();
+    if (root && root !== '.' && root !== './') {
+      const cleanedRoot = root.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
+      if (cleanedRoot) {
+        if (!p) p = cleanedRoot;
+        else if (!p.startsWith(cleanedRoot + '/') && p !== cleanedRoot) p = cleanedRoot + '/' + p;
+      }
+    }
+    p = p.replace(/\/+$/, '');
+    return p;
+  }
+
   function makeWorkspaceId(name, createdAt) {
     const slug = normalizeWorkspaceName(name)
       .toLowerCase()
@@ -37,9 +90,7 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'artifact';
-    const baseStamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
-    const uniq = Math.random().toString(36).slice(2, 8);
-    const stamp = `${baseStamp}-${uniq}`;
+    const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
     return `${workspaceId || 'workspace'}-${slug}-${stamp}`;
   }
 
@@ -139,21 +190,39 @@
       const title = normalizeRecordTitle(input.title || input.name);
       if (!title) continue;
       const createdAt = nowIso(options.clock);
+
+      // Compute canonical path and deterministic id for source-backed records
+      const canonicalPath = canonicalizeSourcePath(input.path || input.name || '', existingSource);
+      const deterministicId = `source:${existingSource.id}:${canonicalPath || 'root'}`;
+
+      // Upsert by deterministic id or by matching source+path (legacy records)
+      const existingIndex = Array.isArray(workspace.records)
+        ? workspace.records.findIndex((r) => r.id === deterministicId || (r.source && r.source.id === existingSource.id && String(r.path || '').trim() === canonicalPath))
+        : -1;
+
       const record = {
-        id: input.id || makeRecordId(workspace.id, title, createdAt),
+        id: deterministicId,
         title,
         summary: normalizeRecordSummary(input.summary || input.body || 'Source-backed material added in Tiinex.'),
         kind: input.kind || 'local.material',
         status: input.status || 'local',
         createdAt: input.createdAt || createdAt.slice(0, 10),
-        path: input.path || '',
+        path: canonicalPath || '',
         markdown: input.markdown || '',
         sourceMode: input.sourceMode || 'source-backed',
         hasContinuityContext: Boolean(input.hasContinuityContext),
         hasIntegrity: Boolean(input.hasIntegrity),
         source: Object.assign({}, existingSource)
       };
-      workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+
+      if (existingIndex >= 0) {
+        // Replace existing record in place (idempotent upsert)
+        workspace.records = workspace.records.slice();
+        workspace.records[existingIndex] = record;
+      } else {
+        // Prepend new record
+        workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+      }
       added.push(record);
     }
     if (!added.length) return { ok: false, error: 'records.empty', state };
