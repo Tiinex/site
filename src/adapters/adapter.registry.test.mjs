@@ -53,13 +53,28 @@ assert(result.records.length === 1 && result.errors.length === 1, 'github result
 assert(!result.records[0].source, 'adapter result records must not attach lifecycle source provenance');
 
 
+const enc = new TextEncoder();
+function browserFile(name, text, path = name, type = '') {
+  const bytes = enc.encode(text);
+  return {
+    name,
+    webkitRelativePath: path,
+    relativePath: path,
+    type,
+    size: bytes.byteLength,
+    text: async () => text,
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  };
+}
+
 const localResult = await materializeLocalMarkdownFiles([
-  { name: 'a.md', webkitRelativePath: 'notes/a.md', text: async () => '# Local A\n\nbody' },
-  { name: 'image.png', webkitRelativePath: 'image.png', text: async () => 'binary' }
+  browserFile('a.md', '# Local A\n\nbody', 'notes/a.md'),
+  browserFile('image.png', 'binary', 'image.png', 'image/png')
 ]);
 assert(localResult.schema === ADAPTER_RESULT_SCHEMA_ID, 'local materialization result must be contract-shaped');
 assert(localResult.records.length === 1, 'local adapter must materialize supported markdown files');
-assert(localResult.warnings.length === 1, 'local adapter must report unsupported local files as warnings');
+assert(localResult.assets.length === 1, 'local adapter must preserve non-markdown local files as assets');
+assert(localResult.warnings.length === 0, 'preserved local assets must not be reported as unsupported warnings');
 assert(!localResult.records[0].source, 'local adapter result records must not attach lifecycle source provenance');
 
 const urlResult = await materializeExplicitUrls(['https://example.test/a.md', 'notaurl'], {

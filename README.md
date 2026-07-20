@@ -1,4 +1,4 @@
-# Tiinex Site v128
+# Tiinex Site v129
 
 React/Vite foundation with adapter-owned intake, archive/workspace import recovery from `.old`, source/material boundaries, and schema companion ownership. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
 
@@ -54,6 +54,17 @@ npm test
 ## Delivery rule
 
 This zip is a source-clean repo replacement package. It intentionally excludes `node_modules` and `.site-publish`. CI/workflow owns public artifact generation after push.
+
+
+## v129 local directory parity pass
+
+Done:
+
+- Local folder/manual/drop intake now delegates all browser-local files through the archive/material contract, not only `.zip` candidates.
+- Non-Markdown files in folders are preserved as local assets instead of being treated as unsupported noise.
+- Dropped directory entries preserve `arrayBuffer()` as well as `text()`, so `.zip` files nested inside folders can be routed through archive parsing.
+- Fixed a duplicate `const workspaces` declaration in the workspace pager path that browser build checks catch.
+- Added tests for mixed folder material, relative paths, preserved assets, and wrapped dropped-file binary access.
 
 ## v119 scope
 

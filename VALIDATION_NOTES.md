@@ -1,4 +1,4 @@
-# Tiinex Site v128 Validation Notes
+# Tiinex Site v129 Validation Notes
 
 ## Scope
 
@@ -119,3 +119,29 @@ node src/transitions/record.transitions.test.mjs
 node tools/check-ui-shape.mjs
 node tools/check-uc001.mjs
 ```
+
+
+## v129 local directory parity
+
+This pass addresses the gap discovered while comparing folder/drop behavior against the PoC: folder import should not fail or silently discard non-Markdown material just because the PoC path was imperfect.
+
+Changed:
+
+- `local.adapter.js` now routes all selected/dropped local files through the archive/material result contract.
+- Folder-contained non-Markdown files are preserved as local assets.
+- Wrapped `DataTransferEntry` files retain `arrayBuffer()`, so dropped/nested zip files can be parsed by the archive adapter.
+- `TiinexApp.jsx` pager path no longer contains a duplicate `const workspaces` declaration.
+- `local.adapter.test.mjs` and `adapter.registry.test.mjs` assert mixed Markdown/assets folder behavior instead of treating assets as unsupported.
+
+Validation run in sandbox after `npm install`:
+
+```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+npm run runtime:smoke
+npm run build:public
+npm run public:check
+```
+
+All passed.

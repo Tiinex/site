@@ -1,5 +1,4 @@
 import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '../adapter.contracts.js';
-import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { materializeArchiveFiles } from '../archive/archive.adapter.js';
 
 export const LOCAL_ADAPTER_ID = 'local';
@@ -138,53 +137,51 @@ function readAllDirectoryEntries(reader) {
 
 function wrapFileWithRelativePath(file, relativePath) {
   if (!file) return file;
+  const path = relativePath || file.webkitRelativePath || file.name || 'file';
   return {
-    name: file.name || relativePath.split('/').pop() || 'file',
+    name: file.name || path.split('/').pop() || 'file',
     size: file.size,
     type: file.type,
     lastModified: file.lastModified,
-    relativePath,
-    webkitRelativePath: file.webkitRelativePath || relativePath,
-    text: () => file.text()
+    relativePath: path,
+    webkitRelativePath: path,
+    tiinexRelativePath: path,
+    text: () => file.text(),
+    arrayBuffer: () => file.arrayBuffer(),
+    stream: typeof file.stream === 'function' ? () => file.stream() : undefined,
+    slice: typeof file.slice === 'function' ? (...args) => file.slice(...args) : undefined
   };
 }
 
 export async function materializeLocalMarkdownFiles(fileList = [], options = {}) {
   const files = Array.from(fileList || []).filter(Boolean);
-  const archiveCandidate = files.some((file) => /\.zip$/i.test(String(file?.relativePath || file?.webkitRelativePath || file?.name || '').trim()));
-  if (archiveCandidate) return materializeArchiveFiles(files, { sourceMode: options.sourceMode || 'local-files' });
-
-  const records = [];
-  const errors = [];
-  const warnings = [];
-  for (const file of files) {
-    const name = String(file?.name || '').trim();
-    const path = String(file?.relativePath || file?.webkitRelativePath || name).trim();
-    if (!isMarkdownLikeFileName(name || path)) {
-      warnings.push({ code: 'local.unsupported-file', ref: path || name || 'file', message: 'Only Markdown-like local files or .zip archives are materialized in the browser viewer.' });
-      continue;
-    }
-    try {
-      const markdown = await file.text();
-      records.push(createRecordFromMarkdown(markdown, {
-        path: path || name,
-        name,
-        sourceMode: options.sourceMode || 'local-files'
-      }));
-    } catch (error) {
-      errors.push({ code: 'local.read-failed', ref: path || name || 'file', message: String(error && error.message ? error.message : error) });
-    }
+  if (!files.length) {
+    return makeAdapterResult({
+      adapterId: LOCAL_ADAPTER_ID,
+      sourceId: 'local',
+      records: [],
+      assets: [],
+      workspaceEntries: [],
+      diagnostics: { sourceBoundary: 'local-session', fileCount: 0, skippedCount: 0 }
+    });
   }
+
+  // Delegate all browser-local files/folders/zips through the archive intake contract.
+  // This preserves the PoC behavior where folders may contain a mix of leaves, workspace files,
+  // and assets. UI must not decide that non-Markdown files are disposable.
+  const result = await materializeArchiveFiles(files, {
+    sourceMode: options.sourceMode || 'local-files',
+    source: options.sourceMode || 'local-files'
+  });
   return makeAdapterResult({
     adapterId: LOCAL_ADAPTER_ID,
     sourceId: 'local',
-    records,
-    errors,
-    warnings,
-    diagnostics: {
-      sourceBoundary: 'local-session',
-      fileCount: files.length,
-      skippedCount: warnings.length
-    }
+    state: result.state,
+    records: result.records,
+    assets: result.assets,
+    workspaceEntries: result.workspaceEntries,
+    errors: result.errors,
+    warnings: result.warnings,
+    diagnostics: Object.assign({ sourceBoundary: 'local-session', fileCount: files.length }, result.diagnostics || {})
   });
 }
