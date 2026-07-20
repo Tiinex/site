@@ -7,6 +7,9 @@ const TEXT_DECODER = new TextDecoder();
 const TEXT_ENCODER = new TextEncoder();
 const MARKDOWN_RE = /(?:\.md|\.markdown|\.trace\.md|\.schema\.md|\.validator\.md|\.workspace\.md)$/i;
 const TEXT_ASSET_RE = /\.(?:txt|json|yml|yaml|csv|svg|html|css|js)$/i;
+const IMAGE_ASSET_RE = /\.(?:png|jpg|jpeg|gif|webp|svg)$/i;
+const MAX_TEXT_ASSET_PREVIEW_BYTES = 128 * 1024;
+const MAX_BINARY_ASSET_DATA_URL_BYTES = 512 * 1024;
 
 export function createArchiveAdapter() {
   return makeAdapterDefinition({
@@ -107,7 +110,7 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
       const compressed = readLocalFileData(bytes, central);
       const data = await decompressZipEntry(compressed, central.method);
       let content = null;
-      if (MARKDOWN_RE.test(path) || TEXT_ASSET_RE.test(path)) content = TEXT_DECODER.decode(data);
+      if (MARKDOWN_RE.test(path) || (TEXT_ASSET_RE.test(path) && data.byteLength <= MAX_TEXT_ASSET_PREVIEW_BYTES)) content = TEXT_DECODER.decode(data);
       entries.push({
         path,
         bytes: data,
@@ -152,7 +155,7 @@ export async function materializeArchiveFiles(files = [], options = {}) {
   const workspaceEntries = [];
   const errors = [];
   const warnings = [];
-  const diagnostics = { sourceBoundary: 'local-archive', fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0 };
+  const diagnostics = { sourceBoundary: 'local-archive', fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
 
   for (const file of Array.from(files || []).filter(Boolean)) {
     diagnostics.fileCount += 1;
@@ -170,7 +173,11 @@ export async function materializeArchiveFiles(files = [], options = {}) {
         } else if (entry.kind === 'record') {
           records.push(createRecordFromMarkdown(entry.content || '', { path: entry.path, name: fileName(entry.path), sourceMode: options.sourceMode || 'archive-local' }));
         } else if (entry.kind === 'asset') {
-          assets.push(assetFromImportEntry(entry));
+          {
+          const asset = assetFromImportEntry(entry);
+          if (asset.previewState && asset.previewState !== 'available') diagnostics.previewOmittedCount += 1;
+          assets.push(asset);
+        }
         }
       }
     } catch (error) {
@@ -208,15 +215,22 @@ export function workspaceEntryFromImportEntry(entry = {}) {
 
 export function assetFromImportEntry(entry = {}) {
   const path = entry.path || 'asset';
+  const size = Number(entry.size || entry.bytes?.byteLength || 0);
+  const type = entry.type || mimeTypeForPath(path);
+  const textPreview = typeof entry.content === 'string' && entry.content.length <= MAX_TEXT_ASSET_PREVIEW_BYTES ? entry.content : '';
+  const canPreviewBinary = !textPreview && IMAGE_ASSET_RE.test(path) && size > 0 && size <= MAX_BINARY_ASSET_DATA_URL_BYTES;
+  const dataUrl = canPreviewBinary ? bytesToDataUrl(entry.bytes || new Uint8Array(), type) : '';
+  const previewState = textPreview || dataUrl ? 'available' : (size > MAX_BINARY_ASSET_DATA_URL_BYTES || size > MAX_TEXT_ASSET_PREVIEW_BYTES ? 'omitted-large' : 'metadata-only');
   return {
     schema: 'tiinex.local.asset.v1',
     id: `asset:local:${path}`,
     path,
     name: fileName(path),
-    type: entry.type || mimeTypeForPath(path),
-    size: Number(entry.size || entry.bytes?.byteLength || 0),
-    content: entry.content || '',
-    dataUrl: entry.content ? '' : bytesToDataUrl(entry.bytes || new Uint8Array(), entry.type || mimeTypeForPath(path)),
+    type,
+    size,
+    content: textPreview,
+    dataUrl,
+    previewState,
     sourceMode: entry.source || 'zip',
     source: { kind: 'local-session', adapterId: 'archive', sourceKind: 'archive.zip', boundary: 'browser-local archive asset; no GitHub provenance inferred' }
   };
@@ -304,6 +318,24 @@ function decodeZipName(bytes, flag) {
   // UTF-8 flag is 0x800. The legacy viewer treats zip entry names as UTF-8 in practice;
   // falling back to TextDecoder keeps browser behavior deterministic without guessing provenance.
   return TEXT_DECODER.decode(bytes);
+}
+
+
+function suggestWorkspaceNameForFiles(files = []) {
+  const list = Array.from(files || []).filter(Boolean);
+  if (!list.length) return 'Local import';
+  if (list.length === 1) {
+    const raw = fileRelativePath(list[0]) || list[0].name || 'Local import';
+    const base = fileName(raw).replace(/\.(?:zip|md|markdown|trace\.md|workspace\.md)$/i, '').replace(/[-_]+/g, ' ').trim();
+    return titleCase(base || 'Local import');
+  }
+  const roots = new Set(list.map((file) => String(fileRelativePath(file) || file.name || '').replace(/\\/g, '/').split('/').filter(Boolean)[0]).filter(Boolean));
+  if (roots.size === 1) return titleCase(Array.from(roots)[0].replace(/[-_]+/g, ' '));
+  return 'Local import';
+}
+
+function titleCase(value = '') {
+  return String(value || '').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (m) => m.toUpperCase()).slice(0, 72) || 'Local import';
 }
 
 function fileRelativePath(file = {}) {

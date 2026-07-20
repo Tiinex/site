@@ -6,6 +6,7 @@ import { Modal } from '../ui/primitives/Modal.jsx';
 import { materializeGithubFiles } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
+import { ensureWorkspaceForLocalMaterial } from '../workspaces/workspace.import.js';
 import {
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
@@ -147,6 +148,7 @@ export function TiinexApp() {
     let addedAssets = 0;
     let workspaceOpened = false;
     const workspaces = Array.isArray(adapterResult.workspaceEntries) ? adapterResult.workspaceEntries : [];
+    const hasMaterial = Boolean((adapterResult.records?.length || 0) + (adapterResult.assets?.length || 0));
     const targetWorkspaceId = workspaceId || nextState.activeWorkspaceId;
 
     if (workspaces.length && !targetWorkspaceId && runtime().lifecycle?.openWorkspaceFromMarkdown) {
@@ -155,6 +157,13 @@ export function TiinexApp() {
       if (opened?.ok) {
         nextState = opened.state;
         workspaceOpened = true;
+        const openedWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id;
+        if (openedWorkspaceId && runtime().lifecycle?.mergeWorkspaceImport) {
+          for (const entry of workspaces.slice(1)) {
+            const merged = runtime().lifecycle.mergeWorkspaceImport(nextState, openedWorkspaceId, entry);
+            if (merged?.ok) nextState = merged.state;
+          }
+        }
       }
     } else if (workspaces.length && targetWorkspaceId && runtime().lifecycle?.mergeWorkspaceImport) {
       for (const entry of workspaces) {
@@ -163,7 +172,17 @@ export function TiinexApp() {
       }
     }
 
-    const finalWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id || targetWorkspaceId;
+    let finalWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id || targetWorkspaceId;
+    if (!finalWorkspaceId && hasMaterial) {
+      const ensured = ensureWorkspaceForLocalMaterial(runtime().lifecycle, nextState, '', {
+        name: adapterResult.diagnostics?.suggestedWorkspaceName || options.workspaceName || 'Local import'
+      });
+      if (ensured?.ok) {
+        nextState = ensured.state;
+        finalWorkspaceId = ensured.workspaceId;
+        workspaceOpened = Boolean(ensured.created);
+      }
+    }
     if (adapterResult.records?.length && finalWorkspaceId) {
       const added = runtime().lifecycle?.addWorkspaceRecords?.(nextState, finalWorkspaceId, adapterResult.records);
       if (added?.ok) {

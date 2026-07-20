@@ -162,6 +162,7 @@
     return { ok: true, workspace, state: next };
   }
 
+
   function addWorkspaceRecord(state, workspaceId, input = {}, options = {}) {
     const title = normalizeRecordTitle(input.title || input.name);
     if (!title) return { ok: false, error: 'record.title.required', state };

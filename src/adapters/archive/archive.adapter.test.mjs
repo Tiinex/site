@@ -80,6 +80,15 @@ try {
   assert.equal(result.workspaceEntries[0].path, 'viewer.workspace.md');
   assert.equal(result.diagnostics.recordCount, 1);
   assert.equal(result.diagnostics.assetCount, 1);
+  assert.equal(result.diagnostics.suggestedWorkspaceName, 'Bundle');
+
+
+  const largeAsset = makeZip([{ name: 'big/app.js', content: 'x'.repeat(160 * 1024), method: 8 }]);
+  const largeResult = await materializeArchiveFiles([fileFromZip('large.zip', largeAsset)]);
+  assert.equal(largeResult.assets.length, 1);
+  assert.equal(largeResult.assets[0].content, '');
+  assert.equal(largeResult.assets[0].dataUrl, '');
+  assert.equal(largeResult.assets[0].previewState, 'omitted-large');
 
   const encrypted = makeZip([{ name: 'secret.md', content: '# Secret', encrypted: true }]);
   assert.equal(zipBufferHasEncryptedEntries(encrypted), true);
