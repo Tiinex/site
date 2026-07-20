@@ -58,6 +58,8 @@ try {
   assert.equal(safeArchivePath('/evil.md'), '');
   assert.equal(safeArchivePath('./a//b/trace.md'), 'a/b/trace.md');
   assert.equal(classifyArchiveEntry('viewer.workspace.md', '# Tiinex Viewer'), 'workspace');
+  assert.equal(classifyArchiveEntry('docs/viewer.md', '# Tiinex Viewer\n\n## Workspace Entrypoints'), 'record', 'generic viewer docs must not become workspace candidates');
+  assert.equal(classifyArchiveEntry('docs/explicit.md', '# Explicit\n\n- Current Schema: tiinex.workspace.v1'), 'workspace', 'explicit workspace schema can still become a candidate');
   assert.equal(classifyArchiveEntry('a/001.trace.md', '# A'), 'record');
   assert.equal(classifyArchiveEntry('assets/img.png', null), 'asset');
 

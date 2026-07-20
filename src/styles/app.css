@@ -3807,3 +3807,58 @@ pre { white-space: pre-wrap; overflow:auto; }
   color: rgba(247,248,251,0.46);
   font-size: 0.7rem;
 }
+
+/* v136 workspace candidate parity: candidates must feel like Tiinex rows, not browser form controls */
+.tx-tree-workspace-candidate-row {
+  border-color: rgba(189,115,255,0.34);
+  background: linear-gradient(145deg, rgba(189,115,255,0.075), rgba(101,242,231,0.035));
+}
+.tx-tree-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.72rem;
+  border: 0;
+  background: transparent;
+  color: var(--tx-brand-white);
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+.tx-tree-row-main:hover,
+.tx-tree-row-main:focus-visible {
+  color: #fff;
+  outline: none;
+}
+.tx-tree-row-action {
+  flex: 0 0 auto;
+  border: 1px solid rgba(189,115,255,0.42);
+  border-radius: 999px;
+  background: rgba(189,115,255,0.14);
+  color: var(--tx-brand-white);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 0.34rem 0.64rem;
+  cursor: pointer;
+}
+.tx-tree-row-action:hover,
+.tx-tree-row-action:focus-visible {
+  border-color: rgba(101,242,231,0.62);
+  background: rgba(101,242,231,0.12);
+  outline: none;
+}
+.tx-workspace-candidate-card {
+  border-style: dashed;
+  border-color: rgba(101,242,231,0.34);
+  background: linear-gradient(145deg, rgba(101,242,231,0.055), rgba(189,115,255,0.045));
+}
+.tx-workspace-candidate-card h3 {
+  font-size: clamp(1rem, 1.8vw, 1.18rem);
+}
+.tx-workspace-candidate-card p {
+  font-size: 0.88rem;
+}

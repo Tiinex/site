@@ -9,15 +9,18 @@ import { createRecordActionResult, presentRecordActions, RecordActionKind } from
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onShareRecord, onRecordAction }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
-  const assets = Array.isArray(workspace.assets) ? workspace.assets : [];
+  const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
+  const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
+  const workspaceCandidates = allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query));
   const records = allRecords.filter((record) => recordMatchesQuery(record, query));
-  const hasMaterial = Boolean(allRecords.length || assets.length);
-  const isFilteredEmpty = Boolean(hasMaterial && allRecords.length && !records.length);
+  const assets = allAssets.filter((asset) => assetMatchesQuery(asset, query));
+  const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
+  const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
   const presentation = verse === 'tree'
     ? presentWorkspaceTree(workspace, { verse, query })
     : presentWorkspaceFeed(workspace, { verse, query });
@@ -30,7 +33,8 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
         </div>
         <div className="tx-window-actions tx-compact-window-actions" aria-label="Workspace actions">
           <span className="tx-stat-pill" title="Shown artifacts"><Icon name="manualFiles" />{records.length}</span>
-          <span className="tx-stat-pill" title="Local assets"><Icon name="asset" />{(workspace.assets || []).length}</span>
+          <span className="tx-stat-pill" title="Local assets"><Icon name="asset" />{allAssets.length}</span>
+          <span className="tx-stat-pill" title="Workspace candidates"><Icon name="workspace" />{allWorkspaceCandidates.length}</span>
           <span className="tx-stat-pill" title="Sources"><Icon name="source" />{sources.length}</span>
           <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} />
           <Button icon="close" variant="ghost" shape="round" aria-label="Close workspace" title="Close workspace" onClick={onClose} />
@@ -41,7 +45,15 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <ModeToolbar state={state} query={query} onVerse={onVerse} onQuery={onQuery} />
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
-        {verse === 'tree' ? <WorkspaceTreeState workspace={workspace} records={records} onOpenRecord={onOpenRecord} /> : records.length ? records.map((record) => <RecordCard key={record.id} record={record} onOpenRecord={onOpenRecord} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />) : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} />}
+        {verse === 'tree'
+          ? <WorkspaceTreeState workspace={workspace} records={records} assets={assets} workspaceCandidates={workspaceCandidates} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          : (records.length || assets.length || workspaceCandidates.length)
+            ? <>
+                {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
+                {records.map((record) => <RecordCard key={record.id} record={record} onOpenRecord={onOpenRecord} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
+                {assets.map((asset) => <AssetCard key={asset.id || asset.path} asset={asset} onOpenAsset={onOpenAsset} />)}
+              </>
+            : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} />}
       </section>
     </section>
   );
@@ -65,7 +77,7 @@ function SourceStrip({ workspace, boundary, onCloseSource }) {
           </span>
         ))}
       </div>
-      {(workspace.records?.length || workspace.assets?.length) ? <span className="tx-source-boundary tx-compact-source-boundary">{workspace.records?.length || 0} artifacts · {workspace.assets?.length || 0} assets</span> : null}
+      {(workspace.records?.length || workspace.assets?.length || workspace.workspaceMergeCandidates?.length) ? <span className="tx-source-boundary tx-compact-source-boundary">{workspace.records?.length || 0} artifacts · {workspace.assets?.length || 0} assets · {workspace.workspaceMergeCandidates?.length || 0} workspace candidates</span> : null}
     </div>
   );
 }
@@ -124,7 +136,7 @@ function EmptyWorkspaceState({ filtered, hasMaterial, query }) {
   );
 }
 
-function WorkspaceTreeState({ workspace, records, onOpenRecord }) {
+function WorkspaceTreeState({ workspace, records, assets = [], workspaceCandidates = [], onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   return (
     <div className="tx-workspace-tree-state" role="tree" aria-label="Workspace source tree">
@@ -135,14 +147,68 @@ function WorkspaceTreeState({ workspace, records, onOpenRecord }) {
           <Badge>{Number(source.count || 0)} artifacts</Badge>
         </div>
       ))}
+      {workspaceCandidates.map((candidate) => (
+        <div className="tx-tree-record-row tx-tree-workspace-candidate-row" role="treeitem" key={candidate.id || candidate.path}>
+          <button type="button" className="tx-tree-row-main" onClick={() => onOpenWorkspaceCandidate?.(candidate.id || candidate.path)}>
+            <span><Icon name="workspace" /> {candidate.title || candidate.path || 'Workspace candidate'}</span>
+            <Badge>workspace</Badge>
+          </button>
+          <button type="button" className="tx-tree-row-action" onClick={() => onMergeWorkspaceCandidate?.(candidate.id || candidate.path)}>Merge</button>
+        </div>
+      ))}
       {records.map((record) => (
         <button type="button" className="tx-tree-record-row" role="treeitem" key={record.id} onClick={() => onOpenRecord?.(record.id)}>
           <span><Icon name="open" /> {record.title || 'Untitled'}</span>
           <Badge>{record.kind || 'artifact'}</Badge>
         </button>
       ))}
-      {!records.length ? <p className="tx-tree-empty">No loaded artifacts yet. Source and workspace boundaries remain visible.</p> : null}
+      {assets.map((asset) => (
+        <button type="button" className="tx-tree-record-row tx-tree-asset-row" role="treeitem" key={asset.id || asset.path} onClick={() => onOpenAsset?.(asset.id || asset.path)}>
+          <span><Icon name="asset" /> {asset.name || asset.path || 'Asset'}</span>
+          <Badge>{asset.previewState || 'asset'}</Badge>
+        </button>
+      ))}
+      {!records.length && !assets.length && !workspaceCandidates.length ? <p className="tx-tree-empty">No loaded artifacts, assets, or workspace candidates yet. Source and workspace boundaries remain visible.</p> : null}
     </div>
+  );
+}
+
+
+
+function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+  return (
+    <article className="tx-artifact-card tx-workspace-candidate-card">
+      <div className="tx-card-badges">
+        <Badge>workspace</Badge>
+        <Badge>open/merge candidate</Badge>
+        <Badge>local/session</Badge>
+        {candidate.path ? <Badge title={candidate.path}>{compactPath(candidate.path)}</Badge> : null}
+      </div>
+      <h3>{candidate.title || candidate.path || 'Workspace candidate'}</h3>
+      <p>Workspace file staged from local/archive intake. Open it as a workspace or merge its context into the current workspace.</p>
+      <footer className="tx-artifact-actions">
+        <Button icon="open" variant="ghost" onClick={() => onOpenWorkspaceCandidate?.(candidate.id || candidate.path)}>Open</Button>
+        <Button icon="continue" variant="ghost" onClick={() => onMergeWorkspaceCandidate?.(candidate.id || candidate.path)}>Merge</Button>
+      </footer>
+    </article>
+  );
+}
+
+function AssetCard({ asset, onOpenAsset }) {
+  return (
+    <article className="tx-artifact-card tx-asset-card">
+      <div className="tx-card-badges">
+        <Badge>local/session</Badge>
+        <Badge>{asset.type || 'asset'}</Badge>
+        <Badge>{asset.previewState || 'metadata-only'}</Badge>
+        {asset.path ? <Badge title={asset.path}>{compactPath(asset.path)}</Badge> : null}
+      </div>
+      <h3>{asset.name || asset.path || 'Local asset'}</h3>
+      <p>{asset.size ? `${asset.size} bytes preserved as local asset.` : 'Preserved as a local asset, not a fake leaf.'}</p>
+      <footer className="tx-artifact-actions">
+        <Button icon="open" variant="ghost" onClick={() => onOpenAsset?.(asset.id || asset.path)}>Open</Button>
+      </footer>
+    </article>
   );
 }
 
@@ -170,6 +236,32 @@ function RecordCard({ record, onOpenRecord, onShareRecord, onRecordAction }) {
         ))}
       </footer>
     </article>
+  );
+}
+
+
+export function AssetDetailDialog({ asset, onDismiss }) {
+  return (
+    <Modal title={asset?.name || asset?.path || 'Local asset'} onDismiss={onDismiss}>
+      <div className="tx-record-detail tx-asset-detail">
+        <div className="tx-card-badges">
+          <Badge>local/session</Badge>
+          <Badge>{asset?.type || 'asset'}</Badge>
+          <Badge>{asset?.previewState || 'metadata-only'}</Badge>
+        </div>
+        <dl className="tx-record-meta">
+          {asset?.path ? <div><dt>Path</dt><dd>{asset.path}</dd></div> : null}
+          {asset?.size != null ? <div><dt>Size</dt><dd>{asset.size} bytes</dd></div> : null}
+          <div><dt>Boundary</dt><dd>{asset?.source?.boundary || 'Browser-local asset; no GitHub provenance inferred.'}</dd></div>
+        </dl>
+        {asset?.content ? <pre className="tx-record-markdown-preview">{String(asset.content).slice(0, 2400)}</pre> : null}
+        {asset?.dataUrl ? <img className="tx-local-asset-preview" src={asset.dataUrl} alt="" /> : null}
+        {!asset?.content && !asset?.dataUrl ? <p className="tx-muted">Preview is {asset?.previewState || 'metadata-only'}; metadata and local boundary are preserved.</p> : null}
+        <div className="tx-dialog-actions">
+          <Button variant="ghost" onClick={onDismiss}>Close</Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -345,4 +437,16 @@ function recordMatchesQuery(record, query) {
   const q = String(query || '').trim().toLowerCase();
   if (!q) return true;
   return [record.title, record.summary, record.kind, record.status, record.path].some((value) => String(value || '').toLowerCase().includes(q));
+}
+
+function assetMatchesQuery(asset, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return true;
+  return [asset.name, asset.path, asset.type, asset.previewState, asset.sourceMode].some((value) => String(value || '').toLowerCase().includes(q));
+}
+
+function workspaceCandidateMatchesQuery(candidate, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return true;
+  return [candidate.title, candidate.path, candidate.sourceMode, candidate.schema].some((value) => String(value || '').toLowerCase().includes(q));
 }

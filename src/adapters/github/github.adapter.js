@@ -54,8 +54,45 @@ function isMarkdownPath(path) {
 
 async function fetchJson(url, fetchImpl) {
   const res = await fetchImpl(url, { cache: 'no-store', headers: { Accept: 'application/vnd.github+json' } });
-  if (!res || !res.ok) throw new Error(`${res?.status || 'ERR'} ${res?.statusText || ''}`.trim());
+  if (!res || !res.ok) {
+    const status = res?.status || 'ERR';
+    const statusText = res?.statusText || '';
+    let bodyMessage = '';
+    try {
+      const body = await res.json();
+      bodyMessage = body?.message ? String(body.message) : '';
+    } catch (error) {
+      bodyMessage = '';
+    }
+    const message = [String(status), statusText, bodyMessage].filter(Boolean).join(' ').trim();
+    const err = new Error(message || 'GitHub API request failed');
+    err.status = status;
+    err.statusText = statusText;
+    err.url = url;
+    return Promise.reject(err);
+  }
   return res.json();
+}
+
+function githubDiscoveryWarning(error) {
+  const status = error?.status || null;
+  const base = status ? `GitHub API ${status}` : 'GitHub API';
+  let message = `${base} prevented repo discovery. Registering the source is still safe; use explicit file refs/raw URLs or try discovery later.`;
+  let code = 'github.repo.discovery.unavailable';
+  if (Number(status) === 403) {
+    code = 'github.repo.discovery.rate-limited-or-forbidden';
+    message = 'GitHub repo discovery is unavailable right now (API 403/rate-limit). Source was registered; add explicit file refs/raw URLs or try later.';
+  } else if (Number(status) === 404) {
+    code = 'github.repo.discovery.not-found';
+    message = 'GitHub repo discovery did not find that repo/ref. Source was registered; verify repo/ref or use explicit raw/blob URLs.';
+  }
+  return {
+    code,
+    severity: 'warning',
+    message,
+    status,
+    url: error?.url || ''
+  };
 }
 
 export async function resolveGithubSourceRef(source, options = {}) {
@@ -126,7 +163,9 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       diagnostics.resolvedBy = discovered.resolvedBy;
       warnings.push(...(discovered.warnings || []));
     } catch (error) {
-      errors.push({ ref: 'repo-discovery', error: String(error && error.message ? error.message : error) });
+      warnings.push(githubDiscoveryWarning(error));
+      diagnostics.discoveryUnavailable = true;
+      diagnostics.discoveryError = String(error && error.message ? error.message : error);
     }
   }
 

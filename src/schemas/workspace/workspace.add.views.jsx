@@ -72,7 +72,7 @@ function GitHubSourceForm({ onBack, onSubmit }) {
   const [repository, setRepository] = useState('');
   const [ref, setRef] = useState('');
   const [rootPath, setRootPath] = useState('.topics');
-  const [repoDiscovery, setRepoDiscovery] = useState(true);
+  const [repoDiscovery, setRepoDiscovery] = useState(false);
   const [issueUrls, setIssueUrls] = useState('');
   const [fileRefs, setFileRefs] = useState('');
 
@@ -91,14 +91,14 @@ function GitHubSourceForm({ onBack, onSubmit }) {
       <label className="tx-textarea-field">
         <span>Markdown file paths / URLs <small>optional</small></span>
         <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
-        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Optional — leave empty to use repo file discovery.</small>
+        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Leave empty to only register the source unless discovery is enabled below.</small>
       </label>
       <label className="tx-textarea-field">
         <span>Root paths</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />
       </label>
       <div className="tx-github-source-surface-grid">
-        <label className="tx-display-option-row"><span><strong>Repo files discovery</strong><small>Tiinex markdown artifacts from the repo tree</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
+        <label className="tx-display-option-row"><span><strong>Discover repo Markdown now</strong><small>Uses the public GitHub API and may be rate-limited; optional</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
       </div>
       <details className="tx-github-advanced-issues" open={Boolean(issueUrls)}>
         <summary>Issue / Discussion URLs <em>optional</em></summary>

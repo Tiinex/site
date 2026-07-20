@@ -6,8 +6,10 @@ import { Modal } from '../ui/primitives/Modal.jsx';
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
-import { ensureWorkspaceForLocalMaterial } from '../workspaces/workspace.import.js';
+import { applyLocalAdapterResultToWorkspace } from '../workspaces/workspace.import.js';
+import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
+  AssetDetailDialog,
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
   RecordActionDialog,
@@ -77,12 +79,31 @@ function shouldPageWorkspaces(workspaceCount, viewportWidth) {
   return required > width;
 }
 
+function summarizeGithubMaterialization(sourceLabel, out = {}) {
+  const okCount = Number(out.okCount || 0);
+  const failCount = Number(out.failCount || 0);
+  const warnings = Array.isArray(out.warnings) ? out.warnings : [];
+  const errors = Array.isArray(out.errors) ? out.errors : [];
+  const firstWarning = warnings[0];
+  const firstError = errors[0];
+  if (okCount > 0 && failCount === 0) {
+    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}.`;
+  }
+  if (okCount > 0) {
+    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred.`;
+  }
+  if (firstWarning?.message) return `${sourceLabel} source registered. ${firstWarning.message}`;
+  if (firstError?.error) return `${sourceLabel} source registered; source loading failed: ${firstError.error}.`;
+  return `${sourceLabel} source registered; no source files loaded.`;
+}
+
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState('');
   const [createError, setCreateError] = useState('');
   const [activeRecordId, setActiveRecordId] = useState('');
+  const [activeAssetId, setActiveAssetId] = useState('');
   const [recordAction, setRecordAction] = useState(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
@@ -142,64 +163,6 @@ export function TiinexApp() {
     commit(result.state, 'push');
   }
 
-  function applyLocalAdapterResult(baseState, workspaceId, adapterResult, options = {}) {
-    let nextState = baseState;
-    let addedRecords = 0;
-    let addedAssets = 0;
-    let workspaceOpened = false;
-    const workspaces = Array.isArray(adapterResult.workspaceEntries) ? adapterResult.workspaceEntries : [];
-    const hasMaterial = Boolean((adapterResult.records?.length || 0) + (adapterResult.assets?.length || 0));
-    const targetWorkspaceId = workspaceId || nextState.activeWorkspaceId;
-
-    if (workspaces.length && !targetWorkspaceId && runtime().lifecycle?.openWorkspaceFromMarkdown) {
-      const first = workspaces[0];
-      const opened = runtime().lifecycle.openWorkspaceFromMarkdown(nextState, first.markdown || '', first);
-      if (opened?.ok) {
-        nextState = opened.state;
-        workspaceOpened = true;
-        const openedWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id;
-        if (openedWorkspaceId && runtime().lifecycle?.mergeWorkspaceImport) {
-          for (const entry of workspaces.slice(1)) {
-            const merged = runtime().lifecycle.mergeWorkspaceImport(nextState, openedWorkspaceId, entry);
-            if (merged?.ok) nextState = merged.state;
-          }
-        }
-      }
-    } else if (workspaces.length && targetWorkspaceId && runtime().lifecycle?.mergeWorkspaceImport) {
-      for (const entry of workspaces) {
-        const merged = runtime().lifecycle.mergeWorkspaceImport(nextState, targetWorkspaceId, entry);
-        if (merged?.ok) nextState = merged.state;
-      }
-    }
-
-    let finalWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id || targetWorkspaceId;
-    if (!finalWorkspaceId && hasMaterial) {
-      const ensured = ensureWorkspaceForLocalMaterial(runtime().lifecycle, nextState, '', {
-        name: adapterResult.diagnostics?.suggestedWorkspaceName || options.workspaceName || 'Local import'
-      });
-      if (ensured?.ok) {
-        nextState = ensured.state;
-        finalWorkspaceId = ensured.workspaceId;
-        workspaceOpened = Boolean(ensured.created);
-      }
-    }
-    if (adapterResult.records?.length && finalWorkspaceId) {
-      const added = runtime().lifecycle?.addWorkspaceRecords?.(nextState, finalWorkspaceId, adapterResult.records);
-      if (added?.ok) {
-        nextState = added.state;
-        addedRecords = added.records.length;
-      }
-    }
-    if (adapterResult.assets?.length && finalWorkspaceId && runtime().lifecycle?.addWorkspaceAssets) {
-      const assetResult = runtime().lifecycle.addWorkspaceAssets(nextState, finalWorkspaceId, adapterResult.assets);
-      if (assetResult?.ok) {
-        nextState = assetResult.state;
-        addedAssets = assetResult.assets.length;
-      }
-    }
-    return { state: nextState, addedRecords, addedAssets, workspaceOpened, workspaceEntries: workspaces.length };
-  }
-
   async function addLocalFiles(fileList, options = {}) {
     const files = options.fromDataTransfer
       ? await collectLocalFilesFromDataTransfer(fileList)
@@ -222,19 +185,13 @@ export function TiinexApp() {
       setNotice(skipped ? 'No readable Markdown, workspace, asset, or zip material was imported.' : 'No files selected.');
       return;
     }
-    const applied = applyLocalAdapterResult(state, active?.id, adapterResult, options);
-    if (applied.state === state && !applied.addedRecords && !applied.addedAssets && !applied.workspaceOpened && !applied.workspaceEntries) {
+    const applied = applyLocalAdapterResultToWorkspace(runtime().lifecycle, state, active?.id, adapterResult, options);
+    if (!applied.ok && applied.state === state && !applied.addedRecords && !applied.addedAssets && !applied.workspaceOpened && !applied.workspaceEntries) {
       setNotice('Could not add selected material.');
       return;
     }
     setDialog(null);
-    const skipped = (adapterResult.warnings?.length || 0) + (adapterResult.errors?.length || 0);
-    const parts = [];
-    if (applied.workspaceOpened) parts.push('opened workspace');
-    else if (applied.workspaceEntries) parts.push(`${applied.workspaceEntries} workspace file${applied.workspaceEntries === 1 ? '' : 's'} staged for merge`);
-    if (applied.addedRecords) parts.push(`${applied.addedRecords} artifact${applied.addedRecords === 1 ? '' : 's'}`);
-    if (applied.addedAssets) parts.push(`${applied.addedAssets} asset${applied.addedAssets === 1 ? '' : 's'}`);
-    setNotice(`${parts.length ? `Imported ${parts.join(' · ')}` : 'Import completed'}${skipped ? `; ${skipped} warning/error${skipped === 1 ? '' : 's'}` : ''}.`);
+    setNotice(applied.summary?.message || 'Import completed.');
     commit(applied.state, 'push');
   }
 
@@ -310,18 +267,7 @@ export function TiinexApp() {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
-        const warningCount = (out.warnings?.length || 0) + (out.errors?.length || 0);
-        if ((out.okCount || 0) === 0 && (out.failCount || 0) === 0) {
-          noticeMessage = `${result.source.label} source registered; no source files loaded.`;
-        } else if ((out.okCount || 0) === 0) {
-          noticeMessage = `Source registered; ${out.failCount || 0} source item${out.failCount === 1 ? '' : 's'} failed or deferred.`;
-        } else if ((out.failCount || 0) === 0) {
-          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}${warningCount ? `; ${warningCount} warning${warningCount === 1 ? '' : 's'}` : ''}.`;
-        } else {
-          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}; ${out.failCount} failed/deferred.`;
-        }
-        if (out.errors && out.errors.length) console.warn('github adapter errors', out.errors);
-        if (out.warnings && out.warnings.length) console.warn('github adapter warnings', out.warnings);
+        noticeMessage = summarizeGithubMaterialization(result.source.label, out);
       } catch (e) {
         console.error(e);
         noticeMessage = `${result.source.label} source registered; source materialization failed.`;
@@ -335,6 +281,7 @@ export function TiinexApp() {
 
   function openRecord(recordId) {
     setRecordAction(null);
+    setActiveAssetId('');
     setActiveRecordId(String(recordId || ''));
   }
 
@@ -342,8 +289,43 @@ export function TiinexApp() {
     setActiveRecordId('');
   }
 
+  function openAsset(assetId) {
+    setRecordAction(null);
+    setActiveRecordId('');
+    setActiveAssetId(String(assetId || ''));
+  }
+
+  function dismissAsset() {
+    setActiveAssetId('');
+  }
+
+  function openWorkspaceCandidate(candidateId) {
+    const result = openStagedWorkspaceCandidate(runtime().lifecycle, state, active?.id, candidateId);
+    if (!result?.ok) {
+      setNotice('Could not open workspace candidate.');
+      return;
+    }
+    setDialog(null);
+    setActiveRecordId('');
+    setActiveAssetId('');
+    setRecordAction(null);
+    setNotice(`Opened workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
+    commit(result.state, 'push');
+  }
+
+  function mergeWorkspaceCandidate(candidateId) {
+    const result = mergeStagedWorkspaceCandidate(runtime().lifecycle, state, active?.id, candidateId);
+    if (!result?.ok) {
+      setNotice('Could not merge workspace candidate.');
+      return;
+    }
+    setNotice(`Merged workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
+    commit(result.state, 'push');
+  }
+
   function openRecordAction(record, action) {
     setActiveRecordId('');
+    setActiveAssetId('');
     setRecordAction({ recordId: record?.id || '', action });
   }
 
@@ -420,6 +402,7 @@ export function TiinexApp() {
   }
 
   const activeRecord = activeRecordId && active?.records ? active.records.find((record) => record.id === activeRecordId) : null;
+  const activeAsset = activeAssetId && active?.assets ? active.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
   const actionRecord = recordAction?.recordId && active?.records ? active.records.find((record) => record.id === recordAction.recordId) : null;
 
   const shellClasses = [
@@ -459,6 +442,9 @@ export function TiinexApp() {
           onCloseSource={closeSource}
           onDropFiles={addLocalFiles}
           onOpenRecord={openRecord}
+          onOpenAsset={openAsset}
+          onOpenWorkspaceCandidate={openWorkspaceCandidate}
+          onMergeWorkspaceCandidate={mergeWorkspaceCandidate}
           onShareRecord={shareRecord}
           onRecordAction={openRecordAction}
         />
@@ -472,6 +458,7 @@ export function TiinexApp() {
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={() => setDialog(null)} /> : null}
       {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={() => setDialog(null)} onConfirm={() => closeWorkspace(active.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
+      {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
       {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog

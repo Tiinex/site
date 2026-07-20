@@ -1,19 +1,56 @@
-# Tiinex Site v132
+# Tiinex Site v136
 
-React/Vite foundation with adapter-owned intake, archive/workspace import recovery from `.old`, source/material boundaries, and schema companion ownership. v132 keeps the v131 GitHub-source honesty/discovery model and reduces workspace/Add boilerplate so the UI projects the adapter/source model without duplicating explanations. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
+React/Vite refactor checkpoint focused on one recovered PoC loop: **local/archive intake → workspace → records/assets → detail/projection → persistence/reload**.
 
-`.old/` remains a behavior and polish reference for the public PoC monolith. It is source-only and ignored from commits/public builds.
+`.old/` remains the behavior reference for the public PoC monolith. This checkpoint does not introduce new product families or Verse expansion; it tightens the local/archive parity loop under modular owners.
 
-## Runtime shape
+## Runtime ownership
 
-- React owns rendering and state binding.
-- `src/schemas/**` owns schema companions: bindings, capabilities, presenters, validation, transitions, and schema-owned React surfaces.
-- `src/schemas/workspace/` binds `tiinex.workspace.v1` as a viewer-local schema extension.
-- Workspace config/lifecycle/route/persistence modules still own behavior that should remain portable outside React.
-- `src/ui/primitives/**` owns reusable UI primitives, spacing, focus, and icon/text rhythm.
-- Font Awesome is integrated through the shared `Icon` primitive.
+- React owns rendering and state binding only.
+- `src/adapters/**` owns intake/materialization boundaries.
+- `src/workspaces/**` owns workspace lifecycle, import routing, persistence-facing state and local/source provenance.
+- `src/artifacts/**` owns Markdown parsing and record shaping.
+- `src/schemas/**` owns schema companions and workspace presentation surfaces.
 - Local/session workspaces do not infer GitHub/source provenance.
-- URL hash remains visible view-state truth; localStorage remains cache/mirror only.
+- URL hash remains visible view-state truth; localStorage remains browser-local recovery/cache.
+
+## v136 PoC loop recovery: Local/Archive Intake
+
+Recovered as one complete vertical slice:
+
+```text
+local file/folder/zip/source-zip
+→ archive/local adapter classification
+→ workspace entry / record / asset split
+→ empty-stage workspace auto-create or workspace open/merge
+→ deterministic local record/asset identity
+→ asset projection/detail without fake leaf creation
+→ import result summary with warnings/errors/diagnostics
+→ persistence/reload-safe workspace state
+```
+
+### Added / changed
+
+- `src/workspaces/workspace.import.js`
+  - Now owns local adapter-result application instead of leaving workspace/material routing in React.
+  - Adds structured `tiinex.workspace.import.result.v1` summaries with counts, warnings, errors and diagnostics.
+  - Handles workspace-file open/merge, auto-created local workspaces, records and assets as one import operation.
+
+- `src/workspaces/workspace.lifecycle.js`
+  - Keeps lifecycle as owner of record/asset identity, local/session provenance, workspace files and merge candidates.
+  - Stays under the static size guard after import-routing logic moved out.
+
+- `src/schemas/workspace/workspace.views.jsx`
+  - Local assets are now visible in Feed/Tree as assets, not fake artifact leaves.
+  - Asset detail modal shows path, type, size, preview state and local/session boundary.
+  - Search includes assets as well as records.
+
+- `src/app/TiinexApp.jsx`
+  - UI delegates local/archive result application to workspace import owner.
+  - Notice text comes from import result summary, not hand-built UI boilerplate.
+
+- `src/parity/poc.localArchiveParity.test.mjs`
+  - New parity fixture for a representative PoC loop: zip with workspace file, Markdown leaves, asset, unsafe path, repeat import and local/session boundary checks.
 
 ## Local manual check
 
@@ -22,160 +59,38 @@ npm install
 npm run dev
 ```
 
-Then open the Vite local URL.
+Then test:
 
-1. Start with no `#state=` hash: the viewer should show the quiet empty Tiinex stage even if stale localStorage exists.
-2. Press Create on the left side of the centered Tiinex logo.
-3. Submit without a name: the modal should require a workspace name.
-4. Enter a workspace name and create it.
-5. Confirm the created workspace is local/session, has source row, drop hint, toolbar and `No nodes match this view.`
-6. Open `Add`; the modal should be compact and old-like, with Manual files, Manual folder, GitHub source, Explicit URLs, and Drag and drop.
-7. Add one or more local Markdown files and confirm cards/counts appear without GitHub provenance.
-8. Add a GitHub source. The repo field should start blank; entering `Tiinex/docs` with Repo files discovery enabled should materialize bounded Markdown records through the GitHub adapter.
-9. Refresh: the workspace should restore from `#state=`.
-10. Close the workspace: clean empty route should return non-destructively.
-
-
-## v130 archive/drop hardening
-
-- Empty-stage drops containing only records/assets now auto-create a local workspace instead of failing with “Could not add selected material.”
-- Drops containing `.workspace.md` still open/stage workspace imports; remaining workspace entries are merged as candidates.
-- Archive/local assets are metadata-first. Large text/binary assets omit preview payloads to avoid localStorage bloat while preserving path, size, type, and local/session boundary.
-- Local/archive material never infers GitHub provenance.
-
-
-
-## v132 workspace guidance pass
-
-- Empty workspaces now show one compact drop hint, not duplicate local/source explanations in multiple boxes.
-- Empty feed state is filter-aware: `No nodes match this view.` is reserved for filtered material, while a truly empty workspace says `No material yet.`
-- Drop guidance is thinner and projection-only; source/material truth still lives in adapters, sources, and lifecycle.
-- Add/GitHub text areas were reduced slightly to avoid the heavy text-box feeling without changing behavior.
-
-## v131 GitHub source honesty
-
-- The GitHub Add form no longer pre-fills from workspace entrypoints and no longer shows the unowned “Start from” dropdown.
-- Workspace entrypoints remain config material, but Add Source starts from explicit user intent.
-- Blank GitHub refs are resolved through the public GitHub repo metadata API when repo-tree discovery is requested.
-- Repo files discovery is now adapter-owned and bounded: public GitHub tree API → markdown path filter → raw file materialization → lifecycle source-backed insertion.
-- Issue/discussion URLs remain registered/deferred honestly; no fake issue snapshot materialization is claimed in this slice.
+1. Drop a zip with `viewer.workspace.md`, nested Markdown files and an asset onto the empty stage.
+2. Expected: workspace opens; Markdown becomes records; asset appears as an asset card; unsafe paths are skipped with diagnostics.
+3. Open a record and verify path + local/session boundary.
+4. Open an asset and verify path/type/size/preview state + local/session boundary.
+5. Drop the same zip again. Expected: same canonical paths upsert, not duplicate.
+6. Refresh. Expected: workspace, records, assets and import summaries remain recoverable.
+7. Drop a zip/folder with no `.workspace.md` but with Markdown/assets. Expected: local workspace auto-created.
+8. Confirm no local/archive/folder/zip material receives GitHub source links.
+9. Add GitHub source without discovery. Expected: source registers, no repo-tree call.
+10. Add GitHub explicit file refs. Expected: source-backed records remain distinct from local/session material.
 
 ## Validation
 
 ```bash
-node --check app.js 2>/dev/null || true
+npm run test
+```
+
+Expanded:
+
+```bash
 npm run validate
 npm run ui:shape
 npm run runtime:smoke
 npm run usecase:uc001
 npm run build:public
 npm run public:check
-node --check .site-publish/assets/*.js
 npm run metrics
 npm run storage:scan
-npm test
 ```
 
 ## Delivery rule
 
-This zip is a source-clean repo replacement package. It intentionally excludes `node_modules` and `.site-publish`. CI/workflow owns public artifact generation after push.
-
-
-## v129 local directory parity pass
-
-Done:
-
-- Local folder/manual/drop intake now delegates all browser-local files through the archive/material contract, not only `.zip` candidates.
-- Non-Markdown files in folders are preserved as local assets instead of being treated as unsupported noise.
-- Dropped directory entries preserve `arrayBuffer()` as well as `text()`, so `.zip` files nested inside folders can be routed through archive parsing.
-- Fixed a duplicate `const workspaces` declaration in the workspace pager path that browser build checks catch.
-- Added tests for mixed folder material, relative paths, preserved assets, and wrapped dropped-file binary access.
-
-## v119 scope
-
-Done:
-
-- Replaced the new source shortcut with a compact old-like `Add to <workspace>` menu.
-- Tightened created-workspace chrome: smaller titlebar, icon stat pills, shorter source row, shorter drop hint, compact empty result.
-- Implemented adapter-owned local intake for Markdown files, folders, `.zip` archives, workspace import candidates, local assets, drag/drop, and explicit URL fetch where CORS/source allows.
-- GitHub source action registers a source boundary without fake progress and explicit file refs materialize as source-backed records.
-- Workspace-specific React UI remains in `src/schemas/workspace/workspace.views.jsx` instead of a parallel generic React component tree.
-- Updated `tiinex.workspace.v1` capabilities/transitions/source-action fields for the Add flow.
-- Kept clean empty-stage parity and single-column width discipline from v116.1/v117.
-
-Not done:
-
-- Full repository/mirror source loading is not implemented in React yet.
-- Full `.old` zip/export encryption parity is not complete; encrypted zip entries are detected and reported rather than faked.
-- Topic/evidence schema React companions still need real implementation passes.
-- Root schema companions will be patched as needs appear.
-
-## v119.3 footer and compact-recognition patch
-
-Done:
-
-- Footer is visible before and after workspace creation.
-- Footer matches the old PoC origin-marker behavior more closely: fixed bottom bar, translucent dark background, compact 34px desktop height.
-- Footer `Tiinex` mark is linkable to `https://github.com/Tiinex`, matching the old app's link behavior.
-- Created-workspace copy was compacted again: the source row no longer carries a redundant `local/session` right-side explanation when there are no loaded records, and the drop hint is shorter.
-- Local/session provenance remains available through source metadata/title text and lifecycle state rather than as layout-heavy boilerplate.
-
-Not changed:
-
-- No new source-loading behavior was added.
-- No new flow was introduced.
-- Multi-column/pager assumptions were preserved; the single workspace remains a compact column rather than a full-width dashboard.
-
-
-## v119.3 recognition patch
-
-- Global dock now behaves as a content-fit row instead of stretching toward the workspace column width.
-- Tiinex logo remains intentionally larger than neighboring controls.
-- Workspace pager arrows are gated by workspace count plus viewport-size calculation, not count alone.
-- No source/loading feature logic was added in this patch.
-
-## v126 local folder and action foundation
-
-Done:
-
-- Local adapter now owns browser drag/drop directory traversal using DataTransferEntry when Chromium exposes it.
-- Manual folder, direct workspace drop, and focused drop target can preserve relative paths for nested Markdown files.
-- Local record identity is deterministic by workspace + canonical local path, so repeat imports update rather than creating duplicate React keys.
-- Same-title files from different paths remain separate artifacts.
-- Record actions now expose concrete `Continue` and `Reference` action-result capsules through `tiinex.record.action.result.v1`.
-- Record actions remain non-decorative: `Source` only appears for source-backed GitHub records; local records never get guessed source links.
-
-Not done:
-
-- Native git bridge execution is still unavailable in the browser and remains explicit adapter capability/availability metadata.
-- Full repo crawling/mirror discovery remains a future adapter pass.
-- Visual parity with the PoC card chrome is intentionally secondary to correct source/material/action ownership.
-
-
-## v127 transition foundation
-
-This checkpoint adds schema-aware record transitions:
-
-- `Continue` can create a browser-local continuation leaf from a record.
-- Continuation targets come from the schema registry (`Topic`, `Preservation`, `Evidence`, etc.).
-- `Reference` can create a browser-local evidence/reference leaf.
-- Generated transition Markdown preserves the parent record boundary and does not infer GitHub provenance for local material.
-- Transition records are inserted through workspace lifecycle, keeping identity/provenance ownership outside the UI.
-
-
-## v128 PoC capability recovery
-
-Done:
-
-- Added archive adapter contract for `.zip` intake.
-- Preserved safe relative paths from zips/folders.
-- Split `.workspace.md` files, Markdown leaves, and non-Markdown assets into separate result lanes.
-- Added lifecycle support for local assets and workspace import/open/merge candidates.
-- Empty-stage drops can open workspace files; existing workspace drops stage workspace files as merge candidates.
-- Local/archive material stays browser-local/session and never infers GitHub provenance.
-
-Not done:
-
-- Password-based encrypted zip import remains an explicit unsupported/bridge-required path.
-- Full PoC issue snapshot/mirror/git-native behavior still needs recovery passes.
-- Asset preview UI is still minimal; assets are now preserved in state so preview can be layered on top.
+This zip is a source-clean repo replacement package. It intentionally excludes `node_modules`, `.site-publish`, browser screenshots, traces and temporary evidence files. CI/workflow owns public artifact generation after push.

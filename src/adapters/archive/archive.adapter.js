@@ -58,10 +58,13 @@ export function isWorkspaceMarkdownPath(path = '') {
 
 export function looksLikeWorkspaceMarkdown(markdown = '') {
   const text = String(markdown || '');
+  // Only explicit workspace schema declarations classify an arbitrary Markdown
+  // entry as a workspace import candidate. Generic headings such as
+  // `# Tiinex Viewer` or `## Workspace Entrypoints` occur in normal docs too
+  // and must remain records; otherwise source zips flood the feed with false
+  // open/merge candidates. Path-based `.workspace.md` detection still applies.
   return /Current Schema:\s*\[[^\]]*tiinex\.workspace\.v1/i.test(text)
-    || /Current Schema:\s*tiinex\.workspace\.v1/i.test(text)
-    || /^#\s+Tiinex Viewer\s*$/mi.test(text)
-    || /^##\s+Workspace Entrypoints\s*$/mi.test(text);
+    || /Current Schema:\s*tiinex\.workspace\.v1/i.test(text);
 }
 
 export function classifyArchiveEntry(path = '', content = null) {

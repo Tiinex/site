@@ -298,10 +298,15 @@
     const next = cloneState(state);
     const workspace = next.workspaces.find((item) => item.id === (workspaceId || next.activeWorkspaceId));
     if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    const path = canonicalizeLocalPath(workspaceEntry.path || 'workspace.workspace.md') || 'workspace.workspace.md';
+    const candidate = Object.assign({}, workspaceEntry, { id: workspaceEntry.id || `workspace-candidate:local:${path}`, path, mergedAt: nowIso(options.clock) });
     workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
-    workspace.importLog.unshift({ kind: 'workspace-merge-candidate', path: workspaceEntry.path || 'workspace.workspace.md', title: workspaceEntry.title || '', at: nowIso(options.clock) });
-    workspace.workspaceMergeCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-    workspace.workspaceMergeCandidates.unshift(Object.assign({}, workspaceEntry, { mergedAt: nowIso(options.clock) }));
+    workspace.importLog.unshift({ kind: 'workspace-merge-candidate', path, title: candidate.title || '', at: candidate.mergedAt });
+    const existing = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates.slice() : [];
+    const idx = existing.findIndex((item) => canonicalizeLocalPath(item.path || '') === path || item.id === candidate.id);
+    if (idx >= 0) existing[idx] = candidate;
+    else existing.unshift(candidate);
+    workspace.workspaceMergeCandidates = existing;
     next.activeWorkspaceId = workspace.id;
     return { ok: true, workspace, state: next };
   }
@@ -318,11 +323,6 @@
     return String(value || '').replace(/^\[([^\]]+)\]\([^)]*\)$/, '$1').trim();
   }
 
-  // v121: addWorkspaceSourceRecords
-  // Minimal lifecycle API to insert records that are explicitly source-backed.
-  // Does not perform network IO; expects caller to supply record-shaped inputs
-  // (for example created via `createRecordFromMarkdown`). Attaches explicit
-  // source provenance and updates the configured source `count`.
   function addWorkspaceSourceRecords(state, workspaceId, sourceId, inputs = [], options = {}) {
     const records = Array.isArray(inputs) ? inputs : [];
     let next = cloneState(state);
@@ -331,7 +331,6 @@
     if (!workspace) return { ok: false, error: 'workspace.not.found', state };
     const existingSource = Array.isArray(workspace.sources) ? workspace.sources.find((s) => s.id === sourceId) : null;
     if (!existingSource) return { ok: false, error: 'source.not.found', state };
-    // Reject non-configured sources (for example the always-present `local` source)
     if (existingSource.kind !== CONFIGURED_SOURCE_KIND) return { ok: false, error: 'source.not.configured', state };
     const added = [];
     for (const input of records) {
@@ -339,11 +338,9 @@
       if (!title) continue;
       const createdAt = nowIso(options.clock);
 
-      // Compute canonical path and deterministic id for source-backed records
       const canonicalPath = canonicalizeSourcePath(input.path || input.name || '', existingSource);
       const deterministicId = `source:${existingSource.id}:${canonicalPath || 'root'}`;
 
-      // Upsert by deterministic id or by matching source+path (legacy records)
       const existingIndex = Array.isArray(workspace.records)
         ? workspace.records.findIndex((r) => r.id === deterministicId || (r.source && r.source.id === existingSource.id && String(r.path || '').trim() === canonicalPath))
         : -1;
@@ -364,17 +361,14 @@
       };
 
       if (existingIndex >= 0) {
-        // Replace existing record in place (idempotent upsert)
         workspace.records = workspace.records.slice();
         workspace.records[existingIndex] = record;
       } else {
-        // Prepend new record
         workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
       }
       added.push(record);
     }
     if (!added.length) return { ok: false, error: 'records.empty', state };
-    // Recompute the configured source count and upsert it.
     const count = workspace.records.filter((r) => r.source && r.source.id === existingSource.id).length;
     workspace.sources = ensureWorkspaceSources(workspace);
     upsertSource(workspace, Object.assign({}, existingSource, { count }));

@@ -121,6 +121,11 @@ try {
   if (!merge?.ok) fail('mergeWorkspaceImport failed');
   const mergedWorkspace = lifecycle.activeWorkspace(merge.state);
   if (!mergedWorkspace.workspaceMergeCandidates?.length) fail('workspace merge candidate must be recorded explicitly');
+  const mergeAgain = lifecycle.mergeWorkspaceImport(merge.state, openWs.workspace.id, { path: './other.workspace.md', title: 'Other updated' });
+  if (!mergeAgain?.ok) fail('mergeWorkspaceImport repeat failed');
+  const mergedAgainWorkspace = lifecycle.activeWorkspace(mergeAgain.state);
+  if (mergedAgainWorkspace.workspaceMergeCandidates.length !== 1) fail('workspace merge candidate path must upsert, not duplicate');
+  if (mergedAgainWorkspace.workspaceMergeCandidates[0].title !== 'Other updated') fail('workspace merge candidate upsert should refresh metadata');
 
   console.log('✓ workspace.lifecycle tests passed');
   process.exit(0);

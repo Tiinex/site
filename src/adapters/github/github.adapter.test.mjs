@@ -6,6 +6,15 @@ function makeFetch(map, called = []) {
     called.push(url);
     const hit = map[url];
     if (!hit) return { ok: false, status: 404, statusText: 'Not Found', json: async () => ({}), text: async () => '' };
+    if (hit.ok === false) {
+      return {
+        ok: false,
+        status: hit.status || 500,
+        statusText: hit.statusText || 'Error',
+        json: async () => hit.json || {},
+        text: async () => hit.text || ''
+      };
+    }
     return {
       ok: true,
       status: 200,
@@ -51,6 +60,17 @@ assert.equal(materialized.failCount, 0, 'repo discovery should not fail for mapp
 assert.equal(materialized.records.length, 2, 'records should be materialized');
 assert(materialized.records.every((record) => !record.source), 'adapter must not assign lifecycle source provenance');
 assert.equal(materialized.diagnostics.resolvedRef, 'main', 'adapter result should expose resolved ref');
+
+const limitedFetch = makeFetch({
+  [repoApi]: { json: { default_branch: 'main' } },
+  [treeApi]: { ok: false, status: 403, statusText: 'Forbidden', json: { message: 'API rate limit exceeded' } }
+});
+const limited = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl: limitedFetch });
+assert.equal(limited.okCount, 0, 'rate-limited repo discovery should not materialize records');
+assert.equal(limited.failCount, 0, 'rate-limited repo discovery should be a warning, not a file failure');
+assert.equal(limited.errors.length, 0, 'rate-limited repo discovery should not be a fatal adapter error');
+assert(limited.warnings.some((warning) => warning.code === 'github.repo.discovery.rate-limited-or-forbidden'), '403 discovery should produce a precise warning');
+assert.equal(limited.diagnostics.discoveryUnavailable, true, 'diagnostics should preserve discovery-unavailable state');
 
 const issueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
 assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred');
