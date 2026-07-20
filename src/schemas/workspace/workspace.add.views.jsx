@@ -73,6 +73,7 @@ function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) 
   const [repoDiscovery, setRepoDiscovery] = useState(defaultEntrypoint.repoFilesDiscovery !== false);
   const [issueDiscovery, setIssueDiscovery] = useState(defaultEntrypoint.issueDiscovery !== false);
   const [issueUrls, setIssueUrls] = useState(defaultEntrypoint.issueUrl || '');
+  const [fileRefs, setFileRefs] = useState('');
 
   function applyEntrypoint(event) {
     const entry = entrypoints.find((item) => (item.repository || item.name || '') === event.target.value);
@@ -87,7 +88,7 @@ function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) 
 
   function submit(event) {
     event.preventDefault();
-    onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery, issueUrls, label: repository });
+    onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery, issueUrls, label: repository, fileRefs });
   }
 
 
@@ -105,6 +106,11 @@ function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) 
         <TextField id="source-repo" label="Repo URL or owner/name" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
         <TextField id="source-ref" label="Ref optional" value={ref} onChange={setRef} placeholder="default branch" />
       </div>
+      <label className="tx-textarea-field">
+        <span>Markdown file paths / URLs <small>optional</small></span>
+        <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
+        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Optional — leave empty to register source only.</small>
+      </label>
       <label className="tx-textarea-field">
         <span>Root path</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />

@@ -20,9 +20,13 @@ function toRawFromBlobUrl(url) {
 function normalizeRefToRaw(source, ref) {
   const srcRepo = String(source?.repo || '').trim().toLowerCase();
   if (!srcRepo) throw new Error('source.repo missing');
-  // If ref is an absolute URL
-  try {
-    const u = new URL(ref);
+  const trimmed = String(ref || '').trim();
+  if (!trimmed) throw new Error('empty ref');
+
+  // Absolute URL handling: explicitly reject unsupported hosts or non-https.
+  const looksAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed);
+  if (looksAbsolute) {
+    const u = new URL(trimmed);
     if (u.protocol !== 'https:') throw new Error('non-https URL');
     if (u.hostname === 'raw.githubusercontent.com') {
       const parts = u.pathname.split('/').filter(Boolean);
@@ -38,17 +42,17 @@ function normalizeRefToRaw(source, ref) {
       if (ownerRepo !== srcRepo) throw new Error('cross-repo blob URL not allowed');
       return raw;
     }
+    // Explicit absolute URL but unsupported host: reject.
     throw new Error('unsupported host');
-  } catch (err) {
-    // treat as repo-relative path
-    const relative = String(ref || '').trim().replace(/^\/+/, '');
-    if (!relative) throw new Error('empty ref');
-    const root = String(source.rootPath || '').replace(/^\/+|\/+$/g, '');
-    const path = relative.startsWith(root) || !root ? relative : `${root}/${relative}`;
-    const [owner, repo] = srcRepo.split('/');
-    const refBranch = String(source.ref || 'master');
-    return `https://raw.githubusercontent.com/${owner}/${repo}/${refBranch}/${path}`;
   }
+
+  // Repo-relative path: safe normalization that avoids double-prefixing rootPath.
+  const relative = trimmed.replace(/^\/+/, '');
+  const root = String(source.rootPath || '').replace(/^\/+|\/+$/g, '');
+  const path = relative.startsWith(root) || !root ? relative : `${root}/${relative}`;
+  const [owner, repo] = srcRepo.split('/');
+  const refBranch = String(source.ref || 'master');
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${refBranch}/${path}`;
 }
 
 export async function loadGithubFilesForSource(source, fileRefs = [], options = {}) {

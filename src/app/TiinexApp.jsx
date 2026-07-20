@@ -4,6 +4,7 @@ import { Button } from '../ui/primitives/Button.jsx';
 import { Badge } from '../ui/primitives/Badge.jsx';
 import { Modal } from '../ui/primitives/Modal.jsx';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
+import { loadGithubFilesForSource } from '../sources/github/github.loader.js';
 import {
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
@@ -195,7 +196,7 @@ export function TiinexApp() {
     commit(result.state, 'push');
   }
 
-  function addGitHubSource(input = {}) {
+  async function addGitHubSource(input = {}) {
     const repository = normalizeRepository(input.repository || input.repo || 'Tiinex/docs');
     if (!repository) {
       setNotice('Repo URL or owner/name is required.');
@@ -220,36 +221,37 @@ export function TiinexApp() {
       setNotice('Could not add GitHub source.');
       return;
     }
-    // If the caller supplied explicit file refs (newline-separated),
-    // attempt to load them now via the github loader and insert source-backed records.
-    if (input.fileRefs) {
-      (async () => {
-        try {
-          const loader = window.TiinexGithubLoader || null;
-          if (loader && typeof loader.loadGithubFilesForSource === 'function') {
-            const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-            const out = await loader.loadGithubFilesForSource(result.source, fileRefs, { fetchImpl: fetch });
-            if (out.okCount) setNotice(`Loaded ${out.okCount} of ${fileRefs.length} source files.`);
-            else setNotice(`No source files loaded; ${out.failCount} failed.`);
-            if (out.errors && out.errors.length) console.warn('github loader errors', out.errors);
-            // Insert successful records via lifecycle
-            if (out.records && out.records.length) {
-              const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(result.state, active?.id, result.source.id, out.records);
-              if (ins?.ok) commit(ins.state, 'push');
-            }
-          } else {
-            setNotice(`${result.source.label} source registered. Loading adapter deferred.`);
-          }
-        } catch (e) {
-          console.error(e);
-          setNotice(`${result.source.label} source registered; file loading failed.`);
+    const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    let finalState = result.state;
+    let noticeMessage = `${result.source.label} source registered. Loading adapter deferred.`;
+
+    if (fileRefs.length) {
+      try {
+        const out = await loadGithubFilesForSource(result.source, fileRefs, { fetchImpl: fetch });
+        if (out.okCount > 0) {
+          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
+          if (ins?.ok) finalState = ins.state;
         }
-      })();
-    } else {
-      setDialog(null);
-      setNotice(`${result.source.label} source registered. Loading adapter deferred.`);
+        // Compose terse notice
+        if ((out.okCount || 0) === 0 && (out.failCount || 0) === 0) {
+          noticeMessage = `${result.source.label} source registered; no source files loaded.`;
+        } else if ((out.okCount || 0) === 0) {
+          noticeMessage = `Source registered; ${out.failCount || 0} files failed to load.`;
+        } else if ((out.failCount || 0) === 0) {
+          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}.`;
+        } else {
+          noticeMessage = `Loaded ${out.okCount} of ${fileRefs.length} source files; ${out.failCount} failed.`;
+        }
+        if (out.errors && out.errors.length) console.warn('github loader errors', out.errors);
+      } catch (e) {
+        console.error(e);
+        noticeMessage = `${result.source.label} source registered; file loading failed.`;
+      }
     }
-    commit(result.state, 'push');
+
+    setDialog(null);
+    setNotice(noticeMessage);
+    commit(finalState, 'push');
   }
 
   function closeSource(sourceId) {
@@ -311,8 +313,6 @@ export function TiinexApp() {
 
   return (
     <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow">
-      {/* Expose loader to global for Add flow to use if present */}
-      <script dangerouslySetInnerHTML={{__html: `window.TiinexGithubLoader = window.TiinexGithubLoader || null;`}} />
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
