@@ -175,8 +175,8 @@ export function TiinexApp() {
       try {
         const response = await fetch(fetchUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-          const markdown = await response.text();
-          records.push(createRecordFromMarkdown(markdown, { path: url, name: fileNameFromUrl(url), sourceMode: 'explicit-url' }));
+        const markdown = await response.text();
+        records.push(createRecordFromMarkdown(markdown, { path: url, name: fileNameFromUrl(url), sourceMode: 'explicit-url' }));
       } catch (error) {
         failed.push(url);
       }

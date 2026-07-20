@@ -130,6 +130,8 @@
     if (!workspace) return { ok: false, error: 'workspace.not.found', state };
     const existingSource = Array.isArray(workspace.sources) ? workspace.sources.find((s) => s.id === sourceId) : null;
     if (!existingSource) return { ok: false, error: 'source.not.found', state };
+    // Reject non-configured sources (for example the always-present `local` source)
+    if (existingSource.kind !== CONFIGURED_SOURCE_KIND) return { ok: false, error: 'source.not.configured', state };
     const added = [];
     for (const input of records) {
       const title = normalizeRecordTitle(input.title || input.name);

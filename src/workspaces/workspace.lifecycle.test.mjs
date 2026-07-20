@@ -25,6 +25,10 @@ try {
   const added = addLocal.records[0];
   if (!added?.source || added.source.kind !== lifecycle.SESSION_SOURCE_KIND) fail('local record must have session source');
 
+  // ensure adding records using 'local' as sourceId is rejected
+  const badLocal = lifecycle.addWorkspaceSourceRecords(addLocal.state, ws.id, 'local', [rec]);
+  if (badLocal?.ok || badLocal?.error !== 'source.not.configured') fail('addWorkspaceSourceRecords must reject local sourceId');
+
   // 3) Add configured source and verify addWorkspaceSourceRecords behavior
   const addSource = lifecycle.addWorkspaceSource(addLocal.state, ws.id, { label: 'Repo', repository: 'owner/repo', ref: 'master', rootPath: '.topics', count: 0, transportLabel: 'Source Pages mirror' });
   if (!addSource?.ok) fail('addWorkspaceSource failed');
