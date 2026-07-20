@@ -4,7 +4,8 @@
   const iconPaths = Object.freeze({
     previous: '<path d="M15 6l-6 6 6 6"/>',
     next: '<path d="M9 6l6 6-6 6"/>',
-    create: '<path d="M12 5v14M5 12h14"/>',
+    // circle + icon for Create (visually closer to the legacy header)
+    create: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
     multiverse: '<path d="M5 7h14M5 12h14M5 17h14"/>',
     display: '<path d="M5 7h14M5 12h14M5 17h14"/>',
     source: '<path d="M12 4l7 4-7 4-7-4 7-4z"/><path d="M5 12l7 4 7-4M5 16l7 4 7-4"/>',

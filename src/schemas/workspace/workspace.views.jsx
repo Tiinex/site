@@ -76,7 +76,12 @@ function ProgressStrip({ workspace }) {
 
 function WorkspaceDropHint({ workspace }) {
   if ((workspace.records || []).length || workspace.discoveryProgress) return null;
-  return <div className="tx-workspace-drop-hint">Drop lineage files, folders, or zips · or use +</div>;
+  return (
+    <div className="tx-workspace-drop-hint" role="note">
+      <p><strong>Get started with local Markdown</strong> — click <strong>+</strong> (Add to workspace) or drop <em>.md</em> files here. Local files remain local/session only.</p>
+      <p className="tx-muted">To load source-backed material, use Add → GitHub source and provide explicit file paths or enable repo discovery.</p>
+    </div>
+  );
 }
 
 function ModeToolbar({ state, query, onVerse, onQuery }) {
@@ -99,7 +104,9 @@ function ModeToolbar({ state, query, onVerse, onQuery }) {
 function EmptyWorkspaceState() {
   return (
     <div className="tx-empty-node-state tx-compact-empty-node-state" role="status" aria-live="polite">
-      <span>{workspaceI18n.emptyResult}</span>
+      <h2>Nothing to show yet</h2>
+      <p>Add local Markdown files to populate this workspace — click <strong>+</strong> (Add to workspace) or drop <em>.md</em> files here. Local files remain local/session only.</p>
+      <p className="tx-muted">To load source-backed material, use Add → GitHub source and provide explicit file refs.</p>
     </div>
   );
 }
