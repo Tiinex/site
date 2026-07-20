@@ -69,11 +69,8 @@ reject(app, 'localStorage.getItem', 'React app must not bootstrap directly from 
 reject(uiSource, 'Create your first workspace', 'UC-001 must not use onboarding-card copy');
 reject(uiSource, 'actionButton', 'React UC-001 must not depend on legacy actionButton renderer');
 
-if (failures.length) {
-  console.error(failures.map((f) => `- ${f}`).join('\n'));
-  process.exit(1);
-}
-console.log('✓ React UC-001 create/restore/close guards passed');
+// Defer final verdict until after the v120.1 caller-scan so there's
+// a single, consolidated success/failure output at the end of this script.
 
 // v120.1: scan for call sites that pass `progress` into `addWorkspaceSource(...)`
 // Scope: scan `src/` and `tools/` only. Exclude common build/output folders by skipping directories with matching names.
