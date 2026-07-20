@@ -53,18 +53,18 @@ npm test
 Source loading should come next: GitHub source → mirror/source material load → source counts → records/cards → progress completion/failure states, using portal/adapter semantics instead of fake progress.
 
 
-## v119.1 footer and dock recognition patch
+## v119.3 footer and dock recognition patch
 
 - Footer restored to old-like persistent bottom origin marker behavior.
 - Dock logo remains intentionally larger than neighboring buttons.
 - Desktop dock wraps visible controls instead of stretching wider than content.
 - No new feature behavior added.
 
-## v119.2 footer and compact-recognition patch
+## v119.3 footer and compact-recognition patch
 
 Root cause:
 
-- A legacy empty-stage rule still set `.tx-empty-stage-mode .tx-footer { display: none; }`, so the React footer did not appear before workspace creation even though v119.1 had fixed-position footer rules later in the cascade.
+- A legacy empty-stage rule still set `.tx-empty-stage-mode .tx-footer { display: none; }`, so the React footer did not appear before workspace creation even though v119.3 had fixed-position footer rules later in the cascade.
 - The React footer used non-link `<strong>Tiinex</strong>` text, while `.old` used a link.
 - Created-workspace local/session boundary text was more verbose than the old Column baseline.
 
@@ -90,3 +90,8 @@ npm run metrics
 npm run storage:scan
 npm test
 ```
+
+
+## v119.3 validation scope
+
+Recognition-only patch: content-fit dock, larger logo, and size-gated workspace pager behavior. No new source loading.

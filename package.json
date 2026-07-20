@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.6-v119.2",
+  "version": "0.2.7-v119.3",
   "private": true,
-  "description": "Tiinex Site React workspace schema companion with old-like linked footer and compact desktop/mobile recognition polish.",
+  "description": "Tiinex Site React workspace schema companion with old-like linked footer, content-fit global dock, and size-gated workspace pager recognition polish.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

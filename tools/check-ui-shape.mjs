@@ -14,7 +14,8 @@ function lacks(file, needle, label) { if (read(file).includes(needle)) failures.
 has('src/app/TiinexApp.jsx', 'tx-centered-dock-core', 'global dock must keep centered Tiinex logo pattern');
 has('src/app/TiinexApp.jsx', 'tx-dock-left', 'Create/multiverse must live left of logo');
 has('src/app/TiinexApp.jsx', 'tx-dock-right', 'Share/help must live right of logo');
-has('src/app/TiinexApp.jsx', 'workspaceCount > 1', 'pager arrows must not show for one workspace');
+has('src/app/TiinexApp.jsx', 'shouldPageWorkspaces', 'pager arrows must be size-gated, not count-only');
+has('src/app/TiinexApp.jsx', "data-overflow-pager={showPager ? 'visible' : 'hidden'}", 'dock must expose overflow pager state for regression checks');
 has('src/app/TiinexApp.jsx', 'tx-empty-stage tx-old-empty-stage', 'empty start must keep old empty-stage semantics');
 if (!appAndWorkspace.includes('tx-column-window')) failures.push('created workspace must render as Column window');
 if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
@@ -41,8 +42,10 @@ has('src/styles/app.css', 'display: block;', 'empty mode footer must override le
 has('src/app/TiinexApp.jsx', 'href="https://github.com/Tiinex"', 'footer Tiinex mark must be linkable like .old');
 has('src/styles/app.css', 'height: 34px;', 'footer must keep old-like compact 34px height');
 has('src/styles/app.css', 'background: rgba(0,0,0,0.78);', 'footer must use old-like translucent dark baseline');
-has('src/styles/app.css', 'grid-template-columns: max-content auto max-content;', 'desktop dock must wrap visible content instead of growing wider than controls');
-has('src/styles/app.css', 'width: clamp(2.45rem, 3.15vw, 2.85rem);', 'dock logo must stay slightly larger than neighboring buttons');
+has('src/styles/app.css', '/* v119.3 dock ergonomics:', 'dock recognition ergonomics guard missing');
+has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must wrap visible controls instead of stretching toward the column');
+has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
+has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
 
 has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');
 has('src/styles/app.css', '.tx-empty-stage-mode .tx-empty-stage {', 'empty start must override card-frame stage CSS');

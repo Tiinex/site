@@ -31,7 +31,7 @@ const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/sc
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v119-workspace-add-flow')) failures.push('index.html must disclose v119 React runtime');
+if (!index.includes('react-v119.3-workspace-add-flow')) failures.push('index.html must disclose v119 React runtime');
 
 const pkg = JSON.parse(read('package.json'));
 for (const dep of ['react', 'react-dom', 'vite', '@vitejs/plugin-react', '@fortawesome/react-fontawesome', '@fortawesome/free-solid-svg-icons']) {
@@ -68,7 +68,8 @@ has('src/app/TiinexApp.jsx', 'clean-url-does-not-bootstrap-stale-local-storage',
 if (!reactAppAndWorkspace.includes('No nodes match this view.')) failures.push('UC-001 empty workspace state missing');
 if (!reactAppAndWorkspace.includes('no source files or GitHub provenance inferred')) failures.push('local/session workspace boundary missing');
 if (!reactAppAndWorkspace.includes('workspace-source-strip')) failures.push('source row must remain available');
-has('src/app/TiinexApp.jsx', 'workspaceCount > 1', 'pager arrows must only be possible with multiple workspaces');
+has('src/app/TiinexApp.jsx', 'count <= 1', 'pager arrows must only be possible with multiple workspaces');
+has('src/app/TiinexApp.jsx', 'shouldPageWorkspaces', 'pager arrows must also be gated by viewport size');
 has('src/ui/primitives/Icon.jsx', '@fortawesome/react-fontawesome', 'Icon primitive must use Font Awesome React integration');
 has('src/styles/app.css', 'tx-react-runtime', 'React shell CSS missing');
 has('src/styles/app.css', '--tx-gap-icon', 'icon/text spacing must be token-owned');

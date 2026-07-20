@@ -43,6 +43,35 @@ function activeWorkspace(state) {
   return runtime().lifecycle?.activeWorkspace?.(state) || null;
 }
 
+function useViewportWidth() {
+  const readWidth = () => {
+    if (typeof window === 'undefined') return 0;
+    return Math.floor(window.visualViewport?.width || window.innerWidth || 0);
+  };
+  const [width, setWidth] = useState(readWidth);
+  useEffect(() => {
+    const update = () => setWidth(readWidth());
+    window.addEventListener('resize', update);
+    window.visualViewport?.addEventListener?.('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.visualViewport?.removeEventListener?.('resize', update);
+    };
+  }, []);
+  return width;
+}
+
+function shouldPageWorkspaces(workspaceCount, viewportWidth) {
+  const count = Number(workspaceCount || 0);
+  if (count <= 1) return false;
+  const width = Number(viewportWidth || 0) || 1280;
+  const minimumColumnWidth = width <= 760 ? 320 : 540;
+  const workspaceGap = width <= 760 ? 10 : 16;
+  const safeViewportPadding = width <= 760 ? 18 : 32;
+  const required = (count * minimumColumnWidth) + ((count - 1) * workspaceGap) + safeViewportPadding;
+  return required > width;
+}
+
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -50,6 +79,8 @@ export function TiinexApp() {
   const [createError, setCreateError] = useState('');
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
+  const viewportWidth = useViewportWidth();
+  const pagerVisible = shouldPageWorkspaces(state.workspaces.length, viewportWidth);
 
   useEffect(() => {
     const onRoute = () => {
@@ -204,6 +235,17 @@ export function TiinexApp() {
     commit(result.state, 'push');
   }
 
+  function cycleWorkspace(direction) {
+    const workspaces = Array.isArray(state.workspaces) ? state.workspaces : [];
+    if (workspaces.length <= 1) return;
+    const currentIndex = Math.max(0, workspaces.findIndex((workspace) => workspace.id === state.activeWorkspaceId));
+    const offset = direction === 'previous' ? -1 : 1;
+    const nextIndex = (currentIndex + offset + workspaces.length) % workspaces.length;
+    const next = structuredClone(state);
+    next.activeWorkspaceId = workspaces[nextIndex]?.id || state.activeWorkspaceId;
+    commit(next, 'push');
+  }
+
   function setVerse(verse) {
     const next = runtime().lifecycle?.setWorkspaceVerse?.(state, verse) || state;
     commit(next, 'push');
@@ -241,10 +283,13 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v119.2" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow">
+    <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow">
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
+        pagerVisible={pagerVisible}
+        onPreviousWorkspace={() => cycleWorkspace('previous')}
+        onNextWorkspace={() => cycleWorkspace('next')}
         onCreate={openCreate}
         onHome={resetHome}
         onShare={copyShareUrl}
@@ -286,17 +331,22 @@ export function TiinexApp() {
   );
 }
 
-function GlobalDock({ hasWorkspace, workspaceCount, onCreate, onHome, onShare, onHelp, onMultiverse }) {
-  const showPager = hasWorkspace && workspaceCount > 1;
+function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPreviousWorkspace, onNextWorkspace, onCreate, onHome, onShare, onHelp, onMultiverse }) {
+  const showPager = Boolean(hasWorkspace && pagerVisible);
   return (
-    <nav className={`tx-top-dock ${showPager ? 'tx-top-dock-paged' : 'tx-top-dock-fit'}`} aria-label="Global actions">
-      {showPager ? <Button shape="round" icon="previous" aria-label="Previous workspace" /> : null}
-      <span className="tx-dock-core tx-centered-dock-core">
+    <nav
+      className={`tx-top-dock tx-dock-shell-row ${showPager ? 'tx-top-dock-paged' : 'tx-top-dock-fit'}`}
+      aria-label="Global actions"
+      data-workspace-count={workspaceCount}
+      data-overflow-pager={showPager ? 'visible' : 'hidden'}
+    >
+      {showPager ? <Button shape="round" icon="previous" aria-label="Previous workspace" onClick={onPreviousWorkspace} /> : null}
+      <span className="tx-dock-core tx-centered-dock-core tx-content-fit-dock">
         <span className="tx-dock-side tx-dock-left">
           <Button icon="multiverse" variant="nav" aria-label="Change multiverse" title="Change multiverse" onClick={onMultiverse} />
           <Button icon="create" variant="primary" onClick={onCreate}>Create</Button>
         </span>
-        <button className="tx-logo-command tx-logo-home" data-home type="button" onClick={onHome} aria-label="Tiinex home">
+        <button className="tx-logo-command tx-logo-home tx-dock-logo-large" data-home type="button" onClick={onHome} aria-label="Tiinex home">
           <img src={LOGO_SRC} alt="" />
         </button>
         <span className="tx-dock-side tx-dock-right">
@@ -304,7 +354,7 @@ function GlobalDock({ hasWorkspace, workspaceCount, onCreate, onHome, onShare, o
           <Button icon="help" variant="nav" aria-label="Help" onClick={onHelp} />
         </span>
       </span>
-      {showPager ? <Button shape="round" icon="next" aria-label="Next workspace" /> : null}
+      {showPager ? <Button shape="round" icon="next" aria-label="Next workspace" onClick={onNextWorkspace} /> : null}
     </nav>
   );
 }

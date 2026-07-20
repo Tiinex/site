@@ -10,12 +10,12 @@ const app = readFileSync(join(root,'src/app/TiinexApp.jsx'),'utf8');
 const workspaceViews = readFileSync(join(root,'src/schemas/workspace/workspace.views.jsx'),'utf8');
 const workspaceAddViews = readFileSync(join(root,'src/schemas/workspace/workspace.add.views.jsx'),'utf8');
 console.log(JSON.stringify({
-  type:'tiinex.site.metrics.v119.2',
+  type:'tiinex.site.metrics.v119.3',
   architectureReadyForProductWork:'react-foundation-workspace-schema-companion-source-boundary-slice',
   activeFiles:files.length,
   legacyArchived: statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v119.2'),
+  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v119.3'),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,
@@ -23,7 +23,9 @@ console.log(JSON.stringify({
   footerVisibleBeforeWorkspace:true,
   footerLinkable:true,
   compactBoilerplatePass:true,
-  dockLogoLargerThanButtons: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('width: clamp(2.45rem, 3.15vw, 2.85rem);'),
+  dockLogoLargerThanButtons: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('tx-dock-logo-large'),
+  dockFitsVisibleControls: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('/* v119.3 dock ergonomics:') && readFileSync(join(root,'src/styles/app.css'),'utf8').includes('display: inline-flex !important;'),
+  workspacePagerSizeGated: app.includes('shouldPageWorkspaces') && app.includes('data-overflow-pager'),
   publicBuildBundled:true,
   publicRuntime:'vite-react-bundle',
   fontAwesomePrimitive: readFileSync(join(root,'src/ui/primitives/Icon.jsx'),'utf8').includes('@fortawesome/react-fontawesome'),

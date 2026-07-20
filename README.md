@@ -74,7 +74,7 @@ Not done:
 - Topic/evidence schema React companions still need real implementation passes.
 - Root schema companions will be patched as needs appear.
 
-## v119.2 footer and compact-recognition patch
+## v119.3 footer and compact-recognition patch
 
 Done:
 
@@ -89,3 +89,11 @@ Not changed:
 - No new source-loading behavior was added.
 - No new flow was introduced.
 - Multi-column/pager assumptions were preserved; the single workspace remains a compact column rather than a full-width dashboard.
+
+
+## v119.3 recognition patch
+
+- Global dock now behaves as a content-fit row instead of stretching toward the workspace column width.
+- Tiinex logo remains intentionally larger than neighboring controls.
+- Workspace pager arrows are gated by workspace count plus viewport-size calculation, not count alone.
+- No source/loading feature logic was added in this patch.

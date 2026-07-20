@@ -162,6 +162,14 @@
     return next;
   }
 
+  function setActiveWorkspace(state, workspaceId) {
+    const next = cloneState(state);
+    const target = String(workspaceId || '').trim();
+    if (!target || !next.workspaces.some((workspace) => workspace.id === target)) return next;
+    next.activeWorkspaceId = target;
+    return next;
+  }
+
   function activeWorkspace(state) {
     return (state.workspaces || []).find((workspace) => workspace.id === state.activeWorkspaceId) || null;
   }
@@ -209,6 +217,7 @@
       count: Number(input.count || 0),
       boundary: 'explicit source boundary; no material is trusted until loaded',
       transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',
+      discoveryState: input.discoveryState || 'deferred',
       closeable: true
     };
   }
@@ -257,6 +266,7 @@
     normalizeRecordSummary,
     normalizeRecordTitle,
     normalizeWorkspaceName,
+    setActiveWorkspace,
     setWorkspaceVerse
   };
 })(typeof window !== 'undefined' ? window : globalThis);

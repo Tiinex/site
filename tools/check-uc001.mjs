@@ -33,7 +33,8 @@ expect(app, 'href="https://github.com/Tiinex"', 'footer must be visible and link
 expect(uiSource, 'data-flow="old-like-add-menu"', 'old-like Add flow must be owned by workspace schema companions');
 expect(uiSource, 'closeWorkspaceSource', 'explicit source close must use lifecycle');
 expect(workspaceModule, "id: 'tiinex.workspace.v1'", 'workspace schema companion module must be registered near schema');
-expect(uiSource, 'workspaceCount > 1', 'pager arrows must only render for multiple workspaces');
+expect(uiSource, 'count <= 1', 'pager arrows must only render for multiple workspaces');
+expect(uiSource, 'shouldPageWorkspaces', 'pager arrows must be viewport-size gated');
 reject(app, 'localStorage.getItem', 'React app must not bootstrap directly from stale localStorage');
 reject(uiSource, 'Create your first workspace', 'UC-001 must not use onboarding-card copy');
 reject(uiSource, 'actionButton', 'React UC-001 must not depend on legacy actionButton renderer');
