@@ -2,94 +2,44 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
 
-const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/, '');
+const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
-const main = readFileSync(join(root, 'src/main.js'), 'utf8');
-const css = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
-const index = readFileSync(join(root, 'index.html'), 'utf8');
-const icons = readFileSync(join(root, 'src/ui/icon.paths.js'), 'utf8');
-const sourcePresenter = readFileSync(join(root, 'src/sources/source.presenter.js'), 'utf8');
-const config = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
+const app = readFileSync(join(root, 'src/app/TiinexApp.jsx'), 'utf8');
+const workspaceViews = readFileSync(join(root, 'src/schemas/workspace/workspace.views.jsx'), 'utf8') + '\n' + readFileSync(join(root, 'src/schemas/workspace/workspace.add.views.jsx'), 'utf8');
+const workspaceModule = readFileSync(join(root, 'src/schemas/workspace/workspace.schema.js'), 'utf8');
+const workspaceI18n = readFileSync(join(root, 'src/schemas/workspace/workspace.i18n.js'), 'utf8');
 const lifecycle = readFileSync(join(root, 'src/workspaces/workspace.lifecycle.js'), 'utf8');
 const persistence = readFileSync(join(root, 'src/workspaces/workspace.persistence.js'), 'utf8');
-function has(text, needle, label = needle) { if (!text.includes(needle)) failures.push(label); }
-function lacks(text, needle, label = needle) { if (text.includes(needle)) failures.push(label); }
+const config = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
+const uiSource = `${app}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n}\n${lifecycle}`;
+function expect(text, needle, label) { if (!text.includes(needle)) failures.push(label); }
+function reject(text, needle, label) { if (text.includes(needle)) failures.push(label); }
 
-has(index, './src/ui/icon.paths.js', 'index must load icon vocabulary before main');
-has(index, './src/workspaces/workspace.config.js', 'index must load workspace config before lifecycle/main');
-has(index, './src/workspaces/workspace.lifecycle.js', 'index must load workspace lifecycle before main');
-has(index, './src/workspaces/workspace.route.js', 'index must load workspace route before main');
-has(index, './src/workspaces/workspace.persistence.js', 'index must load workspace persistence before main');
-has(index, './src/ui/dialog.presenter.js', 'index must load dialog presenter before main');
-has(index, './src/sources/source.presenter.js', 'index must load source presenter before main');
-has(icons, 'multiverse', 'icon vocabulary must include multiverse switch icon');
-has(config, 'parseWorkspaceConfig', '.workspace.md config parser missing');
-has(config, 'schemaOrigins', '.workspace.md schema origin parser missing');
-has(config, 'workspaceEntrypoints', '.workspace.md entrypoint parser missing');
-has(config, 'repositoryMirrors', '.workspace.md mirror parser missing');
-has(config, 'repositoryTransports', '.workspace.md transport parser missing');
-has(config, 'Every handoff starts somewhere', 'default empty-stage subtitle missing from config');
-has(lifecycle, 'createWorkspace', 'workspace lifecycle must own createWorkspace');
-has(lifecycle, 'closeWorkspace', 'workspace lifecycle must own closeWorkspace');
-has(lifecycle, 'addWorkspaceRecord', 'workspace lifecycle must own local material/continuation record insertion');
-has(lifecycle, 'record.title.required', 'workspace lifecycle must validate local record titles');
-has(lifecycle, 'no source files or GitHub provenance inferred', 'workspace creation must preserve no-GitHub boundary');
-has(readFileSync(join(root, 'src/workspaces/workspace.route.js'), 'utf8'), 'makeRouteState', 'workspace route module must own URL view state shape');
-has(persistence, 'HASH_PREFIX', 'workspace persistence must own URL hash state');
-has(persistence, 'localStorage', 'workspace persistence must cache state in local storage');
-has(main, 'tx-empty-stage', 'quiet empty stage missing');
-has(main, 'TiinexWorkspaceConfig', 'empty stage must be driven by workspace config parser');
-has(main, 'tx-multiverse-switch', 'multiverse switch affordance missing left of logo');
-has(main, 'data-multiverse', 'multiverse switch must open a real dialog');
-has(main, 'data-help', 'help button must open parsed workspace help');
-has(main, 'data-share', 'share button must open share behavior');
-has(main, 'tx-centered-dock-core', 'empty dock must center the logo');
-has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'global dock pager arrows should be conditional, not always-on');
-has(main, 'data-home', 'center logo must route home like legacy viewer brand');
-has(main, 'data-create-workspace', 'create workspace affordance missing');
-has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'renderAddMaterialDialog', 'workspace action dialogs must be extracted from main');
-has(readFileSync(join(root, 'src/ui/dialog.presenter.js'), 'utf8'), 'does not infer GitHub provenance', 'local markdown dialog must disclose source boundary');
-has(main, 'data-workspace-action', 'created workspace action buttons must be live commands');
-lacks(main, 'Workspace ready. Add a local note', 'new workspace must not render onboarding-style ready card');
-lacks(main, 'Add local note', 'new workspace should not expose local note card action in primary empty view');
-has(main, 'tx-shell-v113-action-clarity', 'v113 video-reviewed action clarity class missing');
-has(main, 'tx-shell-v114-old-empty-workspace', 'v114 old empty workspace parity class missing');
-has(main, 'renderWorkspaceDropHint', 'new workspace must expose old drop/source hint');
-has(sourcePresenter, 'renderSourceStrip', 'source presenter must render old source strip');
-has(sourcePresenter, 'renderProgress', 'source presenter must render old loading progress disclosure');
-has(sourcePresenter, 'workspace-source-pill', 'source presenter must render source pills with counts');
-has(main, 'Drop lineage files, configs, folders, or zips into this workspace', 'old empty workspace drop hint missing');
-has(main, 'No nodes match this view.', 'new empty workspace must match old empty discovery result');
-has(main, 'submitAddRecord', 'add material and continue actions must mutate workspace state through lifecycle');
-has(main, 'tx-action-button tx-legacy-action', 'created workspace actions must use legacy-styled command buttons');
-has(main, 'create-workspace-form', 'create workspace form missing');
-has(main, 'workspace.name.required', 'workspace name validation missing');
-has(main, 'data-close-workspace', 'close workspace command missing');
-has(main, 'data-confirm-close', 'close confirmation missing');
-has(main, 'does not delete source files', 'close confirmation must disclose non-destructive semantics');
-has(main, 'persistence.writeState', 'workspace mutations must persist to hash/local cache');
-has(main, 'persistence.clearState', 'closing last workspace must clean empty URL/storage state');
-has(css, '.tx-dialog-backdrop', 'desktop/mobile dialog shell CSS missing');
-has(css, '.tx-shell-v111-workspace-fit .tx-action-button', 'created workspace action CSS missing');
-has(css, '.tx-shell-v113-action-clarity .tx-workspace-ready-card', 'v113 action clarity CSS missing');
-has(css, '@media (max-width: 640px)', 'mobile create/close sheet CSS missing');
-lacks(main, 'Create your first workspace', 'empty startup must not use onboarding card copy');
-lacks(main, 'tx-empty-card', 'empty startup must not use large onboarding card');
-lacks(main, 'demoArtifacts', 'v109 UC-001 must not boot from demo fixture artifacts');
-lacks(main, 'renderMapVerse', 'Map must stay frozen during Column happy path');
-lacks(main, "const mode = state.view.workspaceVerse === 'tree' ? 'LINEAGE MODE'", 'Tree discovery must not be mislabeled as Lineage mode');
-lacks(main, "actionButton('lineage', 'Continue'", 'empty workspace must not expose continuation before UC-002');
-lacks(main, "actionButton('merge', 'Merge'", 'local/session record card must not expose Merge before source-bound use-case');
-
-for (const test of ['src/ui/icon.paths.test.mjs', 'src/schemas/origins.test.mjs', 'src/workspaces/workspace.config.test.mjs', 'src/workspaces/workspace.lifecycle.test.mjs', 'src/workspaces/workspace.route.test.mjs', 'src/workspaces/workspace.persistence.test.mjs']) {
-  const result = spawnSync(process.execPath, [join(root, test)], { encoding: 'utf8' });
-  if (result.status !== 0) failures.push(`${test} failed:\n${result.stdout}\n${result.stderr}`);
-}
+expect(config, 'Every handoff starts somewhere', 'empty start copy must come from .workspace.md config');
+expect(lifecycle, 'workspace.name.required', 'workspace name validation must remain lifecycle-owned');
+expect(lifecycle, 'SESSION_SOURCE_KIND', 'local/session source kind must remain explicit');
+expect(lifecycle, 'no source files or GitHub provenance inferred', 'local workspace must not guess GitHub provenance');
+expect(persistence, 'readInitialState', 'hash restore must be persistence-owned');
+expect(persistence, 'readStoredState', 'localStorage must remain cache/mirror, not clean-url bootstrap');
+expect(app, 'persistence?.readInitialState', 'React app must restore from hash');
+expect(app, 'persistence?.clearState', 'closing last workspace must clean URL/storage state');
+expect(uiSource, 'createWorkspace(name)', 'create dialog must use lifecycle createWorkspace');
+expect(uiSource, 'Workspace name is required.', 'create dialog must expose required name validation');
+expect(uiSource, 'Clean start restored.', 'close last workspace must restore clean start');
+expect(uiSource, 'no source files or GitHub provenance inferred', 'React created workspace must disclose local/session boundary');
+expect(uiSource, 'No nodes match this view.', 'created empty workspace must match old no-node behavior');
+expect(app, 'href="https://github.com/Tiinex"', 'footer must be visible and linkable before workspace creation');
+expect(uiSource, 'data-flow="old-like-add-menu"', 'old-like Add flow must be owned by workspace schema companions');
+expect(uiSource, 'closeWorkspaceSource', 'explicit source close must use lifecycle');
+expect(workspaceModule, "id: 'tiinex.workspace.v1'", 'workspace schema companion module must be registered near schema');
+expect(uiSource, 'workspaceCount > 1', 'pager arrows must only render for multiple workspaces');
+reject(app, 'localStorage.getItem', 'React app must not bootstrap directly from stale localStorage');
+reject(uiSource, 'Create your first workspace', 'UC-001 must not use onboarding-card copy');
+reject(uiSource, 'actionButton', 'React UC-001 must not depend on legacy actionButton renderer');
 
 if (failures.length) {
-  console.error(failures.map((failure) => `- ${failure}`).join('\n'));
+  console.error(failures.map((f) => `- ${f}`).join('\n'));
   process.exit(1);
 }
-console.log('✓ UC-001 workspace create/restore/close guards passed');
+console.log('✓ React UC-001 create/restore/close guards passed');

@@ -4,8 +4,9 @@ import { preservationSchemaModule } from './core/preservation/preservation.schem
 import { evidenceSchemaModule } from './core/evidence/evidence.schema.js';
 import { moduleSchemaModule } from './schema/module/module.schema.js';
 import { surfaceSchemaModule } from './presentation/surface/surface.schema.js';
+import { workspaceSchemaModule } from './workspace/workspace.schema.js';
 
-const modules = [rootSchemaModule, topicSchemaModule, preservationSchemaModule, evidenceSchemaModule, moduleSchemaModule, surfaceSchemaModule];
+const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, preservationSchemaModule, evidenceSchemaModule, moduleSchemaModule, surfaceSchemaModule];
 const byId = new Map(modules.map((module) => [module.id, module]));
 const byChecksum = new Map(modules.map((module) => [module.binding.checksum.value, module]));
 

@@ -1,61 +1,92 @@
-# Validation Notes v113
+# Validation Notes v119
 
 ## Status
 
-UC-001 desktop shell is implemented with route-grounded behavior:
+v119 keeps React/Vite as the active runtime, keeps workspace UI inside the workspace schema companion hierarchy, and tightens the Add/workspace UI toward compact old-like behavior with less boilerplate.
 
-- empty Column start
-- create local/session workspace
-- workspace name required
-- no local/session to GitHub provenance guess
-- URL hash view-state ownership
-- local storage cache mirror for hash-owned state
-- clean URL ignores stale localStorage cache
-- browser back/forward restores route states
-- centered Tiinex logo returns to clean home route
-- local note action dialog
-- lifecycle-owned local note record insertion
-- non-destructive close confirmation
-- return to empty state after close
+Implemented and guarded:
 
-## Co-located tests
-
-- `src/schemas/origins.test.mjs`
-- `src/workspaces/workspace.config.test.mjs`
-- `src/workspaces/workspace.lifecycle.test.mjs`
-- `src/workspaces/workspace.persistence.test.mjs`
-- `src/workspaces/workspace.route.test.mjs`
+- React entrypoint through `index.html` → `src/main.jsx`.
+- UC-001 clean empty stage and create workspace flow.
+- Created local/session Column workspace.
+- Workspace schema companion under `src/schemas/workspace/`.
+- Site-local `tiinex.workspace.v1` binding registered in `src/schemas/manifest.json` and `src/schemas/registry.js`.
+- Viewer-extension schema validation support for site-local schema bindings.
+- Compact old-like `Add to workspace` menu owned by workspace schema companions.
+- Compact created-workspace chrome: titlebar, source row, toolbar, empty result, and Add modal density.
+- Local Markdown intake from manual files, manual folder selection, drag/drop, and explicit URL fetch.
+- GitHub source registration as a source boundary without fake loaded records or fake progress.
+- Source row for local/session and explicitly registered sources.
+- Tree view shows workspace/source boundaries and loaded local records.
+- Hash-owned route restoration.
+- Clean URL does not restore stale localStorage.
+- Close workspace is non-destructive and restores clean start.
+- Font Awesome through `src/ui/primitives/Icon.jsx`.
+- Workspace schema/config/parser drift guard.
 
 ## Commands run
 
 ```bash
+node --check app.js 2>/dev/null || true
 npm run validate
 npm run ui:shape
 npm run runtime:smoke
 npm run usecase:uc001
 npm run build:public
 npm run public:check
-node --check .site-publish/tiinex.bundle.js
+node --check .site-publish/assets/index-*.js
 npm run metrics
 npm run storage:scan
 npm test
 ```
 
-## Known limitations
+## Known risks
 
-- UC-001 mobile ergonomics still needs manual verification and likely a dedicated follow-up pass.
-- Full local Markdown file import/parser into a created workspace is not yet implemented; v113 only adds manual local note records. Continuation/merge remain hidden from the primary path until their use-cases are grounded.
-- Map/Atlas/Leaflet remain frozen until Column happy path has proved old use-cases.
+- Source-backed repository loading remains the main missing behavior compared with `.old`.
+- Explicit URL fetch depends on browser CORS/source availability.
+- Zip intake is not wired yet; unsupported files are skipped and disclosed.
+- `src/app/TiinexApp.jsx` still owns app shell/dialog orchestration; further extraction should follow the next use-case.
+- Old `.old` remains more complete for source-backed material loading and mature Column behavior.
 
-## v113 note
+## Next recommended batch
 
-- Added `src/workspaces/workspace.route.js` so route shape is explicit and portable.
-- Changed clean startup so stale localStorage does not reopen a workspace without `#state=`.
-- Added push/replace history modes so create/close/verse changes can participate in browser back/forward.
-- Moved Create to the left of the centered logo; logo is now a home route control.
-- Added schema-origin support for Tiinex/docs plus viewer/fork extension schemas.
+Source loading should come next: GitHub source → mirror/source material load → source counts → records/cards → progress completion/failure states, using portal/adapter semantics instead of fake progress.
 
 
-## v113 validation focus
+## v119.1 footer and dock recognition patch
 
-Validated fitted global dock semantics, video-reviewed action clarity, lifecycle-owned local note insertion, styled created-workspace empty state, hidden deferred source-bound actions, and conditional workspace pager guards.
+- Footer restored to old-like persistent bottom origin marker behavior.
+- Dock logo remains intentionally larger than neighboring buttons.
+- Desktop dock wraps visible controls instead of stretching wider than content.
+- No new feature behavior added.
+
+## v119.2 footer and compact-recognition patch
+
+Root cause:
+
+- A legacy empty-stage rule still set `.tx-empty-stage-mode .tx-footer { display: none; }`, so the React footer did not appear before workspace creation even though v119.1 had fixed-position footer rules later in the cascade.
+- The React footer used non-link `<strong>Tiinex</strong>` text, while `.old` used a link.
+- Created-workspace local/session boundary text was more verbose than the old Column baseline.
+
+Fix:
+
+- Added final cascade guard that explicitly restores `display: block` for the footer in both empty and workspace modes.
+- Changed the footer to `Powered by <a href="https://github.com/Tiinex">Tiinex</a>`.
+- Restored old-like dark translucent footer background and link hover behavior.
+- Reduced created-workspace boilerplate while preserving local/source boundary metadata.
+
+Validation re-run and passing:
+
+```bash
+node --check app.js 2>/dev/null || true
+npm run validate
+npm run ui:shape
+npm run runtime:smoke
+npm run usecase:uc001
+npm run build:public
+npm run public:check
+node --check .site-publish/assets/*.js
+npm run metrics
+npm run storage:scan
+npm test
+```

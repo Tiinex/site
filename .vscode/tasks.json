@@ -1,0 +1,92 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Tiinex: ensure dependencies",
+      "type": "shell",
+      "command": "node tools/ensure-deps.mjs",
+      "group": "none",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Tiinex: reinstall dependencies",
+      "type": "shell",
+      "command": "npm install --no-audit --no-fund",
+      "group": "none",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Tiinex: dev server (watch)",
+      "type": "shell",
+      "command": "npm run dev",
+      "isBackground": true,
+      "dependsOn": "Tiinex: ensure dependencies",
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": {
+        "owner": "tiinex-vite",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^(.*)$",
+            "message": 1
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*(npm run dev|vite).*",
+          "endsPattern": "^.*Local:\\s+http://127\\.0\\.0\\.1:5173/.*$"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "runOptions": {
+        "reevaluateOnRerun": true
+      }
+    },
+    {
+      "label": "Tiinex: validate",
+      "type": "shell",
+      "command": "npm run validate",
+      "dependsOn": "Tiinex: ensure dependencies",
+      "dependsOrder": "sequence",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Tiinex: build public",
+      "type": "shell",
+      "command": "npm run build:public",
+      "dependsOn": "Tiinex: ensure dependencies",
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    }
+  ]
+}

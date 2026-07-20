@@ -1,1 +1,1 @@
-export function Badge(label) { return { type: 'badge', label }; }
+export { Badge } from './Badge.jsx';

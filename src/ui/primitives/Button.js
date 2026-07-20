@@ -1,1 +1,1 @@
-export function Button(label) { return { type: 'button', label }; }
+export { Button } from './Button.jsx';

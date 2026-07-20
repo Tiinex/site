@@ -1,29 +1,19 @@
 <!doctype html>
-<html lang="en" data-tiinex-app="v115">
+<html lang="en" data-tiinex-app="v119-react">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="tiinex:runtime" content="fresh-v115-source-progress-parity">
-  <meta name="tiinex:legacy-runtime" content="archived-reference-only">
-  <title>Tiinex Site</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="tiinex:runtime" content="react-v119-workspace-add-flow">
+  <meta name="tiinex:legacy-runtime" content="master-and-.old-reference-only">
+  <meta name="tiinex:source-boundary" content="clean-url-does-not-bootstrap-stale-local-storage">
+  <title>Tiinex</title>
   <link rel="icon" href="./favicon.ico">
-  <link rel="stylesheet" href="./src/styles/tokens.css">
-  <link rel="stylesheet" href="./src/styles/theme.css">
-  <link rel="stylesheet" href="./src/styles/responsive.css">
-  <link rel="stylesheet" href="./src/styles/app.css">
 </head>
 <body>
   <section id="tiinex-llm-entrypoint" hidden data-tiinex-llm-entrypoint="./llms.txt">
     <a href="./llms.txt">LLM entrypoint</a>
   </section>
   <div id="root"></div>
-  <script src="./src/ui/icon.paths.js"></script>
-  <script src="./src/workspaces/workspace.config.js"></script>
-  <script src="./src/workspaces/workspace.lifecycle.js"></script>
-  <script src="./src/workspaces/workspace.route.js"></script>
-  <script src="./src/workspaces/workspace.persistence.js"></script>
-  <script src="./src/ui/dialog.presenter.js"></script>
-  <script src="./src/sources/source.presenter.js"></script>
-  <script src="./src/main.js"></script>
+  <script type="module" src="./src/main.jsx"></script>
 </body>
 </html>

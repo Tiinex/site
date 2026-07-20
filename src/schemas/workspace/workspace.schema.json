@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.workspace.v1",
+  "kind": "concrete",
+  "role": "viewer-workspace-entrypoint",
+  "module": "./workspace.schema.js",
+  "snapshot": "./workspace.schema.md",
+  "canonicalUri": "tiinex://schemas/workspace/tiinex.workspace.v1",
+  "permalink": "site-local:.topics/.schemas/tiinex.workspace.v1.schema.md",
+  "rawUrl": "site-local:.topics/.schemas/tiinex.workspace.v1.schema.md",
+  "sourcePath": ".topics/.schemas/tiinex.workspace.v1.schema.md",
+  "sourceRepository": "Tiinex/site",
+  "sourceCommit": "viewer-local-v119",
+  "sourceBlobSha": "site-local-workspace-schema",
+  "originId": "viewer-local",
+  "originTrustRole": "viewer-extension",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "bffd0e7ec7d8bedd49da7efa9c80c525b76adc2120c092c791ab4acf73848247"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "viewer-local-workspace-schema-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1"
+}

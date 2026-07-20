@@ -1,6 +1,7 @@
-.old/
-.site-publish/
 node_modules/
+.site-publish/
+dist/
+.old/
 desktop.ini
-*.log
 .DS_Store
+*.log

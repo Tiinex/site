@@ -23,3 +23,7 @@ A viewer must not treat every unknown schema as a Tiinex/docs miss. It should re
 ## Forking contract
 
 A fork may add schemas under its own namespace without changing Tiinex/docs. Add an explicit schema origin in `.workspace.md` or the schema manifest before using those modules in runtime UI.
+## Viewer-local workspace module
+
+`src/schemas/workspace/` is the first viewer-extension schema companion. It binds the site-local `.topics/.schemas/tiinex.workspace.v1.schema.md` artifact to runtime capabilities, React surfaces, source/progress presentation, validation, and transitions. This keeps workspace-specific UI near the schema instead of duplicating it in a generic React component tree.
+

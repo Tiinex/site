@@ -11,3 +11,20 @@
   --tx-radius: 18px;
   --tx-shadow: 0 24px 80px rgba(0,0,0,.45);
 }
+
+/* v116 React Tiinex design tokens */
+:root {
+  --tx-bg-deep: #05070d;
+  --tx-bg-grid: rgba(255, 255, 255, 0.035);
+  --tx-panel-strong: rgba(9, 12, 20, 0.88);
+  --tx-panel-glass: rgba(10, 14, 24, 0.72);
+  --tx-panel-line: rgba(118, 242, 224, 0.22);
+  --tx-brand-cyan: #65f2e7;
+  --tx-brand-purple: #bd73ff;
+  --tx-brand-orange: #ffad33;
+  --tx-brand-white: #f7f8fb;
+  --tx-brand-muted: #abb1c4;
+  --tx-gap-icon: 0.55rem;
+  --tx-control-min: 2.45rem;
+  --tx-focus-ring: 0 0 0 3px rgba(101, 242, 231, 0.18);
+}

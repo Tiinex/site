@@ -100,6 +100,23 @@
     return { ok: true, record, workspace, state: next };
   }
 
+
+  function addWorkspaceRecords(state, workspaceId, inputs = [], options = {}) {
+    const records = Array.isArray(inputs) ? inputs : [];
+    let next = cloneState(state);
+    const added = [];
+    for (const input of records) {
+      const result = addWorkspaceRecord(next, workspaceId || next.activeWorkspaceId, input, options);
+      if (result?.ok) {
+        next = result.state;
+        added.push(result.record);
+      }
+    }
+    if (!added.length) return { ok: false, error: 'records.empty', state };
+    const workspace = activeWorkspace(next);
+    return { ok: true, records: added, workspace, state: next };
+  }
+
   function addWorkspaceSource(state, workspaceId, input = {}, options = {}) {
     const next = cloneState(state);
     const targetId = workspaceId || next.activeWorkspaceId;
@@ -108,7 +125,7 @@
     const source = makeConfiguredSource(input, options);
     workspace.sources = ensureWorkspaceSources(workspace);
     upsertSource(workspace, source);
-    workspace.discoveryProgress = sourceProgress(input.progress || {}, source);
+    workspace.discoveryProgress = input.progress ? sourceProgress(input.progress || {}, source) : null;
     next.activeWorkspaceId = workspace.id;
     return { ok: true, source, workspace, state: next };
   }
@@ -190,7 +207,7 @@
       ref: input.ref || 'master',
       rootPath: input.rootPath || '.topics',
       count: Number(input.count || 0),
-      boundary: 'configured source; no material is trusted until loaded',
+      boundary: 'explicit source boundary; no material is trusted until loaded',
       transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',
       closeable: true
     };
@@ -226,6 +243,7 @@
     SESSION_SOURCE_KIND,
     activeWorkspace,
     addWorkspaceRecord,
+    addWorkspaceRecords,
     addWorkspaceSource,
     cloneState,
     closeWorkspace,

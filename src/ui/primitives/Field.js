@@ -1,1 +1,1 @@
-export function Field(name) { return { type: 'field', name }; }
+export { TextField as Field, TextField } from './Field.jsx';

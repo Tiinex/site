@@ -40,6 +40,7 @@ const seenSchemaIds = new Set();
 
 if (manifest.type !== 'tiinex.web.schema-module.manifest.v1') failures.push('manifest has unexpected type');
 if (!manifest.sourceRepository || !manifest.sourceCommit) failures.push('manifest must pin sourceRepository and sourceCommit');
+const manifestOrigins = new Map((Array.isArray(manifest.origins) ? manifest.origins : []).map((origin) => [origin.id, origin]));
 
 for (const file of bindingFiles) {
   const binding = readJson(file);
@@ -71,10 +72,20 @@ for (const file of bindingFiles) {
     if (!moduleSource.includes(binding.module.replace('./', './').replace(/\.js$/, '.schema.json')) && !moduleSource.includes('.schema.json')) failures.push(`${rel} module does not import adjacent binding json`);
   }
 
-  if (binding.sourceRepository !== manifest.sourceRepository) failures.push(`${rel} sourceRepository differs from manifest`);
-  if (binding.sourceCommit !== manifest.sourceCommit) failures.push(`${rel} sourceCommit differs from manifest`);
-  if (!binding.permalink.includes(`/blob/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} permalink is not pinned to sourceCommit/sourcePath`);
-  if (!binding.rawUrl.includes(`/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} rawUrl is not pinned to sourceCommit/sourcePath`);
+  const origin = binding.originId ? manifestOrigins.get(binding.originId) : null;
+  const trustRole = binding.originTrustRole || origin?.trustRole || 'canonical-core';
+  const isViewerExtension = trustRole === 'viewer-extension';
+  if (binding.originId && !origin) failures.push(`${rel} originId ${binding.originId} missing from manifest origins`);
+  if (isViewerExtension) {
+    if (binding.sourceRepository !== 'Tiinex/site') failures.push(`${rel} viewer-extension sourceRepository must be Tiinex/site`);
+    if (!String(binding.permalink || '').startsWith('site-local:')) failures.push(`${rel} viewer-extension permalink must use site-local:`);
+    if (!String(binding.rawUrl || '').startsWith('site-local:')) failures.push(`${rel} viewer-extension rawUrl must use site-local:`);
+  } else {
+    if (binding.sourceRepository !== manifest.sourceRepository) failures.push(`${rel} sourceRepository differs from manifest`);
+    if (binding.sourceCommit !== manifest.sourceCommit) failures.push(`${rel} sourceCommit differs from manifest`);
+    if (!binding.permalink.includes(`/blob/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} permalink is not pinned to sourceCommit/sourcePath`);
+    if (!binding.rawUrl.includes(`/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} rawUrl is not pinned to sourceCommit/sourcePath`);
+  }
 
   const manifestEntry = manifestByPath.get(rel);
   if (!manifestEntry) failures.push(`${rel} missing from manifest`);
@@ -83,6 +94,7 @@ for (const file of bindingFiles) {
     if (manifestEntry.kind !== binding.kind) failures.push(`${rel} manifest kind mismatch`);
     if (manifestEntry.checksum !== binding.checksum?.value) failures.push(`${rel} manifest checksum mismatch`);
     if (manifestEntry.sourceBlobSha !== binding.sourceBlobSha) failures.push(`${rel} manifest sourceBlobSha mismatch`);
+    if ((manifestEntry.originTrustRole || binding.originTrustRole) && manifestEntry.originTrustRole !== binding.originTrustRole) failures.push(`${rel} manifest originTrustRole mismatch`);
   }
 }
 

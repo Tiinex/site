@@ -3,59 +3,59 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\/]$/, '');
-const main = readFileSync(join(root, 'src/main.js'), 'utf8');
-const css = readFileSync(join(root, 'src/styles/app.css'), 'utf8');
-const sourcePresenter = readFileSync(join(root, 'src/sources/source.presenter.js'), 'utf8');
+const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
-const has = (text, needle, label = needle) => { if (!text.includes(needle)) failures.push(label); };
-const lacks = (text, needle, label = needle) => { if (text.includes(needle)) failures.push(label); };
+function read(file) { return readFileSync(join(root, file), 'utf8'); }
+function combo(...files) { return files.map(read).join('\n'); }
+const appAndWorkspace = combo('src/app/TiinexApp.jsx', 'src/schemas/workspace/workspace.views.jsx', 'src/schemas/workspace/workspace.add.views.jsx');
+function has(file, needle, label) { if (!read(file).includes(needle)) failures.push(label || `${file} missing ${needle}`); }
+function lacks(file, needle, label) { if (read(file).includes(needle)) failures.push(label || `${file} must not include ${needle}`); }
 
-has(main, 'tx-focused-main-window', 'workspace state must render one focused Tiinex window');
-has(main, 'tx-legacy-global-dock', 'global dock must remain a recognizable Tiinex landmark');
-has(main, 'tx-centered-dock-core', 'global dock must keep logo-centered layout');
-has(main, 'tx-dock-left', 'create and multiverse controls must live left of centered logo');
-has(main, 'tx-dock-right', 'share/help controls must live right of centered logo');
-has(sourcePresenter, 'tx-legacy-source-strip', 'source strip must remain above mode row');
-has(main, 'tx-legacy-main-mode', 'mode row must remain a primary landmark when workspace exists');
-has(main, 'tx-empty-stage', 'empty start must be a quiet stage, not an onboarding card');
-has(main, 'tx-shell-config-grounded', 'empty start must be grounded from .workspace.md config');
-has(main, 'tx-uc001-empty-stage-parity', 'empty start must opt into old empty-stage parity');
-has(main, 'tx-multiverse-switch', 'global dock must expose multiverse switch left of logo');
-has(main, 'data-home', 'center logo must act as home route control');
-has(main, 'tx-logo-home', 'center logo must be styled as a route command');
-has(main, 'tx-shell-route-grounded', 'shell must disclose route-grounded behavior');
-has(main, 'tx-shell-v111-workspace-fit', 'fitted workspace chrome must remain active');
-has(main, 'tx-shell-v113-action-clarity', 'shell must opt into v113 action clarity review fixes');
-has(main, 'const showPager = hasWorkspace && state.workspaces.length > 1', 'workspace pager arrows must only render when multiple workspaces exist');
-has(main, 'tx-uc001-created-workspace', 'created workspace must render inside Column');
-has(main, 'tx-legacy-artifact-card', 'workspace cards must keep legacy card skeleton');
-has(main, 'tx-legacy-action-row', 'cards must keep bottom action row');
-has(main, 'tx-labeled-action', 'primary card actions must remain text-labeled');
-has(main, 'Lineage root reached.', 'Lineage root trailing card text must remain available in Tree mode');
-has(main, 'tx-shell-scroll-owned', 'default shell must opt into scroll ownership class');
-has(main, 'tx-shell-command-portable', 'default shell must opt into command portability contract');
-has(main, 'tx-svg-icon', 'action icons must use unified inline SVG icon system');
-has(css, '.tx-uc001-shell', 'UC-001 CSS contract missing');
-has(css, '.tx-empty-stage', 'quiet empty stage CSS missing');
-has(css, '.tx-empty-stage-mode', 'empty stage mode CSS missing');
-has(css, '.tx-shell-config-grounded.tx-empty-stage-mode', 'empty stage must own full viewport width');
-has(css, '--tx-dock-side: clamp(124px, 15vw, 148px)', 'fitted dock side contract missing');
-has(css, '.tx-dialog', 'create/close dialog CSS missing');
-has(css, 'overflow: hidden', 'page/multiverse scroll ownership must be explicit');
-has(css, 'overscroll-behavior: contain', 'pane-local scroll should be contained');
-has(css, '.tx-shell-v111-workspace-fit .tx-action-button', 'created workspace actions must be styled, not native buttons');
-has(css, '.tx-shell-v113-action-clarity .tx-workspace-ready-card', 'v113 action clarity CSS missing');
-lacks(main, 'data-verse="map"', 'Map must not be a primary workspace verse control');
-lacks(main, 'Node Graph Verse', 'stale Node Graph Verse must not appear in runtime UI');
-lacks(main, 'tx-empty-card', 'empty start must not render large card');
-lacks(main, 'Create your first workspace', 'empty start must not use onboarding-card copy');
-lacks(main, 'demoArtifacts', 'default should not be fixture-owned in UC-001');
-lacks(main, "actionButton('lineage', 'Continue'", 'empty workspace must not expose continuation before that use-case exists');
-lacks(main, "actionButton('merge', 'Merge'", 'local/session record cards must not expose merge before source-bound use-case exists');
+has('src/app/TiinexApp.jsx', 'tx-centered-dock-core', 'global dock must keep centered Tiinex logo pattern');
+has('src/app/TiinexApp.jsx', 'tx-dock-left', 'Create/multiverse must live left of logo');
+has('src/app/TiinexApp.jsx', 'tx-dock-right', 'Share/help must live right of logo');
+has('src/app/TiinexApp.jsx', 'workspaceCount > 1', 'pager arrows must not show for one workspace');
+has('src/app/TiinexApp.jsx', 'tx-empty-stage tx-old-empty-stage', 'empty start must keep old empty-stage semantics');
+if (!appAndWorkspace.includes('tx-column-window')) failures.push('created workspace must render as Column window');
+if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
+if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty workspace drop hint must stay available');
+if (!appAndWorkspace.includes('tx-mode-strip tx-column-toolbar')) failures.push('mode/search toolbar must remain a primary landmark');
+if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
+if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
+has('src/app/TiinexApp.jsx', 'schemaRegistry.modules.length', 'help surface should disclose schema companion state');
+has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
+has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
+has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema module must be in registry');
+has('src/styles/app.css', '.tx-button .tx-icon', 'button icon spacing must be centralized');
+has('src/styles/app.css', 'clamp(', 'responsive sizing must use clamp patterns');
+has('src/styles/app.css', '@media (max-width: 760px)', 'mobile responsive breakpoint missing');
+has('src/styles/app.css', '.tx-dialog-backdrop', 'modal/sheet primitive CSS missing');
+has('src/styles/app.css', '.tx-source-pill', 'source pills must have CSS ownership');
+has('src/styles/app.css', '.tx-compact-column-window', 'created workspace must keep compact old-like column sizing');
+has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
+has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
+
+has('src/styles/app.css', '/* v119.2 footer + recognition guard:', 'footer recognition polish guard missing');
+has('src/styles/app.css', 'position: fixed;', 'footer must behave as persistent old-like bottom origin marker');
+has('src/styles/app.css', 'display: block;', 'empty mode footer must override legacy display:none regression');
+has('src/app/TiinexApp.jsx', 'href="https://github.com/Tiinex"', 'footer Tiinex mark must be linkable like .old');
+has('src/styles/app.css', 'height: 34px;', 'footer must keep old-like compact 34px height');
+has('src/styles/app.css', 'background: rgba(0,0,0,0.78);', 'footer must use old-like translucent dark baseline');
+has('src/styles/app.css', 'grid-template-columns: max-content auto max-content;', 'desktop dock must wrap visible content instead of growing wider than controls');
+has('src/styles/app.css', 'width: clamp(2.45rem, 3.15vw, 2.85rem);', 'dock logo must stay slightly larger than neighboring buttons');
+
+has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');
+has('src/styles/app.css', '.tx-empty-stage-mode .tx-empty-stage {', 'empty start must override card-frame stage CSS');
+has('src/styles/app.css', 'white-space: nowrap;', 'desktop empty-stage copy must not stack into narrow columns');
+has('src/styles/app.css', 'width: fit-content;', 'top dock must fit content rather than full width by default');
+has('src/ui/primitives/Button.jsx', 'tx-button', 'buttons must use shared primitive class');
+has('src/ui/primitives/Icon.jsx', 'FontAwesomeIcon', 'icons must use shared Font Awesome primitive');
+if (appAndWorkspace.includes('tx-reader-state')) failures.push('created empty workspace must not show reader-state noise');
+if (appAndWorkspace.includes('data-verse="map"')) failures.push('Map must not be primary UC-001 verse');
+if (appAndWorkspace.includes('Create your first workspace')) failures.push('empty start must not use onboarding-card copy');
 
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));
   process.exit(1);
 }
-console.log('✓ UI shape guards passed');
+console.log('✓ React UI shape guards passed');

@@ -1,28 +1,51 @@
-# Tiinex Site v115
+# Tiinex Site v119
 
-Source-clean Column-only runtime for UC-001: empty start, create browser-local workspace, restore view state through URL hash plus local storage cache, use browser back/forward for route states, add browser-local note records, and close the workspace non-destructively.
+React/Vite foundation with workspace-schema companion ownership, compact old-like Column chrome, and an old-like `Add to workspace` flow. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
+
+`.old/` remains a behavior and polish reference for the public PoC monolith. It is source-only and ignored from commits/public builds.
+
+## Runtime shape
+
+- React owns rendering and state binding.
+- `src/schemas/**` owns schema companions: bindings, capabilities, presenters, validation, transitions, and schema-owned React surfaces.
+- `src/schemas/workspace/` binds `tiinex.workspace.v1` as a viewer-local schema extension.
+- Workspace config/lifecycle/route/persistence modules still own behavior that should remain portable outside React.
+- `src/ui/primitives/**` owns reusable UI primitives, spacing, focus, and icon/text rhythm.
+- Font Awesome is integrated through the shared `Icon` primitive.
+- Local/session workspaces do not infer GitHub/source provenance.
+- URL hash remains visible view-state truth; localStorage remains cache/mirror only.
 
 ## Local manual check
 
-Open `index.html` directly in a browser.
+```bash
+npm install
+npm run dev
+```
 
-1. Start with no `#state=` hash: the Column surface should be empty even if stale localStorage cache exists.
-2. Press Create from the left side of the centered logo.
-3. Enter a workspace name and create it.
-4. Refresh: the workspace should restore from the URL hash/local cache.
-5. Use Add local note; a local/session record should appear without GitHub guessing. Open workspace should show a summary without fetching or mutating source material.
-6. Switch Feed/Tree or close the workspace, then use browser back/forward to move between route states.
-7. Press the Tiinex logo: it should return to the clean empty viewer route.
+Then open the Vite local URL.
+
+1. Start with no `#state=` hash: the viewer should show the quiet empty Tiinex stage even if stale localStorage exists.
+2. Press Create on the left side of the centered Tiinex logo.
+3. Submit without a name: the modal should require a workspace name.
+4. Enter a workspace name and create it.
+5. Confirm the created workspace is local/session, has source row, drop hint, toolbar and `No nodes match this view.`
+6. Open `Add`; the modal should be compact and old-like, with Manual files, Manual folder, GitHub source, Explicit URLs, and Drag and drop.
+7. Add one or more local Markdown files and confirm cards/counts appear without GitHub provenance.
+8. Add a GitHub source and confirm it registers as a source boundary without pretending records were loaded.
+9. Refresh: the workspace should restore from `#state=`.
+10. Close the workspace: clean empty route should return non-destructively.
 
 ## Validation
 
 ```bash
+node --check app.js 2>/dev/null || true
 npm run validate
 npm run ui:shape
 npm run runtime:smoke
 npm run usecase:uc001
 npm run build:public
 npm run public:check
+node --check .site-publish/assets/*.js
 npm run metrics
 npm run storage:scan
 npm test
@@ -30,22 +53,39 @@ npm test
 
 ## Delivery rule
 
-This zip is a source-clean repo replacement package. It intentionally excludes `.site-publish`. CI/workflow owns bundled public output after push.
+This zip is a source-clean repo replacement package. It intentionally excludes `node_modules` and `.site-publish`. CI/workflow owns public artifact generation after push.
 
-## v115 UC-001 route grounding
+## v119 scope
 
-v115 keeps the old quiet empty-stage visual baseline and moves from generic persistence to explicit route ownership. The URL hash is the source of visible view state; localStorage is a cache mirror, not an implicit clean-URL restore source. The centered logo now acts as a home/clean-route control, while Create sits to the left of the logo.
+Done:
 
-Schema support is also made multi-origin by design: Tiinex/docs remains canonical core, while viewer-local and fork-specific schema origins can be declared explicitly instead of being guessed as Tiinex/docs material.
+- Replaced the new source shortcut with a compact old-like `Add to <workspace>` menu.
+- Tightened created-workspace chrome: smaller titlebar, icon stat pills, shorter source row, shorter drop hint, compact empty result.
+- Implemented real local Markdown intake for manual files, manual folders, drag/drop, and explicit URL fetch where CORS/source allows.
+- GitHub source action now registers a source boundary without fake progress or fake loaded material.
+- Workspace-specific React UI remains in `src/schemas/workspace/workspace.views.jsx` instead of a parallel generic React component tree.
+- Updated `tiinex.workspace.v1` capabilities/transitions/source-action fields for the Add flow.
+- Kept clean empty-stage parity and single-column width discipline from v116.1/v117.
 
+Not done:
 
-## v115 live workspace actions
+- Full repository/mirror source loading is not implemented in React yet.
+- Zip intake is disclosed/skipped rather than silently faked.
+- Topic/evidence schema React companions still need real implementation passes.
+- Root schema companions will be patched as needs appear.
 
-- Global dock now fits actual controls and only renders previous/next workspace paging when more than one workspace exists.
-- Created local workspace actions use legacy Tiinex action styling and now open live action dialogs instead of native/scaffold buttons.
-- Add local note inserts a local/session record through lifecycle-owned logic and the same hash route persistence path. Deferred source-bound actions stay out of the primary happy path until their use-case exists.
-- UC-001 remains grounded in hash route state with localStorage as cache mirror, not clean-URL bootstrap.
+## v119.2 footer and compact-recognition patch
 
-## v115 old empty workspace parity
+Done:
 
-v115 is grounded in the side-by-side review against `.old`. A newly created workspace now opens as a normal empty Column workspace with a source/drop hint and `No nodes match this view.`, instead of an onboarding/material card.
+- Footer is visible before and after workspace creation.
+- Footer matches the old PoC origin-marker behavior more closely: fixed bottom bar, translucent dark background, compact 34px desktop height.
+- Footer `Tiinex` mark is linkable to `https://github.com/Tiinex`, matching the old app's link behavior.
+- Created-workspace copy was compacted again: the source row no longer carries a redundant `local/session` right-side explanation when there are no loaded records, and the drop hint is shorter.
+- Local/session provenance remains available through source metadata/title text and lifecycle state rather than as layout-heavy boilerplate.
+
+Not changed:
+
+- No new source-loading behavior was added.
+- No new flow was introduced.
+- Multi-column/pager assumptions were preserved; the single workspace remains a compact column rather than a full-width dashboard.

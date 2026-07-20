@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Tiinex: Dev Server + Browser",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://127.0.0.1:5173/",
+      "webRoot": "${workspaceFolder}",
+      "preLaunchTask": "Tiinex: dev server (watch)",
+      "sourceMaps": true,
+      "smartStep": true
+    },
+    {
+      "name": "Tiinex: Open Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "node tools/ensure-deps.mjs && npm run dev"
+    }
+  ]
+}

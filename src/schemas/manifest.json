@@ -1,9 +1,27 @@
 {
   "type": "tiinex.web.schema-module.manifest.v1",
-  "version": "v115",
+  "version": "v119",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "52ecdea0a75893882ce282214d155f70e1309c2a",
   "modules": [
+    {
+      "schemaId": "tiinex.root.v1",
+      "kind": "abstract",
+      "role": "envelope",
+      "path": "root.schema.json",
+      "checksum": "848d6f810295b5af5783a8b4feea90e0db9a835d5c10ffd12e35a85791302bc8",
+      "sourceBlobSha": "99fb6a5cbd11b7ec456208496316066b7dcee16f"
+    },
+    {
+      "schemaId": "tiinex.workspace.v1",
+      "kind": "concrete",
+      "role": "viewer-workspace-entrypoint",
+      "path": "workspace/workspace.schema.json",
+      "checksum": "bffd0e7ec7d8bedd49da7efa9c80c525b76adc2120c092c791ab4acf73848247",
+      "sourceBlobSha": "site-local-workspace-schema",
+      "originId": "viewer-local",
+      "originTrustRole": "viewer-extension"
+    },
     {
       "schemaId": "tiinex.evidence.v1",
       "kind": "concrete",
@@ -35,14 +53,6 @@
       "path": "presentation/surface/surface.schema.json",
       "checksum": "f17e11f9e1ded8a35165045c51b3eda46f0cc52355706dfa4e741b5cf8ba0aa6",
       "sourceBlobSha": "22636384bd70620edf488ef919719a3c5f395978"
-    },
-    {
-      "schemaId": "tiinex.root.v1",
-      "kind": "abstract",
-      "role": "envelope",
-      "path": "root.schema.json",
-      "checksum": "848d6f810295b5af5783a8b4feea90e0db9a835d5c10ffd12e35a85791302bc8",
-      "sourceBlobSha": "99fb6a5cbd11b7ec456208496316066b7dcee16f"
     },
     {
       "schemaId": "tiinex.schema.module.v1",

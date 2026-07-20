@@ -1,1 +1,1 @@
-export function Card(title) { return { type: 'card', title }; }
+export function Card({ children }) { return children; }
