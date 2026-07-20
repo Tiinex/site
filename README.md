@@ -1,6 +1,6 @@
-# Tiinex Site v119
+# Tiinex Site v128
 
-React/Vite foundation with workspace-schema companion ownership, compact old-like Column chrome, and an old-like `Add to workspace` flow. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
+React/Vite foundation with adapter-owned intake, archive/workspace import recovery from `.old`, source/material boundaries, and schema companion ownership. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
 
 `.old/` remains a behavior and polish reference for the public PoC monolith. It is source-only and ignored from commits/public builds.
 
@@ -61,8 +61,8 @@ Done:
 
 - Replaced the new source shortcut with a compact old-like `Add to <workspace>` menu.
 - Tightened created-workspace chrome: smaller titlebar, icon stat pills, shorter source row, shorter drop hint, compact empty result.
-- Implemented real local Markdown intake for manual files, manual folders, drag/drop, and explicit URL fetch where CORS/source allows.
-- GitHub source action now registers a source boundary without fake progress or fake loaded material.
+- Implemented adapter-owned local intake for Markdown files, folders, `.zip` archives, workspace import candidates, local assets, drag/drop, and explicit URL fetch where CORS/source allows.
+- GitHub source action registers a source boundary without fake progress and explicit file refs materialize as source-backed records.
 - Workspace-specific React UI remains in `src/schemas/workspace/workspace.views.jsx` instead of a parallel generic React component tree.
 - Updated `tiinex.workspace.v1` capabilities/transitions/source-action fields for the Add flow.
 - Kept clean empty-stage parity and single-column width discipline from v116.1/v117.
@@ -70,7 +70,7 @@ Done:
 Not done:
 
 - Full repository/mirror source loading is not implemented in React yet.
-- Zip intake is disclosed/skipped rather than silently faked.
+- Full `.old` zip/export encryption parity is not complete; encrypted zip entries are detected and reported rather than faked.
 - Topic/evidence schema React companions still need real implementation passes.
 - Root schema companions will be patched as needs appear.
 
@@ -125,3 +125,21 @@ This checkpoint adds schema-aware record transitions:
 - `Reference` can create a browser-local evidence/reference leaf.
 - Generated transition Markdown preserves the parent record boundary and does not infer GitHub provenance for local material.
 - Transition records are inserted through workspace lifecycle, keeping identity/provenance ownership outside the UI.
+
+
+## v128 PoC capability recovery
+
+Done:
+
+- Added archive adapter contract for `.zip` intake.
+- Preserved safe relative paths from zips/folders.
+- Split `.workspace.md` files, Markdown leaves, and non-Markdown assets into separate result lanes.
+- Added lifecycle support for local assets and workspace import/open/merge candidates.
+- Empty-stage drops can open workspace files; existing workspace drops stage workspace files as merge candidates.
+- Local/archive material stays browser-local/session and never infers GitHub provenance.
+
+Not done:
+
+- Password-based encrypted zip import remains an explicit unsupported/bridge-required path.
+- Full PoC issue snapshot/mirror/git-native behavior still needs recovery passes.
+- Asset preview UI is still minimal; assets are now preserved in state so preview can be layered on top.

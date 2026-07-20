@@ -1,5 +1,6 @@
 import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '../adapter.contracts.js';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
+import { materializeArchiveFiles } from '../archive/archive.adapter.js';
 
 export const LOCAL_ADAPTER_ID = 'local';
 
@@ -8,7 +9,7 @@ export function createLocalAdapter() {
     id: LOCAL_ADAPTER_ID,
     label: 'Local session material',
     availability: AdapterAvailability.available,
-    sourceKinds: ['local.session', 'local.files', 'local.folder', 'local.drop'],
+    sourceKinds: ['local.session', 'local.files', 'local.folder', 'local.drop', 'local.zip'],
     capabilities: {
       registerSource: true,
       materialize: true,
@@ -16,7 +17,7 @@ export function createLocalAdapter() {
       requiresBridge: false
     },
     configShape: {
-      files: 'FileList | File[] supplied by browser UI',
+      files: 'FileList | File[] supplied by browser UI; .zip routes through archive adapter',
       folder: 'browser DataTransferEntry or webkitdirectory FileList when user grants access',
       persistence: 'browser-local workspace state'
     },
@@ -35,9 +36,14 @@ export function createLocalAdapterResult(records = [], diagnostics = {}) {
 }
 
 const MARKDOWN_FILE_RE = /(?:\.md|\.markdown|\.trace\.md|\.schema\.md|\.workspace\.md)$/i;
+const SUPPORTED_LOCAL_FILE_RE = /(?:\.md|\.markdown|\.trace\.md|\.schema\.md|\.validator\.md|\.workspace\.md|\.zip)$/i;
 
 export function isMarkdownLikeFileName(name = '') {
   return MARKDOWN_FILE_RE.test(String(name || '').trim());
+}
+
+export function isSupportedLocalIntakeFileName(name = '') {
+  return SUPPORTED_LOCAL_FILE_RE.test(String(name || '').trim());
 }
 
 export async function collectLocalFilesFromDataTransfer(dataTransfer) {
@@ -46,6 +52,15 @@ export async function collectLocalFilesFromDataTransfer(dataTransfer) {
   if (!items.length) return Array.from(dataTransfer.files || []).filter(Boolean);
   const collected = [];
   for (const item of items) {
+    if (typeof item.getAsFileSystemHandle === 'function') {
+      try {
+        const handle = await item.getAsFileSystemHandle();
+        if (handle) {
+          collected.push(...await readFileSystemHandleFiles(handle));
+          continue;
+        }
+      } catch (_) {}
+    }
     const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
     if (entry) {
       collected.push(...await readEntryFiles(entry));
@@ -55,6 +70,25 @@ export async function collectLocalFilesFromDataTransfer(dataTransfer) {
     if (file) collected.push(file);
   }
   return collected.length ? collected : Array.from(dataTransfer.files || []).filter(Boolean);
+}
+
+async function readFileSystemHandleFiles(handle, parentPath = '') {
+  if (!handle) return [];
+  const currentPath = [parentPath, handle.name || 'file'].filter(Boolean).join('/');
+  if (handle.kind === 'file') {
+    try {
+      const file = await handle.getFile();
+      return [wrapFileWithRelativePath(file, currentPath)];
+    } catch (_) {
+      return [];
+    }
+  }
+  if (handle.kind !== 'directory') return [];
+  const nested = [];
+  try {
+    for await (const child of handle.values()) nested.push(...await readFileSystemHandleFiles(child, currentPath));
+  } catch (_) {}
+  return nested;
 }
 
 async function readEntryFiles(entry, parentPath = '') {
@@ -117,6 +151,9 @@ function wrapFileWithRelativePath(file, relativePath) {
 
 export async function materializeLocalMarkdownFiles(fileList = [], options = {}) {
   const files = Array.from(fileList || []).filter(Boolean);
+  const archiveCandidate = files.some((file) => /\.zip$/i.test(String(file?.relativePath || file?.webkitRelativePath || file?.name || '').trim()));
+  if (archiveCandidate) return materializeArchiveFiles(files, { sourceMode: options.sourceMode || 'local-files' });
+
   const records = [];
   const errors = [];
   const warnings = [];
@@ -124,7 +161,7 @@ export async function materializeLocalMarkdownFiles(fileList = [], options = {})
     const name = String(file?.name || '').trim();
     const path = String(file?.relativePath || file?.webkitRelativePath || name).trim();
     if (!isMarkdownLikeFileName(name || path)) {
-      warnings.push({ code: 'local.unsupported-file', ref: path || name || 'file', message: 'Only Markdown-like local files are materialized in the browser viewer.' });
+      warnings.push({ code: 'local.unsupported-file', ref: path || name || 'file', message: 'Only Markdown-like local files or .zip archives are materialized in the browser viewer.' });
       continue;
     }
     try {

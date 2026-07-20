@@ -13,6 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const adapterSchema = JSON.parse(readFileSync(join(__dirname, 'adapter.definition.schema.json'), 'utf8'));
 assert(adapterSchema.$id === ADAPTER_DEFINITION_SCHEMA_ID, 'adapter definition JSON schema id must match runtime contract');
 const registry = TiinexAdapterRegistry;
+assert(registry.get('archive'), 'archive adapter must be registered');
 assert(registry.get('github'), 'github adapter must be registered');
 assert(registry.get('local'), 'local adapter must be registered');
 assert(registry.get('git-native'), 'git-native adapter must be registered');
@@ -26,6 +27,7 @@ for (const adapter of registry.adapters) {
   assert(adapter.resultShape?.schema === ADAPTER_RESULT_SCHEMA_ID, `${adapter.id} must describe adapter result shape`);
 }
 
+assert(registry.forSourceKind('archive.zip')?.id === 'archive', 'archive.zip source kind must resolve to archive adapter');
 assert(registry.forSourceKind('github.repo')?.id === 'github', 'github.repo source kind must resolve to github adapter');
 assert(registry.forSourceKind('local.session')?.id === 'local', 'local.session source kind must resolve to local adapter');
 assert(registry.forSourceKind('git.native-repo')?.id === 'git-native', 'git.native-repo source kind must resolve to git-native adapter');

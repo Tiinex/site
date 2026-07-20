@@ -27,6 +27,8 @@ import { faCircle, faFileLines } from '@fortawesome/free-regular-svg-icons';
 
 const ICONS = {
   add: faCirclePlus,
+  archive: faFolder,
+  asset: faFileLines,
   close: faXmark,
   continue: faCodeBranch,
   create: faCirclePlus,
@@ -53,7 +55,8 @@ const ICONS = {
   shareNodes: faShareNodes,
   source: faLink,
   tree: faSitemap,
-  upload: faArrowUpFromBracket,
+  upload: faArchive,
+  faArrowUpFromBracket,
   workspace: faCircleNodes
 };
 

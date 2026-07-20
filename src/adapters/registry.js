@@ -1,3 +1,4 @@
+import { createArchiveAdapter } from './archive/archive.adapter.js';
 import { createExportAdapter } from './export/export.adapter.js';
 import { createGitNativeAdapter } from './git-native/git-native.adapter.js';
 import { createGithubAdapter } from './github/github.adapter.js';
@@ -7,6 +8,7 @@ import { createStaticAdapter } from './static/static.adapter.js';
 export function createAdapterRegistry(extraAdapters = []) {
   const adapters = [
     createLocalAdapter(),
+    createArchiveAdapter(),
     createGithubAdapter(),
     createStaticAdapter(),
     createGitNativeAdapter(),

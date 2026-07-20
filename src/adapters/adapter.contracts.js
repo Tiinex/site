@@ -48,6 +48,8 @@ export function makeAdapterDefinition(input = {}) {
     resultShape: Object.freeze(Object.assign({
       schema: ADAPTER_RESULT_SCHEMA_ID,
       records: 'array',
+      assets: 'array',
+      workspaceEntries: 'array',
       errors: 'array',
       warnings: 'array',
       diagnostics: 'object',
@@ -81,6 +83,8 @@ export function makeSourceRegistration(input = {}, adapter = null) {
 
 export function makeAdapterResult(input = {}) {
   const records = Array.isArray(input.records) ? input.records.slice() : [];
+  const assets = Array.isArray(input.assets) ? input.assets.slice() : [];
+  const workspaceEntries = Array.isArray(input.workspaceEntries) ? input.workspaceEntries.slice() : [];
   const errors = Array.isArray(input.errors) ? input.errors.slice() : [];
   const warnings = Array.isArray(input.warnings) ? input.warnings.slice() : [];
   const state = input.state || (errors.length && records.length ? AdapterResultState.partial : (errors.length ? AdapterResultState.failed : AdapterResultState.ok));
@@ -90,6 +94,8 @@ export function makeAdapterResult(input = {}) {
     sourceId: String(input.sourceId || '').trim(),
     state,
     records: Object.freeze(records),
+    assets: Object.freeze(assets),
+    workspaceEntries: Object.freeze(workspaceEntries),
     errors: Object.freeze(errors),
     warnings: Object.freeze(warnings),
     diagnostics: Object.freeze(Object.assign({}, input.diagnostics || {})),

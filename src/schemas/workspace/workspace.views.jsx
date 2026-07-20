@@ -26,6 +26,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
         </div>
         <div className="tx-window-actions tx-compact-window-actions" aria-label="Workspace actions">
           <span className="tx-stat-pill" title="Shown artifacts"><Icon name="manualFiles" />{records.length}</span>
+          <span className="tx-stat-pill" title="Local assets"><Icon name="asset" />{(workspace.assets || []).length}</span>
           <span className="tx-stat-pill" title="Sources"><Icon name="source" />{sources.length}</span>
           <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} />
           <Button icon="close" variant="ghost" shape="round" aria-label="Close workspace" title="Close workspace" onClick={onClose} />
@@ -60,7 +61,7 @@ function SourceStrip({ workspace, boundary, onCloseSource }) {
           </span>
         ))}
       </div>
-      {workspace.records?.length ? <span className="tx-source-boundary tx-compact-source-boundary">{workspace.records.length} loaded</span> : null}
+      {(workspace.records?.length || workspace.assets?.length) ? <span className="tx-source-boundary tx-compact-source-boundary">{workspace.records?.length || 0} artifacts · {workspace.assets?.length || 0} assets</span> : null}
     </div>
   );
 }
@@ -80,8 +81,8 @@ function WorkspaceDropHint({ workspace }) {
   if ((workspace.records || []).length || workspace.discoveryProgress) return null;
   return (
     <div className="tx-workspace-drop-hint" role="note">
-      <p><strong>Get started with local Markdown</strong> — click <strong>+</strong> (Add to workspace) or drop <em>.md</em> files here. Local files remain local/session only.</p>
-      <p className="tx-muted">To load source-backed material, use Add → GitHub source and provide explicit file paths or enable repo discovery.</p>
+      <p>Drop lineage files, folders, or <em>.zip</em> archives into this workspace · or use the source button above.</p>
+      <p className="tx-muted">Workspace files are staged as open/merge candidates; local material remains local/session only.</p>
     </div>
   );
 }
@@ -106,9 +107,8 @@ function ModeToolbar({ state, query, onVerse, onQuery }) {
 function EmptyWorkspaceState() {
   return (
     <div className="tx-empty-node-state tx-compact-empty-node-state" role="status" aria-live="polite">
-      <h2>Nothing to show yet</h2>
-      <p>Add local Markdown files to populate this workspace — click <strong>+</strong> (Add to workspace) or drop <em>.md</em> files here. Local files remain local/session only.</p>
-      <p className="tx-muted">To load source-backed material, use Add → GitHub source and provide explicit file refs.</p>
+      <p>No nodes match this view.</p>
+      <p className="tx-muted">Drop Markdown, folders, or zip archives above; non-Markdown files are preserved as local assets.</p>
     </div>
   );
 }

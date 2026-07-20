@@ -40,13 +40,13 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
       <div className="tx-add-choice-grid">
         {hasLocal ? <label className="tx-add-choice-card tx-add-choice-file">
           <span className="tx-add-choice-icon"><Icon name="manualFiles" /></span>
-          <span className="tx-add-choice-copy"><strong>Manual files</strong><small>Markdown / trace</small></span>
+          <span className="tx-add-choice-copy"><strong>Manual files</strong><small>Markdown / zip</small></span>
           <Icon name="upload" />
-          <input className="tx-visually-hidden-file" type="file" multiple accept=".md,.markdown,.trace.md,.schema.md,.workspace.md" onChange={(event) => onAddFiles(event.target.files, { sourceMode: 'manual-files' })} />
+          <input className="tx-visually-hidden-file" type="file" multiple accept=".md,.markdown,.trace.md,.schema.md,.validator.md,.workspace.md,.zip" onChange={(event) => onAddFiles(event.target.files, { sourceMode: 'manual-files' })} />
         </label> : null}
         <label className="tx-add-choice-card tx-add-choice-folder">
           <span className="tx-add-choice-icon"><Icon name="folderOpen" /></span>
-          <span className="tx-add-choice-copy"><strong>Manual folder</strong><small>Folder import</small></span>
+          <span className="tx-add-choice-copy"><strong>Manual folder</strong><small>Folder / zip paths</small></span>
           <Icon name="folderPlus" />
           <input className="tx-visually-hidden-file" type="file" multiple webkitdirectory="" directory="" onChange={(event) => onAddFiles(event.target.files, { sourceMode: 'manual-folder' })} />
         </label>
@@ -62,7 +62,7 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
         </button>
         <button type="button" className="tx-add-choice-card tx-desktop-only-choice" onClick={() => onMode('drop')}>
           <span className="tx-add-choice-icon"><Icon name="handPointer" /></span>
-          <span className="tx-add-choice-copy"><strong>Drag and drop</strong><small>Focused drop target</small></span>
+          <span className="tx-add-choice-copy"><strong>Drag and drop</strong><small>Files, folders, zip</small></span>
           <Icon name="drop" />
         </button>
       </div>
@@ -169,7 +169,7 @@ function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
         className="tx-source-dropzone tx-add-full-dropzone"
         tabIndex="0"
         role="button"
-        aria-label="Drop source material here"
+        aria-label="Drop Markdown, folders, or zip archives here"
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault();
@@ -183,7 +183,7 @@ function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
           <small>{count ? `${count} file${count === 1 ? '' : 's'} staged` : 'No files staged yet.'}</small>
         </div>
       </div>
-      <input ref={inputRef} className="tx-visually-hidden-file" type="file" multiple webkitdirectory="" directory="" accept=".md,.markdown,.trace.md,.schema.md,.workspace.md" onChange={(event) => handleFiles(event.target.files)} />
+      <input ref={inputRef} className="tx-visually-hidden-file" type="file" multiple webkitdirectory="" directory="" accept=".md,.markdown,.trace.md,.schema.md,.validator.md,.workspace.md,.zip" onChange={(event) => handleFiles(event.target.files)} />
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
         <Button type="button" variant="ghost" icon="manualFiles" onClick={() => inputRef.current?.click()}>Choose files</Button>

@@ -151,6 +151,8 @@
       sourceOrder: ['local'],
       discoveryProgress: null,
       records: [],
+      assets: [],
+      importLog: [],
       mode: 'feed'
     };
     const next = cloneState(state);
@@ -215,6 +217,101 @@
     if (!added.length) return { ok: false, error: 'records.empty', state };
     const workspace = activeWorkspace(next);
     return { ok: true, records: added, workspace, state: next };
+  }
+
+
+  function addWorkspaceAssets(state, workspaceId, inputs = [], options = {}) {
+    const assets = Array.isArray(inputs) ? inputs : [];
+    const next = cloneState(state);
+    const targetId = workspaceId || next.activeWorkspaceId;
+    const workspace = next.workspaces.find((item) => item.id === targetId);
+    if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    const added = [];
+    const existing = Array.isArray(workspace.assets) ? workspace.assets.slice() : [];
+    for (const input of assets) {
+      const canonicalPath = canonicalizeLocalPath(input.path || input.name || 'asset');
+      if (!canonicalPath) continue;
+      const id = input.id || `asset:${workspace.id}:${canonicalPath}`;
+      const asset = {
+        schema: input.schema || 'tiinex.local.asset.v1',
+        id,
+        path: canonicalPath,
+        name: input.name || canonicalPath.split('/').pop() || 'asset',
+        type: input.type || 'application/octet-stream',
+        size: Number(input.size || 0),
+        content: input.content || '',
+        dataUrl: input.dataUrl || '',
+        sourceMode: input.sourceMode || 'local-asset',
+        source: input.source || makeSessionSource(),
+        createdAt: input.createdAt || nowIso(options.clock).slice(0, 10)
+      };
+      const idx = existing.findIndex((item) => item.id === id || canonicalizeLocalPath(item.path || '') === canonicalPath);
+      if (idx >= 0) existing[idx] = asset;
+      else existing.unshift(asset);
+      added.push(asset);
+    }
+    workspace.assets = existing;
+    workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
+    if (added.length) workspace.importLog.unshift({ kind: 'assets', count: added.length, at: nowIso(options.clock) });
+    next.activeWorkspaceId = workspace.id;
+    return { ok: Boolean(added.length), assets: added, workspace, state: next, error: added.length ? '' : 'assets.empty' };
+  }
+
+  function openWorkspaceFromMarkdown(state, markdown = '', input = {}, options = {}) {
+    const title = normalizeWorkspaceName(input.title || workspaceTitleFromMarkdown(markdown) || input.name || 'Imported workspace');
+    if (!title) return { ok: false, error: 'workspace.title.required', state };
+    const createdAt = nowIso(options.clock);
+    const workspace = {
+      id: input.id || makeWorkspaceId(title, createdAt),
+      name: title,
+      title,
+      createdAt,
+      kind: 'workspace',
+      source: makeSessionSource(),
+      sources: [makeLocalSource()],
+      sourceOrder: ['local'],
+      discoveryProgress: null,
+      records: [],
+      assets: [],
+      importLog: [{ kind: 'workspace-open', path: input.path || 'workspace.workspace.md', at: createdAt }],
+      mode: 'feed',
+      workspaceMarkdown: String(markdown || ''),
+      workspaceImport: {
+        schema: 'tiinex.workspace.import.v1',
+        path: input.path || 'workspace.workspace.md',
+        sourceMode: input.sourceMode || 'local-workspace-file',
+        boundary: 'browser-local workspace file; no GitHub provenance inferred'
+      }
+    };
+    const next = cloneState(state);
+    next.workspaces = [workspace].concat((next.workspaces || []).filter((item) => item.id !== workspace.id));
+    next.activeWorkspaceId = workspace.id;
+    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
+    return { ok: true, workspace, state: next };
+  }
+
+  function mergeWorkspaceImport(state, workspaceId, workspaceEntry = {}, options = {}) {
+    const next = cloneState(state);
+    const workspace = next.workspaces.find((item) => item.id === (workspaceId || next.activeWorkspaceId));
+    if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
+    workspace.importLog.unshift({ kind: 'workspace-merge-candidate', path: workspaceEntry.path || 'workspace.workspace.md', title: workspaceEntry.title || '', at: nowIso(options.clock) });
+    workspace.workspaceMergeCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
+    workspace.workspaceMergeCandidates.unshift(Object.assign({}, workspaceEntry, { mergedAt: nowIso(options.clock) }));
+    next.activeWorkspaceId = workspace.id;
+    return { ok: true, workspace, state: next };
+  }
+
+  function workspaceTitleFromMarkdown(markdown = '') {
+    const text = String(markdown || '');
+    const browserTitle = text.match(/^\s*-\s*Browser Title:\s*(.+)$/mi)?.[1]?.trim();
+    if (browserTitle) return stripMarkdown(browserTitle);
+    const heading = text.match(/^#\s+(.+)\s*$/m)?.[1]?.trim();
+    return stripMarkdown(heading || '');
+  }
+
+  function stripMarkdown(value = '') {
+    return String(value || '').replace(/^\[([^\]]+)\]\([^)]*\)$/, '$1').trim();
   }
 
   // v121: addWorkspaceSourceRecords
@@ -429,6 +526,9 @@
     activeWorkspace,
     addWorkspaceRecord,
     addWorkspaceRecords,
+    addWorkspaceAssets,
+    openWorkspaceFromMarkdown,
+    mergeWorkspaceImport,
     addWorkspaceSourceRecords,
     addWorkspaceSource,
     cloneState,

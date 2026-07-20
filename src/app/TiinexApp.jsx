@@ -141,6 +141,46 @@ export function TiinexApp() {
     commit(result.state, 'push');
   }
 
+  function applyLocalAdapterResult(baseState, workspaceId, adapterResult, options = {}) {
+    let nextState = baseState;
+    let addedRecords = 0;
+    let addedAssets = 0;
+    let workspaceOpened = false;
+    const workspaces = Array.isArray(adapterResult.workspaceEntries) ? adapterResult.workspaceEntries : [];
+    const targetWorkspaceId = workspaceId || nextState.activeWorkspaceId;
+
+    if (workspaces.length && !targetWorkspaceId && runtime().lifecycle?.openWorkspaceFromMarkdown) {
+      const first = workspaces[0];
+      const opened = runtime().lifecycle.openWorkspaceFromMarkdown(nextState, first.markdown || '', first);
+      if (opened?.ok) {
+        nextState = opened.state;
+        workspaceOpened = true;
+      }
+    } else if (workspaces.length && targetWorkspaceId && runtime().lifecycle?.mergeWorkspaceImport) {
+      for (const entry of workspaces) {
+        const merged = runtime().lifecycle.mergeWorkspaceImport(nextState, targetWorkspaceId, entry);
+        if (merged?.ok) nextState = merged.state;
+      }
+    }
+
+    const finalWorkspaceId = runtime().lifecycle?.activeWorkspace?.(nextState)?.id || targetWorkspaceId;
+    if (adapterResult.records?.length && finalWorkspaceId) {
+      const added = runtime().lifecycle?.addWorkspaceRecords?.(nextState, finalWorkspaceId, adapterResult.records);
+      if (added?.ok) {
+        nextState = added.state;
+        addedRecords = added.records.length;
+      }
+    }
+    if (adapterResult.assets?.length && finalWorkspaceId && runtime().lifecycle?.addWorkspaceAssets) {
+      const assetResult = runtime().lifecycle.addWorkspaceAssets(nextState, finalWorkspaceId, adapterResult.assets);
+      if (assetResult?.ok) {
+        nextState = assetResult.state;
+        addedAssets = assetResult.assets.length;
+      }
+    }
+    return { state: nextState, addedRecords, addedAssets, workspaceOpened, workspaceEntries: workspaces.length };
+  }
+
   async function addLocalFiles(fileList, options = {}) {
     const files = options.fromDataTransfer
       ? await collectLocalFilesFromDataTransfer(fileList)
@@ -154,23 +194,29 @@ export function TiinexApp() {
       adapterResult = await materializeLocalMarkdownFiles(files, { sourceMode: options.sourceMode || 'manual-files' });
     } catch (error) {
       console.error(error);
-      setNotice('Could not read local files.');
+      setNotice('Could not read local files or archives.');
       return;
     }
-    if (!adapterResult.records.length) {
+    const materialCount = (adapterResult.records?.length || 0) + (adapterResult.assets?.length || 0) + (adapterResult.workspaceEntries?.length || 0);
+    if (!materialCount) {
       const skipped = adapterResult.warnings?.length || adapterResult.errors?.length || 0;
-      setNotice(skipped ? 'No readable Markdown files found. Local intake accepts Markdown-like files only.' : 'No files selected.');
+      setNotice(skipped ? 'No readable Markdown, workspace, asset, or zip material was imported.' : 'No files selected.');
       return;
     }
-    const result = runtime().lifecycle?.addWorkspaceRecords?.(state, active?.id, adapterResult.records);
-    if (!result?.ok) {
-      setNotice('Could not add selected files.');
+    const applied = applyLocalAdapterResult(state, active?.id, adapterResult, options);
+    if (applied.state === state && !applied.addedRecords && !applied.addedAssets && !applied.workspaceOpened && !applied.workspaceEntries) {
+      setNotice('Could not add selected material.');
       return;
     }
     setDialog(null);
     const skipped = (adapterResult.warnings?.length || 0) + (adapterResult.errors?.length || 0);
-    setNotice(`Added ${result.records.length} local Markdown artifact${result.records.length === 1 ? '' : 's'}${skipped ? `; skipped ${skipped} unsupported/read-failed file${skipped === 1 ? '' : 's'}` : ''}.`);
-    commit(result.state, 'push');
+    const parts = [];
+    if (applied.workspaceOpened) parts.push('opened workspace');
+    else if (applied.workspaceEntries) parts.push(`${applied.workspaceEntries} workspace file${applied.workspaceEntries === 1 ? '' : 's'} staged for merge`);
+    if (applied.addedRecords) parts.push(`${applied.addedRecords} artifact${applied.addedRecords === 1 ? '' : 's'}`);
+    if (applied.addedAssets) parts.push(`${applied.addedAssets} asset${applied.addedAssets === 1 ? '' : 's'}`);
+    setNotice(`${parts.length ? `Imported ${parts.join(' · ')}` : 'Import completed'}${skipped ? `; ${skipped} warning/error${skipped === 1 ? '' : 's'}` : ''}.`);
+    commit(applied.state, 'push');
   }
 
   async function addExplicitUrls(urlText) {
@@ -361,7 +407,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow">
+    <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}

@@ -99,6 +99,29 @@ try {
   if (single.id !== `source:${sourceId}:.topics/README.md`) fail('canonical README id mismatch');
   if (finalWorkspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
 
+
+  // 6) Asset insertion is separate from leaf records and keeps local/session boundary
+  const assetRes = lifecycle.addWorkspaceAssets(currentState, ws.id, [{ path: 'assets/picture.png', name: 'picture.png', type: 'image/png', size: 7, dataUrl: 'data:image/png;base64,ZmFrZQ==' }]);
+  if (!assetRes?.ok) fail('addWorkspaceAssets failed');
+  const assetWorkspace = lifecycle.activeWorkspace(assetRes.state);
+  if (!Array.isArray(assetWorkspace.assets) || assetWorkspace.assets.length !== 1) fail('workspace asset must be stored separately from records');
+  if (assetWorkspace.records.some((record) => record.path === 'assets/picture.png')) fail('asset must not become a fake leaf record');
+  const assetAgain = lifecycle.addWorkspaceAssets(assetRes.state, ws.id, [{ path: './assets//picture.png', name: 'picture.png', type: 'image/png', size: 8 }]);
+  if (!assetAgain?.ok) fail('addWorkspaceAssets repeated path failed');
+  const assetAgainWorkspace = lifecycle.activeWorkspace(assetAgain.state);
+  if (assetAgainWorkspace.assets.length !== 1 || Number(assetAgainWorkspace.assets[0].size) !== 8) fail('asset path must upsert deterministically');
+
+  // 7) .workspace.md opens as a workspace object, not as a leaf
+  const workspaceMd = '# Tiinex Viewer\n\n## Workspace Entrypoints\n';
+  const openWs = lifecycle.openWorkspaceFromMarkdown(lifecycle.makeEmptyAppState(), workspaceMd, { path: 'viewer.workspace.md', title: 'Imported Viewer' });
+  if (!openWs?.ok) fail('openWorkspaceFromMarkdown failed');
+  if (openWs.workspace.records.length !== 0) fail('.workspace.md must not become a normal record');
+  if (openWs.workspace.workspaceImport?.path !== 'viewer.workspace.md') fail('workspace import path missing');
+  const merge = lifecycle.mergeWorkspaceImport(openWs.state, openWs.workspace.id, { path: 'other.workspace.md', title: 'Other' });
+  if (!merge?.ok) fail('mergeWorkspaceImport failed');
+  const mergedWorkspace = lifecycle.activeWorkspace(merge.state);
+  if (!mergedWorkspace.workspaceMergeCandidates?.length) fail('workspace merge candidate must be recorded explicitly');
+
   console.log('✓ workspace.lifecycle tests passed');
   process.exit(0);
 } catch (err) {
