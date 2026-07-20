@@ -14,3 +14,4 @@ node_modules/
 
 # Local mirror worktrees are source/build inputs, not published source state
 .mirrors/
+.old
