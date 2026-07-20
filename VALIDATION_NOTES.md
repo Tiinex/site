@@ -95,3 +95,27 @@ In this sandbox the source-clean tree does not have a usable Vite binary in `nod
    - The app should report warnings/errors and not fake successful import.
 7. Confirm local zip/folder material never gains GitHub source provenance.
 8. Confirm GitHub explicit file refs still materialize as source-backed records.
+
+## v128.1 crash fix
+
+- Fixed runtime crash in `src/ui/primitives/Icon.jsx` where `upload` referenced `faArchive`, which was not imported/available from the current FontAwesome set.
+- `upload` now uses the already imported `faArrowUpFromBracket`.
+- No adapter/source/material behavior changed.
+
+Validation run in sandbox:
+
+```txt
+node tools/validate-static.mjs
+node tools/validate-schema-bindings.mjs
+node tools/validate-workspace-schema.mjs
+node src/workspaces/workspace.lifecycle.test.mjs
+node src/sources/github/github.loader.test.mjs
+node src/adapters/archive/archive.adapter.test.mjs
+node src/adapters/adapter.registry.test.mjs
+node src/adapters/local/local.adapter.test.mjs
+node src/sources/source.model.test.mjs
+node src/actions/record.actions.test.mjs
+node src/transitions/record.transitions.test.mjs
+node tools/check-ui-shape.mjs
+node tools/check-uc001.mjs
+```

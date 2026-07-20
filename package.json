@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.8-v128",
+  "version": "0.2.8-v128.1",
   "private": true,
-  "description": "Tiinex Site PoC capability recovery: archive/workspace intake, local asset split, and adapter-owned material routing.",
+  "description": "Tiinex Site v128.1 PoC capability recovery crash fix: archive/workspace intake, local asset split, adapter-owned routing.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

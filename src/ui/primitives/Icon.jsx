@@ -55,8 +55,7 @@ const ICONS = {
   shareNodes: faShareNodes,
   source: faLink,
   tree: faSitemap,
-  upload: faArchive,
-  faArrowUpFromBracket,
+  upload: faArrowUpFromBracket,
   workspace: faCircleNodes
 };
 
