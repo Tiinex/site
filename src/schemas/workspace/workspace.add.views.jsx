@@ -90,6 +90,7 @@ function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) 
     onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery, issueUrls, label: repository });
   }
 
+
   return (
     <form className="tx-add-source-form tx-github-source-form" onSubmit={submit}>
       {entrypoints.length ? (

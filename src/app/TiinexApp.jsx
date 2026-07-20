@@ -220,8 +220,35 @@ export function TiinexApp() {
       setNotice('Could not add GitHub source.');
       return;
     }
-    setDialog(null);
-    setNotice(`${result.source.label} source registered. Loading adapter deferred.`);
+    // If the caller supplied explicit file refs (newline-separated),
+    // attempt to load them now via the github loader and insert source-backed records.
+    if (input.fileRefs) {
+      (async () => {
+        try {
+          const loader = window.TiinexGithubLoader || null;
+          if (loader && typeof loader.loadGithubFilesForSource === 'function') {
+            const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+            const out = await loader.loadGithubFilesForSource(result.source, fileRefs, { fetchImpl: fetch });
+            if (out.okCount) setNotice(`Loaded ${out.okCount} of ${fileRefs.length} source files.`);
+            else setNotice(`No source files loaded; ${out.failCount} failed.`);
+            if (out.errors && out.errors.length) console.warn('github loader errors', out.errors);
+            // Insert successful records via lifecycle
+            if (out.records && out.records.length) {
+              const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(result.state, active?.id, result.source.id, out.records);
+              if (ins?.ok) commit(ins.state, 'push');
+            }
+          } else {
+            setNotice(`${result.source.label} source registered. Loading adapter deferred.`);
+          }
+        } catch (e) {
+          console.error(e);
+          setNotice(`${result.source.label} source registered; file loading failed.`);
+        }
+      })();
+    } else {
+      setDialog(null);
+      setNotice(`${result.source.label} source registered. Loading adapter deferred.`);
+    }
     commit(result.state, 'push');
   }
 
@@ -284,6 +311,8 @@ export function TiinexApp() {
 
   return (
     <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow">
+      {/* Expose loader to global for Add flow to use if present */}
+      <script dangerouslySetInnerHTML={{__html: `window.TiinexGithubLoader = window.TiinexGithubLoader || null;`}} />
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
