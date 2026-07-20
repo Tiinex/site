@@ -3752,3 +3752,58 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-action-caption {
   font-size: 0.78rem;
 }
+
+
+/* v132: reduce empty-workspace boilerplate and make drop/empty guidance projection-only. */
+.tx-workspace-drop-hint {
+  padding: 0.42rem 0.72rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.012);
+  color: rgba(247,248,251,0.64);
+  font-size: 0.76rem;
+  text-align: center;
+}
+.tx-workspace-drop-hint p {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+.tx-workspace-drop-hint strong { color: rgba(247,248,251,0.82); font-weight: 650; }
+.tx-workspace-drop-hint span { color: rgba(247,248,251,0.54); }
+.tx-primary-stage .tx-empty-node-state,
+.tx-empty-node-state.tx-compact-empty-node-state {
+  min-height: 4.6rem;
+  padding: 0.75rem 1rem;
+  display: grid;
+  place-items: center;
+  gap: 0.24rem;
+  border-color: rgba(255,255,255,0.10);
+  border-radius: 0.82rem;
+  background: rgba(255,255,255,0.012);
+  color: rgba(247,248,251,0.66);
+  text-align: center;
+}
+.tx-empty-node-state.tx-compact-empty-node-state p {
+  margin: 0;
+  max-width: 38rem;
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+.tx-empty-node-state.tx-compact-empty-node-state small {
+  color: rgba(247,248,251,0.42);
+  font-size: 0.72rem;
+}
+.tx-column-primary-stage { padding: 0.56rem; }
+.tx-add-source-form { gap: 0.56rem; }
+.tx-textarea-field textarea,
+.tx-github-advanced-issues textarea {
+  min-height: 3.75rem;
+  resize: vertical;
+}
+.tx-textarea-field .tx-field-hint {
+  color: rgba(247,248,251,0.46);
+  font-size: 0.7rem;
+}

@@ -13,7 +13,11 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
-  const records = (workspace.records || []).filter((record) => recordMatchesQuery(record, query));
+  const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
+  const assets = Array.isArray(workspace.assets) ? workspace.assets : [];
+  const records = allRecords.filter((record) => recordMatchesQuery(record, query));
+  const hasMaterial = Boolean(allRecords.length || assets.length);
+  const isFilteredEmpty = Boolean(hasMaterial && allRecords.length && !records.length);
   const presentation = verse === 'tree'
     ? presentWorkspaceTree(workspace, { verse, query })
     : presentWorkspaceFeed(workspace, { verse, query });
@@ -33,11 +37,11 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
         </div>
       </header>
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} />
-      <WorkspaceDropHint workspace={workspace} />
+      <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <ModeToolbar state={state} query={query} onVerse={onVerse} onQuery={onQuery} />
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
-        {verse === 'tree' ? <WorkspaceTreeState workspace={workspace} records={records} onOpenRecord={onOpenRecord} /> : records.length ? records.map((record) => <RecordCard key={record.id} record={record} onOpenRecord={onOpenRecord} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />) : <EmptyWorkspaceState />}
+        {verse === 'tree' ? <WorkspaceTreeState workspace={workspace} records={records} onOpenRecord={onOpenRecord} /> : records.length ? records.map((record) => <RecordCard key={record.id} record={record} onOpenRecord={onOpenRecord} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />) : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} />}
       </section>
     </section>
   );
@@ -77,12 +81,11 @@ function ProgressStrip({ workspace }) {
   );
 }
 
-function WorkspaceDropHint({ workspace }) {
-  if ((workspace.records || []).length || workspace.discoveryProgress) return null;
+function WorkspaceDropHint({ workspace, hasMaterial }) {
+  if (hasMaterial || workspace.discoveryProgress) return null;
   return (
     <div className="tx-workspace-drop-hint" role="note">
-      <p>Drop lineage files, folders, or <em>.zip</em> archives into this workspace · or use the source button above.</p>
-      <p className="tx-muted">Workspace files are staged as open/merge candidates; local material remains local/session only.</p>
+      <p><strong>Drop local material here</strong><span>.md, folders, or .zip · local/session only</span></p>
     </div>
   );
 }
@@ -104,11 +107,19 @@ function ModeToolbar({ state, query, onVerse, onQuery }) {
   );
 }
 
-function EmptyWorkspaceState() {
+function EmptyWorkspaceState({ filtered, hasMaterial, query }) {
+  const message = filtered
+    ? 'No nodes match this view.'
+    : hasMaterial
+      ? 'No artifacts match this view.'
+      : 'No material yet.';
+  const hint = filtered && query
+    ? `Search filter: ${query}`
+    : '';
   return (
     <div className="tx-empty-node-state tx-compact-empty-node-state" role="status" aria-live="polite">
-      <p>No nodes match this view.</p>
-      <p className="tx-muted">Drop Markdown, folders, or zip archives above; non-Markdown files are preserved as local assets.</p>
+      <p>{message}</p>
+      {hint ? <small>{hint}</small> : null}
     </div>
   );
 }

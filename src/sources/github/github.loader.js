@@ -17,9 +17,29 @@ function toRawFromBlobUrl(url) {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path}`;
 }
 
-function normalizeRefToRaw(source, ref) {
-  const srcRepo = String(source?.repo || '').trim().toLowerCase();
+function rootPaths(source) {
+  return String(source?.rootPath || '')
+    .split(/\r?\n|,/)
+    .map((item) => item.trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, ''))
+    .filter((item) => item && item !== '.');
+}
+
+function sourceRepo(source) {
+  const srcRepo = String(source?.repo || source?.repository || '').trim().toLowerCase();
   if (!srcRepo) throw new Error('source.repo missing');
+  return srcRepo;
+}
+
+function normalizeRelativePath(source, ref) {
+  const relative = String(ref || '').trim().replace(/^\/+/, '').replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+  const roots = rootPaths(source);
+  if (!roots.length) return relative;
+  const matchingRoot = roots.find((root) => relative === root || relative.startsWith(root + '/')) || roots[0];
+  return relative === matchingRoot || relative.startsWith(matchingRoot + '/') ? relative : `${matchingRoot}/${relative}`;
+}
+
+export function normalizeGithubRefToRaw(source, ref) {
+  const srcRepo = sourceRepo(source);
   const trimmed = String(ref || '').trim();
   if (!trimmed) throw new Error('empty ref');
 
@@ -46,13 +66,11 @@ function normalizeRefToRaw(source, ref) {
     throw new Error('unsupported host');
   }
 
-  // Repo-relative path: safe normalization that avoids double-prefixing rootPath.
-  const relative = trimmed.replace(/^\/+/, '');
-  const root = String(source.rootPath || '').replace(/^\/+|\/+$/g, '');
-  const path = relative.startsWith(root) || !root ? relative : `${root}/${relative}`;
+  const sourceRef = String(source.ref || '').trim();
+  if (!sourceRef) throw new Error('source.ref missing for repo-relative path');
+  const path = normalizeRelativePath(source, trimmed);
   const [owner, repo] = srcRepo.split('/');
-  const refBranch = String(source.ref || 'master');
-  return `https://raw.githubusercontent.com/${owner}/${repo}/${refBranch}/${path}`;
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${sourceRef}/${path}`;
 }
 
 export async function loadGithubFilesForSource(source, fileRefs = [], options = {}) {
@@ -63,7 +81,7 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
   for (const ref of Array.isArray(fileRefs) ? fileRefs : []) {
     let rawUrl;
     try {
-      rawUrl = normalizeRefToRaw(source, ref);
+      rawUrl = normalizeGithubRefToRaw(source, ref);
     } catch (e) {
       errors.push({ ref, error: String(e && e.message ? e.message : e) });
       continue;

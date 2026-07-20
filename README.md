@@ -1,6 +1,6 @@
-# Tiinex Site v130
+# Tiinex Site v132
 
-React/Vite foundation with adapter-owned intake, archive/workspace import recovery from `.old`, source/material boundaries, and schema companion ownership. v130 hardens local archive drops by auto-creating a local workspace for material-only drops and bounding asset previews so large source zips do not flood browser storage. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
+React/Vite foundation with adapter-owned intake, archive/workspace import recovery from `.old`, source/material boundaries, and schema companion ownership. v132 keeps the v131 GitHub-source honesty/discovery model and reduces workspace/Add boilerplate so the UI projects the adapter/source model without duplicating explanations. The active runtime is `src/main.jsx` and `src/app/TiinexApp.jsx`; workspace-specific React surfaces live beside the site-local workspace schema under `src/schemas/workspace/`.
 
 `.old/` remains a behavior and polish reference for the public PoC monolith. It is source-only and ignored from commits/public builds.
 
@@ -31,7 +31,7 @@ Then open the Vite local URL.
 5. Confirm the created workspace is local/session, has source row, drop hint, toolbar and `No nodes match this view.`
 6. Open `Add`; the modal should be compact and old-like, with Manual files, Manual folder, GitHub source, Explicit URLs, and Drag and drop.
 7. Add one or more local Markdown files and confirm cards/counts appear without GitHub provenance.
-8. Add a GitHub source and confirm it registers as a source boundary without pretending records were loaded.
+8. Add a GitHub source. The repo field should start blank; entering `Tiinex/docs` with Repo files discovery enabled should materialize bounded Markdown records through the GitHub adapter.
 9. Refresh: the workspace should restore from `#state=`.
 10. Close the workspace: clean empty route should return non-destructively.
 
@@ -42,6 +42,23 @@ Then open the Vite local URL.
 - Drops containing `.workspace.md` still open/stage workspace imports; remaining workspace entries are merged as candidates.
 - Archive/local assets are metadata-first. Large text/binary assets omit preview payloads to avoid localStorage bloat while preserving path, size, type, and local/session boundary.
 - Local/archive material never infers GitHub provenance.
+
+
+
+## v132 workspace guidance pass
+
+- Empty workspaces now show one compact drop hint, not duplicate local/source explanations in multiple boxes.
+- Empty feed state is filter-aware: `No nodes match this view.` is reserved for filtered material, while a truly empty workspace says `No material yet.`
+- Drop guidance is thinner and projection-only; source/material truth still lives in adapters, sources, and lifecycle.
+- Add/GitHub text areas were reduced slightly to avoid the heavy text-box feeling without changing behavior.
+
+## v131 GitHub source honesty
+
+- The GitHub Add form no longer pre-fills from workspace entrypoints and no longer shows the unowned “Start from” dropdown.
+- Workspace entrypoints remain config material, but Add Source starts from explicit user intent.
+- Blank GitHub refs are resolved through the public GitHub repo metadata API when repo-tree discovery is requested.
+- Repo files discovery is now adapter-owned and bounded: public GitHub tree API → markdown path filter → raw file materialization → lifecycle source-backed insertion.
+- Issue/discussion URLs remain registered/deferred honestly; no fake issue snapshot materialization is claimed in this slice.
 
 ## Validation
 

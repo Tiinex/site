@@ -1,10 +1,36 @@
-# Tiinex Site v130 Validation Notes
+# Tiinex Site v132 Validation Notes
 
 ## Scope
 
-v130 is a PoC capability hardening pass over v129. It keeps the adapter/source/material architecture from v128/v129, then fixes the actual user-test gap: dropping a zip or folder with material but no explicit workspace file should still create a usable local workspace instead of failing. It also bounds asset previews so large source zips do not try to persist every non-leaf payload into browser state.
+v132 is a workspace guidance pass over v131. It keeps the adapter/source/material contracts intact, but removes duplicated empty-workspace boilerplate and makes empty states filter-aware so the UX is thinner and more respectful.
 
 ## Added / changed
+
+
+- `src/schemas/workspace/workspace.views.jsx`
+  - Replaces duplicated empty-workspace copy with one compact drop hint plus a separate filter-aware empty state.
+  - Keeps `No nodes match this view.` for query/filter empties only.
+- `src/styles/app.css`
+  - Adds late v132 overrides for thinner drop/empty-state boxes and slightly smaller Add textareas.
+- `package.json`
+  - Updates package metadata to v132.
+
+
+- `src/schemas/workspace/workspace.add.views.jsx`
+  - Removes the unowned `Start from` dropdown and Tiinex/docs prefill.
+  - GitHub Add starts with an empty repo field and explicit user input.
+- `src/adapters/github/github.adapter.js`
+  - Adds public default-branch resolution when ref is blank.
+  - Adds bounded repo-tree Markdown discovery using the GitHub tree API.
+  - Keeps issue/discussion snapshots as explicit deferred warnings.
+- `src/sources/github/github.loader.js`
+  - Removes implicit `master` fallback for repo-relative file refs.
+  - Supports multiple root paths without double-prefixing.
+- `src/workspaces/workspace.lifecycle.js`
+  - Handles multi-root canonical source paths.
+- Tests
+  - Adds `src/adapters/github/github.adapter.test.mjs`.
+  - Extends GitHub loader and UI-shape guards for no implicit preset/prefill regression.
 
 - `src/workspaces/workspace.import.js`
   - `ensureWorkspaceForLocalMaterial(...)` helper for empty-stage material drops.
@@ -66,3 +92,8 @@ Included checks:
 4. Drop the same zip/folder twice. Expected: canonical paths upsert, not duplicate.
 5. Confirm all local/archive material stays local/session and never gains GitHub source links.
 6. Confirm GitHub explicit file refs still materialize source-backed records.
+
+7. Open Add → GitHub source. Expected: no “Start from” dropdown, repo field blank, ref field blank.
+8. Enter `Tiinex/docs`, leave ref blank, keep repo files discovery on. Expected: adapter resolves default branch and imports bounded Markdown records.
+9. Enter explicit file refs with a blank ref. Expected: raw/blob URLs may work; repo-relative refs require resolved/default ref from repo discovery or explicit ref.
+10. Issue/discussion URLs should not fake snapshots yet; they should be reported/deferred by adapter contract.

@@ -66,12 +66,15 @@
     }
     p = out.join('/');
 
-    const root = String(source.rootPath || '').trim();
-    if (root && root !== '.' && root !== './') {
-      const cleanedRoot = root.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
-      if (cleanedRoot) {
-        if (!p) p = cleanedRoot;
-        else if (!p.startsWith(cleanedRoot + '/') && p !== cleanedRoot) p = cleanedRoot + '/' + p;
+    const roots = String(source.rootPath || '')
+      .split(/\r?\n|,/) 
+      .map((item) => item.trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, ''))
+      .filter((item) => item && item !== '.');
+    if (roots.length) {
+      const matchingRoot = roots.find((root) => p === root || p.startsWith(root + '/')) || roots[0];
+      if (matchingRoot) {
+        if (!p) p = matchingRoot;
+        else if (!p.startsWith(matchingRoot + '/') && p !== matchingRoot) p = matchingRoot + '/' + p;
       }
     }
     p = p.replace(/\/+$/, '');
@@ -472,18 +475,20 @@
   }
 
   function makeConfiguredSource(input = {}, options = {}) {
-    const repo = String(input.repository || input.repo || 'Tiinex/docs').trim();
+    const repo = String(input.repository || input.repo || '').trim();
     const label = String(input.label || repo || 'Source').trim();
+    const rootPath = String(input.rootPath || '.topics').trim() || '.topics';
+    const ref = String(input.ref || '').trim();
     return {
-      id: input.id || `github:${repo.toLowerCase()}`,
+      id: input.id || `github:${repo.toLowerCase() || 'source'}`,
       kind: input.kind || CONFIGURED_SOURCE_KIND,
       adapterId: input.adapterId || GITHUB_ADAPTER_ID,
       sourceKind: input.sourceKind || GITHUB_REPO_SOURCE_KIND,
       label,
       repo,
-      ref: input.ref || 'master',
-      rootPath: input.rootPath || '.topics',
-      config: { repo, ref: input.ref || 'master', rootPath: input.rootPath || '.topics' },
+      ref,
+      rootPath,
+      config: { repo, ref, rootPath },
       count: Number(input.count || 0),
       boundary: 'explicit source boundary; no material is trusted until loaded',
       transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',

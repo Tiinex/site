@@ -3,7 +3,7 @@ import { schemaRegistry } from '../schemas/registry.js';
 import { Button } from '../ui/primitives/Button.jsx';
 import { Badge } from '../ui/primitives/Badge.jsx';
 import { Modal } from '../ui/primitives/Modal.jsx';
-import { materializeGithubFiles } from '../adapters/github/github.adapter.js';
+import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { ensureWorkspaceForLocalMaterial } from '../workspaces/workspace.import.js';
@@ -268,25 +268,27 @@ export function TiinexApp() {
 
 
   async function addGitHubSource(input = {}) {
-    const repository = normalizeRepository(input.repository || input.repo || 'Tiinex/docs');
+    const repository = normalizeRepository(input.repository || input.repo || '');
     if (!repository) {
       setNotice('Repo URL or owner/name is required.');
       return;
     }
     const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
+    const ref = String(input.ref || '').trim();
     const label = input.label || repository;
+    const sourceKey = `${repository}:${rootPath}`.toLowerCase().replace(/[^a-z0-9:/._-]+/g, '-').replace(/-+/g, '-').slice(0, 180);
     const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, {
-      id: `github:${repository.toLowerCase()}:${rootPath.toLowerCase()}`,
+      id: `github:${sourceKey}`,
       kind: input.sourceKind || input.kind || 'github-tree',
       label,
       repository,
-      ref: input.ref || 'master',
+      ref,
       rootPath,
       count: 0,
-      repoDiscovery: input.repoDiscovery !== false,
-      issueDiscovery: input.issueDiscovery !== false,
+      repoDiscovery: Boolean(input.repoDiscovery),
+      issueDiscovery: Boolean(input.issueDiscovery),
       issueUrls: input.issueUrls || '',
-      transportLabel: 'Source Pages mirror'
+      transportLabel: 'public GitHub API/raw'
     });
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
@@ -296,27 +298,33 @@ export function TiinexApp() {
     let finalState = result.state;
     let noticeMessage = `${result.source.label} source registered.`;
 
-    if (fileRefs.length) {
+    if (fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls) {
       try {
-        const out = await materializeGithubFiles(result.source, fileRefs, { fetchImpl: fetch });
+        const out = await materializeGithubSource(result.source, {
+          fileRefs,
+          repoDiscovery: Boolean(input.repoDiscovery),
+          issueDiscovery: Boolean(input.issueDiscovery),
+          issueUrls: input.issueUrls || ''
+        }, { fetchImpl: fetch, maxFiles: 500 });
         if (out.okCount > 0) {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
-        // Compose terse notice
+        const warningCount = (out.warnings?.length || 0) + (out.errors?.length || 0);
         if ((out.okCount || 0) === 0 && (out.failCount || 0) === 0) {
           noticeMessage = `${result.source.label} source registered; no source files loaded.`;
         } else if ((out.okCount || 0) === 0) {
-          noticeMessage = `Source registered; ${out.failCount || 0} files failed to load.`;
+          noticeMessage = `Source registered; ${out.failCount || 0} source item${out.failCount === 1 ? '' : 's'} failed or deferred.`;
         } else if ((out.failCount || 0) === 0) {
-          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}.`;
+          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}${warningCount ? `; ${warningCount} warning${warningCount === 1 ? '' : 's'}` : ''}.`;
         } else {
-          noticeMessage = `Loaded ${out.okCount} of ${fileRefs.length} source files; ${out.failCount} failed.`;
+          noticeMessage = `Loaded ${out.okCount} source file${out.okCount === 1 ? '' : 's'}; ${out.failCount} failed/deferred.`;
         }
-        if (out.errors && out.errors.length) console.warn('github loader errors', out.errors);
+        if (out.errors && out.errors.length) console.warn('github adapter errors', out.errors);
+        if (out.warnings && out.warnings.length) console.warn('github adapter warnings', out.warnings);
       } catch (e) {
         console.error(e);
-        noticeMessage = `${result.source.label} source registered; file loading failed.`;
+        noticeMessage = `${result.source.label} source registered; source materialization failed.`;
       }
     }
 

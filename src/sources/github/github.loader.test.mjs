@@ -41,6 +41,14 @@ async function runTests() {
   const occurrences = (calledUrl.match(/\.topics/g) || []).length;
   assert(occurrences === 1, '.topics should appear exactly once in normalized path');
 
+
+
+  // Repo-relative paths require a concrete source ref; no implicit master fallback.
+  called.length = 0;
+  const noRef = await loadGithubFilesForSource({ repo: 'owner/repo', ref: '', rootPath: '.topics' }, ['foo.md'], { fetchImpl });
+  assert(noRef.okCount === 0 && noRef.failCount === 1, 'repo-relative paths should require explicit/resolved ref');
+  assert(called.length === 0, 'missing ref should fail before fetch');
+
   // Unsupported host should be rejected without calling fetch
   called.length = 0;
   const badHost = 'https://example.com/x.md';

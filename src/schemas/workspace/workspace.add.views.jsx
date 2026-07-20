@@ -9,8 +9,6 @@ import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.ad
 export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls }) {
   const [mode, setMode] = useState('');
   const [stagedFiles, setStagedFiles] = useState([]);
-  const entrypoints = Array.isArray(workspaceConfig?.workspaceEntrypoints) ? workspaceConfig.workspaceEntrypoints : [];
-  const defaultEntrypoint = entrypoints[0] || { name: 'Tiinex docs', repository: 'Tiinex/docs', ref: 'master', rootPath: '.topics', sourceKind: 'github-tree' };
   const title = `Add to ${workspace.title || workspace.name || 'workspace'}`;
   const modalClass = mode ? 'tx-add-flow-modal tx-add-mode-modal' : 'tx-add-flow-modal';
 
@@ -20,7 +18,7 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, on
         <AddChoiceGrid onMode={setMode} onAddFiles={onAddFiles} title={title} />
       ) : null}
       {mode === 'git' ? (
-        <GitHubSourceForm defaultEntrypoint={defaultEntrypoint} entrypoints={entrypoints} onBack={() => setMode('')} onSubmit={onAddGitHubSource} />
+        <GitHubSourceForm onBack={() => setMode('')} onSubmit={onAddGitHubSource} />
       ) : null}
       {mode === 'urls' ? (
         <ExplicitUrlsForm onBack={() => setMode('')} onSubmit={onAddUrls} />
@@ -70,42 +68,22 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
   );
 }
 
-function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) {
-  const [repository, setRepository] = useState(defaultEntrypoint.repository || 'Tiinex/docs');
-  const [ref, setRef] = useState(defaultEntrypoint.ref || 'master');
-  const [rootPath, setRootPath] = useState(defaultEntrypoint.rootPath || '.topics');
-  const [repoDiscovery, setRepoDiscovery] = useState(defaultEntrypoint.repoFilesDiscovery !== false);
-  const [issueDiscovery, setIssueDiscovery] = useState(defaultEntrypoint.issueDiscovery !== false);
-  const [issueUrls, setIssueUrls] = useState(defaultEntrypoint.issueUrl || '');
+function GitHubSourceForm({ onBack, onSubmit }) {
+  const [repository, setRepository] = useState('');
+  const [ref, setRef] = useState('');
+  const [rootPath, setRootPath] = useState('.topics');
+  const [repoDiscovery, setRepoDiscovery] = useState(true);
+  const [issueUrls, setIssueUrls] = useState('');
   const [fileRefs, setFileRefs] = useState('');
-
-  function applyEntrypoint(event) {
-    const entry = entrypoints.find((item) => (item.repository || item.name || '') === event.target.value);
-    if (!entry) return;
-    setRepository(entry.repository || repository);
-    setRef(entry.ref || 'master');
-    setRootPath(entry.rootPath || '.topics');
-    setRepoDiscovery(entry.repoFilesDiscovery !== false);
-    setIssueDiscovery(entry.issueDiscovery !== false);
-    setIssueUrls(entry.issueUrl || '');
-  }
 
   function submit(event) {
     event.preventDefault();
-    onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery, issueUrls, label: repository, fileRefs });
+    onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery: Boolean(issueUrls.trim()), issueUrls, label: repository, fileRefs });
   }
 
 
   return (
     <form className="tx-add-source-form tx-github-source-form" onSubmit={submit}>
-      {entrypoints.length ? (
-        <label className="tx-select-field">
-          <span>Start from</span>
-          <select onChange={applyEntrypoint} defaultValue={defaultEntrypoint.repository || defaultEntrypoint.name || ''}>
-            {entrypoints.map((entrypoint) => <option key={`${entrypoint.repository || entrypoint.name}-${entrypoint.rootPath || ''}`} value={entrypoint.repository || entrypoint.name}>{entrypoint.name || entrypoint.repository}</option>)}
-          </select>
-        </label>
-      ) : null}
       <div className="tx-github-source-field-grid">
         <TextField id="source-repo" label="Repo URL or owner/name" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
         <TextField id="source-ref" label="Ref optional" value={ref} onChange={setRef} placeholder="default branch" />
@@ -113,19 +91,18 @@ function GitHubSourceForm({ defaultEntrypoint, entrypoints, onBack, onSubmit }) 
       <label className="tx-textarea-field">
         <span>Markdown file paths / URLs <small>optional</small></span>
         <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
-        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Optional — leave empty to register source only.</small>
+        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Optional — leave empty to use repo file discovery.</small>
       </label>
       <label className="tx-textarea-field">
-        <span>Root path</span>
+        <span>Root paths</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />
       </label>
       <div className="tx-github-source-surface-grid">
-        <label className="tx-display-option-row"><span><strong>Repo files</strong><small>repo tree</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
-        <label className="tx-display-option-row"><span><strong>Issue snapshots</strong><small>public issues</small></span><input type="checkbox" checked={issueDiscovery} onChange={(event) => setIssueDiscovery(event.target.checked)} /></label>
+        <label className="tx-display-option-row"><span><strong>Repo files discovery</strong><small>Tiinex markdown artifacts from the repo tree</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
       </div>
       <details className="tx-github-advanced-issues" open={Boolean(issueUrls)}>
         <summary>Issue / Discussion URLs <em>optional</em></summary>
-        <textarea value={issueUrls} onChange={(event) => setIssueUrls(event.target.value)} placeholder="https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
+        <textarea value={issueUrls} onChange={(event) => setIssueUrls(event.target.value)} placeholder="Optional explicit GitHub issue or discussion targets. Issue snapshot reader lands behind the same adapter contract.&#10;https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
       </details>
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
