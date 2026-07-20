@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
@@ -68,6 +68,52 @@ expect(uiSource, 'shouldPageWorkspaces', 'pager arrows must be viewport-size gat
 reject(app, 'localStorage.getItem', 'React app must not bootstrap directly from stale localStorage');
 reject(uiSource, 'Create your first workspace', 'UC-001 must not use onboarding-card copy');
 reject(uiSource, 'actionButton', 'React UC-001 must not depend on legacy actionButton renderer');
+
+if (failures.length) {
+  console.error(failures.map((f) => `- ${f}`).join('\n'));
+  process.exit(1);
+}
+console.log('✓ React UC-001 create/restore/close guards passed');
+
+// v120.1: scan for call sites that pass `progress` into `addWorkspaceSource(...)`
+// Scope: scan `src/` and `tools/` only. Exclude common build/output folders by skipping directories with matching names.
+const scanDirs = [join(root, 'src'), join(root, 'tools')];
+const excludeDirNames = new Set(['.old', 'node_modules', '.site-publish', 'dist', 'build', 'out', 'tmp', '.tmp', '.cache']);
+const offending = [];
+for (const dirPath of scanDirs) {
+  if (!existsSync(dirPath)) continue;
+  const stack = [dirPath];
+  while (stack.length) {
+    const p = stack.pop();
+    for (const entry of readdirSync(p, { withFileTypes: true })) {
+      const full = join(p, entry.name);
+      if (entry.isDirectory()) {
+        if (excludeDirNames.has(entry.name.toLowerCase())) continue;
+        stack.push(full);
+        continue;
+      }
+      if (!/\.(mjs|js|jsx|ts|tsx)$/.test(entry.name)) continue;
+      // avoid scanning this guard file itself for callers
+      if (full === join(root, 'tools', 'check-uc001.mjs')) continue;
+      const txt = readFileSync(full, 'utf8');
+      const callRegex = /addWorkspaceSource\s*\([\s\S]*?\)/g;
+      let m;
+      while ((m = callRegex.exec(txt)) !== null) {
+        const callText = m[0];
+        // detect object literal property 'progress:' or shorthand 'progress,' or 'progress}' within the call arguments
+        if (/\bprogress\b\s*(?::|,|\})/.test(callText)) {
+          const line = txt.slice(0, m.index).split(/\r\n|\r|\n/).length;
+          const context = callText.length > 300 ? callText.slice(0, 300) + '...' : callText;
+          offending.push({ file: full, line, context });
+        }
+      }
+    }
+  }
+}
+
+if (offending.length) {
+  for (const o of offending) failures.push(`addWorkspaceSource called with progress in ${relative(root, o.file)}: line ${o.line} -> ${o.context}`);
+}
 
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));
