@@ -3,7 +3,7 @@ import { schemaRegistry } from '../schemas/registry.js';
 import { Button } from '../ui/primitives/Button.jsx';
 import { Badge } from '../ui/primitives/Badge.jsx';
 import { Modal } from '../ui/primitives/Modal.jsx';
-import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
+import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import {
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
@@ -146,7 +146,7 @@ export function TiinexApp() {
     const records = [];
     for (const file of markdownFiles) {
       const markdown = await file.text();
-      records.push(recordFromMarkdown(markdown, {
+      records.push(createRecordFromMarkdown(markdown, {
         path: file.webkitRelativePath || file.name,
         name: file.name,
         sourceMode: options.sourceMode || 'manual-file'
@@ -175,8 +175,8 @@ export function TiinexApp() {
       try {
         const response = await fetch(fetchUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-        const markdown = await response.text();
-        records.push(recordFromMarkdown(markdown, { path: url, name: fileNameFromUrl(url), sourceMode: 'explicit-url' }));
+          const markdown = await response.text();
+          records.push(createRecordFromMarkdown(markdown, { path: url, name: fileNameFromUrl(url), sourceMode: 'explicit-url' }));
       } catch (error) {
         failed.push(url);
       }
@@ -389,22 +389,7 @@ function HelpDialog({ workspaceConfig, onDismiss }) {
   );
 }
 
-function recordFromMarkdown(markdown, meta = {}) {
-  const parsed = parseArtifactMarkdown(markdown || '');
-  const schemaId = parsed.envelope?.current?.schema?.id || '';
-  return {
-    id: `local:${String(meta.path || meta.name || parsed.title || Date.now()).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-    title: parsed.title || meta.name || 'Untitled artifact',
-    summary: parsed.envelope?.current?.summary || parsed.body?.sections?.slice(0, 3).join(' · ') || meta.path || 'Local Markdown artifact.',
-    kind: schemaId || (parsed.hasContinuityContext ? 'tiinex.artifact' : 'markdown'),
-    status: parsed.hasIntegrity ? 'byte ok' : 'local',
-    path: meta.path || meta.name || '',
-    markdown,
-    sourceMode: meta.sourceMode || 'local-manual',
-    hasContinuityContext: parsed.hasContinuityContext,
-    hasIntegrity: parsed.hasIntegrity
-  };
-}
+// `createRecordFromMarkdown` moved to `src/artifacts/artifact.record.js` (v121 materialization foundation)
 
 function normalizeRepository(value) {
   const raw = String(value || '').trim();

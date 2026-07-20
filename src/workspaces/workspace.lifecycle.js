@@ -117,6 +117,52 @@
     return { ok: true, records: added, workspace, state: next };
   }
 
+  // v121: addWorkspaceSourceRecords
+  // Minimal lifecycle API to insert records that are explicitly source-backed.
+  // Does not perform network IO; expects caller to supply record-shaped inputs
+  // (for example created via `createRecordFromMarkdown`). Attaches explicit
+  // source provenance and updates the configured source `count`.
+  function addWorkspaceSourceRecords(state, workspaceId, sourceId, inputs = [], options = {}) {
+    const records = Array.isArray(inputs) ? inputs : [];
+    let next = cloneState(state);
+    const targetId = workspaceId || next.activeWorkspaceId;
+    const workspace = next.workspaces.find((item) => item.id === targetId);
+    if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+    const existingSource = Array.isArray(workspace.sources) ? workspace.sources.find((s) => s.id === sourceId) : null;
+    if (!existingSource) return { ok: false, error: 'source.not.found', state };
+    const added = [];
+    for (const input of records) {
+      const title = normalizeRecordTitle(input.title || input.name);
+      if (!title) continue;
+      const createdAt = nowIso(options.clock);
+      const record = {
+        id: input.id || makeRecordId(workspace.id, title, createdAt),
+        title,
+        summary: normalizeRecordSummary(input.summary || input.body || 'Source-backed material added in Tiinex.'),
+        kind: input.kind || 'local.material',
+        status: input.status || 'local',
+        createdAt: input.createdAt || createdAt.slice(0, 10),
+        path: input.path || '',
+        markdown: input.markdown || '',
+        sourceMode: input.sourceMode || 'source-backed',
+        hasContinuityContext: Boolean(input.hasContinuityContext),
+        hasIntegrity: Boolean(input.hasIntegrity),
+        source: Object.assign({}, existingSource)
+      };
+      workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+      added.push(record);
+    }
+    if (!added.length) return { ok: false, error: 'records.empty', state };
+    // Recompute the configured source count and upsert it.
+    const count = workspace.records.filter((r) => r.source && r.source.id === existingSource.id).length;
+    workspace.sources = ensureWorkspaceSources(workspace);
+    upsertSource(workspace, Object.assign({}, existingSource, { count }));
+    next.activeWorkspaceId = workspace.id;
+    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
+    const finalWorkspace = activeWorkspace(next);
+    return { ok: true, records: added, workspace: finalWorkspace, state: next };
+  }
+
   function addWorkspaceSource(state, workspaceId, input = {}, options = {}) {
     const next = cloneState(state);
     const targetId = workspaceId || next.activeWorkspaceId;
@@ -253,6 +299,7 @@
     activeWorkspace,
     addWorkspaceRecord,
     addWorkspaceRecords,
+    addWorkspaceSourceRecords,
     addWorkspaceSource,
     cloneState,
     closeWorkspace,

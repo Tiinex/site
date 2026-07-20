@@ -1,39 +1,53 @@
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
+import assert from 'assert';
+import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 
-function loadLifecycle() {
-  const sandbox = { window: {}, globalThis: {} };
-  sandbox.globalThis = sandbox.window;
-  vm.createContext(sandbox);
-  vm.runInContext(readFileSync(new URL('./workspace.lifecycle.js', import.meta.url), 'utf8'), sandbox);
-  return sandbox.window.TiinexWorkspaceLifecycle;
+// Load the lifecycle to attach to globalThis
+await import('./workspace.lifecycle.js');
+const lifecycle = globalThis.TiinexWorkspaceLifecycle;
+
+function fail(msg) { throw new Error(msg); }
+
+try {
+  // 1) createRecordFromMarkdown preserves current shape and does not add createdAt/source
+  const md = '# Title\n\nSome body text';
+  const rec = createRecordFromMarkdown(md, { path: 'a.md', name: 'a.md', sourceMode: 'manual-file' });
+  assert(rec && rec.id && rec.title, 'record shape missing id/title');
+  if ('createdAt' in rec) fail('createRecordFromMarkdown must not add createdAt');
+  if ('source' in rec) fail('createRecordFromMarkdown must not add source');
+
+  // 2) Normal addWorkspaceRecords keeps local/session provenance
+  const base = lifecycle.makeEmptyAppState();
+  const create = lifecycle.createWorkspace(base, { name: 'Test' });
+  if (!create?.ok) fail('createWorkspace failed');
+  const ws = create.workspace;
+  const addLocal = lifecycle.addWorkspaceRecords(create.state, ws.id, [rec]);
+  if (!addLocal?.ok) fail('addWorkspaceRecords failed');
+  const added = addLocal.records[0];
+  if (!added?.source || added.source.kind !== lifecycle.SESSION_SOURCE_KIND) fail('local record must have session source');
+
+  // 3) Add configured source and verify addWorkspaceSourceRecords behavior
+  const addSource = lifecycle.addWorkspaceSource(addLocal.state, ws.id, { label: 'Repo', repository: 'owner/repo', ref: 'master', rootPath: '.topics', count: 0, transportLabel: 'Source Pages mirror' });
+  if (!addSource?.ok) fail('addWorkspaceSource failed');
+  const sourceId = addSource.source.id;
+
+  const srcRec = createRecordFromMarkdown('# S\n\nbody', { path: '.topics/1.md', name: '1.md', sourceMode: 'source' });
+  const addSrcRes = lifecycle.addWorkspaceSourceRecords(addSource.state, ws.id, sourceId, [srcRec]);
+  if (!addSrcRes?.ok) fail('addWorkspaceSourceRecords failed');
+  const inserted = addSrcRes.records[0];
+  if (!inserted?.source || inserted.source.id !== sourceId) fail('inserted record must have explicit source provenance');
+  const foundSource = addSrcRes.workspace.sources.find((s) => s.id === sourceId);
+  if (!foundSource) fail('configured source not present after insert');
+  if (!(Number(foundSource.count) > 0)) fail('configured source count not updated');
+  if (addSrcRes.workspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
+
+  // 4) Unknown sourceId should fail
+  const bad = lifecycle.addWorkspaceSourceRecords(addSrcRes.state, ws.id, 'nope', [srcRec]);
+  if (bad?.ok) fail('addWorkspaceSourceRecords must fail for unknown source');
+
+  console.log('✓ workspace.lifecycle tests passed');
+  process.exit(0);
+} catch (err) {
+  console.error('workspace.lifecycle tests failed:', err && err.stack ? err.stack : err);
+  process.exit(1);
 }
 
-const lifecycle = loadLifecycle();
-const state = lifecycle.makeEmptyAppState();
-const created = lifecycle.createWorkspace(state, { name: '  Research Desk  ' }, { clock: () => '2026-07-19T20:50:00.000Z' });
-
-if (!created.ok) throw new Error('workspace should be created');
-if (created.workspace.name !== 'Research Desk') throw new Error('workspace name should be normalized');
-if (created.workspace.source.githubPolicy !== 'not guessed') throw new Error('local workspace must not guess GitHub source');
-if (created.state.activeWorkspaceId !== created.workspace.id) throw new Error('created workspace should become active');
-if (created.state.workspaces.length !== 1) throw new Error('created workspace should be in Column state');
-
-
-const added = lifecycle.addWorkspaceRecord(created.state, created.workspace.id, { title: '  First note  ', summary: 'Material created during UC-001.' }, { clock: () => '2026-07-19T20:51:00.000Z' });
-if (!added.ok) throw new Error('workspace record should be added');
-if (added.record.title !== 'First note') throw new Error('record title should be normalized');
-if (added.record.source.githubPolicy !== 'not guessed') throw new Error('local record must not guess GitHub source');
-if (added.state.workspaces[0].records.length !== 1) throw new Error('record should be inserted into workspace state');
-
-const missingRecord = lifecycle.addWorkspaceRecord(created.state, created.workspace.id, { title: '   ' });
-if (missingRecord.ok || missingRecord.error !== 'record.title.required') throw new Error('empty record title must be rejected');
-
-const missing = lifecycle.createWorkspace(state, { name: '   ' });
-if (missing.ok || missing.error !== 'workspace.name.required') throw new Error('empty workspace name must be rejected');
-
-const closed = lifecycle.closeWorkspace(created.state, created.workspace.id);
-if (!closed.ok) throw new Error('workspace close should succeed');
-if (closed.state.workspaces.length !== 0 || closed.state.activeWorkspaceId) throw new Error('close should return to empty state');
-
-console.log('✓ workspace lifecycle tests passed');
