@@ -6,6 +6,8 @@
   const RECORD_SUMMARY_MAX_LENGTH = 280;
   const SESSION_SOURCE_KIND = 'local-session';
   const CONFIGURED_SOURCE_KIND = 'github-tree';
+  const GITHUB_ADAPTER_ID = 'github';
+  const GITHUB_REPO_SOURCE_KIND = 'github.repo';
 
   function nowIso(clock) {
     return typeof clock === 'function' ? clock() : new Date().toISOString();
@@ -85,13 +87,43 @@
     return `local-${slug}-${stamp}`;
   }
 
+  function canonicalizeLocalPath(inputPath) {
+    let p = String(inputPath || '').trim();
+    if (!p) return '';
+    p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+    const out = [];
+    for (const part of p.split('/')) {
+      if (!part || part === '.') continue;
+      if (part === '..') {
+        out.pop();
+        continue;
+      }
+      out.push(part);
+    }
+    return out.join('/');
+  }
+
+  function makeLocalRecordId(workspaceId, path) {
+    const canonicalPath = canonicalizeLocalPath(path);
+    if (!canonicalPath) return '';
+    return `local:${workspaceId || 'workspace'}:${canonicalPath}`;
+  }
+
   function makeRecordId(workspaceId, title, createdAt) {
     const slug = normalizeRecordTitle(title)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'artifact';
-    const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
+    const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 17) || 'session';
     return `${workspaceId || 'workspace'}-${slug}-${stamp}`;
+  }
+
+
+  function countLocalRecords(workspace = {}) {
+    return (Array.isArray(workspace.records) ? workspace.records : []).filter((record) => {
+      const source = record && record.source;
+      return !source || source.kind === SESSION_SOURCE_KIND || source.adapterId === 'local';
+    }).length;
   }
 
   function makeEmptyAppState() {
@@ -136,18 +168,33 @@
     const workspace = next.workspaces.find((item) => item.id === targetId);
     if (!workspace) return { ok: false, error: 'workspace.not.found', state };
     const createdAt = nowIso(options.clock);
+    const canonicalPath = canonicalizeLocalPath(input.path || '');
+    const deterministicLocalId = input.id || makeLocalRecordId(workspace.id, canonicalPath);
     const record = {
-      id: input.id || makeRecordId(workspace.id, title, createdAt),
+      id: deterministicLocalId || makeRecordId(workspace.id, title, createdAt),
       title,
       summary: normalizeRecordSummary(input.summary || input.body || 'Local session material added in Tiinex.'),
       kind: input.kind || 'local.material',
       status: input.status || 'local',
       createdAt: input.createdAt || createdAt.slice(0, 10),
+      path: canonicalPath || input.path || '',
+      markdown: input.markdown || '',
+      sourceMode: input.sourceMode || 'local-manual',
+      hasContinuityContext: Boolean(input.hasContinuityContext),
+      hasIntegrity: Boolean(input.hasIntegrity),
       source: makeSessionSource()
     };
-    workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+    const existingIndex = Array.isArray(workspace.records)
+      ? workspace.records.findIndex((item) => item.id === record.id || (canonicalPath && item.source?.kind === SESSION_SOURCE_KIND && canonicalizeLocalPath(item.path || '') === canonicalPath))
+      : -1;
+    if (existingIndex >= 0) {
+      workspace.records = workspace.records.slice();
+      workspace.records[existingIndex] = record;
+    } else {
+      workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
+    }
     workspace.sources = ensureWorkspaceSources(workspace);
-    upsertSource(workspace, makeLocalSource({ count: workspace.records.length }));
+    upsertSource(workspace, makeLocalSource({ count: countLocalRecords(workspace) }));
     next.activeWorkspaceId = workspace.id;
     next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
     return { ok: true, record, workspace, state: next };
@@ -300,7 +347,7 @@
 
   function ensureWorkspaceSources(workspace) {
     const sources = Array.isArray(workspace?.sources) ? workspace.sources.slice() : [];
-    if (!sources.some((source) => source.id === 'local')) sources.unshift(makeLocalSource({ count: Array.isArray(workspace?.records) ? workspace.records.length : 0 }));
+    if (!sources.some((source) => source.id === 'local')) sources.unshift(makeLocalSource({ count: countLocalRecords(workspace) }));
     return sources.map((source) => Object.assign({}, source));
   }
 
@@ -316,8 +363,11 @@
     return {
       id: 'local',
       kind: 'local',
+      adapterId: 'local',
+      sourceKind: 'local.session',
       label: 'Local',
       count: Number(input.count || 0),
+      config: { persistence: 'browser-local' },
       boundary: 'browser-local session material',
       closeable: false
     };
@@ -329,10 +379,13 @@
     return {
       id: input.id || `github:${repo.toLowerCase()}`,
       kind: input.kind || CONFIGURED_SOURCE_KIND,
+      adapterId: input.adapterId || GITHUB_ADAPTER_ID,
+      sourceKind: input.sourceKind || GITHUB_REPO_SOURCE_KIND,
       label,
       repo,
       ref: input.ref || 'master',
       rootPath: input.rootPath || '.topics',
+      config: { repo, ref: input.ref || 'master', rootPath: input.rootPath || '.topics' },
       count: Number(input.count || 0),
       boundary: 'explicit source boundary; no material is trusted until loaded',
       transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',
@@ -355,6 +408,8 @@
   function makeSessionSource() {
     return {
       kind: SESSION_SOURCE_KIND,
+      adapterId: 'local',
+      sourceKind: 'local.session',
       label: 'local session workspace',
       boundary: 'browser-local session state; no source files or GitHub provenance inferred',
       githubPolicy: 'not guessed',
@@ -368,6 +423,8 @@
     RECORD_TITLE_MAX_LENGTH,
     WORKSPACE_NAME_MAX_LENGTH,
     CONFIGURED_SOURCE_KIND,
+    GITHUB_ADAPTER_ID,
+    GITHUB_REPO_SOURCE_KIND,
     SESSION_SOURCE_KIND,
     activeWorkspace,
     addWorkspaceRecord,
@@ -375,12 +432,15 @@
     addWorkspaceSourceRecords,
     addWorkspaceSource,
     cloneState,
+    countLocalRecords,
     closeWorkspace,
     closeWorkspaceSource,
     createWorkspace,
     makeEmptyAppState,
     makeConfiguredSource,
     makeLocalSource,
+    makeLocalRecordId,
+    canonicalizeLocalPath,
     makeRecordId,
     makeWorkspaceId,
     normalizeRecordSummary,

@@ -3,11 +3,14 @@ import { schemaRegistry } from '../schemas/registry.js';
 import { Button } from '../ui/primitives/Button.jsx';
 import { Badge } from '../ui/primitives/Badge.jsx';
 import { Modal } from '../ui/primitives/Modal.jsx';
-import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
-import { loadGithubFilesForSource } from '../sources/github/github.loader.js';
+import { materializeGithubFiles } from '../adapters/github/github.adapter.js';
+import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
+import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import {
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
+  RecordActionDialog,
+  RecordDetailDialog,
   WorkspaceColumnSurface
 } from '../schemas/workspace/workspace.views.jsx';
 import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.jsx';
@@ -78,6 +81,8 @@ export function TiinexApp() {
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState('');
   const [createError, setCreateError] = useState('');
+  const [activeRecordId, setActiveRecordId] = useState('');
+  const [recordAction, setRecordAction] = useState(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const viewportWidth = useViewportWidth();
@@ -137,29 +142,34 @@ export function TiinexApp() {
   }
 
   async function addLocalFiles(fileList, options = {}) {
-    const files = Array.from(fileList || []).filter(Boolean);
-    const markdownFiles = files.filter((file) => /\.(md|markdown|trace\.md|schema\.md|workspace\.md)$/i.test(file.name || ''));
-    const skipped = files.length - markdownFiles.length;
-    if (!markdownFiles.length) {
-      setNotice(skipped ? 'No readable Markdown files found. Zip intake is not wired in this React slice yet.' : 'No files selected.');
+    const files = options.fromDataTransfer
+      ? await collectLocalFilesFromDataTransfer(fileList)
+      : Array.from(fileList || []).filter(Boolean);
+    if (!files.length) {
+      setNotice('No files selected.');
       return;
     }
-    const records = [];
-    for (const file of markdownFiles) {
-      const markdown = await file.text();
-      records.push(createRecordFromMarkdown(markdown, {
-        path: file.webkitRelativePath || file.name,
-        name: file.name,
-        sourceMode: options.sourceMode || 'manual-file'
-      }));
+    let adapterResult;
+    try {
+      adapterResult = await materializeLocalMarkdownFiles(files, { sourceMode: options.sourceMode || 'manual-files' });
+    } catch (error) {
+      console.error(error);
+      setNotice('Could not read local files.');
+      return;
     }
-    const result = runtime().lifecycle?.addWorkspaceRecords?.(state, active?.id, records);
+    if (!adapterResult.records.length) {
+      const skipped = adapterResult.warnings?.length || adapterResult.errors?.length || 0;
+      setNotice(skipped ? 'No readable Markdown files found. Local intake accepts Markdown-like files only.' : 'No files selected.');
+      return;
+    }
+    const result = runtime().lifecycle?.addWorkspaceRecords?.(state, active?.id, adapterResult.records);
     if (!result?.ok) {
       setNotice('Could not add selected files.');
       return;
     }
     setDialog(null);
-    setNotice(`Added ${result.records.length} local Markdown artifact${result.records.length === 1 ? '' : 's'}${skipped ? `; skipped ${skipped} unsupported file${skipped === 1 ? '' : 's'}` : ''}.`);
+    const skipped = (adapterResult.warnings?.length || 0) + (adapterResult.errors?.length || 0);
+    setNotice(`Added ${result.records.length} local Markdown artifact${result.records.length === 1 ? '' : 's'}${skipped ? `; skipped ${skipped} unsupported/read-failed file${skipped === 1 ? '' : 's'}` : ''}.`);
     commit(result.state, 'push');
   }
 
@@ -169,32 +179,28 @@ export function TiinexApp() {
       setNotice('Paste at least one URL.');
       return;
     }
-    const records = [];
-    const failed = [];
-    for (const url of urls) {
-      const fetchUrl = normalizeReadableUrl(url);
-      try {
-        const response = await fetch(fetchUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-        const markdown = await response.text();
-        records.push(createRecordFromMarkdown(markdown, { path: url, name: fileNameFromUrl(url), sourceMode: 'explicit-url' }));
-      } catch (error) {
-        failed.push(url);
-      }
-    }
-    if (!records.length) {
-      setNotice(`No URLs could be loaded${failed.length ? '; check CORS/source availability.' : '.'}`);
+    let adapterResult;
+    try {
+      adapterResult = await materializeExplicitUrls(urls, { fetchImpl: fetch });
+    } catch (error) {
+      console.error(error);
+      setNotice('Could not load URL material.');
       return;
     }
-    const result = runtime().lifecycle?.addWorkspaceRecords?.(state, active?.id, records);
+    if (!adapterResult.records.length) {
+      setNotice(`No URLs could be loaded${adapterResult.errors?.length ? '; check CORS/source availability.' : '.'}`);
+      return;
+    }
+    const result = runtime().lifecycle?.addWorkspaceRecords?.(state, active?.id, adapterResult.records);
     if (!result?.ok) {
       setNotice('Could not add URL material.');
       return;
     }
     setDialog(null);
-    setNotice(`Added ${result.records.length} URL artifact${result.records.length === 1 ? '' : 's'}${failed.length ? `; ${failed.length} failed` : ''}.`);
+    setNotice(`Added ${result.records.length} URL artifact${result.records.length === 1 ? '' : 's'}${adapterResult.errors?.length ? `; ${adapterResult.errors.length} failed` : ''}.`);
     commit(result.state, 'push');
   }
+
 
   async function addGitHubSource(input = {}) {
     const repository = normalizeRepository(input.repository || input.repo || 'Tiinex/docs');
@@ -223,11 +229,11 @@ export function TiinexApp() {
     }
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     let finalState = result.state;
-    let noticeMessage = `${result.source.label} source registered. Loading adapter deferred.`;
+    let noticeMessage = `${result.source.label} source registered.`;
 
     if (fileRefs.length) {
       try {
-        const out = await loadGithubFilesForSource(result.source, fileRefs, { fetchImpl: fetch });
+        const out = await materializeGithubFiles(result.source, fileRefs, { fetchImpl: fetch });
         if (out.okCount > 0) {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
           if (ins?.ok) finalState = ins.state;
@@ -252,6 +258,46 @@ export function TiinexApp() {
     setDialog(null);
     setNotice(noticeMessage);
     commit(finalState, 'push');
+  }
+
+  function openRecord(recordId) {
+    setRecordAction(null);
+    setActiveRecordId(String(recordId || ''));
+  }
+
+  function dismissRecord() {
+    setActiveRecordId('');
+  }
+
+  function openRecordAction(record, action) {
+    setActiveRecordId('');
+    setRecordAction({ recordId: record?.id || '', action });
+  }
+
+  function dismissRecordAction() {
+    setRecordAction(null);
+  }
+
+  function createTransitionRecord(parentRecord, draft) {
+    if (!draft?.title) {
+      setNotice('Transition draft is missing a title.');
+      return;
+    }
+    const result = runtime().lifecycle?.addWorkspaceRecord?.(state, active?.id, draft);
+    if (!result?.ok) {
+      setNotice('Could not create transition leaf.');
+      return;
+    }
+    setRecordAction(null);
+    setActiveRecordId(result.record.id);
+    setNotice(`Created local ${draft.kind || 'transition'} leaf from ${parentRecord?.title || 'artifact'}.`);
+    commit(result.state, 'push');
+  }
+
+  function shareRecord(record) {
+    const label = record?.title || 'artifact';
+    copyShareUrl();
+    setNotice(`Share link copied for ${label}.`);
   }
 
   function closeSource(sourceId) {
@@ -300,6 +346,9 @@ export function TiinexApp() {
     commit(defaultState(), 'push');
   }
 
+  const activeRecord = activeRecordId && active?.records ? active.records.find((record) => record.id === activeRecordId) : null;
+  const actionRecord = recordAction?.recordId && active?.records ? active.records.find((record) => record.id === recordAction.recordId) : null;
+
   const shellClasses = [
     'tx-react-runtime',
     'tx-uc001-shell',
@@ -335,6 +384,10 @@ export function TiinexApp() {
           onQuery={setQuery}
           onOpenAddDialog={() => setDialog('add-to-workspace')}
           onCloseSource={closeSource}
+          onDropFiles={addLocalFiles}
+          onOpenRecord={openRecord}
+          onShareRecord={shareRecord}
+          onRecordAction={openRecordAction}
         />
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />
@@ -345,6 +398,8 @@ export function TiinexApp() {
 
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={() => setDialog(null)} /> : null}
       {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={() => setDialog(null)} onConfirm={() => closeWorkspace(active.id)} /> : null}
+      {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
+      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog
           workspace={active}
@@ -379,7 +434,7 @@ function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPreviousWork
           <img src={LOGO_SRC} alt="" />
         </button>
         <span className="tx-dock-side tx-dock-right">
-          <Button icon="share" variant="nav" onClick={onShare}>Share</Button>
+          <Button icon="shareNodes" variant="nav" onClick={onShare}>Share</Button>
           <Button icon="help" variant="nav" aria-label="Help" onClick={onHelp} />
         </span>
       </span>
@@ -432,22 +487,3 @@ function normalizeRepository(value) {
   }
 }
 
-function normalizeReadableUrl(value) {
-  const raw = String(value || '').trim();
-  try {
-    const url = new URL(raw);
-    if (url.hostname === 'github.com' && url.pathname.includes('/blob/')) {
-      const [owner, repo, , ref, ...path] = url.pathname.split('/').filter(Boolean);
-      return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${path.join('/')}`;
-    }
-  } catch {}
-  return raw;
-}
-
-function fileNameFromUrl(value) {
-  try {
-    return new URL(value).pathname.split('/').filter(Boolean).pop() || value;
-  } catch {
-    return value;
-  }
-}

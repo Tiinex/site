@@ -1,0 +1,42 @@
+import assert from 'assert';
+import {
+  actionIsRenderable,
+  createRecordActionResult,
+  presentRecordActions,
+  RECORD_ACTIONS_CONTRACT_ID,
+  RECORD_ACTION_RESULT_SCHEMA_ID,
+  RecordActionKind,
+  sourceHrefForRecord
+} from './record.actions.js';
+
+const localRecord = { id: 'local-1', title: 'Local', path: 'local.md', markdown: '# Local\n\nText', source: { adapterId: 'local', sourceKind: 'local.session' } };
+const localActions = presentRecordActions(localRecord);
+assert(localActions.every((action) => action.contract === RECORD_ACTIONS_CONTRACT_ID), 'actions must carry contract id');
+assert(localActions.some((action) => action.id === RecordActionKind.open), 'local record must expose open action');
+assert(localActions.some((action) => action.id === RecordActionKind.share), 'local record must expose share action');
+assert(localActions.some((action) => action.id === RecordActionKind.continue), 'local record must expose continue action when material exists');
+assert(localActions.some((action) => action.id === RecordActionKind.reference), 'local record must expose reference action');
+assert(!localActions.some((action) => action.id === RecordActionKind.source), 'local record must not expose source action');
+assert(!sourceHrefForRecord(localRecord), 'local record must not create external source href');
+const localContinue = createRecordActionResult(localRecord, RecordActionKind.continue);
+assert(localContinue.schema === RECORD_ACTION_RESULT_SCHEMA_ID, 'continue must return concrete action result');
+assert(localContinue.text.includes('Boundary: browser-local session material'), 'continue result must preserve local boundary');
+const localReference = createRecordActionResult(localRecord, RecordActionKind.reference);
+assert(localReference.text.includes('Record ID: local-1'), 'reference result must contain stable record id');
+
+const githubRecord = {
+  id: 'source:github:tiinex/docs:.topics/README.md',
+  title: 'Readme',
+  path: '.topics/README.md',
+  markdown: '# Readme',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'master' }
+};
+const href = sourceHrefForRecord(githubRecord);
+assert(href === 'https://github.com/Tiinex/docs/blob/master/.topics/README.md', 'github record source href must be deterministic');
+const githubActions = presentRecordActions(githubRecord);
+assert(githubActions.some((action) => action.id === RecordActionKind.source && action.href === href), 'github record must expose source action with href');
+assert(githubActions.every(actionIsRenderable), 'all presented actions must be renderable, not decorative no-ops');
+const githubReference = createRecordActionResult(githubRecord, RecordActionKind.reference);
+assert(githubReference.text.includes('source-backed github material'), 'github reference result must preserve source-backed boundary');
+
+console.log('✓ record action tests passed');

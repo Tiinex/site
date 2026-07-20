@@ -1,97 +1,75 @@
-# Validation Notes v119
+# Tiinex Site v127 Validation Notes
 
-## Status
+## Scope
 
-v119 keeps React/Vite as the active runtime, keeps workspace UI inside the workspace schema companion hierarchy, and tightens the Add/workspace UI toward compact old-like behavior with less boilerplate.
+v127 adds a schema-aware transition foundation on top of v126 local folder/action foundation.
 
-Implemented and guarded:
+Primary goal: make record actions produce material, not only display copyable capsules.
 
-- React entrypoint through `index.html` → `src/main.jsx`.
-- UC-001 clean empty stage and create workspace flow.
-- Created local/session Column workspace.
-- Workspace schema companion under `src/schemas/workspace/`.
-- Site-local `tiinex.workspace.v1` binding registered in `src/schemas/manifest.json` and `src/schemas/registry.js`.
-- Viewer-extension schema validation support for site-local schema bindings.
-- Compact old-like `Add to workspace` menu owned by workspace schema companions.
-- Compact created-workspace chrome: titlebar, source row, toolbar, empty result, and Add modal density.
-- Local Markdown intake from manual files, manual folder selection, drag/drop, and explicit URL fetch.
-- GitHub source registration as a source boundary without fake loaded records or fake progress.
-- Source row for local/session and explicitly registered sources.
-- Tree view shows workspace/source boundaries and loaded local records.
-- Hash-owned route restoration.
-- Clean URL does not restore stale localStorage.
-- Close workspace is non-destructive and restores clean start.
-- Font Awesome through `src/ui/primitives/Icon.jsx`.
-- Workspace schema/config/parser drift guard.
+## Added
 
-## Commands run
+- `src/transitions/record.transitions.js`
+  - `tiinex.record.transitions.v1`
+  - `tiinex.record.transition.result.v1`
+  - schema-aware continuation targets from the schema registry
+  - browser-local continuation draft creation
+  - browser-local reference draft creation
+  - parent boundary preservation in generated Markdown
+- `src/transitions/record.transitions.test.mjs`
+- `RecordActionDialog` now supports:
+  - Continue → choose target schema → create local continuation leaf
+  - Reference → create local evidence/reference leaf
+- New local transition records are inserted through workspace lifecycle, not UI-local arrays.
 
-```bash
-node --check app.js 2>/dev/null || true
-npm run validate
-npm run ui:shape
-npm run runtime:smoke
-npm run usecase:uc001
-npm run build:public
-npm run public:check
-node --check .site-publish/assets/index-*.js
-npm run metrics
-npm run storage:scan
-npm test
-```
+## Validation run in sandbox
 
-## Known risks
-
-- Source-backed repository loading remains the main missing behavior compared with `.old`.
-- Explicit URL fetch depends on browser CORS/source availability.
-- Zip intake is not wired yet; unsupported files are skipped and disclosed.
-- `src/app/TiinexApp.jsx` still owns app shell/dialog orchestration; further extraction should follow the next use-case.
-- Old `.old` remains more complete for source-backed material loading and mature Column behavior.
-
-## Next recommended batch
-
-Source loading should come next: GitHub source → mirror/source material load → source counts → records/cards → progress completion/failure states, using portal/adapter semantics instead of fake progress.
-
-
-## v119.3 footer and dock recognition patch
-
-- Footer restored to old-like persistent bottom origin marker behavior.
-- Dock logo remains intentionally larger than neighboring buttons.
-- Desktop dock wraps visible controls instead of stretching wider than content.
-- No new feature behavior added.
-
-## v119.3 footer and compact-recognition patch
-
-Root cause:
-
-- A legacy empty-stage rule still set `.tx-empty-stage-mode .tx-footer { display: none; }`, so the React footer did not appear before workspace creation even though v119.3 had fixed-position footer rules later in the cascade.
-- The React footer used non-link `<strong>Tiinex</strong>` text, while `.old` used a link.
-- Created-workspace local/session boundary text was more verbose than the old Column baseline.
-
-Fix:
-
-- Added final cascade guard that explicitly restores `display: block` for the footer in both empty and workspace modes.
-- Changed the footer to `Powered by <a href="https://github.com/Tiinex">Tiinex</a>`.
-- Restored old-like dark translucent footer background and link hover behavior.
-- Reduced created-workspace boilerplate while preserving local/source boundary metadata.
-
-Validation re-run and passing:
+Passed:
 
 ```bash
-node --check app.js 2>/dev/null || true
 npm run validate
 npm run ui:shape
-npm run runtime:smoke
 npm run usecase:uc001
-npm run build:public
-npm run public:check
-node --check .site-publish/assets/*.js
-npm run metrics
-npm run storage:scan
-npm test
 ```
 
+Included checks:
 
-## v119.3 validation scope
+- static React UC-001 source guards
+- schema binding guard
+- workspace schema/config/parser guard
+- workspace lifecycle tests
+- GitHub loader tests
+- adapter registry tests
+- local adapter tests
+- source model tests
+- record action tests
+- record transition tests
+- UI shape guard
+- UC-001 create/restore/close guard
 
-Recognition-only patch: content-fit dock, larger logo, and size-gated workspace pager behavior. No new source loading.
+## Not completed in sandbox
+
+These require local dependency/runtime availability:
+
+```bash
+npm run runtime:smoke
+npm run build:public
+npm run public:check
+```
+
+In this sandbox the source-clean tree does not have a usable Vite binary in `node_modules/.bin`, so public build checks cannot be treated as source-code evidence here.
+
+## Manual checks to run locally
+
+1. Import a local folder with Markdown files.
+2. Click `Continue` on a local record.
+3. Choose `Topic`, `Preservation`, or `Evidence` as continuation target.
+4. Create the continuation.
+5. Confirm a new local/session record appears.
+6. Open the new record and confirm:
+   - Markdown preview exists.
+   - Continuity Context references the parent record.
+   - Boundary says local/session or source-backed correctly.
+   - No GitHub provenance is inferred for local parents.
+7. Click `Reference` on a local record.
+8. Create reference and confirm it appears as `tiinex.evidence.v1`.
+9. Repeat Continue/Reference on GitHub source-backed material and confirm the generated draft preserves source-backed parent boundary without copying source ownership to the new local draft.

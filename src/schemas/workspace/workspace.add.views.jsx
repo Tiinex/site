@@ -3,6 +3,8 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { TextField } from '../../ui/primitives/Field.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
+import { TiinexAdapterRegistry } from '../../adapters/registry.js';
+import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.adapter.js';
 
 export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls }) {
   const [mode, setMode] = useState('');
@@ -31,26 +33,28 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, on
 }
 
 function AddChoiceGrid({ onMode, onAddFiles, title }) {
+  const hasGithub = Boolean(TiinexAdapterRegistry.forSourceKind('github.repo'));
+  const hasLocal = Boolean(TiinexAdapterRegistry.forSourceKind('local.files'));
   return (
     <div className="tx-add-flow" data-flow="old-like-add-menu">
       <div className="tx-add-choice-grid">
-        <label className="tx-add-choice-card tx-add-choice-file">
+        {hasLocal ? <label className="tx-add-choice-card tx-add-choice-file">
           <span className="tx-add-choice-icon"><Icon name="manualFiles" /></span>
           <span className="tx-add-choice-copy"><strong>Manual files</strong><small>Markdown / trace</small></span>
           <Icon name="upload" />
           <input className="tx-visually-hidden-file" type="file" multiple accept=".md,.markdown,.trace.md,.schema.md,.workspace.md" onChange={(event) => onAddFiles(event.target.files, { sourceMode: 'manual-files' })} />
-        </label>
+        </label> : null}
         <label className="tx-add-choice-card tx-add-choice-folder">
           <span className="tx-add-choice-icon"><Icon name="folderOpen" /></span>
           <span className="tx-add-choice-copy"><strong>Manual folder</strong><small>Folder import</small></span>
           <Icon name="folderPlus" />
           <input className="tx-visually-hidden-file" type="file" multiple webkitdirectory="" directory="" onChange={(event) => onAddFiles(event.target.files, { sourceMode: 'manual-folder' })} />
         </label>
-        <button type="button" className="tx-add-choice-card" onClick={() => onMode('git')}>
+        {hasGithub ? <button type="button" className="tx-add-choice-card" onClick={() => onMode('git')}>
           <span className="tx-add-choice-icon"><Icon name="github" /></span>
           <span className="tx-add-choice-copy"><strong>GitHub source</strong><small>Repo boundary</small></span>
           <Icon name="source" />
-        </button>
+        </button> : null}
         <button type="button" className="tx-add-choice-card" onClick={() => onMode('urls')}>
           <span className="tx-add-choice-icon"><Icon name="source" /></span>
           <span className="tx-add-choice-copy"><strong>Explicit URLs</strong><small>Raw / blob URLs</small></span>
@@ -155,6 +159,10 @@ function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
   const inputRef = useRef(null);
   const count = stagedFiles.length;
   const handleFiles = (files) => setStagedFiles(Array.from(files || []));
+  async function handleDataTransfer(dataTransfer) {
+    const files = await collectLocalFilesFromDataTransfer(dataTransfer);
+    setStagedFiles(files);
+  }
   return (
     <div className="tx-add-source-form">
       <div
@@ -165,7 +173,7 @@ function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault();
-          handleFiles(event.dataTransfer.files);
+          handleDataTransfer(event.dataTransfer);
         }}
         onClick={() => inputRef.current?.click()}
       >
@@ -175,7 +183,7 @@ function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
           <small>{count ? `${count} file${count === 1 ? '' : 's'} staged` : 'No files staged yet.'}</small>
         </div>
       </div>
-      <input ref={inputRef} className="tx-visually-hidden-file" type="file" multiple accept=".md,.markdown,.trace.md,.schema.md,.workspace.md" onChange={(event) => handleFiles(event.target.files)} />
+      <input ref={inputRef} className="tx-visually-hidden-file" type="file" multiple webkitdirectory="" directory="" accept=".md,.markdown,.trace.md,.schema.md,.workspace.md" onChange={(event) => handleFiles(event.target.files)} />
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
         <Button type="button" variant="ghost" icon="manualFiles" onClick={() => inputRef.current?.click()}>Choose files</Button>

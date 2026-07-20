@@ -26,13 +26,30 @@ try {
   if (!addLocal?.ok) fail('addWorkspaceRecords failed');
   const added = addLocal.records[0];
   if (!added?.source || added.source.kind !== lifecycle.SESSION_SOURCE_KIND) fail('local record must have session source');
+  if (added.path !== 'a.md') fail('local record must preserve path');
+  if (!added.markdown || !added.markdown.includes('# Title')) fail('local record must preserve markdown for detail view');
+
+  // 2b) Same local path is an idempotent upsert, and same-title/different-path files remain distinct
+  const samePathAgain = createRecordFromMarkdown('# Title\n\nUpdated body', { path: 'a.md', name: 'a.md', sourceMode: 'manual-file' });
+  const addLocalAgain = lifecycle.addWorkspaceRecords(addLocal.state, ws.id, [samePathAgain]);
+  if (!addLocalAgain?.ok) fail('addWorkspaceRecords failed for repeated local path');
+  const afterLocalAgain = lifecycle.activeWorkspace(addLocalAgain.state);
+  const localARecords = afterLocalAgain.records.filter((item) => item.path === 'a.md');
+  if (localARecords.length !== 1) fail('repeated local path must upsert to one record');
+  if (!String(localARecords[0].markdown || '').includes('Updated body')) fail('repeated local path must update material');
+  const secondPath = createRecordFromMarkdown('# Title\n\nOther body', { path: 'folder/a.md', name: 'a.md', sourceMode: 'manual-folder' });
+  const addSecondPath = lifecycle.addWorkspaceRecords(addLocalAgain.state, ws.id, [secondPath]);
+  if (!addSecondPath?.ok) fail('addWorkspaceRecords failed for same title different path');
+  const afterSecondPath = lifecycle.activeWorkspace(addSecondPath.state);
+  if (!afterSecondPath.records.some((item) => item.path === 'a.md') || !afterSecondPath.records.some((item) => item.path === 'folder/a.md')) fail('same title with distinct paths must remain distinct records');
+
 
   // ensure adding records using 'local' as sourceId is rejected
   const badLocal = lifecycle.addWorkspaceSourceRecords(addLocal.state, ws.id, 'local', [rec]);
   if (badLocal?.ok || badLocal?.error !== 'source.not.configured') fail('addWorkspaceSourceRecords must reject local sourceId');
 
   // 3) Add configured source and verify addWorkspaceSourceRecords behavior
-  const addSource = lifecycle.addWorkspaceSource(addLocal.state, ws.id, { label: 'Repo', repository: 'owner/repo', ref: 'master', rootPath: '.topics', count: 0, transportLabel: 'Source Pages mirror' });
+  const addSource = lifecycle.addWorkspaceSource(addSecondPath.state, ws.id, { label: 'Repo', repository: 'owner/repo', ref: 'master', rootPath: '.topics', count: 0, transportLabel: 'Source Pages mirror' });
   if (!addSource?.ok) fail('addWorkspaceSource failed');
   const sourceId = addSource.source.id;
 
@@ -74,6 +91,7 @@ try {
   const cfg = finalWorkspace.sources.find((s) => s.id === sourceId);
   if (!cfg) fail('configured source missing after variants');
   if (Number(cfg.count) !== prevCount + 1) fail('expected source count to increase by exactly 1 for README variants');
+  if (lifecycle.countLocalRecords(finalWorkspace) !== 2) fail('local source count must include only local records and not source-backed records');
   const found = finalWorkspace.records.filter((r) => r.source && r.source.id === sourceId && r.path === '.topics/README.md');
   if (found.length !== 1) fail('workspace must contain a single canonical source-backed record for the logical README');
   const single = found[0];

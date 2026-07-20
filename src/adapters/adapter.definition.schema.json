@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tiinex.adapter.definition.v1",
+  "title": "Tiinex Adapter Definition",
+  "type": "object",
+  "required": ["schema", "id", "label", "availability", "sourceKinds", "capabilities", "configShape", "resultShape", "boundary"],
+  "properties": {
+    "schema": { "const": "tiinex.adapter.definition.v1" },
+    "id": { "type": "string", "minLength": 1 },
+    "label": { "type": "string", "minLength": 1 },
+    "availability": { "enum": ["available", "deferred", "unavailable"] },
+    "sourceKinds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1, "uniqueItems": true },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "registerSource": { "type": "boolean" },
+        "materialize": { "type": "boolean" },
+        "discover": { "type": "boolean" },
+        "resolveAsset": { "type": "boolean" },
+        "openExternal": { "type": "boolean" },
+        "exportMaterial": { "type": "boolean" },
+        "requiresBridge": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "configShape": { "type": "object", "additionalProperties": true },
+    "resultShape": { "type": "object", "additionalProperties": true },
+    "boundary": { "type": "string", "minLength": 1 },
+    "unavailableReason": { "type": "string" },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": true
+}

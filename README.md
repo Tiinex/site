@@ -97,3 +97,31 @@ Not changed:
 - Tiinex logo remains intentionally larger than neighboring controls.
 - Workspace pager arrows are gated by workspace count plus viewport-size calculation, not count alone.
 - No source/loading feature logic was added in this patch.
+
+## v126 local folder and action foundation
+
+Done:
+
+- Local adapter now owns browser drag/drop directory traversal using DataTransferEntry when Chromium exposes it.
+- Manual folder, direct workspace drop, and focused drop target can preserve relative paths for nested Markdown files.
+- Local record identity is deterministic by workspace + canonical local path, so repeat imports update rather than creating duplicate React keys.
+- Same-title files from different paths remain separate artifacts.
+- Record actions now expose concrete `Continue` and `Reference` action-result capsules through `tiinex.record.action.result.v1`.
+- Record actions remain non-decorative: `Source` only appears for source-backed GitHub records; local records never get guessed source links.
+
+Not done:
+
+- Native git bridge execution is still unavailable in the browser and remains explicit adapter capability/availability metadata.
+- Full repo crawling/mirror discovery remains a future adapter pass.
+- Visual parity with the PoC card chrome is intentionally secondary to correct source/material/action ownership.
+
+
+## v127 transition foundation
+
+This checkpoint adds schema-aware record transitions:
+
+- `Continue` can create a browser-local continuation leaf from a record.
+- Continuation targets come from the schema registry (`Topic`, `Preservation`, `Evidence`, etc.).
+- `Reference` can create a browser-local evidence/reference leaf.
+- Generated transition Markdown preserves the parent record boundary and does not infer GitHub provenance for local material.
+- Transition records are inserted through workspace lifecycle, keeping identity/provenance ownership outside the UI.

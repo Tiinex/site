@@ -1,12 +1,12 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.7-v119.3",
+  "version": "0.2.8-v127",
   "private": true,
-  "description": "Tiinex Site React workspace schema companion with old-like linked footer, content-fit global dock, and size-gated workspace pager recognition polish.",
+  "description": "Tiinex Site transition foundation: schema-aware continuation/reference drafts on top of adapter-owned materialization.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
-    "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs && node tools/validate-workspace-schema.mjs && node src/workspaces/workspace.lifecycle.test.mjs && node src/sources/github/github.loader.test.mjs",
+    "validate": "node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs && node tools/validate-workspace-schema.mjs && node src/workspaces/workspace.lifecycle.test.mjs && node src/sources/github/github.loader.test.mjs && node src/adapters/adapter.registry.test.mjs && node src/adapters/local/local.adapter.test.mjs && node src/sources/source.model.test.mjs && node src/actions/record.actions.test.mjs && node src/transitions/record.transitions.test.mjs",
     "ui:shape": "node tools/check-ui-shape.mjs",
     "test": "npm run validate && npm run ui:shape && npm run runtime:smoke && npm run usecase:uc001 && npm run build:public && npm run public:check",
     "metrics": "node tools/collect-metrics.mjs",
