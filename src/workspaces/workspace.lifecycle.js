@@ -37,7 +37,9 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'artifact';
-    const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
+    const baseStamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
+    const uniq = Math.random().toString(36).slice(2, 8);
+    const stamp = `${baseStamp}-${uniq}`;
     return `${workspaceId || 'workspace'}-${slug}-${stamp}`;
   }
 
