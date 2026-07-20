@@ -16,6 +16,36 @@ const uiSource = `${app}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n
 function expect(text, needle, label) { if (!text.includes(needle)) failures.push(label); }
 function reject(text, needle, label) { if (text.includes(needle)) failures.push(label); }
 
+function expectRegex(text, regex, label) { if (!regex.test(text)) failures.push(label); }
+
+// v120: Source/material registration contract guards (read-only assertions)
+// Owner: lifecycle; we assert structure and default discovery state for configured sources
+expectRegex(lifecycle, /function\s+createWorkspace[\s\S]*?sources\s*:\s*\[\s*makeLocalSource\(/, 'createWorkspace must initialize local pinned source');
+
+// Ensure local pinned source does NOT include discoveryState (only configured sources get discoveryState)
+const makeLocalMatch = lifecycle.match(/function\s+makeLocalSource\([\s\S]*?return\s*{([\s\S]*?)};/);
+if (!makeLocalMatch) failures.push('makeLocalSource function must exist');
+else if (/discoveryState/.test(makeLocalMatch[1])) failures.push('local pinned source must not include discoveryState');
+
+// Ensure configured source factory exists and includes canonical fields + discoveryState default
+const makeConfiguredMatch = lifecycle.match(/function\s+makeConfiguredSource\([\s\S]*?return\s*{([\s\S]*?)};/);
+if (!makeConfiguredMatch) failures.push('makeConfiguredSource function must exist');
+else {
+  const cfgBody = makeConfiguredMatch[1];
+  const requiredFields = ['id', 'kind', 'label', 'repo', 'ref', 'rootPath', 'count', 'boundary', 'transportLabel', 'closeable', 'discoveryState'];
+  for (const f of requiredFields) {
+    const regex = new RegExp('(?:' + f + '\\s*:|\\b' + f + '\\b\\s*(?:,|$))');
+    if (!regex.test(cfgBody)) failures.push(`configured source must include ${f}`);
+  }
+  if (!/discoveryState\s*:\s*(?:input\.discoveryState\s*\|\|\s*)?["']deferred["']/.test(cfgBody)) failures.push('configured source must default discoveryState to "deferred"');
+}
+
+// addWorkspaceSource must return ok:true and source/workspace/state tuple on success
+expectRegex(lifecycle, /function\s+addWorkspaceSource[\s\S]*?return\s*{[^}]*ok\s*:\s*true[^}]*source[^}]*workspace[^}]*state/ , 'addWorkspaceSource must return ok:true and source/workspace/state');
+
+// For normal registration path (no input.progress), discoveryProgress should be set to null
+if (!/workspace\.discoveryProgress\s*=\s*input\.progress\s*\?[^:]+:\s*null/.test(lifecycle)) failures.push('addWorkspaceSource must set workspace.discoveryProgress to null when no progress is provided');
+
 expect(config, 'Every handoff starts somewhere', 'empty start copy must come from .workspace.md config');
 expect(lifecycle, 'workspace.name.required', 'workspace name validation must remain lifecycle-owned');
 expect(lifecycle, 'SESSION_SOURCE_KIND', 'local/session source kind must remain explicit');
