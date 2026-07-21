@@ -9,6 +9,7 @@ import { createRecordActionResult, presentRecordActions, RecordActionKind } from
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
+import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 
 export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
@@ -25,6 +26,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const presentation = verse === 'tree'
     ? presentWorkspaceTree(workspace, { verse, query })
     : presentWorkspaceFeed(workspace, { verse, query });
+  const materialSummary = summarizeWorkspaceMaterial(workspace);
   return (
     <section className="tx-workspace-window tx-column-window tx-uc001-created-workspace tx-schema-workspace-surface tx-compact-column-window" aria-label="Tiinex workspace window" data-schema-id="tiinex.workspace.v1" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer) onDropFiles?.(event.dataTransfer, { sourceMode: 'workspace-drop', fromDataTransfer: true }); }}>
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">
@@ -43,6 +45,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       </header>
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
+      <WorkspaceMaterialSummary summary={materialSummary} />
       <ModeToolbar state={state} query={query} onVerse={onVerse} onQuery={onQuery} />
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
@@ -80,6 +83,32 @@ function SourceStrip({ workspace, boundary, onCloseSource }) {
       </div>
       {(workspace.records?.length || workspace.assets?.length || workspace.workspaceMergeCandidates?.length) ? <span className="tx-source-boundary tx-compact-source-boundary">{workspace.records?.length || 0} artifacts · {workspace.assets?.length || 0} assets · {workspace.workspaceMergeCandidates?.length || 0} workspace candidates</span> : null}
     </div>
+  );
+}
+
+
+function WorkspaceMaterialSummary({ summary }) {
+  if (!shouldShowWorkspaceSummary(summary)) return null;
+  const counts = summary.counts || {};
+  const latest = summary.latestImport;
+  return (
+    <section className="tx-workspace-material-summary" aria-label="Workspace material summary">
+      <div className="tx-material-summary-counts">
+        <span><Icon name="manualFiles" /><strong>{counts.records || 0}</strong><small>artifacts</small></span>
+        <span><Icon name="asset" /><strong>{counts.assets || 0}</strong><small>assets</small></span>
+        <span><Icon name="workspace" /><strong>{counts.workspaceCandidates || 0}</strong><small>workspaces</small></span>
+        {counts.sourceBackedRecords ? <span><Icon name="source" /><strong>{counts.sourceBackedRecords}</strong><small>source-backed</small></span> : null}
+      </div>
+      {latest ? (
+        <div className={`tx-material-summary-import ${latest.ok ? 'tx-import-ok' : 'tx-import-degraded'}`} title={latest.message}>
+          <Icon name={latest.ok ? 'check' : 'warning'} />
+          <span>{latest.message}</span>
+          {(counts.warnings || counts.errors || counts.previewOmitted) ? (
+            <small>{counts.errors || 0} errors · {counts.warnings || 0} warnings · {counts.previewOmitted || 0} previews omitted</small>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -217,9 +246,9 @@ function TreeCountBadges({ counts = {} }) {
   const candidates = Number(counts.workspaceCandidates || 0);
   return (
     <span className="tx-tree-counts" aria-label={`${records} artifacts, ${assets} assets, ${candidates} workspace candidates`}>
-      {records ? <Badge>{records} artifacts</Badge> : null}
-      {assets ? <Badge>{assets} assets</Badge> : null}
-      {candidates ? <Badge>{candidates} workspaces</Badge> : null}
+      {records ? <span className="tx-tree-count-chip"><Icon name="manualFiles" />{records}</span> : null}
+      {assets ? <span className="tx-tree-count-chip"><Icon name="asset" />{assets}</span> : null}
+      {candidates ? <span className="tx-tree-count-chip"><Icon name="workspace" />{candidates}</span> : null}
     </span>
   );
 }
@@ -232,9 +261,9 @@ function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWo
         <Badge>workspace</Badge>
         <Badge>open/merge candidate</Badge>
         <Badge>local/session</Badge>
-        {candidate.path ? <Badge title={candidate.path}>{compactPath(candidate.path)}</Badge> : null}
       </div>
       <h3>{candidate.title || candidate.path || 'Workspace candidate'}</h3>
+      {candidate.path ? <div className="tx-card-pathline" title={candidate.path}><Icon name="folderOpen" />{compactPath(candidate.path)}</div> : null}
       <p>Workspace file staged from local/archive intake. Open it as a workspace or merge its context into the current workspace.</p>
       <footer className="tx-artifact-actions">
         <Button icon="open" variant="ghost" onClick={() => onOpenWorkspaceCandidate?.(candidate.id || candidate.path)}>Open</Button>
@@ -251,9 +280,9 @@ function AssetCard({ asset, onOpenAsset }) {
         <Badge>local/session</Badge>
         <Badge>{asset.type || 'asset'}</Badge>
         <Badge>{asset.previewState || 'metadata-only'}</Badge>
-        {asset.path ? <Badge title={asset.path}>{compactPath(asset.path)}</Badge> : null}
       </div>
       <h3>{asset.name || asset.path || 'Local asset'}</h3>
+      {asset.path ? <div className="tx-card-pathline" title={asset.path}><Icon name="folderOpen" />{compactPath(asset.path)}</div> : null}
       <p>{asset.size ? `${asset.size} bytes preserved as local asset.` : 'Preserved as a local asset, not a fake leaf.'}</p>
       <footer className="tx-artifact-actions">
         <Button icon="open" variant="ghost" onClick={() => onOpenAsset?.(asset.id || asset.path)}>Open</Button>
@@ -267,12 +296,12 @@ function RecordCard({ record, onOpenRecord, onShareRecord, onRecordAction }) {
   return (
     <article className="tx-artifact-card tx-record-card">
       <div className="tx-card-badges">
-        <Badge>{record.status || 'local'}</Badge>
+        <Badge>{record.source?.adapterId && record.source.adapterId !== 'local' ? 'source-backed' : 'local/session'}</Badge>
         <Badge>{record.kind || 'artifact'}</Badge>
-        {record.source?.adapterId ? <Badge>{record.source.adapterId}</Badge> : null}
-        {record.path ? <Badge title={record.path}>{compactPath(record.path)}</Badge> : null}
+        {record.source?.adapterId && record.source.adapterId !== 'local' ? <Badge>{record.source.adapterId}</Badge> : null}
       </div>
       <h3>{record.title || 'Untitled'}</h3>
+      {record.path ? <div className="tx-card-pathline" title={record.path}><Icon name="folderOpen" />{compactPath(record.path)}</div> : null}
       <p>{record.summary || 'Local session material.'}</p>
       <footer className="tx-artifact-actions">
         {actions.map((action) => action.href ? (

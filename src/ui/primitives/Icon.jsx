@@ -5,6 +5,7 @@ import {
   faArrowRight,
   faArrowUpFromBracket,
   faCircleNodes,
+  faCircleCheck,
   faCirclePlus,
   faCloudArrowUp,
   faCodeBranch,
@@ -21,6 +22,7 @@ import {
   faQuoteRight,
   faShareNodes,
   faSitemap,
+  faTriangleExclamation,
   faXmark
 } from '@fortawesome/free-solid-svg-icons';
 import { faCircle, faFileLines } from '@fortawesome/free-regular-svg-icons';
@@ -28,6 +30,7 @@ import { faCircle, faFileLines } from '@fortawesome/free-regular-svg-icons';
 const ICONS = {
   add: faCirclePlus,
   archive: faFolder,
+  check: faCircleCheck,
   asset: faFileLines,
   close: faXmark,
   continue: faCodeBranch,
@@ -56,6 +59,7 @@ const ICONS = {
   source: faLink,
   tree: faSitemap,
   upload: faArrowUpFromBracket,
+  warning: faTriangleExclamation,
   workspace: faCircleNodes
 };
 

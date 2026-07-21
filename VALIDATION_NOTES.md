@@ -1,60 +1,48 @@
-# Tiinex Site v137 Validation Notes
+# Tiinex Site v138 Validation Notes
 
 ## Scope
 
-v137 continues the PoC local/archive loop by recovering path-tree projection for imported source zips and folders. It does not expand Verse families or introduce new product capabilities. It proves a single user loop under modular owners:
+v138 is a multi-loop value batch over v137. It does not introduce new product families or Verse expansion. It tightens three PoC-relevant areas:
 
 ```text
-Drop/select local material
-→ adapter result
-→ workspace import routing
-→ lifecycle record/asset state
-→ Feed/Tree/detail projection
-→ persisted workspace recovery
+imported material
+→ compact diagnostics/projection
+→ path-tree readability
+→ schema-conforming Continue/Reference local drafts
 ```
 
 ## Changed files of interest
 
+- `src/workspaces/workspace.summary.js`
+  - Adds pure workspace material summary projection.
+  - Reports records, assets, workspace candidates, source-backed records, and latest import diagnostics.
 
-- `src/workspaces/workspace.pathTree.js`
-  - Adds pure path-tree view model construction for records, assets and workspace candidates.
-  - Normalizes paths and preserves folder grouping/counts outside React.
-
-- `src/workspaces/workspace.pathTree.test.mjs`
-  - Covers path normalization, folder counts and mixed node classification.
-
-- `src/schemas/workspace/workspace.views.jsx`
-  - Tree verse now projects the path-tree model instead of rendering a flat list.
-
-- `src/workspaces/workspace.import.js`
-  - Adds `applyLocalAdapterResultToWorkspace(...)` as the import owner for local/archive adapter results.
-  - Adds `summarizeAdapterImportResult(...)` for structured import result summaries.
-  - Handles workspace open/merge candidates, auto-created local workspaces, records and assets outside React UI logic.
-
-- `src/workspaces/workspace.lifecycle.js`
-  - Continues to own canonical local record IDs, asset IDs, local/session source provenance, workspace imports and merge candidates.
-  - Import summary persistence stays in the workspace import owner so lifecycle remains under static size discipline.
+- `src/workspaces/workspace.summary.test.mjs`
+  - Guards summary counts and latest import projection.
 
 - `src/schemas/workspace/workspace.views.jsx`
-  - Adds visible asset projection in Feed/Tree.
-  - Adds `AssetDetailDialog` for path/type/size/preview-state/local-boundary inspection.
-  - Includes assets in query filtering.
+  - Renders compact material summary.
+  - Reduces card badge noise by moving paths into a separate path line.
+  - Uses compact path-tree count chips.
 
-- `src/app/TiinexApp.jsx`
-  - Delegates local/archive adapter result application to `workspace.import.js`.
-  - Displays the structured import summary message.
+- `src/styles/app.css`
+  - Adds v138 summary, card and path-tree readability styles.
 
-- `src/workspaces/workspace.import.test.mjs`
-  - Covers material-only empty-stage auto-workspace creation.
-  - Covers workspace-file + material import into opened workspace.
-  - Covers repeat local record/asset upsert and structured import summaries.
+- `src/transitions/record.transitions.js`
+  - Continue/Reference drafts now include root-style continuity envelopes and draft integrity markers.
 
-- `src/parity/poc.localArchiveParity.test.mjs`
-  - New representative PoC parity fixture for workspace zip + leaves + asset + unsafe path + repeated import.
+- `src/transitions/record.transitions.test.mjs`
+  - Parses generated Continue/Reference markdown and checks root-required envelope fields.
+
+- `src/ui/primitives/Icon.jsx`
+  - Adds `check` and `warning` icons for compact import diagnostics.
+
+- `package.json`
+  - Bumps checkpoint metadata to v138 and wires workspace summary test into `validate`.
 
 ## Validation run in sandbox
 
-Passed:
+Passed after installing dependencies for Vite/public checks:
 
 ```bash
 npm run test
@@ -71,40 +59,27 @@ npm run build:public
 npm run public:check
 ```
 
-Included checks:
+After source-clean cleanup, the dependency-free checks also passed:
 
-- static React UC-001 source guards
-- schema binding guard
-- workspace schema/config/parser guard
-- workspace lifecycle tests
-- workspace import tests
-- GitHub loader tests
-- GitHub adapter tests
-- archive adapter tests
-- adapter registry tests
-- local adapter tests
-- source model tests
-- record action tests
-- record transition tests
-- PoC local/archive parity fixture test
-- workspace path-tree fixture test
-- UI shape guard
-- runtime startup smoke
-- public build and public build check
+```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+```
 
 ## Manual checks to run locally
 
-1. Drop a zip with `.workspace.md`, nested Markdown and assets on the empty stage.
-2. Confirm workspace opens and material imports into it.
-3. Confirm asset cards are visible and asset detail does not present them as leaves.
-4. Drop the same zip/folder twice. Expected: canonical paths upsert, not duplicate.
-5. Refresh and verify workspace, records, assets and import summary survive.
-6. Confirm all local/archive material remains local/session and never gains GitHub source actions.
-7. Confirm GitHub source registration and explicit file refs still work as source-backed material.
+1. Drop a source zip or folder containing nested Markdown and assets.
+2. Confirm workspace summary shows counts without duplicating empty-state boilerplate.
+3. Switch to Tree and confirm path groups are compact, readable and expandable.
+4. Confirm Feed cards show paths as path lines rather than noisy badge rows.
+5. Create a Continue draft and inspect markdown for Envelope Schema, Parent Schema, Trace, Current Schema, Created At and Continuity Integrity.
+6. Create a Reference draft and confirm the same root envelope requirements.
+7. Refresh and confirm workspace, records, assets, summary and local/source boundaries remain intact.
 
 ## Known remaining gaps
 
+- Tree is still path-tree parity, not full declared-edge lineage parity.
+- Audit/Lineage recovery remains a separate PoC-loop.
 - Password-based encrypted zip import remains bridge-required/unavailable; encrypted entries are reported, not faked.
-- Continue/Reference still need a dedicated schema-conformance pass before they can be called PoC-parity transitions.
-- Tree/Lineage/Audit still need real declared-edge lineage recovery; v136 does not claim lineage parity.
 - Full PoC issue snapshot/mirror/git-native behavior still needs separate loop recovery passes.

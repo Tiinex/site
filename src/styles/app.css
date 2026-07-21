@@ -3955,3 +3955,181 @@ pre { white-space: pre-wrap; overflow:auto; }
     justify-content: flex-start;
   }
 }
+
+/* v138: multi-loop parity pass — calmer material overview, clearer path tree, less noisy cards. */
+.tx-workspace-material-summary {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.58rem;
+  padding: 0.46rem 0.62rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.055);
+  background: linear-gradient(90deg, rgba(101,242,231,0.035), rgba(189,115,255,0.032));
+}
+.tx-material-summary-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.32rem;
+}
+.tx-material-summary-counts > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.24rem;
+  min-height: 1.45rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 0.18rem 0.44rem;
+  color: rgba(247,248,251,0.78);
+  background: rgba(0,0,0,0.16);
+}
+.tx-material-summary-counts .tx-icon {
+  align-self: center;
+  color: rgba(101,242,231,0.7);
+  font-size: 0.72rem;
+}
+.tx-material-summary-counts strong {
+  color: rgba(247,248,251,0.92);
+  font-size: 0.8rem;
+}
+.tx-material-summary-counts small {
+  color: rgba(247,248,251,0.5);
+  font-size: 0.68rem;
+  letter-spacing: 0.015em;
+}
+.tx-material-summary-import {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.36rem;
+  color: rgba(247,248,251,0.62);
+  font-size: 0.74rem;
+  line-height: 1.25;
+}
+.tx-material-summary-import > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-material-summary-import small {
+  flex: 0 0 auto;
+  color: rgba(247,248,251,0.42);
+}
+.tx-import-degraded .tx-icon { color: rgba(255,196,87,0.85); }
+.tx-import-ok .tx-icon { color: rgba(101,242,231,0.75); }
+.tx-card-pathline {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.34rem;
+  color: rgba(247,248,251,0.46);
+  font-size: 0.74rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-card-pathline .tx-icon { color: rgba(189,115,255,0.65); }
+.tx-record-card,
+.tx-asset-card,
+.tx-workspace-candidate-card {
+  gap: 0.58rem;
+  padding: 0.92rem;
+  border-color: rgba(189,115,255,0.24);
+  background: linear-gradient(145deg, rgba(255,255,255,0.045), rgba(19,17,28,0.44));
+}
+.tx-record-card h3,
+.tx-asset-card h3,
+.tx-workspace-candidate-card h3 {
+  margin: 0;
+  font-size: clamp(0.98rem, 1.35vw, 1.16rem);
+  letter-spacing: -0.01em;
+}
+.tx-record-card p,
+.tx-asset-card p,
+.tx-workspace-candidate-card p {
+  font-size: 0.84rem;
+  color: rgba(247,248,251,0.62);
+}
+.tx-record-card .tx-card-badges,
+.tx-asset-card .tx-card-badges,
+.tx-workspace-candidate-card .tx-card-badges {
+  gap: 0.28rem;
+}
+.tx-path-tree-state {
+  gap: 0.32rem;
+}
+.tx-path-tree-root {
+  min-height: 2.2rem;
+  border-color: rgba(189,115,255,0.22);
+  background: linear-gradient(90deg, rgba(189,115,255,0.07), rgba(101,242,231,0.025));
+}
+.tx-tree-folder-summary {
+  min-height: 2.18rem;
+  padding: 0.42rem 0.58rem;
+  border-radius: 0.72rem;
+  background: rgba(255,255,255,0.018);
+}
+.tx-tree-folder-summary::before {
+  flex: 0 0 auto;
+  margin-right: -0.25rem;
+}
+.tx-tree-folder-name {
+  flex: 1 1 auto;
+  font-size: 0.86rem;
+  color: rgba(247,248,251,0.78);
+}
+.tx-tree-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  min-height: 1.24rem;
+  border: 1px solid rgba(255,255,255,0.075);
+  border-radius: 999px;
+  padding: 0.08rem 0.32rem;
+  color: rgba(247,248,251,0.6);
+  background: rgba(0,0,0,0.16);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.tx-tree-count-chip .tx-icon {
+  font-size: 0.62rem;
+  color: rgba(101,242,231,0.62);
+}
+.tx-tree-leaf-row {
+  min-height: 2.05rem;
+  border-radius: 0.65rem;
+  padding: 0.38rem 0.52rem;
+}
+.tx-tree-leaf-row span {
+  font-size: 0.8rem;
+  color: rgba(247,248,251,0.72);
+}
+.tx-tree-leaf-row .tx-badge,
+.tx-tree-record-row .tx-badge {
+  font-size: 0.64rem;
+  padding: 0.1rem 0.32rem;
+  opacity: 0.82;
+}
+.tx-tree-folder-children {
+  gap: 0.18rem;
+  margin-left: 0.84rem;
+  padding-left: 0.62rem;
+  border-left-color: rgba(189,115,255,0.12);
+}
+@media (max-width: 760px) {
+  .tx-workspace-material-summary {
+    grid-template-columns: 1fr;
+  }
+  .tx-material-summary-import {
+    justify-content: flex-start;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .tx-material-summary-import > span {
+    white-space: normal;
+  }
+}
