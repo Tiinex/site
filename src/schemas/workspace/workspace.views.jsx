@@ -280,6 +280,7 @@ function WorkspaceAuditState({ workspace, query = '', records = [], assets = [],
           <span><strong>{counts.records || 0}</strong><small>records</small></span>
           <span><strong>{counts.invalid || 0}</strong><small>invalid</small></span>
           <span><strong>{counts.degraded || 0}</strong><small>degraded</small></span>
+          {counts.supporting ? <span><strong>{counts.supporting}</strong><small>supporting</small></span> : null}
           <span><strong>{counts.missingLineage || 0}</strong><small>missing lineage</small></span>
         </div>
       </header>

@@ -80,6 +80,7 @@ function summarizeAudited(audited = [], findings = [], traversal = {}) {
     invalid: 0,
     pending: 0,
     unavailable: 0,
+    supporting: 0,
     fallbackUsed: 0,
     errors: 0,
     warnings: 0,
@@ -92,7 +93,8 @@ function summarizeAudited(audited = [], findings = [], traversal = {}) {
     else if (item.status === 'pending-unavailable') {
       counts.pending += 1;
       counts.unavailable += 1;
-    } else counts.invalid += 1;
+    } else if (item.status === 'supporting-material') counts.supporting += 1;
+    else counts.invalid += 1;
     if (item.fallbackUsed) counts.fallbackUsed += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);

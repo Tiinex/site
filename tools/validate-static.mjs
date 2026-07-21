@@ -35,7 +35,7 @@ const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/sc
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v171-source-identity-truth')) failures.push('index.html must disclose v171 React runtime');
+if (!index.includes('react-v172-audit-support-material-truth')) failures.push('index.html must disclose v172 React runtime');
 
 const pkg = JSON.parse(read('package.json'));
 for (const dep of ['react', 'react-dom', 'vite', '@vitejs/plugin-react', '@fortawesome/react-fontawesome', '@fortawesome/free-solid-svg-icons']) {

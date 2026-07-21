@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v171",
+  "version": "0.2.10-v172",
   "private": true,
-  "description": "Tiinex Site v171: public lock hygiene plus source identity ownership for repo/ref/root boundaries.",
+  "description": "Tiinex Site v172: audit support-material truth for plain Markdown imported from local/source archives.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -1,24 +1,25 @@
-# Tiinex Site v171 Validation Notes
+# Tiinex Site v172 Validation Notes
 
-v171 covers closure repair after external review of v158/v160 and continues from v161 delivery truth.
+v172 continues closure repair after v171 source identity work.
 
-## Key checks
+Validated in this sandbox:
 
-- `npm run validate` passes without requiring `.old/` as a build input.
-- Creation contracts run target schema validators.
-- Continue exposes only schema-honest Topic creation.
-- Reference generates Evidence-conform sections.
-- Metadata-only source-backed records audit as `pending-unavailable`, not invalid.
-- GitHub transport policy can block repo discovery and raw reads before fetch.
-- GitHub adapter diagnostics are inserted into workspace import/recoverability state.
-- Same path across multiple sources creates `lineage.target.ambiguous` and no guessed edge.
-
-## Validation run in sandbox
-
-```text
+```bash
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
 ```
 
-Full `npm run test` should be run in a dependency-installed environment because build/runtime smoke require Vite/React dependencies.
+The v172 behavioral change is Audit epistemics for plain Markdown:
+
+- Markdown with no Tiinex Continuity Context and no declared Current Schema is classified as `supporting-material`.
+- Supporting Markdown does not count as an invalid Tiinex leaf and does not emit root-envelope errors.
+- Malformed Tiinex leaf candidates still count as `invalid-or-incomplete`.
+- Metadata-only/source-backed material remains `pending-unavailable`.
+
+A full local/CI pass should still run:
+
+```bash
+npm install --no-audit --no-fund
+npm run test
+```

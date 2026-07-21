@@ -83,7 +83,7 @@ export const conformanceFixtures = Object.freeze({
       id: 'invalid-markdown',
       path: 'invalid/no-envelope.md',
       title: 'Invalid Missing Envelope',
-      markdown: '# Invalid Missing Envelope\n\nThis record intentionally lacks Continuity Context and Integrity.'
+      markdown: '# Continuity Context\n\n---\n\n# Invalid Missing Envelope\n\nThis record intentionally lacks required Root envelope fields and Integrity.'
     })
   ]),
   assets: Object.freeze([

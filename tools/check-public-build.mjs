@@ -37,14 +37,14 @@ try {
   if (!jsFiles.length) fail('No bundled JS assets emitted');
   const runtime = jsFiles.map(read).join('\n');
   for (const needle of [
-    'react-v171-source-identity-truth', 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
+    'react-v172-audit-support-material-truth', 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
     'no source files or GitHub provenance inferred', 'workspace-source-strip', 'tx-react-runtime', 'FontAwesomeIcon'
   ]) if (!runtime.includes(needle)) fail(`Public React runtime missing ${needle}`);
   if (runtime.includes('Create your first workspace') || runtime.includes('data-verse="map"')) fail('Public runtime contains deferred/onboarding UI');
   const identity = existsSync(join(out, 'tiinex.build.json')) ? JSON.parse(read(join(out, 'tiinex.build.json'))) : {};
   if (identity.type !== 'tiinex.public.build.identity.v1') fail('Missing public build identity type');
   if (identity.publicRuntime !== 'vite-react-bundle') fail('Public build identity must disclose Vite React runtime');
-  if (!String(identity.source || '').includes('v171')) fail('Public build identity should disclose v171 source shell');
+  if (!String(identity.source || '').includes('v172')) fail('Public build identity should disclose v172 source shell');
   if (failures.length) {
     console.error(failures.map((f) => `- ${f}`).join('\n'));
     process.exit(1);

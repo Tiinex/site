@@ -11,6 +11,8 @@ export function runAudit(scope = {}) {
   if (!availability.available) return unavailableAuditResult(record, availability);
 
   const parsed = parseArtifactMarkdown(markdown);
+  if (isPlainSupportingMarkdown(parsed, record)) return supportingMarkdownAuditResult(record, parsed, availability);
+
   const schemaId = parsed.envelope.current.schema.id || record?.schemaId || record?.kind || '';
   const resolution = resolveSchemaModule({ schemaId });
   const validator = typeof resolution.module?.validate === 'function' ? resolution.module.validate : rootValidate;
@@ -27,6 +29,41 @@ export function runAudit(scope = {}) {
     artifact: normalized,
     findings,
     summary: summarizeFindings(findings),
+    materialAvailability: availability
+  };
+}
+
+
+function isPlainSupportingMarkdown(parsed = {}, record = {}) {
+  const declaredSchema = parsed?.envelope?.current?.schema?.id || record?.schemaId || '';
+  const kind = String(record?.kind || '').trim().toLowerCase();
+  return !parsed?.hasContinuityContext && !declaredSchema && (!kind || kind === 'markdown');
+}
+
+function supportingMarkdownAuditResult(record = {}, parsed = {}, availability = {}) {
+  const finding = {
+    severity: 'info',
+    code: 'audit.markdown.supporting-material',
+    message: 'Plain Markdown is retained as supporting local material; it is not classified as an invalid Tiinex leaf.',
+    source: 'tiinex.audit.v1'
+  };
+  return {
+    status: 'supporting-material',
+    parsed,
+    resolution: {
+      schemaId: 'markdown',
+      module: { id: 'tiinex.markdown.supporting.v1' },
+      fallbackUsed: false
+    },
+    artifact: {
+      title: record?.title || parsed?.title || 'Markdown material',
+      summary: record?.summary || parsed?.body?.sections?.slice(0, 3).join(' · ') || '',
+      schemaId: 'markdown',
+      moduleId: 'tiinex.markdown.supporting.v1',
+      fallbackUsed: false
+    },
+    findings: [finding],
+    summary: summarizeFindings([finding]),
     materialAvailability: availability
   };
 }

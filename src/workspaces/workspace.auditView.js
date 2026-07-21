@@ -20,7 +20,7 @@ export function buildWorkspaceAuditView(workspace = {}, input = {}) {
     workspaceId: workspace.id || '',
     title: `Audit · ${workspace.title || workspace.name || 'workspace'}`,
     mode: 'loaded-only',
-    boundary: 'Loaded material only. Audit validates records currently present in the workspace and reports missing lineage targets without network guesses.',
+    boundary: 'Loaded material only. Audit validates Tiinex leaf candidates, keeps plain Markdown as supporting material, and reports missing lineage targets without network guesses.',
     query,
     items: visibleItems,
     lineage: {
@@ -75,6 +75,7 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     invalid: 0,
     pending: 0,
     unavailable: 0,
+    supporting: 0,
     fallbackUsed: 0,
     errors: 0,
     warnings: 0,
@@ -88,7 +89,8 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     else if (item.status === 'pending-unavailable') {
       counts.pending += 1;
       counts.unavailable += 1;
-    } else counts.invalid += 1;
+    } else if (item.status === 'supporting-material') counts.supporting += 1;
+    else counts.invalid += 1;
     if (item.fallbackUsed) counts.fallbackUsed += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);

@@ -68,3 +68,14 @@ assert.equal(pendingView.items[0].status, 'pending-unavailable', 'metadata-only 
 assert.equal(pendingView.counts.pending, 1, 'pending count is exposed');
 assert.equal(pendingView.counts.invalid, 0, 'metadata-only source-backed record must not count as invalid');
 assert(pendingView.items[0].findings.some((finding) => finding.code === 'audit.material.unavailable'), 'pending audit finding is present');
+
+const plainMarkdown = createRecordFromMarkdown('# Plain README\n\nThis is supporting project documentation, not a Tiinex leaf.', {
+  path: 'README.md',
+  sourceMode: 'archive-local'
+});
+const supportingView = buildWorkspaceAuditView({ id: 'w3', title: 'Supporting Markdown Audit', records: [Object.assign({ id: 'plain-readme' }, plainMarkdown)] });
+assert.equal(supportingView.items[0].status, 'supporting-material', 'plain markdown should be supporting material, not an invalid leaf');
+assert.equal(supportingView.counts.supporting, 1, 'supporting material count is exposed');
+assert.equal(supportingView.counts.invalid, 0, 'plain markdown should not count as invalid');
+assert.equal(supportingView.counts.errors, 0, 'plain markdown support classification should not emit audit errors');
+assert(supportingView.items[0].findings.some((finding) => finding.code === 'audit.markdown.supporting-material'), 'supporting material finding is present');
