@@ -8,6 +8,7 @@ import { workspaceI18n } from './workspace.i18n.js';
 import { createRecordActionResult, presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
+import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 
 export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
@@ -46,7 +47,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
         {verse === 'tree'
-          ? <WorkspaceTreeState workspace={workspace} records={records} assets={assets} workspaceCandidates={workspaceCandidates} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : (records.length || assets.length || workspaceCandidates.length)
             ? <>
                 {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
@@ -136,43 +137,92 @@ function EmptyWorkspaceState({ filtered, hasMaterial, query }) {
   );
 }
 
-function WorkspaceTreeState({ workspace, records, assets = [], workspaceCandidates = [], onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
-  const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
+function WorkspaceTreeState({ workspace, query = '', records, assets = [], workspaceCandidates = [], onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+  query = String(query || '').trim();
+  const tree = buildWorkspacePathTree({
+    records,
+    assets,
+    workspaceCandidates,
+    rootLabel: `Root · ${workspace.title || workspace.name || 'workspace'}`,
+    query
+  });
   return (
-    <div className="tx-workspace-tree-state" role="tree" aria-label="Workspace source tree">
-      <div className="tx-tree-root"><Icon name="tree" /> Root · {workspace.title || workspace.name}</div>
-      {sources.map((source) => (
-        <div className="tx-tree-source-row" role="treeitem" key={source.id || source.label}>
-          <span><Icon name={source.kind === 'local' ? 'local' : 'source'} /> {source.label || 'Source'}</span>
-          <Badge>{Number(source.count || 0)} artifacts</Badge>
-        </div>
+    <div className="tx-workspace-tree-state tx-path-tree-state" role="tree" aria-label="Workspace path tree">
+      <div className="tx-tree-root tx-path-tree-root">
+        <span><Icon name="tree" /> {tree.rootLabel}</span>
+        <TreeCountBadges counts={tree.counts} />
+      </div>
+      {tree.folders.map((folder) => (
+        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
       ))}
-      {workspaceCandidates.map((candidate) => (
-        <div className="tx-tree-record-row tx-tree-workspace-candidate-row" role="treeitem" key={candidate.id || candidate.path}>
-          <button type="button" className="tx-tree-row-main" onClick={() => onOpenWorkspaceCandidate?.(candidate.id || candidate.path)}>
-            <span><Icon name="workspace" /> {candidate.title || candidate.path || 'Workspace candidate'}</span>
-            <Badge>workspace</Badge>
-          </button>
-          <button type="button" className="tx-tree-row-action" onClick={() => onMergeWorkspaceCandidate?.(candidate.id || candidate.path)}>Merge</button>
-        </div>
+      {tree.items.map((item) => (
+        <TreeLeafItem key={item.id || item.path} item={item} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
       ))}
-      {records.map((record) => (
-        <button type="button" className="tx-tree-record-row" role="treeitem" key={record.id} onClick={() => onOpenRecord?.(record.id)}>
-          <span><Icon name="open" /> {record.title || 'Untitled'}</span>
-          <Badge>{record.kind || 'artifact'}</Badge>
-        </button>
-      ))}
-      {assets.map((asset) => (
-        <button type="button" className="tx-tree-record-row tx-tree-asset-row" role="treeitem" key={asset.id || asset.path} onClick={() => onOpenAsset?.(asset.id || asset.path)}>
-          <span><Icon name="asset" /> {asset.name || asset.path || 'Asset'}</span>
-          <Badge>{asset.previewState || 'asset'}</Badge>
-        </button>
-      ))}
-      {!records.length && !assets.length && !workspaceCandidates.length ? <p className="tx-tree-empty">No loaded artifacts, assets, or workspace candidates yet. Source and workspace boundaries remain visible.</p> : null}
+      {tree.empty ? <p className="tx-tree-empty">No loaded artifacts, assets, or workspace candidates yet. Source and workspace boundaries remain visible.</p> : null}
     </div>
   );
 }
 
+function TreeFolder({ folder, query, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+  const open = Boolean(query);
+  return (
+    <details className="tx-tree-folder" open={open} role="group">
+      <summary className="tx-tree-folder-summary" role="treeitem" aria-label={`Folder ${folder.name}`}>
+        <span className="tx-tree-folder-name"><Icon name="folderOpen" /> {folder.name}</span>
+        <TreeCountBadges counts={folder.counts} />
+      </summary>
+      <div className="tx-tree-folder-children">
+        {folder.folders.map((child) => (
+          <TreeFolder key={child.path || child.name} folder={child} query={query} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+        ))}
+        {folder.items.map((item) => (
+          <TreeLeafItem key={item.id || item.path} item={item} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function TreeLeafItem({ item, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+  if (item.type === 'workspace') {
+    return (
+      <div className="tx-tree-record-row tx-tree-workspace-candidate-row tx-tree-leaf-row" role="treeitem">
+        <button type="button" className="tx-tree-row-main" onClick={() => onOpenWorkspaceCandidate?.(item.source.id || item.source.path)}>
+          <span><Icon name="workspace" /> {item.title || item.name || 'Workspace candidate'}</span>
+          <Badge>workspace</Badge>
+        </button>
+        <button type="button" className="tx-tree-row-action" onClick={() => onMergeWorkspaceCandidate?.(item.source.id || item.source.path)}>Merge</button>
+      </div>
+    );
+  }
+  if (item.type === 'asset') {
+    return (
+      <button type="button" className="tx-tree-record-row tx-tree-asset-row tx-tree-leaf-row" role="treeitem" onClick={() => onOpenAsset?.(item.source.id || item.source.path)} title={item.path || ''}>
+        <span><Icon name="asset" /> {item.name || item.title || 'Asset'}</span>
+        <Badge>{item.source.previewState || item.kind || 'asset'}</Badge>
+      </button>
+    );
+  }
+  return (
+    <button type="button" className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" onClick={() => onOpenRecord?.(item.source.id)} title={item.path || ''}>
+      <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
+      <Badge>{item.source.kind || item.kind || 'artifact'}</Badge>
+    </button>
+  );
+}
+
+function TreeCountBadges({ counts = {} }) {
+  const records = Number(counts.records || 0);
+  const assets = Number(counts.assets || 0);
+  const candidates = Number(counts.workspaceCandidates || 0);
+  return (
+    <span className="tx-tree-counts" aria-label={`${records} artifacts, ${assets} assets, ${candidates} workspace candidates`}>
+      {records ? <Badge>{records} artifacts</Badge> : null}
+      {assets ? <Badge>{assets} assets</Badge> : null}
+      {candidates ? <Badge>{candidates} workspaces</Badge> : null}
+    </span>
+  );
+}
 
 
 function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {

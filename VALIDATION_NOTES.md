@@ -1,8 +1,8 @@
-# Tiinex Site v136 Validation Notes
+# Tiinex Site v137 Validation Notes
 
 ## Scope
 
-v136 is a PoC loop recovery pass for local/archive intake. It does not expand Verse families or introduce new product capabilities. It proves a single user loop under modular owners:
+v137 continues the PoC local/archive loop by recovering path-tree projection for imported source zips and folders. It does not expand Verse families or introduce new product capabilities. It proves a single user loop under modular owners:
 
 ```text
 Drop/select local material
@@ -14,6 +14,17 @@ Drop/select local material
 ```
 
 ## Changed files of interest
+
+
+- `src/workspaces/workspace.pathTree.js`
+  - Adds pure path-tree view model construction for records, assets and workspace candidates.
+  - Normalizes paths and preserves folder grouping/counts outside React.
+
+- `src/workspaces/workspace.pathTree.test.mjs`
+  - Covers path normalization, folder counts and mixed node classification.
+
+- `src/schemas/workspace/workspace.views.jsx`
+  - Tree verse now projects the path-tree model instead of rendering a flat list.
 
 - `src/workspaces/workspace.import.js`
   - Adds `applyLocalAdapterResultToWorkspace(...)` as the import owner for local/archive adapter results.
@@ -76,6 +87,7 @@ Included checks:
 - record action tests
 - record transition tests
 - PoC local/archive parity fixture test
+- workspace path-tree fixture test
 - UI shape guard
 - runtime startup smoke
 - public build and public build check

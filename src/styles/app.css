@@ -3862,3 +3862,96 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-workspace-candidate-card p {
   font-size: 0.88rem;
 }
+
+/* v137: PoC-like path tree projection for local/archive workspaces. */
+.tx-path-tree-state {
+  gap: 0.42rem;
+}
+.tx-path-tree-root {
+  background: rgba(189,115,255,0.045);
+  border-color: rgba(189,115,255,0.18);
+}
+.tx-path-tree-root > span,
+.tx-tree-folder-name {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-tree-counts {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+}
+.tx-tree-folder {
+  display: grid;
+  gap: 0.28rem;
+}
+.tx-tree-folder-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.72rem;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 0.86rem;
+  background: rgba(255,255,255,0.022);
+  padding: 0.62rem 0.76rem;
+  color: rgba(247,248,251,0.82);
+  cursor: pointer;
+  list-style: none;
+}
+.tx-tree-folder-summary::-webkit-details-marker { display: none; }
+.tx-tree-folder-summary::before {
+  content: '›';
+  color: rgba(225,210,255,0.66);
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+}
+.tx-tree-folder[open] > .tx-tree-folder-summary::before {
+  transform: rotate(90deg);
+}
+.tx-tree-folder-summary:hover,
+.tx-tree-folder-summary:focus-visible {
+  border-color: rgba(101,242,231,0.34);
+  background: rgba(101,242,231,0.04);
+  outline: none;
+}
+.tx-tree-folder-children {
+  display: grid;
+  gap: 0.26rem;
+  margin-left: 1.08rem;
+  padding-left: 0.72rem;
+  border-left: 1px solid rgba(189,115,255,0.16);
+}
+.tx-tree-leaf-row {
+  min-height: 2.35rem;
+  padding: 0.52rem 0.66rem;
+  border-color: rgba(255,255,255,0.075);
+  background: rgba(0,0,0,0.12);
+}
+.tx-tree-leaf-row span {
+  font-size: 0.86rem;
+}
+.tx-tree-asset-row {
+  color: rgba(247,248,251,0.72);
+}
+@media (max-width: 760px) {
+  .tx-tree-folder-summary,
+  .tx-path-tree-root,
+  .tx-tree-leaf-row {
+    align-items: flex-start;
+  }
+  .tx-tree-folder-children {
+    margin-left: 0.42rem;
+    padding-left: 0.5rem;
+  }
+  .tx-tree-counts {
+    justify-content: flex-start;
+  }
+}

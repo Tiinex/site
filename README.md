@@ -1,6 +1,6 @@
-# Tiinex Site v136
+# Tiinex Site v137
 
-React/Vite refactor checkpoint focused on one recovered PoC loop: **local/archive intake → workspace → records/assets → detail/projection → persistence/reload**.
+React/Vite refactor checkpoint focused on **PoC path-tree parity** for imported local/archive workspaces.
 
 `.old/` remains the behavior reference for the public PoC monolith. This checkpoint does not introduce new product families or Verse expansion; it tightens the local/archive parity loop under modular owners.
 
@@ -14,7 +14,7 @@ React/Vite refactor checkpoint focused on one recovered PoC loop: **local/archiv
 - Local/session workspaces do not infer GitHub/source provenance.
 - URL hash remains visible view-state truth; localStorage remains browser-local recovery/cache.
 
-## v136 PoC loop recovery: Local/Archive Intake
+## v137 PoC path-tree parity
 
 Recovered as one complete vertical slice:
 
@@ -51,6 +51,28 @@ local file/folder/zip/source-zip
 
 - `src/parity/poc.localArchiveParity.test.mjs`
   - New parity fixture for a representative PoC loop: zip with workspace file, Markdown leaves, asset, unsafe path, repeat import and local/session boundary checks.
+
+
+## v137 path-tree recovery
+
+The v136 video showed that imported source zips became a flat Feed/Tree list in the refactor while the PoC grouped the same material by folder path with artifact/asset counts. v137 recovers that behavior without changing intake/provenance semantics.
+
+Added:
+
+- `src/workspaces/workspace.pathTree.js`
+  - Builds a normalized folder tree from records, assets and workspace candidates.
+  - Preserves canonical local/archive paths.
+  - Counts artifacts, assets and workspace candidates per folder.
+
+- `src/workspaces/workspace.pathTree.test.mjs`
+  - Guards path normalization, folder grouping, counts and mixed record/asset/workspace-candidate rows.
+
+- `src/schemas/workspace/workspace.views.jsx`
+  - Tree verse now renders a path tree instead of a flat list.
+  - Folders can be expanded; query mode opens folders to surface matches.
+  - Records, assets and workspace candidates keep distinct row actions/badges.
+
+This is still not full lineage-tree parity. It is intentionally the PoC local/archive **path tree** loop only: material path → grouped projection → open record/asset/candidate.
 
 ## Local manual check
 
