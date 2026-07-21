@@ -10,7 +10,7 @@ export const PoCParityStatus = Object.freeze({
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v172',
+  checkpoint: 'v173',
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({

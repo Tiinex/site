@@ -14,16 +14,46 @@ import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageVie
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
+const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
+  showSupportingMarkdown: true,
+  showWorkspaceCandidates: true,
+  showAssets: false
+});
+
+export function normalizeWorkspaceDisplayOptions(input = {}) {
+  const source = input && typeof input === 'object' ? input : {};
+  return {
+    showSupportingMarkdown: source.showSupportingMarkdown !== false ? DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown : false,
+    showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
+    showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets
+  };
+}
+
+function isSupportingMarkdownRecord(record = {}) {
+  const kind = String(record.kind || '').toLowerCase();
+  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
+  const markdown = String(record.markdown || '');
+  if (kind.includes('supporting')) return true;
+  if (schema.includes('tiinex.markdown.supporting')) return true;
+  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return false;
+  if (/^\s*#\s*Continuity Context\b/im.test(markdown)) return false;
+  if (/^\s*Current Schema\s*:/im.test(markdown) || /^\s*Envelope Schema\s*:/im.test(markdown)) return false;
+  return Boolean(markdown.trim()) && !schema;
+}
+
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
+  const displayOptions = normalizeWorkspaceDisplayOptions(state.view?.displayOptions);
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-  const workspaceCandidates = allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query));
-  const records = allRecords.filter((record) => recordMatchesQuery(record, query));
-  const assets = allAssets.filter((asset) => assetMatchesQuery(asset, query));
+  const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
+  const records = allRecords
+    .filter((record) => displayOptions.showSupportingMarkdown || !isSupportingMarkdownRecord(record))
+    .filter((record) => recordMatchesQuery(record, query));
+  const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, query)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
   const presentation = verse === 'tree'
@@ -49,7 +79,8 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar state={state} query={query} onVerse={onVerse} onQuery={onQuery} />
+      <LineageTrustStrip workspace={workspace} records={allRecords} query={query} onOpenLineage={() => onVerse('lineage')} onOpenAudit={() => onVerse('audit')} />
+      <ModeToolbar state={state} query={query} displayOptions={displayOptions} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} />
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
         {verse === 'tree'
@@ -68,6 +99,45 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       </section>
     </section>
   );
+}
+
+function LineageTrustStrip({ workspace, records = [], query = '', onOpenLineage, onOpenAudit }) {
+  const lineage = buildWorkspaceLineageView(workspace, { records, query: '' });
+  const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
+  const counts = audit.visibleCounts || audit.counts || {};
+  const signal = summarizeLineageTrust({ counts, lineage, records });
+  return (
+    <section className={`tx-lineage-trust-strip tx-trust-${signal.status}`} aria-label="Lineage trust status">
+      <div className="tx-lineage-trust-main">
+        <strong><Icon name={signal.icon} /> Lineage trust</strong>
+        <span>{signal.message}</span>
+      </div>
+      <div className="tx-lineage-trust-signals" aria-label="Lineage status signals">
+        <span className={`tx-trust-chip tx-trust-${signal.status}`}>{signal.label}</span>
+        <span>{lineage.stats.visibleEdges || 0} loaded edge{(lineage.stats.visibleEdges || 0) === 1 ? '' : 's'}</span>
+        <span>{counts.missingLineage || 0} missing</span>
+        <span>{counts.errors || 0} errors</span>
+        {counts.supporting ? <span>{counts.supporting} supporting</span> : null}
+      </div>
+      <div className="tx-lineage-trust-actions">
+        <button type="button" onClick={onOpenLineage}>Lineage mode</button>
+        <button type="button" onClick={onOpenAudit}>Audit details</button>
+      </div>
+    </section>
+  );
+}
+
+function summarizeLineageTrust({ counts = {}, lineage = {}, records = [] }) {
+  const recordCount = Number(records.length || counts.records || 0);
+  const errors = Number(counts.errors || 0);
+  const invalid = Number(counts.invalid || 0);
+  const missing = Number(counts.missingLineage || 0);
+  const lineageFindings = Number(counts.lineageFindings || lineage.stats?.visibleFindings || 0);
+  const degraded = Number(counts.degraded || 0);
+  if (!recordCount) return { status: 'open', label: 'open', icon: 'open', message: 'No loaded artifacts yet; lineage remains open.' };
+  if (errors || invalid || missing || lineageFindings) return { status: 'mismatch', label: 'mismatch', icon: 'warning', message: 'Loaded material has lineage or validation findings that need review.' };
+  if (degraded) return { status: 'pending', label: 'pending', icon: 'warning', message: 'Some material is unavailable or degraded; trust is pending more context.' };
+  return { status: 'ok', label: 'ok', icon: 'check', message: 'Loaded artifacts have no blocking lineage findings.' };
 }
 
 function SourceStrip({ workspace, boundary, onCloseSource }) {
@@ -139,17 +209,24 @@ function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-function ModeToolbar({ state, query, onVerse, onQuery }) {
+function ModeToolbar({ state, query, displayOptions, onVerse, onQuery, onOpenDisplayOptions }) {
   const verse = state.view?.workspaceVerse || 'feed';
+  const discoveryVerse = verse === 'feed' || verse === 'tree';
+  const modeLabel = verse === 'lineage' ? 'LINEAGE MODE' : verse === 'audit' ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
+  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0);
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
-      <strong className="tx-mode-name">DISCOVERY MODE</strong>
-      <div className="tx-segment" aria-label="Workspace verse">
-        <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
-        <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
-        <button type="button" className={verse === 'lineage' ? 'tx-active' : ''} onClick={() => onVerse('lineage')}>Lineage</button>
-        <button type="button" className={verse === 'audit' ? 'tx-active' : ''} onClick={() => onVerse('audit')}>Audit</button>
-      </div>
+      <strong className="tx-mode-name">{modeLabel}</strong>
+      {discoveryVerse ? (
+        <div className="tx-segment" aria-label="Discovery view">
+          <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
+          <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
+        </div>
+      ) : (
+        <button type="button" className="tx-mode-return" onClick={() => onVerse('feed')}>Discovery mode</button>
+      )}
+      {discoveryVerse ? <button type="button" className="tx-mode-link" onClick={() => onVerse('lineage')}>Lineage mode</button> : null}
+      <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button>
       <label className="tx-search-field tx-search-field-icon">
         <Icon name="search" />
         <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder="Search title/body/schema…" />
@@ -746,6 +823,40 @@ export function CreateWorkspaceDialog({ error, onSubmit, onDismiss }) {
         <div className="tx-dialog-actions">
           <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
           <Button type="submit" variant="primary" icon="create">Create</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss }) {
+  const [draft, setDraft] = useState(normalizeWorkspaceDisplayOptions(options));
+  function setFlag(key, value) {
+    setDraft((current) => Object.assign({}, current, { [key]: Boolean(value) }));
+  }
+  function submit(event) {
+    event.preventDefault();
+    onSubmit?.(normalizeWorkspaceDisplayOptions(draft));
+  }
+  return (
+    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displaySupportingMarkdown">
+      <form className="tx-form tx-display-options-form" onSubmit={submit} data-form="display-options-form">
+        <p className="tx-muted">Presentation only. Source, audit, lineage, and export truth stay intact even when material is hidden from Feed/Tree.</p>
+        <label className="tx-display-option-row">
+          <span><strong>Supporting Markdown</strong><small>{Number(counts.records || 0)} loaded record{Number(counts.records || 0) === 1 ? '' : 's'} · plain docs stay distinct from Tiinex leaves</small></span>
+          <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
+        </label>
+        <label className="tx-display-option-row">
+          <span><strong>Workspace candidates</strong><small>{Number(counts.workspaceCandidates || 0)} candidate{Number(counts.workspaceCandidates || 0) === 1 ? '' : 's'} · open/merge stays explicit</small></span>
+          <input type="checkbox" checked={draft.showWorkspaceCandidates} onChange={(event) => setFlag('showWorkspaceCandidates', event.target.checked)} />
+        </label>
+        <label className="tx-display-option-row">
+          <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default like supporting files, never fake leaves</small></span>
+          <input type="checkbox" checked={draft.showAssets} onChange={(event) => setFlag('showAssets', event.target.checked)} />
+        </label>
+        <div className="tx-dialog-actions">
+          <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
+          <Button type="submit" variant="primary" icon="check">Apply</Button>
         </div>
       </form>
     </Modal>

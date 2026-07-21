@@ -21,6 +21,11 @@ if (!appAndWorkspace.includes('tx-column-window')) failures.push('created worksp
 if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
 if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty workspace drop hint must stay available');
 if (!appAndWorkspace.includes('tx-mode-strip tx-column-toolbar')) failures.push('mode/search toolbar must remain a primary landmark');
+if (!appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/audit trust signal must be visible outside tab navigation');
+if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');
+if (appAndWorkspace.includes('aria-label="Workspace verse"')) failures.push('Lineage must not be presented as a workspace verse tab');
+if (!appAndWorkspace.includes('Display options')) failures.push('workspace presentation needs display options for assets/supporting material');
+if (!appAndWorkspace.includes('showAssets: false')) failures.push('assets must be hidden by default in Feed/Tree presentation');
 if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
 if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
 has('src/app/TiinexApp.jsx', 'schemaRegistry.modules.length', 'help surface should disclose schema companion state');

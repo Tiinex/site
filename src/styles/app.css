@@ -4775,3 +4775,133 @@ pre { white-space: pre-wrap; overflow:auto; }
   background:
     linear-gradient(180deg, rgba(245,238,255,0.86), rgba(189,115,255,0.64) 52%, rgba(101,242,231,0.42));
 }
+
+/* v173: presentation parity controls. Discovery keeps Feed/Tree as tabs; Lineage/Audit are explicit modes/details. */
+.tx-lineage-trust-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, auto) auto;
+  gap: 0.52rem;
+  align-items: center;
+  padding: 0.42rem 0.62rem;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(90deg, rgba(101,242,231,0.035), rgba(15,23,42,0.16));
+}
+.tx-lineage-trust-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+.tx-lineage-trust-main strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  color: rgba(247,248,251,0.88);
+  font-size: 0.76rem;
+}
+.tx-lineage-trust-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(247,248,251,0.58);
+  font-size: 0.72rem;
+}
+.tx-lineage-trust-signals,
+.tx-lineage-trust-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.tx-lineage-trust-signals span,
+.tx-lineage-trust-actions button,
+.tx-mode-link,
+.tx-mode-return,
+.tx-display-options-trigger {
+  min-height: 1.58rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  padding: 0.18rem 0.48rem;
+  color: rgba(247,248,251,0.68);
+  background: rgba(0,0,0,0.16);
+  font-size: 0.7rem;
+  line-height: 1;
+}
+.tx-lineage-trust-actions button,
+.tx-mode-link,
+.tx-mode-return,
+.tx-display-options-trigger {
+  cursor: pointer;
+}
+.tx-lineage-trust-actions button:hover,
+.tx-mode-link:hover,
+.tx-mode-return:hover,
+.tx-display-options-trigger:hover {
+  color: rgba(247,248,251,0.94);
+  border-color: rgba(101,242,231,0.3);
+  background: rgba(101,242,231,0.07);
+}
+.tx-trust-chip {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+}
+.tx-trust-ok .tx-icon,
+.tx-trust-ok.tx-trust-chip { color: rgba(101,242,231,0.86); }
+.tx-trust-open .tx-icon,
+.tx-trust-open.tx-trust-chip { color: rgba(189,115,255,0.86); }
+.tx-trust-pending .tx-icon,
+.tx-trust-pending.tx-trust-chip { color: rgba(255,196,87,0.9); }
+.tx-trust-mismatch .tx-icon,
+.tx-trust-mismatch.tx-trust-chip { color: rgba(255,117,117,0.92); }
+.tx-mode-strip.tx-column-toolbar {
+  grid-template-columns: auto auto auto auto minmax(160px, 1fr);
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-link,
+.tx-mode-strip.tx-column-toolbar .tx-mode-return,
+.tx-mode-strip.tx-column-toolbar .tx-display-options-trigger {
+  justify-self: start;
+  white-space: nowrap;
+}
+.tx-display-options-form {
+  min-width: min(34rem, 82vw);
+}
+.tx-display-options-form .tx-display-option-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  padding: 0.74rem 0.84rem;
+  background: rgba(255,255,255,0.035);
+}
+.tx-display-options-form .tx-display-option-row span {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+}
+.tx-display-options-form .tx-display-option-row strong {
+  color: rgba(247,248,251,0.86);
+}
+.tx-display-options-form .tx-display-option-row small {
+  color: rgba(247,248,251,0.52);
+  line-height: 1.32;
+}
+.tx-display-options-form input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #bd73ff;
+}
+@media (max-width: 820px) {
+  .tx-lineage-trust-strip,
+  .tx-mode-strip.tx-column-toolbar {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .tx-lineage-trust-signals,
+  .tx-lineage-trust-actions {
+    justify-content: flex-start;
+  }
+}

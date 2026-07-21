@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v172",
+  "version": "0.2.10-v173",
   "private": true,
-  "description": "Tiinex Site v172: audit support-material truth for plain Markdown imported from local/source archives.",
+  "description": "Tiinex Site v173: presentation display options, visible lineage trust, and Discovery/Lineage mode separation.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -15,7 +15,7 @@ console.log(JSON.stringify({
   activeFiles:files.length,
   legacyArchived: existsSync(join(root,'.old')) && statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v172-audit-support-material-truth'),
+  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v173-presentation-display-truth'),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,

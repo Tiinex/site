@@ -118,7 +118,7 @@
       schema: SESSION_CACHE_SCHEMA_ID,
       version: source.version || 1,
       activeWorkspaceId: source.activeWorkspaceId || '',
-      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, source.view || {}),
+      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } }, source.view || {}),
       audit: source.audit || null,
       workspaces: Array.isArray(source.workspaces) ? source.workspaces.map(compactWorkspaceForCache) : []
     };

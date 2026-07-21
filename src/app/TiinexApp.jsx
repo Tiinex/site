@@ -13,8 +13,10 @@ import {
   AssetDetailDialog,
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
+  DisplayOptionsDialog,
   RecordActionDialog,
   RecordDetailDialog,
+  normalizeWorkspaceDisplayOptions,
   WorkspaceColumnSurface
 } from '../schemas/workspace/workspace.views.jsx';
 import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.jsx';
@@ -35,7 +37,7 @@ function defaultState() {
   return runtime().lifecycle?.makeEmptyAppState?.() || {
     version: 1,
     activeWorkspaceId: '',
-    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' },
+    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } },
     workspaces: [],
     audit: null
   };
@@ -435,6 +437,13 @@ export function TiinexApp() {
     commit(next, 'replace');
   }
 
+  function setDisplayOptions(options) {
+    const next = structuredClone(state);
+    next.view = Object.assign({}, next.view || {}, { displayOptions: normalizeWorkspaceDisplayOptions(options) });
+    setDialog(null);
+    commit(next, 'replace');
+  }
+
   function copyShareUrl() {
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
@@ -465,7 +474,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v172-audit-support-material-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v173-presentation-display-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -486,6 +495,7 @@ export function TiinexApp() {
           onClose={() => setDialog('close-workspace')}
           onVerse={setVerse}
           onQuery={setQuery}
+          onOpenDisplayOptions={() => setDialog('display-options')}
           onOpenAddDialog={() => setDialog('add-to-workspace')}
           onCloseSource={closeSource}
           onDropFiles={addLocalFiles}
@@ -508,6 +518,14 @@ export function TiinexApp() {
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
       {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
+      {dialog === 'display-options' && active ? (
+        <DisplayOptionsDialog
+          options={state.view?.displayOptions}
+          counts={{ records: active.records?.length || 0, assets: active.assets?.length || 0, workspaceCandidates: active.workspaceMergeCandidates?.length || 0 }}
+          onSubmit={setDisplayOptions}
+          onDismiss={() => setDialog(null)}
+        />
+      ) : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog
           workspace={active}
