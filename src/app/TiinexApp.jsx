@@ -6,7 +6,8 @@ import { Modal } from '../ui/primitives/Modal.jsx';
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
-import { applyLocalAdapterResultToWorkspace } from '../workspaces/workspace.import.js';
+import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
+import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
   AssetDetailDialog,
@@ -42,7 +43,7 @@ function defaultState() {
 
 function initialState() {
   const { lifecycle, route, persistence } = runtime();
-  const routeState = persistence?.readInitialState?.({ location: window.location });
+  const routeState = persistence?.readInitialState?.({ location: window.location, storage: window.localStorage });
   return routeState ? route?.normalizeRouteState?.(routeState, lifecycle) || routeState : defaultState();
 }
 
@@ -97,6 +98,27 @@ function summarizeGithubMaterialization(sourceLabel, out = {}) {
   return `${sourceLabel} source registered; no source files loaded.`;
 }
 
+function summarizeGithubAdapterResult(out = {}) {
+  const warnings = Array.isArray(out.warnings) ? out.warnings : [];
+  const errors = Array.isArray(out.errors) ? out.errors : [];
+  return {
+    schema: 'tiinex.workspace.import.result.v1',
+    ok: Number(out.okCount || 0) > 0 || warnings.length > 0,
+    message: `GitHub source materialization: ${Number(out.okCount || 0)} loaded · ${warnings.length} warning${warnings.length === 1 ? '' : 's'} · ${errors.length} error${errors.length === 1 ? '' : 's'}.`,
+    counts: {
+      records: Number(out.okCount || 0),
+      assets: 0,
+      workspaceEntries: 0,
+      warnings: warnings.length,
+      errors: errors.length,
+      previewOmitted: 0
+    },
+    warnings,
+    errors,
+    diagnostics: Object.assign({ adapterId: 'github' }, out.diagnostics || {})
+  };
+}
+
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -105,6 +127,7 @@ export function TiinexApp() {
   const [activeRecordId, setActiveRecordId] = useState('');
   const [activeAssetId, setActiveAssetId] = useState('');
   const [recordAction, setRecordAction] = useState(null);
+  const [githubRequestPending, setGithubRequestPending] = useState(false);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const viewportWidth = useViewportWidth();
@@ -113,7 +136,7 @@ export function TiinexApp() {
   useEffect(() => {
     const onRoute = () => {
       const { lifecycle, route, persistence } = runtime();
-      const routeState = persistence?.readHashState?.(window.location);
+      const routeState = persistence?.readInitialState?.({ location: window.location, storage: window.localStorage });
       if (!routeState) {
         setState(defaultState());
         return;
@@ -225,17 +248,21 @@ export function TiinexApp() {
 
 
   async function addGitHubSource(input = {}) {
+    if (githubRequestPending) {
+      setNotice('GitHub source operation already in progress.');
+      return;
+    }
+    setGithubRequestPending(true);
     const repository = normalizeRepository(input.repository || input.repo || '');
     if (!repository) {
       setNotice('Repo URL or owner/name is required.');
+      setGithubRequestPending(false);
       return;
     }
     const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
     const ref = String(input.ref || '').trim();
     const label = input.label || repository;
-    const sourceKey = `${repository}:${rootPath}`.toLowerCase().replace(/[^a-z0-9:/._-]+/g, '-').replace(/-+/g, '-').slice(0, 180);
     const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, {
-      id: `github:${sourceKey}`,
       kind: input.sourceKind || input.kind || 'github-tree',
       label,
       repository,
@@ -249,6 +276,7 @@ export function TiinexApp() {
     });
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
+      setGithubRequestPending(false);
       return;
     }
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
@@ -257,12 +285,18 @@ export function TiinexApp() {
 
     if (fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls) {
       try {
+        const transportPolicy = buildSourceTransportPolicy({
+          mode: 'bounded-online',
+          maxRequestsPerOperation: Number(input.maxRequestsPerOperation || 550),
+          now: new Date().toISOString(),
+          offline: Boolean(input.offline)
+        });
         const out = await materializeGithubSource(result.source, {
           fileRefs,
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500 });
+        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy });
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
@@ -271,7 +305,7 @@ export function TiinexApp() {
             ref: resolvedRef,
             rootPath: result.source.rootPath || rootPath,
             label: result.source.label || label,
-            discoveryState: 'resolved'
+            discoveryState: 'deferred'
           }));
           if (pinned?.ok) finalState = pinned.state;
         }
@@ -279,6 +313,7 @@ export function TiinexApp() {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
+        finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
         noticeMessage = summarizeGithubMaterialization(result.source.label, out);
       } catch (e) {
         console.error(e);
@@ -288,6 +323,7 @@ export function TiinexApp() {
 
     setDialog(null);
     setNotice(noticeMessage);
+    setGithubRequestPending(false);
     commit(finalState, 'push');
   }
 
@@ -364,7 +400,7 @@ export function TiinexApp() {
   function shareRecord(record) {
     const label = record?.title || 'artifact';
     copyShareUrl();
-    setNotice(`Share link copied for ${label}.`);
+    setNotice(`Workspace/session share copied for ${label}; route-only viewers preserve boundary and may show material unavailable.`);
   }
 
   function closeSource(sourceId) {
@@ -403,7 +439,7 @@ export function TiinexApp() {
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
     navigator.clipboard?.writeText?.(new URL(url, window.location.href).href)
-      ?.then(() => setNotice('Clean link copied.'))
+      ?.then(() => setNotice('Workspace/session link copied.'))
       ?.catch(() => {});
   }
 
@@ -429,7 +465,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v158-source-transport-policy" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v171-source-identity-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -480,6 +516,7 @@ export function TiinexApp() {
           onAddFiles={addLocalFiles}
           onAddGitHubSource={addGitHubSource}
           onAddUrls={addExplicitUrls}
+          githubBusy={githubRequestPending}
         />
       ) : null}
       {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={() => setDialog(null)} /> : null}
@@ -506,7 +543,7 @@ function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPreviousWork
           <img src={LOGO_SRC} alt="" />
         </button>
         <span className="tx-dock-side tx-dock-right">
-          <Button icon="shareNodes" variant="nav" onClick={onShare}>Share</Button>
+          <Button icon="shareNodes" variant="nav" onClick={onShare}>Share session</Button>
           <Button icon="help" variant="nav" aria-label="Help" onClick={onHelp} />
         </span>
       </span>

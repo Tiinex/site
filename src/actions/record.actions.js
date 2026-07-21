@@ -49,7 +49,7 @@ export function presentRecordActions(record = {}) {
   }
   actions.push({
     id: RecordActionKind.share,
-    label: 'Share',
+    label: 'Share session',
     icon: 'shareNodes',
     enabled: true,
     contract: RECORD_ACTIONS_CONTRACT_ID

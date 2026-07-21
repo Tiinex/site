@@ -66,6 +66,30 @@ if (persistence.readStoredState(env.localStorage).workspaces[0].records[0].path 
 env.location.hash = '';
 if (persistence.readInitialState({ storage: env.localStorage, location: env.location }) !== null) throw new Error('clean URL should ignore stale local storage cache');
 
+
+const noCacheEnv = loadPersistence();
+const routeOnly = noCacheEnv.persistence.encodeState({
+  v: 2,
+  activeWorkspaceId: 'shared-w',
+  view: { workspaceVerse: 'feed', query: '' },
+  workspaces: [{
+    id: 'shared-w',
+    name: 'Shared Workspace',
+    sources: [{ id: 'github:shared', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary' }],
+    records: [{ id: 'r-remote', title: 'Remote shell', path: 'topics/remote.md', sourceMode: 'source-backed', source: { id: 'github:shared', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary' }, cacheState: 'route-shell-material-unavailable', materialAvailability: 'material-unavailable' }],
+    assets: [{ id: 'a-shared', name: 'shared.png', path: 'assets/shared.png', type: 'image/png', size: 10, materialAvailability: 'material-unavailable', cacheState: 'route-shell-material-unavailable' }],
+    workspaceMergeCandidates: [{ id: 'wc-shared', title: 'Shared Candidate', path: 'shared.workspace.md', materialAvailability: 'material-unavailable', cacheState: 'route-shell-material-unavailable' }]
+  }]
+});
+noCacheEnv.env.location.hash = `#state=${routeOnly}`;
+const noCacheRestored = noCacheEnv.persistence.readInitialState({ storage: noCacheEnv.env.localStorage, location: noCacheEnv.env.location });
+const noCacheRecord = noCacheRestored.workspaces[0].records[0];
+if (noCacheRecord.source.adapterId !== 'github') throw new Error('hash-only share must preserve source boundary without cache');
+if (noCacheRecord.sourceMode !== 'source-backed') throw new Error('hash-only share must preserve source-backed mode without cache');
+if (noCacheRecord.cacheState !== 'route-shell-material-unavailable') throw new Error('hash-only share should disclose unavailable material cache state');
+if (noCacheRestored.workspaces[0].assets[0].materialAvailability !== 'material-unavailable') throw new Error('route-only assets should disclose unavailable material');
+if (noCacheRestored.workspaces[0].workspaceMergeCandidates[0].materialAvailability !== 'material-unavailable') throw new Error('route-only workspace candidates should disclose unavailable material');
+
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
 if (persistence.readStoredState(env.localStorage)) throw new Error('clear should remove local storage cache');
 if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('closing last workspace should be push-history capable');

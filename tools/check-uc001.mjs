@@ -37,8 +37,13 @@ else {
     const regex = new RegExp('(?:' + f + '\\s*:|\\b' + f + '\\b\\s*(?:,|$))');
     if (!regex.test(cfgBody)) failures.push(`configured source must include ${f}`);
   }
-  if (!/discoveryState\s*:\s*(?:input\.discoveryState\s*\|\|\s*)?["']deferred["']/.test(cfgBody)) failures.push('configured source must default discoveryState to "deferred"');
+  if (!/discoveryState\s*:\s*normalizeSourceDiscoveryState\(input\.discoveryState,\s*["']deferred["']\)/.test(cfgBody)) failures.push('configured source must normalize discoveryState and default to "deferred"');
 }
+expectRegex(lifecycle, /const\s+SOURCE_STATES\s*=\s*new\s+Set\([\s\S]*["']deferred["'][\s\S]*["']loaded["'][\s\S]*\)/, 'source discovery states must be finite and include loaded/deferred');
+expectRegex(lifecycle, /function\s+normalizeSourceDiscoveryState/, 'source discovery state normalization must be lifecycle-owned');
+expectRegex(lifecycle, /addWorkspaceSourceRecords[\s\S]*discoveryState\s*:\s*normalizeSourceDiscoveryState\(options\.discoveryState\s*\|\|\s*["']loaded["'],\s*["']loaded["']\)/, 'source-backed material insertion must mark materialized source as loaded');
+reject(app, "discoveryState: 'resolved'", 'React app must not write non-canonical source discoveryState "resolved"');
+reject(app, 'discoveryState: "resolved"', 'React app must not write non-canonical source discoveryState "resolved"');
 
 // addWorkspaceSource must return ok:true and source/workspace/state tuple on success
 expectRegex(lifecycle, /function\s+addWorkspaceSource[\s\S]*?return\s*{[^}]*ok\s*:\s*true[^}]*source[^}]*workspace[^}]*state/ , 'addWorkspaceSource must return ok:true and source/workspace/state');

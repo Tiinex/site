@@ -2,6 +2,7 @@ import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { rootValidate } from './root.validate.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from './capability.registry.js';
 import { schemaRegistry } from './registry.js';
+import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';
 
 export const ARTIFACT_CREATION_CONTRACT_SCHEMA_ID = 'tiinex.artifact.creation.contract.v1';
 export const ARTIFACT_CREATION_RESULT_VALIDATION_SCHEMA_ID = 'tiinex.artifact.creation.result.validation.v1';
@@ -11,7 +12,8 @@ export function listCreatableArtifactSchemas(registry = schemaRegistry) {
   const modules = Array.isArray(registry.modules) ? registry.modules : [];
   return modules
     .filter((module) => module?.kind === 'concrete' && module?.role === 'core-artifact')
-    .map((module) => buildArtifactCreationContract({ schemaId: module.id, module }));
+    .map((module) => buildArtifactCreationContract({ schemaId: module.id, module }))
+    .filter((contract) => contract.status === 'ready');
 }
 
 export function buildArtifactCreationContract(input = {}, options = {}) {
@@ -20,13 +22,15 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
   const descriptor = input.module ? describeModuleThroughResolution(input.module) : resolution.descriptor;
   const createCapability = descriptor?.actions?.create;
   const fallbackUsed = Boolean(resolution.fallbackUsed && !input.module);
-  const isCreatable = createCapability?.status === CapabilityStatus.implemented && !fallbackUsed;
   const transitionType = String(input.transitionType || options.transitionType || 'create-artifact').trim();
+  const renderer = schemaCreationRendererFor(schemaId, transitionType);
+  const isCreatable = createCapability?.status === CapabilityStatus.implemented && renderer.status === 'implemented' && !fallbackUsed;
   const findings = [];
 
   if (!schemaId) findings.push(error('creation.schema.required', 'Creation contract requires a target schema id.'));
   if (fallbackUsed) findings.push(error('creation.schema.fallback-blocked', `Cannot create ${schemaId || 'unknown schema'} through Root fallback; choose an implemented schema module.`));
   if (createCapability?.status !== CapabilityStatus.implemented) findings.push(error('creation.capability.missing', `${schemaId || 'target schema'} does not declare an implemented create capability.`));
+  if (renderer.status !== 'implemented') findings.push(error('creation.renderer.missing', `${schemaId || 'target schema'} does not have an implemented creation renderer for ${transitionType}.`));
   if (!descriptor?.binding?.schemaId) findings.push(error('creation.binding.schemaId.missing', `${schemaId || 'target schema'} is missing schema binding.`));
 
   const status = findings.some((finding) => finding.severity === 'error') ? 'blocked' : 'ready';
@@ -65,11 +69,13 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
       integrityFooter: 'required'
     }),
     capabilities: Object.freeze({
-      create: createCapability?.status || CapabilityStatus.unavailable,
+      create: isCreatable ? CapabilityStatus.implemented : (createCapability?.status || CapabilityStatus.unavailable),
+      createRenderer: renderer.status,
       fallback: descriptor?.actions?.fallback?.status || CapabilityStatus.unavailable,
       validate: descriptor?.actions?.validate?.status || CapabilityStatus.unavailable,
       present: descriptor?.actions?.present?.status || CapabilityStatus.unavailable
     }),
+    renderer: Object.freeze(renderer),
     findings: Object.freeze(findings)
   });
 }
@@ -131,7 +137,7 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
   const parsed = parseArtifactMarkdown(draft.markdown || '');
   const findings = [];
   findings.push(...validateArtifactCreationContract(contract).findings);
-  for (const finding of rootValidate(parsed)) findings.push(normalizeFinding(finding));
+  findings.push(...validateTargetSchema(parsed, contract));
 
   const currentSchemaId = parsed.envelope?.current?.schema?.id || '';
   const expectedSchemaId = contract.target?.schemaId || draft.kind || '';
@@ -156,6 +162,35 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
     parentBoundary: parent.boundary || '',
     contractId: contract.id || ''
   });
+}
+
+
+function validateTargetSchema(parsed = {}, contract = {}) {
+  const targetSchemaId = contract.target?.schemaId || parsed.envelope?.current?.schema?.id || '';
+  const resolution = resolveRegisteredSchemaModule({ schemaId: targetSchemaId });
+  const module = resolution?.module || null;
+  const findings = [];
+  if (resolution?.fallbackUsed) {
+    findings.push(error('creation.validator.root-fallback', `Cannot validate ${targetSchemaId || 'unknown schema'} with a target module; root fallback would be used.`));
+    return findings.concat(rootValidate(parsed).map(normalizeFinding));
+  }
+  if (typeof module?.validate !== 'function') {
+    findings.push(error('creation.validator.unavailable', `${targetSchemaId || 'target schema'} has no validation implementation.`));
+    return findings.concat(rootValidate(parsed).map(normalizeFinding));
+  }
+  return module.validate(parsed).map(normalizeFinding);
+}
+
+function schemaCreationRendererFor(schemaId = '', transitionType = '') {
+  const id = String(schemaId || '').trim();
+  const transition = String(transitionType || '').trim();
+  if (id === 'tiinex.topic.v1' && (transition === 'continue-from-record' || transition === 'create-artifact')) {
+    return { status: CapabilityStatus.implemented, id: 'tiinex.topic.v1.continue-renderer', scope: 'topic-continuation' };
+  }
+  if (id === 'tiinex.evidence.v1' && (transition === 'reference-record' || transition === 'create-artifact')) {
+    return { status: CapabilityStatus.implemented, id: 'tiinex.evidence.v1.reference-renderer', scope: 'evidence-reference' };
+  }
+  return { status: CapabilityStatus.unavailable, id: '', scope: transition || 'create-artifact' };
 }
 
 function describeModuleThroughResolution(module = {}) {

@@ -1,28 +1,38 @@
-# Tiinex Site v158
+# Tiinex Site v171
 
-React/Vite refactor checkpoint for Tiinex Site on the PoC-parity track.
+v171 is a closure-repair checkpoint for the React/Vite refactor. It follows the v161 delivery-truth repair and tightens schema creation, Audit epistemics, GitHub transport wiring, and lineage ambiguity handling.
 
-`.old/` remains the behavior reference for the public PoC monolith. v158 adds source transport policy/request-budget guards so source adapters can be bounded without hidden retries or provenance inference.
+## v162-v171 batch
 
-## v158 batch
+- Continue creation is schema-honest only for `tiinex.topic.v1` until additional create renderers are implemented.
+- Reference creation produces an Evidence-shaped body with the required Evidence sections.
+- Creation validation now runs the target schema module validator, not only Root validation.
+- Audit treats metadata-only/source-backed material as `pending-unavailable`, not invalid.
+- Audit uses registered schema module validators and reports Root fallback/validator fallback explicitly.
+- GitHub materialization can be governed by a transport policy for discovery and raw file loads.
+- GitHub UI submissions have an in-flight lock and adapter diagnostics are stored in workspace import/recoverability state.
+- Loaded Lineage detects ambiguous multi-source targets and avoids guessed edges.
 
-- Added `src/sources/transport.policy.js` for source transport authorization.
-- Supports request budgets, offline mode, and cooldown windows as explicit blocked/degraded findings.
-- GitHub adapter now honors transport policy before raw file fetches.
-- Budget-blocked GitHub operations produce warnings/transport events but no file failures and no fetch calls.
-- Source transport diagnostics from v157 continue to surface these policy events in recoverability/conformance.
+## Supported local start
+
+## Local development
+
+The supported local loop is:
+
+```bash
+npm install --no-audit --no-fund
+npm run dev
+```
+
+The source `index.html` intentionally loads `src/main.jsx` and requires a dev/build server with JSX transpilation. Double-clicking the source `index.html` as a raw file is not a supported runtime path.
 
 ## Validation
 
 ```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
 npm run test
 ```
 
-Focused checks:
-
-```bash
-node src/sources/transport.policy.test.mjs
-node src/diagnostics/sourceTransport.report.test.mjs
-node src/adapters/github/github.adapter.test.mjs
-node src/conformance/conformance.run.test.mjs
-```
+`.old/` may exist as a local behavior reference, but validation/build must not require it.

@@ -39,7 +39,7 @@ function auditRecord(record = {}) {
   const markdown = typeof record.markdown === 'string' ? record.markdown : '';
   let result;
   try {
-    result = runAudit({ markdown });
+    result = runAudit({ markdown, record });
   } catch (error) {
     result = {
       status: 'invalid-or-incomplete',
@@ -62,6 +62,7 @@ function auditRecord(record = {}) {
     summary: report.summary || {},
     findings: report.findings || [],
     markdownAvailable: Boolean(markdown),
+    materialAvailability: result.materialAvailability?.status || (markdown ? 'available' : 'unknown'),
     record
   };
 }
@@ -72,6 +73,8 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     readable: 0,
     degraded: 0,
     invalid: 0,
+    pending: 0,
+    unavailable: 0,
     fallbackUsed: 0,
     errors: 0,
     warnings: 0,
@@ -82,7 +85,10 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
   for (const item of items) {
     if (item.status === 'readable') counts.readable += 1;
     else if (item.status === 'degraded') counts.degraded += 1;
-    else counts.invalid += 1;
+    else if (item.status === 'pending-unavailable') {
+      counts.pending += 1;
+      counts.unavailable += 1;
+    } else counts.invalid += 1;
     if (item.fallbackUsed) counts.fallbackUsed += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);

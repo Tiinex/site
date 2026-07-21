@@ -6,7 +6,7 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { TiinexAdapterRegistry } from '../../adapters/registry.js';
 import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.adapter.js';
 
-export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls }) {
+export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, githubBusy = false }) {
   const [mode, setMode] = useState('');
   const [stagedFiles, setStagedFiles] = useState([]);
   const title = `Add to ${workspace.title || workspace.name || 'workspace'}`;
@@ -18,7 +18,7 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, on
         <AddChoiceGrid onMode={setMode} onAddFiles={onAddFiles} title={title} />
       ) : null}
       {mode === 'git' ? (
-        <GitHubSourceForm onBack={() => setMode('')} onSubmit={onAddGitHubSource} />
+        <GitHubSourceForm onBack={() => setMode('')} onSubmit={onAddGitHubSource} busy={githubBusy} />
       ) : null}
       {mode === 'urls' ? (
         <ExplicitUrlsForm onBack={() => setMode('')} onSubmit={onAddUrls} />
@@ -68,7 +68,7 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
   );
 }
 
-function GitHubSourceForm({ onBack, onSubmit }) {
+function GitHubSourceForm({ onBack, onSubmit, busy = false }) {
   const [repository, setRepository] = useState('');
   const [ref, setRef] = useState('');
   const [rootPath, setRootPath] = useState('.topics');
@@ -78,6 +78,7 @@ function GitHubSourceForm({ onBack, onSubmit }) {
 
   function submit(event) {
     event.preventDefault();
+    if (busy) return;
     onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery: Boolean(issueUrls.trim()), issueUrls, label: repository, fileRefs });
   }
 
@@ -106,7 +107,7 @@ function GitHubSourceForm({ onBack, onSubmit }) {
       </details>
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
-        <Button type="submit" variant="primary" icon="github">Add GitHub source</Button>
+        <Button type="submit" variant="primary" icon="github" disabled={busy}>{busy ? 'Adding GitHub source…' : 'Add GitHub source'}</Button>
       </div>
     </form>
   );

@@ -2,38 +2,50 @@
 
 ## Current checkpoint
 
-v92 is a fresh runtime ownership checkpoint. The v79 app is archived under `.old/` as ignored local behavior reference material. The active app starts from `index.html` through `src/main.js` and must remain file-local safe.
+v171 is a React/Vite refactor closure-repair checkpoint. `.old/` is an optional ignored behavior reference when present, not a build input and not runtime. The active runtime starts from `index.html` through `src/main.jsx` and requires the supported Vite local loop.
+
+## Supported local loop
+
+Use:
+
+```bash
+npm install --no-audit --no-fund
+npm run dev
+```
+
+The source `index.html` is not a raw file-local runtime because it loads JSX through `src/main.jsx`. Public output is produced by:
+
+```bash
+npm run build:public
+npm run public:check
+```
 
 ## Discipline
 
-- Do not develop new architecture inside `.old/` or `app.js`.
-- Preserve local `index.html` testing unless Q explicitly approves a different loop.
-- Do not infer GitHub source authority from local, pasted, draft, or static fixture material.
+- Do not develop new architecture inside `.old/` or legacy `app.js`.
+- Treat `.old/` as behavior evidence only; validation and build must pass without it.
+- Do not infer GitHub source authority from local, pasted, draft, static fixture, route-only, or package material.
 - Keep audit as a domain operation in `src/audit/`, not as per-schema presentation code.
 - Keep Verse human-first: a bounded arrangement/experience of artifacts, not a framework component or hidden truth engine.
 - Keep UX fast: clarity should come from layout, affordance, color, position, rhythm, and consistency before explanatory prose.
 - Show only implemented verses as primary UI actions; planned verses belong in context docs until a concrete implementation slice exists.
 
-## Current scope
-
-v92 keeps Universe/Column as the default entry, removes unimplemented verse directories, and adds context availability for future verses.
+## Current visible workspace modes
 
 Implemented and visible:
 
-- Universe
-- Column
 - Feed
 - Tree
+- Lineage, loaded-only
+- Audit, loaded-only/degraded-aware
 
-Planned but not shown as ready primary actions:
+Planned or partial:
 
-- Map as a workspace-level spatial verse
-- Atlas as a universe-level arrangement of one or more Maps
-- Gallery, game-engine rendering, and other future verses after concrete use-cases exist
-
-## Next planned iteration
-
-Current priority is Column happy-path parity. Map/Atlas, Gallery, Desktop, and renderer experiments stay planned until Column is stable and tested. Leaflet, SVG, Canvas, D3, WebGL, and game engines are renderer choices, not Verse semantics.
+- remote lineage traversal
+- actual issue/discussion fetching
+- package download UX
+- remote publish/re-ingest
+- Map/Atlas/Gallery/rendering experiments
 
 ## Legacy behavior reference discipline
 

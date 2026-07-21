@@ -21,8 +21,9 @@ export function openWorkspaceCandidate(lifecycle, state, workspaceId = '', candi
   if (!opened?.ok) return opened || { ok: false, error: 'workspace.open.failed', state };
   const workspace = lifecycle.activeWorkspace?.(opened.state);
   if (workspace) {
+    if (options.preserveImportedMaterial !== false) preserveImportedMaterialFromSourceWorkspace(workspace, sourceWorkspace, candidate);
     workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
-    workspace.importLog.unshift({ kind: 'workspace-candidate-opened', fromWorkspaceId: sourceWorkspace.id, path: candidate.path || '', at: nowIso(options) });
+    workspace.importLog.unshift({ kind: 'workspace-candidate-opened', fromWorkspaceId: sourceWorkspace.id, path: candidate.path || '', preservedMaterial: options.preserveImportedMaterial !== false, at: nowIso(options) });
   }
   return Object.assign({}, opened, { candidate });
 }
@@ -47,6 +48,26 @@ export function mergeWorkspaceCandidate(lifecycle, state, workspaceId = '', cand
   workspace.importLog.unshift({ kind: 'workspace-merge-applied', path, title: candidate.title || '', at: merged.mergedAt });
   next.activeWorkspaceId = workspace.id;
   return { ok: true, workspace, candidate: merged, state: next };
+}
+
+
+function preserveImportedMaterialFromSourceWorkspace(targetWorkspace, sourceWorkspace, openedCandidate) {
+  const openedPath = canonicalizeLocalPath(openedCandidate?.path || '');
+  targetWorkspace.records = Array.isArray(sourceWorkspace.records) ? sourceWorkspace.records.map((item) => Object.assign({}, item)) : [];
+  targetWorkspace.assets = Array.isArray(sourceWorkspace.assets) ? sourceWorkspace.assets.map((item) => Object.assign({}, item)) : [];
+  targetWorkspace.workspaceMergeCandidates = Array.isArray(sourceWorkspace.workspaceMergeCandidates)
+    ? sourceWorkspace.workspaceMergeCandidates
+      .filter((item) => canonicalizeLocalPath(item.path || '') !== openedPath)
+      .map((item) => Object.assign({}, item))
+    : [];
+  targetWorkspace.workspaceMergedEntries = Array.isArray(sourceWorkspace.workspaceMergedEntries)
+    ? sourceWorkspace.workspaceMergedEntries.map((item) => Object.assign({}, item))
+    : [];
+  targetWorkspace.importResults = Array.isArray(sourceWorkspace.importResults)
+    ? sourceWorkspace.importResults.map((item) => Object.assign({}, item))
+    : [];
+  targetWorkspace.sources = Array.isArray(sourceWorkspace.sources) ? sourceWorkspace.sources.map((item) => Object.assign({}, item)) : targetWorkspace.sources;
+  targetWorkspace.sourceOrder = Array.isArray(sourceWorkspace.sourceOrder) ? sourceWorkspace.sourceOrder.slice() : targetWorkspace.sourceOrder;
 }
 
 function workspaceTitleFromMarkdown(markdown = '') {

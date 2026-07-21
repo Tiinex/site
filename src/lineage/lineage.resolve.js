@@ -19,13 +19,25 @@ export function resolveLineage(artifacts = [], options = {}) {
     const parentMatch = traceTarget ? resolveTarget(traceTarget.value, index) : null;
     const originMatch = originTarget ? resolveTarget(originTarget.value, index) : null;
 
+    if (parentMatch?.ambiguous) {
+      findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Parent Trace matches multiple loaded targets; no edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value, candidates: parentMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      if (originMatch?.ambiguous) {
+        findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Origin matches multiple loaded targets; no recovery edge was created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      } else if (originTarget && !originMatch) {
+        findings.push(createLineageFinding('lineage.origin.unresolved', 'Origin is declared but not present in the loaded material.', 'info', { nodeId: node.id, target: originTarget.value }));
+      }
+      continue;
+    }
+
     if (parentMatch) {
       edges.push(createLineageEdge(parentMatch.id, node.id, LineageEdgeKind.parent, {
         target: traceTarget.value,
         method: parentMatch.method,
         label: 'declared parent trace'
       }));
-      if (originTarget && originMatch && originMatch.id !== parentMatch.id) {
+      if (originMatch?.ambiguous) {
+        findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Origin matches multiple loaded targets; no recovery edge was created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      } else if (originTarget && originMatch && originMatch.id !== parentMatch.id) {
         edges.push(createLineageEdge(originMatch.id, node.id, LineageEdgeKind.origin, {
           target: originTarget.value,
           method: originMatch.method,
@@ -45,6 +57,11 @@ export function resolveLineage(artifacts = [], options = {}) {
         label: 'missing parent trace'
       }));
       findings.push(createLineageFinding('lineage.parent.missing', 'Parent Trace is declared but the target is not loaded.', 'warning', { nodeId: node.id, target: traceTarget.value }));
+    }
+
+    if (originMatch?.ambiguous) {
+      findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Origin matches multiple loaded targets; no recovery edge was created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      continue;
     }
 
     if (originTarget && originMatch) {
@@ -94,15 +111,22 @@ function buildLineageIndex(nodes = []) {
   for (const node of nodes) {
     const id = canonicalToken(node.id);
     if (id) {
-      index.byId.set(id, node);
-      index.byRecordTrace.set(`record:${id}`, node);
+      addIndexed(index.byId, id, node);
+      addIndexed(index.byRecordTrace, `record:${id}`, node);
     }
     const path = canonicalPath(node.path);
-    if (path) index.byPath.set(path, node);
+    if (path) addIndexed(index.byPath, path, node);
     const sourcePath = canonicalPath(node.record?.source?.path || node.record?.sourcePath || '');
-    if (sourcePath) index.bySourcePath.set(sourcePath, node);
+    if (sourcePath) addIndexed(index.bySourcePath, sourcePath, node);
   }
   return index;
+}
+
+function addIndexed(map, key, node) {
+  if (!key || !node) return;
+  const existing = map.get(key);
+  if (!existing) map.set(key, [node]);
+  else existing.push(node);
 }
 
 function resolveTarget(target, index) {
@@ -110,31 +134,83 @@ function resolveTarget(target, index) {
   if (!raw) return null;
   const token = canonicalToken(raw);
   const path = canonicalPath(raw);
+  const sourceKey = sourceKeyFromTarget(raw);
   const candidates = [
     ['record-trace', index.byRecordTrace.get(token)],
     ['id', index.byId.get(token)],
-    ['path', index.byPath.get(path)],
-    ['source-path', index.bySourcePath.get(path)],
-    ['path-suffix', findPathSuffixMatch(path, index.byPath)],
-    ['source-path-suffix', findPathSuffixMatch(path, index.bySourcePath)]
+    ['path', filterBySource(index.byPath.get(path), sourceKey)],
+    ['source-path', filterBySource(index.bySourcePath.get(path), sourceKey)],
+    ['path-suffix', findPathSuffixMatches(path, index.byPath, sourceKey)],
+    ['source-path-suffix', findPathSuffixMatches(path, index.bySourcePath, sourceKey)]
   ];
-  for (const [method, node] of candidates) {
-    if (node) return Object.assign({ method }, node);
+  for (const [method, nodes] of candidates) {
+    const unique = uniqueNodes(nodes || []);
+    if (unique.length === 1) return Object.assign({ method }, unique[0]);
+    if (unique.length > 1) return { ambiguous: true, method, candidates: unique };
   }
   return null;
 }
 
-function findPathSuffixMatch(targetPath, pathIndex = new Map()) {
+function findPathSuffixMatches(targetPath, pathIndex = new Map(), sourceKey = '') {
   const path = canonicalPath(targetPath);
-  if (!path || !path.includes('/')) return null;
-  let best = null;
-  for (const [candidatePath, node] of pathIndex.entries()) {
+  if (!path || !path.includes('/')) return [];
+  let bestLength = -1;
+  let matches = [];
+  for (const [candidatePath, nodes] of pathIndex.entries()) {
     if (!candidatePath || path === candidatePath) continue;
     if (path.endsWith(`/${candidatePath}`) || path.endsWith(candidatePath)) {
-      if (!best || candidatePath.length > best.path.length) best = { path: candidatePath, node };
+      const filtered = filterBySource(nodes, sourceKey);
+      if (!filtered.length) continue;
+      if (candidatePath.length > bestLength) {
+        bestLength = candidatePath.length;
+        matches = filtered.slice();
+      } else if (candidatePath.length === bestLength) {
+        matches.push(...filtered);
+      }
     }
   }
-  return best?.node || null;
+  return uniqueNodes(matches);
+}
+
+function filterBySource(nodes = [], sourceKey = '') {
+  const items = Array.isArray(nodes) ? nodes : [];
+  if (!sourceKey) return items;
+  const filtered = items.filter((node) => sourceKeyFromNode(node) === sourceKey);
+  return filtered.length ? filtered : items;
+}
+
+function uniqueNodes(nodes = []) {
+  const seen = new Set();
+  const out = [];
+  for (const node of Array.isArray(nodes) ? nodes : []) {
+    const key = node?.id || node?.path || JSON.stringify(node || {});
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(node);
+  }
+  return out;
+}
+
+function sourceKeyFromNode(node = {}) {
+  const source = node.record?.source || {};
+  return normalizeRepoKey(source.repo || source.repository || source.config?.repo || '');
+}
+
+function sourceKeyFromTarget(value = '') {
+  try {
+    const url = new URL(String(value || ''));
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (url.hostname === 'raw.githubusercontent.com' && parts.length >= 2) return normalizeRepoKey(`${parts[0]}/${parts[1]}`);
+    if (url.hostname.endsWith('github.com') && parts.length >= 2) return normalizeRepoKey(`${parts[0]}/${parts[1]}`);
+  } catch (error) {
+    // not a URL
+  }
+  return '';
+}
+
+function normalizeRepoKey(value = '') {
+  const parts = String(value || '').trim().toLowerCase().split('/').filter(Boolean);
+  return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : '';
 }
 
 function canonicalToken(value = '') {

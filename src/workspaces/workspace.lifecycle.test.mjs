@@ -2,6 +2,7 @@ import assert from 'assert';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 
 // Load the lifecycle to attach to globalThis
+await import('../sources/source.identity.js');
 await import('./workspace.lifecycle.js');
 const lifecycle = globalThis.TiinexWorkspaceLifecycle;
 
@@ -16,6 +17,8 @@ try {
   if ('id' in rec) fail('createRecordFromMarkdown must not add id');
   if ('createdAt' in rec) fail('createRecordFromMarkdown must not add createdAt');
   if ('source' in rec) fail('createRecordFromMarkdown must not add source');
+  const pathTitleRecord = createRecordFromMarkdown('Body without heading', { path: 'docs/architecture/source-provenance-grounding.md', sourceMode: 'archive-local' });
+  assert.equal(pathTitleRecord.title, 'Source Provenance Grounding', 'headingless Markdown should use readable path-derived title instead of Untitled artifact');
 
   // 2) Normal addWorkspaceRecords keeps local/session provenance
   const base = lifecycle.makeEmptyAppState();
@@ -52,6 +55,16 @@ try {
   const addSource = lifecycle.addWorkspaceSource(addSecondPath.state, ws.id, { label: 'Repo', repository: 'owner/repo', ref: 'master', rootPath: '.topics', count: 0, transportLabel: 'Source Pages mirror' });
   if (!addSource?.ok) fail('addWorkspaceSource failed');
   const sourceId = addSource.source.id;
+  if (addSource.source.discoveryState !== 'deferred') fail('configured source registration must start as deferred');
+  if (addSource.source.id !== 'github:owner-repo:master:topics') fail('configured source id must include repo/ref/root identity');
+  const otherRefSource = lifecycle.makeConfiguredSource({ repository: 'owner/repo', ref: 'develop', rootPath: '.topics' });
+  if (otherRefSource.id === addSource.source.id) fail('configured source identity must not collide across refs');
+  const otherRootSource = lifecycle.makeConfiguredSource({ repository: 'owner/repo', ref: 'master', rootPath: 'docs' });
+  if (otherRootSource.id === addSource.source.id) fail('configured source identity must not collide across roots');
+  const invalidStateSource = lifecycle.makeConfiguredSource({ label: 'Bad State', repository: 'owner/repo', discoveryState: 'resolved' });
+  if (invalidStateSource.discoveryState !== 'deferred') fail('unknown source discovery state must normalize to deferred');
+  if (lifecycle.normalizeSourceDiscoveryState('partial') !== 'partial') fail('known source discovery state must be preserved');
+  if (lifecycle.normalizeSourceDiscoveryState('resolved') !== 'deferred') fail('resolved must not become a hidden source discovery state');
 
   const srcRec = createRecordFromMarkdown('# S\n\nbody', { path: '.topics/1.md', name: '1.md', sourceMode: 'source' });
   const addSrcRes = lifecycle.addWorkspaceSourceRecords(addSource.state, ws.id, sourceId, [srcRec]);
@@ -63,6 +76,7 @@ try {
   const foundSource = addSrcRes.workspace.sources.find((s) => s.id === sourceId);
   if (!foundSource) fail('configured source not present after insert');
   if (!(Number(foundSource.count) > 0)) fail('configured source count not updated');
+  if (foundSource.discoveryState !== 'loaded') fail('configured source must become loaded after source records are inserted');
   if (addSrcRes.workspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
 
   // 4) Unknown sourceId should fail
@@ -91,6 +105,7 @@ try {
   const cfg = finalWorkspace.sources.find((s) => s.id === sourceId);
   if (!cfg) fail('configured source missing after variants');
   if (Number(cfg.count) !== prevCount + 1) fail('expected source count to increase by exactly 1 for README variants');
+  if (cfg.discoveryState !== 'loaded') fail('source with loaded material must remain loaded after upserts');
   if (lifecycle.countLocalRecords(finalWorkspace) !== 2) fail('local source count must include only local records and not source-backed records');
   const found = finalWorkspace.records.filter((r) => r.source && r.source.id === sourceId && r.path === '.topics/README.md');
   if (found.length !== 1) fail('workspace must contain a single canonical source-backed record for the logical README');

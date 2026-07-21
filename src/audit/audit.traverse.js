@@ -54,7 +54,7 @@ export function buildLoadedAuditTraversalScope(records = [], options = {}) {
 
 function safeRunAudit(record = {}) {
   try {
-    const result = runAudit({ markdown: record.markdown || '' });
+    const result = runAudit({ markdown: record.markdown || '', record });
     return { result, report: auditReport(result) };
   } catch (error) {
     const report = {
@@ -78,6 +78,8 @@ function summarizeAudited(audited = [], findings = [], traversal = {}) {
     readable: 0,
     degraded: 0,
     invalid: 0,
+    pending: 0,
+    unavailable: 0,
     fallbackUsed: 0,
     errors: 0,
     warnings: 0,
@@ -87,7 +89,10 @@ function summarizeAudited(audited = [], findings = [], traversal = {}) {
   for (const item of audited) {
     if (item.status === 'readable') counts.readable += 1;
     else if (item.status === 'degraded') counts.degraded += 1;
-    else counts.invalid += 1;
+    else if (item.status === 'pending-unavailable') {
+      counts.pending += 1;
+      counts.unavailable += 1;
+    } else counts.invalid += 1;
     if (item.fallbackUsed) counts.fallbackUsed += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);

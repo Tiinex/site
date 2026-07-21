@@ -10,7 +10,7 @@ export const PoCParityStatus = Object.freeze({
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v158',
+  checkpoint: 'v171',
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({
@@ -174,6 +174,26 @@ export const pocParityLedger = Object.freeze({
       automatedChecks: ['src/diagnostics/sourceTransport.report.test.mjs', 'src/sources/transport.policy.test.mjs', 'src/sources/github/github.loader.test.mjs', 'src/adapters/github/github.adapter.test.mjs', 'src/conformance/conformance.run.test.mjs'],
       manualChecks: ['register GitHub source under 403/rate-limit or bad file ref and inspect degraded diagnostics'],
       failureResult: 'transport report/policy classifies rate-limit/not-found/unpinned/cache/budget states; no provenance inference and no hidden fetch/retry'
+    }),
+    scenario({
+      id: 'route-shell-material-boundaries',
+      status: PoCParityStatus.partial,
+      legacyBehavior: 'Share/session route should preserve workspace material boundaries and metadata without inventing unavailable content.',
+      semanticOwner: 'route shell + session cache boundary',
+      runtimeOwner: 'src/workspaces/workspace.route + src/workspaces/workspace.persistence',
+      automatedChecks: ['src/workspaces/workspace.route.test.mjs', 'src/workspaces/workspace.persistence.test.mjs'],
+      manualChecks: ['share/hash route in a fresh browser', 'refresh with cache', 'clean URL reset'],
+      failureResult: 'route-only material becomes material-unavailable shell; no false local/session content'
+    }),
+    scenario({
+      id: 'surface-registry-truth',
+      status: PoCParityStatus.partial,
+      legacyBehavior: 'PoC surfaces feel available only when their behavior is actually present; scaffolded commands should not be counted as parity-ready.',
+      semanticOwner: 'surface registry + explicit implementation status',
+      runtimeOwner: 'src/surfaces/registry + src/surfaces/contracts',
+      automatedChecks: ['src/surfaces/registry.test.mjs', 'src/conformance/conformance.run.test.mjs'],
+      manualChecks: ['browser review of Feed/Tree/Lineage/Audit surface affordances'],
+      failureResult: 'surface remains scaffold/partial with finding; no false parity claim'
     }),
     scenario({
       id: 'conformance-fixture-spine',

@@ -2,6 +2,7 @@ import assert from 'assert';
 import { deflateRawSync } from 'zlib';
 import { materializeArchiveFiles } from '../adapters/archive/archive.adapter.js';
 import { applyLocalAdapterResultToWorkspace } from '../workspaces/workspace.import.js';
+import '../sources/source.identity.js';
 import '../workspaces/workspace.lifecycle.js';
 
 const lifecycle = globalThis.TiinexWorkspaceLifecycle;

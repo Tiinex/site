@@ -8,6 +8,7 @@
   const CONFIGURED_SOURCE_KIND = 'github-tree';
   const GITHUB_ADAPTER_ID = 'github';
   const GITHUB_REPO_SOURCE_KIND = 'github.repo';
+  const SOURCE_STATES = new Set(['not-started', 'deferred', 'loading', 'loaded', 'partial', 'failed', 'unavailable']);
 
   function nowIso(clock) {
     return typeof clock === 'function' ? clock() : new Date().toISOString();
@@ -25,14 +26,6 @@
     return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_SUMMARY_MAX_LENGTH);
   }
 
-  // Canonicalize a source-backed input path for deterministic identity.
-  // Rules:
-  // - collapse duplicate slashes
-  // - remove leading './' and leading '/'
-  // - treat rootPath '.' as empty
-  // - avoid double-prefixing rootPath
-  // - do not lowercase file paths
-  // - for raw GitHub URLs, extract the path after owner/repo/ref
   function canonicalizeSourcePath(inputPath, source = {}) {
     let p = String(inputPath || '').trim();
     if (!p) return '';
@@ -121,7 +114,6 @@
     return `${workspaceId || 'workspace'}-${slug}-${stamp}`;
   }
 
-
   function countLocalRecords(workspace = {}) {
     return (Array.isArray(workspace.records) ? workspace.records : []).filter((record) => {
       const source = record && record.source;
@@ -165,7 +157,6 @@
     return { ok: true, workspace, state: next };
   }
 
-
   function addWorkspaceRecord(state, workspaceId, input = {}, options = {}) {
     const title = normalizeRecordTitle(input.title || input.name);
     if (!title) return { ok: false, error: 'record.title.required', state };
@@ -176,7 +167,7 @@
     const createdAt = nowIso(options.clock);
     const canonicalPath = canonicalizeLocalPath(input.path || '');
     const deterministicLocalId = input.id || makeLocalRecordId(workspace.id, canonicalPath);
-    const record = {
+    const record = Object.assign({}, input, {
       id: deterministicLocalId || makeRecordId(workspace.id, title, createdAt),
       title,
       summary: normalizeRecordSummary(input.summary || input.body || 'Local session material added in Tiinex.'),
@@ -189,7 +180,7 @@
       hasContinuityContext: Boolean(input.hasContinuityContext),
       hasIntegrity: Boolean(input.hasIntegrity),
       source: makeSessionSource()
-    };
+    });
     const existingIndex = Array.isArray(workspace.records)
       ? workspace.records.findIndex((item) => item.id === record.id || (canonicalPath && item.source?.kind === SESSION_SOURCE_KIND && canonicalizeLocalPath(item.path || '') === canonicalPath))
       : -1;
@@ -206,7 +197,6 @@
     return { ok: true, record, workspace, state: next };
   }
 
-
   function addWorkspaceRecords(state, workspaceId, inputs = [], options = {}) {
     const records = Array.isArray(inputs) ? inputs : [];
     let next = cloneState(state);
@@ -222,7 +212,6 @@
     const workspace = activeWorkspace(next);
     return { ok: true, records: added, workspace, state: next };
   }
-
 
   function addWorkspaceAssets(state, workspaceId, inputs = [], options = {}) {
     const assets = Array.isArray(inputs) ? inputs : [];
@@ -345,7 +334,7 @@
         ? workspace.records.findIndex((r) => r.id === deterministicId || (r.source && r.source.id === existingSource.id && String(r.path || '').trim() === canonicalPath))
         : -1;
 
-      const record = {
+      const record = Object.assign({}, input, {
         id: deterministicId,
         title,
         summary: normalizeRecordSummary(input.summary || input.body || 'Source-backed material added in Tiinex.'),
@@ -358,7 +347,7 @@
         hasContinuityContext: Boolean(input.hasContinuityContext),
         hasIntegrity: Boolean(input.hasIntegrity),
         source: Object.assign({}, existingSource)
-      };
+      });
 
       if (existingIndex >= 0) {
         workspace.records = workspace.records.slice();
@@ -370,8 +359,12 @@
     }
     if (!added.length) return { ok: false, error: 'records.empty', state };
     const count = workspace.records.filter((r) => r.source && r.source.id === existingSource.id).length;
+    const materializedSource = Object.assign({}, existingSource, {
+      count,
+      discoveryState: normalizeSourceDiscoveryState(options.discoveryState || 'loaded', 'loaded')
+    });
     workspace.sources = ensureWorkspaceSources(workspace);
-    upsertSource(workspace, Object.assign({}, existingSource, { count }));
+    upsertSource(workspace, materializedSource);
     next.activeWorkspaceId = workspace.id;
     next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
     const finalWorkspace = activeWorkspace(next);
@@ -470,13 +463,18 @@
     };
   }
 
+  function normalizeSourceDiscoveryState(value, fallback = 'deferred') {
+    const candidate = String(value || '').trim();
+    return SOURCE_STATES.has(candidate) ? candidate : fallback;
+  }
+
   function makeConfiguredSource(input = {}, options = {}) {
     const repo = String(input.repository || input.repo || '').trim();
     const label = String(input.label || repo || 'Source').trim();
     const rootPath = String(input.rootPath || '.topics').trim() || '.topics';
     const ref = String(input.ref || '').trim();
     return {
-      id: input.id || `github:${repo.toLowerCase() || 'source'}`,
+      id: input.id || global.TiinexSourceIdentity?.makeConfiguredSourceId?.({ repo, ref, rootPath }) || `github:${repo.toLowerCase() || 'source'}`, 
       kind: input.kind || CONFIGURED_SOURCE_KIND,
       adapterId: input.adapterId || GITHUB_ADAPTER_ID,
       sourceKind: input.sourceKind || GITHUB_REPO_SOURCE_KIND,
@@ -488,7 +486,7 @@
       count: Number(input.count || 0),
       boundary: 'explicit source boundary; no material is trusted until loaded',
       transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror',
-      discoveryState: input.discoveryState || 'deferred',
+      discoveryState: normalizeSourceDiscoveryState(input.discoveryState, 'deferred'),
       closeable: true
     };
   }
@@ -541,6 +539,7 @@
     makeEmptyAppState,
     makeConfiguredSource,
     makeLocalSource,
+    normalizeSourceDiscoveryState,
     makeLocalRecordId,
     canonicalizeLocalPath,
     makeRecordId,

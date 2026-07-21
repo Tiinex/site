@@ -38,6 +38,11 @@ has('src/styles/app.css', '.tx-compact-column-window', 'created workspace must k
 has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
 
+has('src/styles/app.css', '/* v165: closure repair chrome parity guard', 'v165 dock/scrollbar parity guard missing');
+has('src/styles/app.css', '.tx-centered-dock-core.tx-content-fit-dock', 'content-fit dock must override route/config min-widths');
+has('src/styles/app.css', 'scrollbar-color: rgba(189,115,255,0.56)', 'workspace scrollbars must be Tiinex-owned and old-like');
+has('src/styles/app.css', '::-webkit-scrollbar-thumb', 'Chrome/WebKit scrollbar thumb styling must exist');
+
 has('src/styles/app.css', '/* v119.2 footer + recognition guard:', 'footer recognition polish guard missing');
 has('src/styles/app.css', 'position: fixed;', 'footer must behave as persistent old-like bottom origin marker');
 has('src/styles/app.css', 'display: block;', 'empty mode footer must override legacy display:none regression');

@@ -21,23 +21,28 @@ function walk(dir) {
   return out;
 }
 
-if (!existsSync(path('.old', 'app.js'))) failures.push('.old/app.js legacy reference missing');
+// .old is an optional local behavior reference. A clean checkout must validate without it.
+if (existsSync(path('.old')) && !existsSync(path('.old', 'app.js'))) failures.push('.old present but .old/app.js missing');
 if (!existsSync(path('.topics', '.workspaces', 'viewer.workspace.md'))) failures.push('root .topics/.workspaces/viewer.workspace.md config missing');
 if (!existsSync(path('.topics', '.schemas', 'tiinex.workspace.v1.schema.md'))) failures.push('site-local workspace schema missing');
-if (!read('.gitignore').includes('.old/')) failures.push('.old/ must be ignored');
+if (!read('.gitignore').includes('.old/')) failures.push('.old/ must be ignored when present as local behavior reference');
+
+if (existsSync(path('yarn.lock')) && read('yarn.lock').includes('applied-caas-gateway')) failures.push('source yarn.lock must use public registry URLs, not applied-caas-gateway');
+if (!existsSync(path('public', 'assets', 'tiinex-logo-white-transparent.png'))) failures.push('public/assets/tiinex-logo-white-transparent.png missing');
 
 const index = read('index.html');
 const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/schemas/workspace/workspace.views.jsx') + '\n' + read('src/schemas/workspace/workspace.add.views.jsx') + '\n' + read('src/schemas/workspace/workspace.schema.js') + '\n' + read('src/schemas/workspace/workspace.i18n.js') + '\n' + read('src/workspaces/workspace.lifecycle.js');
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v158-source-transport-policy')) failures.push('index.html must disclose v158 React runtime');
+if (!index.includes('react-v171-source-identity-truth')) failures.push('index.html must disclose v171 React runtime');
 
 const pkg = JSON.parse(read('package.json'));
 for (const dep of ['react', 'react-dom', 'vite', '@vitejs/plugin-react', '@fortawesome/react-fontawesome', '@fortawesome/free-solid-svg-icons']) {
   if (!pkg.dependencies?.[dep] && !pkg.devDependencies?.[dep]) failures.push(`package.json missing ${dep}`);
 }
 if (!pkg.scripts?.dev?.includes('vite')) failures.push('package.json must expose Vite dev server');
+if (!read('README.md').includes('Supported local start')) failures.push('README must document supported local start method');
 
 for (const required of [
   'src/main.jsx',

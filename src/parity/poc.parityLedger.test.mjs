@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { pocParityLedger, POC_PARITY_LEDGER_SCHEMA_ID, PoCParityStatus, summarizePoCParity } from './poc.parityLedger.js';
 
 assert.equal(pocParityLedger.schema, POC_PARITY_LEDGER_SCHEMA_ID, 'ledger must declare schema');
-assert.equal(pocParityLedger.checkpoint, 'v158', 'ledger checkpoint should match package checkpoint');
+assert.equal(pocParityLedger.checkpoint, 'v171', 'ledger checkpoint should match package checkpoint');
 assert(pocParityLedger.scenarios.length >= 6, 'ledger must cover multiple PoC loops');
 for (const scenario of pocParityLedger.scenarios) {
   assert(scenario.id, 'scenario requires id');
@@ -57,12 +57,21 @@ assert.equal(sourceTransport.status, PoCParityStatus.partial, 'source transport 
 assert(sourceTransport.automatedChecks.includes('src/diagnostics/sourceTransport.report.test.mjs'), 'source transport scenario must name transport report test');
 assert(sourceTransport.automatedChecks.includes('src/sources/transport.policy.test.mjs'), 'source transport scenario must name transport policy test');
 
+const routeShellMaterial = pocParityLedger.scenarios.find((item) => item.id === 'route-shell-material-boundaries');
+assert.equal(routeShellMaterial.status, PoCParityStatus.partial, 'route shell material boundary remains partial until browser share/reload checks');
+assert(routeShellMaterial.automatedChecks.includes('src/workspaces/workspace.route.test.mjs'), 'route shell material scenario must name route test');
+assert(routeShellMaterial.automatedChecks.includes('src/workspaces/workspace.persistence.test.mjs'), 'route shell material scenario must name persistence test');
+
+const surfaceRegistry = pocParityLedger.scenarios.find((item) => item.id === 'surface-registry-truth');
+assert.equal(surfaceRegistry.status, PoCParityStatus.partial, 'surface registry truth is a guardrail until browser/PoC closure evidence');
+assert(surfaceRegistry.automatedChecks.includes('src/surfaces/registry.test.mjs'), 'surface registry scenario must name registry test');
+
 const conformance = pocParityLedger.scenarios.find((item) => item.id === 'conformance-fixture-spine');
 assert.equal(conformance.status, PoCParityStatus.partial, 'conformance fixture spine is a guardrail, not a user-visible parity claim');
 assert(conformance.automatedChecks.includes('src/conformance/conformance.run.test.mjs'), 'conformance scenario must name fixture test');
 
 const summary = summarizePoCParity();
-assert.equal(summary.checkpoint, 'v158', 'summary checkpoint matches ledger');
+assert.equal(summary.checkpoint, 'v171', 'summary checkpoint matches ledger');
 assert(summary.notParity.includes('declared-lineage-tree'), 'summary should expose remaining non-parity loops');
 
 console.log('✓ PoC parity ledger tests passed');

@@ -1,29 +1,24 @@
-# Tiinex Site v158 Validation Notes
+# Tiinex Site v171 Validation Notes
 
-v158 extends v157 with a source transport policy and request-budget guard.
+v171 covers closure repair after external review of v158/v160 and continues from v161 delivery truth.
 
-## Root-cause hypothesis
+## Key checks
 
-Source transport diagnostics classify what happened after or around a request, but refactor parity also needs a testable way to prevent accidental request storms, hidden retries, or retry-during-cooldown behavior. This is especially important for GitHub discovery/raw reads after earlier 403/rate-limit findings.
+- `npm run validate` passes without requiring `.old/` as a build input.
+- Creation contracts run target schema validators.
+- Continue exposes only schema-honest Topic creation.
+- Reference generates Evidence-conform sections.
+- Metadata-only source-backed records audit as `pending-unavailable`, not invalid.
+- GitHub transport policy can block repo discovery and raw reads before fetch.
+- GitHub adapter diagnostics are inserted into workspace import/recoverability state.
+- Same path across multiple sources creates `lineage.target.ambiguous` and no guessed edge.
 
-## Change summary
+## Validation run in sandbox
 
-- Added `tiinex.sourceTransport.policy.v1` and `tiinex.sourceTransport.authorization.v1`.
-- Request budgets block over-budget operations before fetch.
-- Offline/cooldown modes become explicit retryable degraded findings.
-- GitHub raw file materialization uses the policy when provided through options.
-- Policy findings are also transport events, so recoverability/source-transport reports can present them without owning fetch logic.
-
-## Validation run
-
-```bash
-npm run test
+```text
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
 ```
 
-Focused checks:
-
-```bash
-node src/sources/transport.policy.test.mjs
-node src/adapters/github/github.adapter.test.mjs
-node src/diagnostics/sourceTransport.report.test.mjs
-```
+Full `npm run test` should be run in a dependency-installed environment because build/runtime smoke require Vite/React dependencies.

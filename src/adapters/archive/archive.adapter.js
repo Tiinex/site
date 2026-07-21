@@ -70,8 +70,9 @@ export function looksLikeWorkspaceMarkdown(markdown = '') {
 export function classifyArchiveEntry(path = '', content = null) {
   const clean = safeArchivePath(path);
   if (!clean) return 'unsafe';
-  if (isWorkspaceMarkdownPath(clean) || (content && looksLikeWorkspaceMarkdown(content))) return 'workspace';
-  if (MARKDOWN_RE.test(clean)) return 'record';
+  const markdownPath = MARKDOWN_RE.test(clean);
+  if (isWorkspaceMarkdownPath(clean) || (markdownPath && content && looksLikeWorkspaceMarkdown(content))) return 'workspace';
+  if (markdownPath) return 'record';
   return 'asset';
 }
 

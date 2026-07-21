@@ -2,6 +2,7 @@ import assert from 'assert';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { applyLocalAdapterResultToWorkspace, ensureWorkspaceForLocalMaterial, summarizeAdapterImportResult } from './workspace.import.js';
 import { mergeWorkspaceCandidate, openWorkspaceCandidate } from './workspace.candidates.js';
+import '../sources/source.identity.js';
 import './workspace.lifecycle.js';
 
 const lifecycle = globalThis.TiinexWorkspaceLifecycle;
@@ -87,8 +88,8 @@ try {
     schema: 'tiinex.adapter.result.v1',
     adapterId: 'archive',
     sourceId: 'local',
-    records: [],
-    assets: [],
+    records: [createRecordFromMarkdown('# Carried Material\n\nBody', { path: 'docs/carried.md', sourceMode: 'archive-local' })],
+    assets: [{ id: 'asset:local:img.png', path: 'img.png', name: 'img.png', schema: 'tiinex.local.asset.v1', source: { kind: 'local-session' } }],
     workspaceEntries: [
       { path: 'a.workspace.md', title: 'Workspace A', markdown: '# Workspace A', sourceMode: 'zip' },
       { path: 'b.workspace.md', title: 'Workspace B', markdown: '# Workspace B', sourceMode: 'zip' }
@@ -98,14 +99,16 @@ try {
     diagnostics: {}
   }, { clock });
   const candidateWorkspace = lifecycle.activeWorkspace(multiWorkspace.state);
+  assert.equal(candidateWorkspace.records.length, 1, 'material imported with the workspace bundle should be present before opening a candidate');
+  assert.equal(candidateWorkspace.assets.length, 1, 'assets imported with the workspace bundle should be present before opening a candidate');
   assert.equal(candidateWorkspace.workspaceMergeCandidates.length, 1, 'extra workspace files should remain visible/actionable as candidates');
   assert.equal(candidateWorkspace.workspaceMergeCandidates[0].path, 'b.workspace.md');
   const repeatedCandidateImport = applyLocalAdapterResultToWorkspace(lifecycle, multiWorkspace.state, candidateWorkspace.id, {
     schema: 'tiinex.adapter.result.v1',
     adapterId: 'archive',
     sourceId: 'local',
-    records: [],
-    assets: [],
+    records: [createRecordFromMarkdown('# Carried Material\n\nBody', { path: 'docs/carried.md', sourceMode: 'archive-local' })],
+    assets: [{ id: 'asset:local:img.png', path: 'img.png', name: 'img.png', schema: 'tiinex.local.asset.v1', source: { kind: 'local-session' } }],
     workspaceEntries: [{ path: './b.workspace.md', title: 'Workspace B updated', markdown: '# Workspace B updated', sourceMode: 'zip' }],
     warnings: [],
     errors: [],
@@ -114,7 +117,11 @@ try {
   assert.equal(lifecycle.activeWorkspace(repeatedCandidateImport.state).workspaceMergeCandidates.length, 1, 'same workspace candidate path should upsert, not duplicate');
   const openedCandidate = openWorkspaceCandidate(lifecycle, multiWorkspace.state, candidateWorkspace.id, 'b.workspace.md', { clock });
   assert.equal(openedCandidate.ok, true, 'workspace candidates should be openable');
-  assert.equal(lifecycle.activeWorkspace(openedCandidate.state).name, 'Workspace B');
+  const openedCandidateWorkspace = lifecycle.activeWorkspace(openedCandidate.state);
+  assert.equal(openedCandidateWorkspace.name, 'Workspace B');
+  assert.equal(openedCandidateWorkspace.records.length, 1, 'opening a workspace candidate should preserve imported material from the source bundle by default');
+  assert.equal(openedCandidateWorkspace.assets.length, 1, 'opening a workspace candidate should preserve imported assets from the source bundle by default');
+  assert.equal(openedCandidateWorkspace.workspaceMergeCandidates.length, 0, 'opened candidate should be removed from remaining candidates in the new workspace context');
   const mergedCandidate = mergeWorkspaceCandidate(lifecycle, multiWorkspace.state, candidateWorkspace.id, 'b.workspace.md', { clock });
   assert.equal(mergedCandidate.ok, true, 'workspace candidates should be mergeable');
   assert.equal(lifecycle.activeWorkspace(mergedCandidate.state).workspaceMergeCandidates.length, 0);

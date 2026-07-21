@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import './ui/icon.paths.js';
 import './workspaces/workspace.config.js';
+import './sources/source.identity.js';
 import './workspaces/workspace.lifecycle.js';
 import './workspaces/workspace.route.js';
 import './workspaces/workspace.persistence.js';

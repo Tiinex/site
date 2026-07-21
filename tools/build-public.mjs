@@ -27,16 +27,16 @@ if (build.status !== 0) {
   process.exit(build.status || 1);
 }
 
-for (const entry of ['README.md', 'VALIDATION_NOTES.md', 'llms.txt', 'favicon.ico', 'robots.txt', 'docs', '.topics']) copy(entry);
+for (const entry of ['README.md', 'VALIDATION_NOTES.md', 'LICENSE', 'NOTICE', 'llms.txt', 'favicon.ico', 'robots.txt', 'docs', '.topics']) copy(entry);
 writeFileSync(join(out, '.nojekyll'), '', 'utf8');
 writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v158-source-transport-policy',
+  source: 'v171-source-identity-truth',
   publicRuntime: 'vite-react-bundle',
   entry: 'src/main.jsx',
-  legacyReference: '.old is source-only behavior reference, not public runtime',
-  releaseCacheKey: `v158-${Date.now()}`
+  legacyReference: '.old is optional source-only behavior reference, not public runtime or build input',
+  releaseCacheKey: `v171-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built Vite React public shell to ${out}`);

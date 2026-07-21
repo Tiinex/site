@@ -117,7 +117,7 @@ export function applyLocalAdapterResultToWorkspace(lifecycle, state, workspaceId
   return { ok: summary.ok, state: nextState, summary, workspaceId: lifecycle.activeWorkspace?.(nextState)?.id || finalWorkspaceId, ...applied };
 }
 
-function appendImportSummary(lifecycle, state, summary, options = {}) {
+export function appendImportSummary(lifecycle, state, summary, options = {}) {
   const next = lifecycle?.cloneState?.(state) || state;
   const workspace = lifecycle?.activeWorkspace?.(next);
   if (!workspace) return next;

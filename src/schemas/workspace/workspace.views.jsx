@@ -599,10 +599,10 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
           {record?.origin ? <div><dt>Origin</dt><dd>{record.origin}</dd></div> : null}
           {record?.rootDisclosure ? <div><dt>Root fallback</dt><dd>{record.rootDisclosure}</dd></div> : null}
         </dl>
-        {record?.markdown ? <pre className="tx-record-markdown-preview">{String(record.markdown).slice(0, 2400)}</pre> : <p className="tx-muted">No embedded Markdown preview is available for this record.</p>}
+        {record?.markdown ? <pre className="tx-record-markdown-preview">{String(record.markdown).slice(0, 2400)}</pre> : <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown preview is available for this record.'}</p>}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
-          <Button variant="primary" icon="shareNodes" onClick={onShare}>Share</Button>
+          <Button variant="primary" icon="shareNodes" onClick={onShare}>Share session</Button>
         </div>
       </div>
     </Modal>
@@ -632,7 +632,7 @@ export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, 
           <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
           <div className="tx-dialog-actions">
             <Button variant="ghost" onClick={onDismiss}>Close</Button>
-            <Button variant="ghost" icon="shareNodes" onClick={() => onShare?.(record)}>Share parent</Button>
+            <Button variant="ghost" icon="shareNodes" onClick={() => onShare?.(record)}>Share parent session</Button>
             <Button variant="primary" icon="reference" onClick={() => onCreateTransition?.(record, draft)}>Create reference</Button>
           </div>
           {result ? <p className="tx-muted tx-action-caption">Reference capsule remains available for handoff copy: {result.intent}.</p> : null}
@@ -654,7 +654,7 @@ export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, 
         <pre className="tx-record-markdown-preview">{result.text}</pre>
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
-          <Button variant="primary" icon="shareNodes" onClick={() => onShare?.(record)}>Share</Button>
+          <Button variant="primary" icon="shareNodes" onClick={() => onShare?.(record)}>Share session</Button>
         </div>
       </div>
     </Modal>

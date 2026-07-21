@@ -80,4 +80,17 @@ const audit = resolveAuditLineage([parent, childByTrace]);
 assert.equal(audit.schema, 'tiinex.audit.lineage.resolve.v1', 'audit lineage result declares schema');
 assert(audit.edges.length >= 1, 'audit lineage should reuse resolver edges');
 
+const samePathA = leaf({ id: 'a', title: 'A', path: 'shared/topic.md' });
+samePathA.source = { adapterId: 'github', repo: 'owner/a', ref: 'main' };
+const samePathB = leaf({ id: 'b', title: 'B', path: 'shared/topic.md' });
+samePathB.source = { adapterId: 'github', repo: 'owner/b', ref: 'main' };
+const ambiguousChild = leaf({ id: 'ambiguous-child', title: 'Ambiguous Child', path: 'children/child.md', origin: 'shared/topic.md' });
+const ambiguous = resolveLineage([samePathA, samePathB, ambiguousChild]);
+assert(ambiguous.findings.some((finding) => finding.code === 'lineage.target.ambiguous'), 'same path in multiple sources must create ambiguity finding');
+assert(!ambiguous.edges.some((edge) => edge.to === 'ambiguous-child' && edge.from), 'ambiguous origin must not create a guessed edge');
+
+const sourceAwareChild = leaf({ id: 'source-aware-child', title: 'Source A Child', path: 'children/child-a.md', origin: 'https://github.com/owner/a/blob/main/shared/topic.md' });
+const sourceAware = resolveLineage([samePathA, samePathB, sourceAwareChild]);
+assert(sourceAware.edges.some((edge) => edge.from === 'a' && edge.to === 'source-aware-child'), 'GitHub origin URL should disambiguate same path by repo when possible');
+assert(!sourceAware.findings.some((finding) => finding.nodeId === 'source-aware-child' && finding.code === 'lineage.target.ambiguous'), 'source-aware target must not be marked ambiguous');
 console.log('✓ lineage.resolve tests passed');

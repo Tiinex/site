@@ -8,14 +8,16 @@ export const ROOT_SCHEMA_ID = 'tiinex.root.v1';
 export function listContinuationTargets(schemaRegistry = {}) {
   const modules = Array.isArray(schemaRegistry.modules) ? schemaRegistry.modules : [];
   return modules
-    .filter((module) => module && module.kind === 'concrete' && module.role === 'core-artifact')
+    .filter((module) => module && module.kind === 'concrete' && module.role === 'core-artifact' && module.id === 'tiinex.topic.v1')
     .map((module) => ({
       id: module.id,
       label: module.label || labelFromSchemaId(module.id),
       summary: module.summary || 'Schema-backed Tiinex leaf.',
       parentSchemaId: module.parentSchemaId || '',
       contract: RECORD_TRANSITION_CONTRACT_ID,
-      creationContract: `creation:continue-from-record:${module.id}`
+      creationContract: `creation:continue-from-record:${module.id}`,
+      creationStatus: 'implemented',
+      boundary: 'Only schema-honest Topic continuation is exposed until additional schema create renderers are implemented.'
     }));
 }
 
@@ -72,21 +74,7 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
     createdAt,
     status: 'draft/local',
     why: 'Created as a browser-local reference draft from an existing Tiinex record.',
-    bodyMarkdown: [
-      `# ${title}`,
-      '',
-      '## Reference',
-      '',
-      parentRecord.summary || 'No summary available.',
-      '',
-      '## Source Boundary',
-      '',
-      `- ${boundaryForRecord(parentRecord)}`,
-      parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
-      parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
-      '',
-      parentRecord.markdown ? '## Source Excerpt\n\n```markdown\n' + truncate(parentRecord.markdown, 1800) + '\n```' : ''
-    ].filter(Boolean).join('\n')
+    bodyMarkdown: createEvidenceReferenceBody({ parentRecord, title, summary })
   });
   const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
@@ -115,6 +103,48 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
   draft.creationValidation = validateArtifactCreationResult(draft, parentRecord, { contract: creationContract });
   draft.validation = validateTransitionDraft(draft, parentRecord);
   return draft;
+}
+
+
+function createEvidenceReferenceBody({ parentRecord = {}, title = 'Reference', summary = '' }) {
+  const boundary = boundaryForRecord(parentRecord);
+  const sourceLabel = parentRecord.source?.label || parentRecord.source?.repo || parentRecord.source?.id || '';
+  const excerpt = truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._';
+  return [
+    `# ${title}`,
+    '',
+    '## Reference',
+    '',
+    'This browser-local Evidence draft preserves the selected record as bounded reference material.',
+    '',
+    '## Supported Claim Or Question',
+    '',
+    summary || `Preserves ${parentRecord.title || 'the selected artifact'} as supporting material for later review or continuation.`,
+    '',
+    '## Provenance',
+    '',
+    `- Parent Trace: ${parentRecord.id ? `record:${parentRecord.id}` : 'record:unassigned'}`,
+    parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
+    sourceLabel ? `- Parent source: ${sourceLabel}` : '',
+    `- Boundary: ${boundary}`,
+    '',
+    '## Evidence Material',
+    '',
+    '```markdown',
+    excerpt,
+    '```',
+    '',
+    '## Preservation And Fidelity',
+    '',
+    '- Method: browser-local reference draft from loaded material.',
+    '- Fidelity: excerpted material is bounded to the currently loaded record; remote parents are not fetched or completed silently.',
+    '- Mutation: no source mutation; no publication occurred.',
+    '',
+    '## Interpretation Limits',
+    '',
+    '- This Evidence draft preserves material for review; it does not validate, endorse, attest, or make the supported claim true.',
+    '- Missing parent, source, or remote material must remain explicit until loaded or resolved through a separate audit/lineage traversal.'
+  ].filter(Boolean).join('\n');
 }
 
 function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract }) {

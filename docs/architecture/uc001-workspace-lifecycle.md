@@ -24,4 +24,4 @@ Workspace lifecycle code lives in `src/workspaces/workspace.lifecycle.js` and av
 
 ## File-size discipline
 
-Runtime orchestration in `src/main.js` has a v107 ceiling of 420 lines. Future growth should move behavior to feature-local modules with adjacent tests instead of growing another monolith.
+Runtime orchestration in `src/app/TiinexApp.jsx` and workspace modules has a v107 ceiling of 420 lines. Future growth should move behavior to feature-local modules with adjacent tests instead of growing another monolith.

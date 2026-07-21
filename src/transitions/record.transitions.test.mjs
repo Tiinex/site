@@ -6,6 +6,7 @@ import { createContinuationDraft, createReferenceDraft, listContinuationTargets,
 
 const targets = listContinuationTargets(schemaRegistry);
 assert(targets.some((target) => target.id === 'tiinex.topic.v1'), 'topic continuation target must be exposed');
+assert(targets.every((target) => target.id === 'tiinex.topic.v1'), 'only schema-honest Topic continuation is exposed until other renderers land');
 assert(targets.every((target) => target.contract === 'tiinex.record.transitions.v1'), 'targets must declare transition contract');
 
 const parent = {
@@ -46,6 +47,8 @@ assert.equal(reference.kind, 'tiinex.evidence.v1', 'reference draft should mater
 assert.equal(reference.hasIntegrity, true, 'reference must include draft integrity marker');
 assert.equal(reference.validation.ok, true, 'reference must pass transition validation');
 assert(reference.markdown.includes('## Reference'), 'reference draft must contain reference section');
+assert(reference.markdown.includes('## Supported Claim Or Question'), 'reference draft must satisfy Evidence body contract');
+assert(reference.creationValidation.ok, true, 'reference must pass target Evidence validator');
 assert(reference.markdown.includes('Current Schema: [tiinex.evidence.v1]'), 'reference draft must declare evidence current schema');
 assert(reference.path.startsWith('references/'), 'reference path must be deterministic local reference path');
 const parsedReference = parseArtifactMarkdown(reference.markdown);

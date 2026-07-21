@@ -49,3 +49,22 @@ assert.equal(filtered.items[0].id, 'unknown');
 assert(filtered.visibleCounts.fallbackUsed >= 1, 'visible counts should reflect filtered rows');
 
 console.log('✓ workspace.auditView tests passed');
+
+const metadataOnly = {
+  id: 'source:github:demo:topics/remote.md',
+  title: 'Remote Metadata Only',
+  summary: 'Remote record shell without material.',
+  path: 'topics/remote.md',
+  kind: 'tiinex.topic.v1',
+  schemaId: 'tiinex.topic.v1',
+  markdown: '',
+  sourceMode: 'source-backed',
+  cacheState: 'metadata-only',
+  materialAvailability: 'material-unavailable',
+  source: { id: 'github:demo', adapterId: 'github', repo: 'owner/repo', ref: 'main' }
+};
+const pendingView = buildWorkspaceAuditView({ id: 'w2', title: 'Pending Audit', records: [metadataOnly] });
+assert.equal(pendingView.items[0].status, 'pending-unavailable', 'metadata-only source-backed record is pending, not invalid');
+assert.equal(pendingView.counts.pending, 1, 'pending count is exposed');
+assert.equal(pendingView.counts.invalid, 0, 'metadata-only source-backed record must not count as invalid');
+assert(pendingView.items[0].findings.some((finding) => finding.code === 'audit.material.unavailable'), 'pending audit finding is present');

@@ -16,6 +16,7 @@ import { buildExportPackageApplyResult, buildExportPackageImportPlan } from '../
 import { buildSourceBoundaryReport } from '../diagnostics/sourceBoundary.report.js';
 import { buildSourceTransportReport } from '../diagnostics/sourceTransport.report.js';
 import { buildSchemaCapabilityRegistry, resolveSchemaCapabilities } from '../schemas/capability.registry.js';
+import { listSurfaceFindings, surfaceRegistry } from '../surfaces/registry.js';
 import { buildArtifactCreationContract, listCreatableArtifactSchemas, validateArtifactCreationContract, validateArtifactCreationResult } from '../schemas/creation.contracts.js';
 import { summarizeStoragePolicy } from '../storage/storage.policy.js';
 import { authorizeSourceTransport, summarizeSourceTransportOutcomes } from '../sources/transport.policy.js';
@@ -115,6 +116,8 @@ export function runConformanceFixtureSet(fixtureSet = conformanceFixtures) {
     sourceTransportPolicySummary,
     storagePolicy,
     schemaCapabilities,
+    surfaceRegistry,
+    surfaceFindings: listSurfaceFindings(),
     unknownSchemaCapabilityResolution,
     creationContracts: { creatableArtifactSchemas, topicCreationContract, unknownCreationContract, topicCreationContractValidation, unknownCreationContractValidation, continuationCreationValidation },
     publicationPreflight,
@@ -173,7 +176,11 @@ export function summarizeConformanceInvariants(result = {}) {
     schemaCapabilityRegistryClean: result.schemaCapabilities?.status === 'clean',
     schemaCapabilityRegistryCoversModules: (result.schemaCapabilities?.counts?.modules || 0) >= 7,
     schemaCapabilityUnknownUsesRootFallback: result.unknownSchemaCapabilityResolution?.fallbackUsed === true && result.unknownSchemaCapabilityResolution?.descriptor?.moduleId === 'tiinex.root.v1',
-    artifactCreationContractsPresent: Array.isArray(result.creatableArtifactSchemas) && result.creatableArtifactSchemas.length >= 3,
+    surfaceRegistryPresent: result.surfaceRegistry?.schema === 'tiinex.surface.registry.v1',
+    surfaceRegistryNoParityClaims: (result.surfaceRegistry?.counts?.parity || 0) === 0,
+    surfaceRegistryHasPartialCoreViews: (result.surfaceRegistry?.counts?.partial || 0) >= 4,
+    surfaceRegistryScaffoldsAreDisclosed: (result.surfaceFindings || []).some((finding) => finding.code === 'surface.status.scaffold'),
+    artifactCreationContractsPresent: Array.isArray(result.creatableArtifactSchemas) && result.creatableArtifactSchemas.length >= 2,
     artifactCreationContractReady: result.topicCreationContract?.status === 'ready' && result.topicCreationContractValidation?.ok === true,
     artifactCreationUnknownBlocked: result.unknownCreationContract?.status === 'blocked' && result.unknownCreationContractValidation?.ok === false,
     artifactCreationResultValidates: result.continuationCreationValidation?.ok === true,

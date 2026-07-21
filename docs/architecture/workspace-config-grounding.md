@@ -12,7 +12,7 @@ v109/v110 restores the `.workspace.md` entrypoint as runtime input instead of tr
 
 ## File-size boundary
 
-`src/main.js` stays under the current 420-line ceiling. Config parsing, lifecycle, persistence, and icon vocabulary remain separated so the UI behavior can be ported to CLI or remote renderers without scraping DOM text.
+`src/app/TiinexApp.jsx` and workspace modules stays under the current 420-line ceiling. Config parsing, lifecycle, persistence, and icon vocabulary remain separated so the UI behavior can be ported to CLI or remote renderers without scraping DOM text.
 
 
 ## v110 extension

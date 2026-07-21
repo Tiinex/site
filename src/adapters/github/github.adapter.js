@@ -155,21 +155,35 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const warnings = [];
   const errors = [];
 
+  const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
+
   if (input.repoDiscovery) {
-    try {
-      const discovered = await discoverGithubMarkdownRefs(source, options);
-      refs = refs.concat(discovered.refs);
-      resolvedRef = discovered.ref || resolvedRef;
-      diagnostics.discoveredFileRefs = discovered.refs.length;
-      diagnostics.treeUrl = discovered.treeUrl;
-      diagnostics.resolvedBy = discovered.resolvedBy;
-      warnings.push(...(discovered.warnings || []));
-    } catch (error) {
-      const warning = githubDiscoveryWarning(error);
-      warnings.push(warning);
-      diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'repo-discovery' }, warning));
+    const discoveryAuthorization = policyInput ? authorizeSourceTransport({ kind: 'github.repo-discovery', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: 2 }, policyInput) : null;
+    if (discoveryAuthorization && !discoveryAuthorization.allowed) {
+      diagnostics.transportPolicy = discoveryAuthorization;
       diagnostics.discoveryUnavailable = true;
-      diagnostics.discoveryError = String(error && error.message ? error.message : error);
+      diagnostics.discoveryBlockedByPolicy = true;
+      for (const issue of discoveryAuthorization.findings || []) {
+        const warning = { code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true };
+        warnings.push(warning);
+        diagnostics.transportEvents.push(Object.assign({ resultKind: 'repo-discovery-policy' }, warning));
+      }
+    } else {
+      try {
+        const discovered = await discoverGithubMarkdownRefs(source, options);
+        refs = refs.concat(discovered.refs);
+        resolvedRef = discovered.ref || resolvedRef;
+        diagnostics.discoveredFileRefs = discovered.refs.length;
+        diagnostics.treeUrl = discovered.treeUrl;
+        diagnostics.resolvedBy = discovered.resolvedBy;
+        warnings.push(...(discovered.warnings || []));
+      } catch (error) {
+        const warning = githubDiscoveryWarning(error);
+        warnings.push(warning);
+        diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'repo-discovery' }, warning));
+        diagnostics.discoveryUnavailable = true;
+        diagnostics.discoveryError = String(error && error.message ? error.message : error);
+      }
     }
   }
 
@@ -190,7 +204,6 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
   const unique = uniqueRefs(refs);
-  const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
   const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: unique.length }, policyInput) : null;
   let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };
   if (authorization && !authorization.allowed) {

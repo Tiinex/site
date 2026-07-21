@@ -99,3 +99,14 @@ assert.equal(issueSnapshot.records[0].kind, 'tiinex.evidence.v1', 'issue snapsho
 assert.equal(issueSnapshot.records[0].source, undefined, 'adapter must not assign lifecycle source provenance to issue snapshots');
 
 console.log('✓ github.adapter tests passed');
+
+const discoveryBudgetCalled = [];
+const discoveryBudgetBlocked = await materializeGithubSource(
+  { id: 'github:owner/repo', repo, ref: '', rootPath: '.topics' },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(map, discoveryBudgetCalled), maxRequestsPerOperation: 1 }
+);
+assert.equal(discoveryBudgetBlocked.records.length, 0, 'transport budget should block repo discovery before fetching');
+assert.equal(discoveryBudgetBlocked.diagnostics.discoveryBlockedByPolicy, true, 'repo discovery policy block must be diagnosed');
+assert.equal(discoveryBudgetCalled.length, 0, 'budget-blocked repo discovery must not call default-branch or tree fetch');
+assert(discoveryBudgetBlocked.warnings.some((warning) => warning.code === 'transport.policy.request-budget-exceeded'), 'repo discovery budget warning must be surfaced');

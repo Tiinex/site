@@ -6,7 +6,7 @@ The text is parsed from `.workspace.md`-style data through `src/workspaces/works
 
 - `## Viewer Identity` can provide shell identity such as browser title.
 - `## Empty Stage` provides one or more `Subtitle` values.
-- Empty-stage behavior stays content/config driven, not hardcoded in `src/main.js`.
+- Empty-stage behavior stays content/config driven, not hardcoded in `src/app/TiinexApp.jsx` and workspace modules.
 
 The Create affordance lives in the global dock. The empty stage remains a low-noise background invitation, matching the old Tiinex pattern where the user starts from a quiet canvas and uses the dock to create/open material.
 
