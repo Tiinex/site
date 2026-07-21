@@ -99,6 +99,13 @@ try {
   if (single.id !== `source:${sourceId}:.topics/README.md`) fail('canonical README id mismatch');
   if (finalWorkspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
 
+  const lineageVerseState = lifecycle.setWorkspaceVerse(currentState, 'lineage');
+  if (lineageVerseState.view.workspaceVerse !== 'lineage') fail('lineage verse must be a first-class workspace verse');
+  const auditVerseState = lifecycle.setWorkspaceVerse(currentState, 'audit');
+  if (auditVerseState.view.workspaceVerse !== 'audit') fail('audit verse must be a first-class loaded-only workspace verse');
+  const invalidVerseState = lifecycle.setWorkspaceVerse(currentState, 'map');
+  if (invalidVerseState.view.workspaceVerse !== 'feed') fail('unknown workspace verse should fall back to feed');
+
 
   // 6) Asset insertion is separate from leaf records and keeps local/session boundary
   const assetRes = lifecycle.addWorkspaceAssets(currentState, ws.id, [{ path: 'assets/picture.png', name: 'picture.png', type: 'image/png', size: 7, dataUrl: 'data:image/png;base64,ZmFrZQ==' }]);

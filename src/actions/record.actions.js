@@ -61,9 +61,9 @@ export function sourceHrefForRecord(record = {}) {
   const source = record.source || {};
   const adapterId = String(source.adapterId || '').trim();
   const repo = String(source.repo || source.config?.repo || '').trim();
-  const ref = String(source.ref || source.config?.ref || 'master').trim();
+  const ref = String(source.ref || source.config?.ref || source.resolvedRef || source.commit || '').trim();
   const path = String(record.path || '').trim();
-  if (adapterId !== 'github' || !repo || !path) return '';
+  if (adapterId !== 'github' || !repo || !ref || !path) return '';
   const cleanPath = path.replace(/^\/+/, '');
   if (!cleanPath) return '';
   return `https://github.com/${repo}/blob/${ref}/${cleanPath}`;

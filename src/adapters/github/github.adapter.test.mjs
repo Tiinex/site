@@ -60,6 +60,7 @@ assert.equal(materialized.failCount, 0, 'repo discovery should not fail for mapp
 assert.equal(materialized.records.length, 2, 'records should be materialized');
 assert(materialized.records.every((record) => !record.source), 'adapter must not assign lifecycle source provenance');
 assert.equal(materialized.diagnostics.resolvedRef, 'main', 'adapter result should expose resolved ref');
+assert.equal(materialized.diagnostics.requests, 2, 'raw materialization should count fetch requests');
 
 const limitedFetch = makeFetch({
   [repoApi]: { json: { default_branch: 'main' } },
@@ -71,8 +72,30 @@ assert.equal(limited.failCount, 0, 'rate-limited repo discovery should be a warn
 assert.equal(limited.errors.length, 0, 'rate-limited repo discovery should not be a fatal adapter error');
 assert(limited.warnings.some((warning) => warning.code === 'github.repo.discovery.rate-limited-or-forbidden'), '403 discovery should produce a precise warning');
 assert.equal(limited.diagnostics.discoveryUnavailable, true, 'diagnostics should preserve discovery-unavailable state');
+assert(limited.diagnostics.transportEvents.some((event) => event.code === 'github.repo.discovery.rate-limited-or-forbidden'), '403 discovery should be captured as a transport event');
+
+
+const budgetCalled = [];
+const budgetLimited = await materializeGithubSource(
+  { id: 'github:owner/repo', repo, ref: 'main', rootPath: '.topics' },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md', '.topics/nested/b.trace.md'] },
+  { fetchImpl: makeFetch(map, budgetCalled), maxRequestsPerOperation: 1 }
+);
+assert.equal(budgetLimited.records.length, 0, 'transport budget should block raw materialization before fetching');
+assert.equal(budgetLimited.okCount, 0, 'budget-blocked materialization should not claim loaded records');
+assert.equal(budgetLimited.failCount, 0, 'budget-blocked transport policy is degraded warning, not file failure');
+assert.equal(budgetLimited.diagnostics.requests, 0, 'budget block must happen before raw fetch requests');
+assert.equal(budgetCalled.length, 0, 'budget-blocked raw load must not call fetch');
+assert(budgetLimited.warnings.some((warning) => warning.code === 'transport.policy.request-budget-exceeded'), 'budget warning must be surfaced');
+assert(budgetLimited.diagnostics.transportEvents.some((event) => event.code === 'transport.policy.request-budget-exceeded'), 'budget warning must be a transport event');
 
 const issueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
-assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred');
+assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred without fixtures');
+assert.equal(issueDeferred.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
+
+const issueSnapshot = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl, issueSnapshotFixtures: { 'https://github.com/owner/repo/issues/1': { title: 'Fixture issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z' } } });
+assert.equal(issueSnapshot.records.length, 1, 'fixture-backed issue snapshot should materialize one evidence record');
+assert.equal(issueSnapshot.records[0].kind, 'tiinex.evidence.v1', 'issue snapshot should become an evidence record');
+assert.equal(issueSnapshot.records[0].source, undefined, 'adapter must not assign lifecycle source provenance to issue snapshots');
 
 console.log('✓ github.adapter tests passed');

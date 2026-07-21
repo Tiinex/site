@@ -24,6 +24,15 @@ assert(localContinue.text.includes('Boundary: browser-local session material'), 
 const localReference = createRecordActionResult(localRecord, RecordActionKind.reference);
 assert(localReference.text.includes('Record ID: local-1'), 'reference result must contain stable record id');
 
+
+const unpinnedGithubRecord = {
+  id: 'source:github:tiinex/docs:.topics/README.md',
+  title: 'Unpinned Source',
+  path: '.topics/README.md',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: '' }
+};
+assert(!sourceHrefForRecord(unpinnedGithubRecord), 'github source href must not guess a default branch when ref is unpinned');
+
 const githubRecord = {
   id: 'source:github:tiinex/docs:.topics/README.md',
   title: 'Readme',

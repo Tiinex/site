@@ -1,1 +1,5 @@
-export function rootPresent(artifact, context = {}) { return { title: artifact?.title || 'Root', summary: artifact?.summary || 'Minimum shared contract for Tiinex lineage artifacts; abstract envelope and fallback.', badges: ['abstract', 'tiinex.root.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }
+import { presentRootFallback } from './root.fallback.js';
+
+export function rootPresent(artifact, context = {}) {
+  return presentRootFallback(artifact, context);
+}

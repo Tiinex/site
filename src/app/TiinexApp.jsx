@@ -263,6 +263,18 @@ export function TiinexApp() {
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
         }, { fetchImpl: fetch, maxFiles: 500 });
+        const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
+        if (resolvedRef && !String(result.source.ref || '').trim()) {
+          const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
+            repository: result.source.repo || repository,
+            repo: result.source.repo || repository,
+            ref: resolvedRef,
+            rootPath: result.source.rootPath || rootPath,
+            label: result.source.label || label,
+            discoveryState: 'resolved'
+          }));
+          if (pinned?.ok) finalState = pinned.state;
+        }
         if (out.okCount > 0) {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
           if (ins?.ok) finalState = ins.state;
@@ -417,7 +429,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v119.3" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v158-source-transport-policy" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}

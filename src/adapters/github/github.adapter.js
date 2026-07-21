@@ -1,5 +1,7 @@
 import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '../adapter.contracts.js';
 import { loadGithubFilesForSource } from '../../sources/github/github.loader.js';
+import { materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { authorizeSourceTransport } from '../../sources/transport.policy.js';
 
 export const GITHUB_ADAPTER_ID = 'github';
 const MARKDOWN_EXTENSIONS = /\.(md|markdown|trace\.md|schema\.md|validator\.md|workspace\.md)$/i;
@@ -25,7 +27,7 @@ export function createGithubAdapter() {
       fileRefs: 'explicit Markdown paths or raw/blob URLs'
     },
     boundary: 'explicit GitHub source boundary; public tree/raw/blob file reads only in browser viewer',
-    notes: ['Repo tree discovery is public/read-only and bounded. Auth, mirror cache, and issue reader are separate adapter slices.']
+    notes: ['Repo tree discovery is public/read-only and bounded. Issue/discussion snapshots require explicit targets and are materialized only from supplied fixtures or a future reader slice.']
   });
 }
 
@@ -149,7 +151,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const explicitRefs = Array.isArray(input.fileRefs) ? input.fileRefs : [];
   let refs = explicitRefs.slice();
   let resolvedRef = String(source?.ref || '').trim();
-  const diagnostics = { transport: 'public-github-api/raw', explicitFileRefs: explicitRefs.length, discoveredFileRefs: 0 };
+  const diagnostics = { transport: 'public-github-api/raw', explicitFileRefs: explicitRefs.length, discoveredFileRefs: 0, transportEvents: [] };
   const warnings = [];
   const errors = [];
 
@@ -163,26 +165,53 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       diagnostics.resolvedBy = discovered.resolvedBy;
       warnings.push(...(discovered.warnings || []));
     } catch (error) {
-      warnings.push(githubDiscoveryWarning(error));
+      const warning = githubDiscoveryWarning(error);
+      warnings.push(warning);
+      diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'repo-discovery' }, warning));
       diagnostics.discoveryUnavailable = true;
       diagnostics.discoveryError = String(error && error.message ? error.message : error);
     }
   }
 
+  let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
-    warnings.push({ code: 'github.issue.reader.deferred', message: 'Issue/discussion snapshot reader is registered but not materialized in this adapter slice.' });
+    const parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
+    diagnostics.issueSnapshotTargets = parsedIssueTargets.counts.targets;
+    if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ ref: entry.ref }, entry)));
+    if (options.issueSnapshotFixtures && parsedIssueTargets.counts.targets) {
+      issueSnapshotResult = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
+      warnings.push(...issueSnapshotResult.warnings);
+      errors.push(...issueSnapshotResult.errors);
+      diagnostics.issueSnapshotRecords = issueSnapshotResult.records.length;
+    } else if (parsedIssueTargets.counts.targets) {
+      warnings.push({ code: 'github.issue.reader.deferred', severity: 'warning', message: 'Explicit GitHub issue/discussion targets were parsed, but snapshot fetching is deferred without fixtures or a future reader slice.' });
+    }
   }
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
   const unique = uniqueRefs(refs);
-  const result = unique.length ? await loadGithubFilesForSource(sourceForLoad, unique, options) : { records: [], errors: [], okCount: 0, failCount: 0 };
+  const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
+  const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: unique.length }, policyInput) : null;
+  let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };
+  if (authorization && !authorization.allowed) {
+    diagnostics.transportPolicy = authorization;
+    for (const issue of authorization.findings || []) {
+      warnings.push({ code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true });
+      diagnostics.transportEvents.push({ code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, resultKind: 'transport-policy', retryable: issue.retryable === true });
+    }
+  } else {
+    result = unique.length ? await loadGithubFilesForSource(sourceForLoad, unique, options) : result;
+  }
+  diagnostics.requests = Number(result.diagnostics?.requests || 0);
+  diagnostics.transportEvents = diagnostics.transportEvents.concat(result.diagnostics?.transportEvents || []);
+  const records = result.records.concat(issueSnapshotResult.records || []);
   return makeAdapterResult({
     adapterId: GITHUB_ADAPTER_ID,
     sourceId: source?.id || '',
-    records: result.records,
+    records,
     errors: errors.concat(result.errors || []),
     warnings,
-    okCount: result.okCount,
+    okCount: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0),
     failCount: errors.length + (result.failCount || 0),
     diagnostics: Object.assign(diagnostics, {
       fileRefs: unique.length,

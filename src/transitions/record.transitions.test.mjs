@@ -26,6 +26,7 @@ assert.equal(continuation.kind, 'tiinex.topic.v1', 'continuation draft must targ
 assert.equal(continuation.status, 'local', 'continuation must remain local/session');
 assert.equal(continuation.hasContinuityContext, true, 'continuation must claim continuity context');
 assert.equal(continuation.hasIntegrity, true, 'continuation must include draft integrity marker');
+assert.equal(continuation.validation.ok, true, 'continuation must pass transition validation');
 assert(continuation.markdown.includes('Envelope Schema: [tiinex.root.v1]'), 'continuation markdown must include Envelope Schema');
 assert(continuation.markdown.includes('Parent Schema: [tiinex.topic.v1]'), 'continuation markdown must include Parent Schema');
 assert(continuation.markdown.includes('Trace: record:local:ws:notes/example.md'), 'continuation markdown must include parent trace');
@@ -43,6 +44,7 @@ assert(!rootValidate(parsedContinuation).some((finding) => finding.severity === 
 const reference = createReferenceDraft(parent, {}, { clock: () => '2026-07-21T00:00:00.000Z' });
 assert.equal(reference.kind, 'tiinex.evidence.v1', 'reference draft should materialize as evidence');
 assert.equal(reference.hasIntegrity, true, 'reference must include draft integrity marker');
+assert.equal(reference.validation.ok, true, 'reference must pass transition validation');
 assert(reference.markdown.includes('## Reference'), 'reference draft must contain reference section');
 assert(reference.markdown.includes('Current Schema: [tiinex.evidence.v1]'), 'reference draft must declare evidence current schema');
 assert(reference.path.startsWith('references/'), 'reference path must be deterministic local reference path');

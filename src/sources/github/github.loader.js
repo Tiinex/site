@@ -78,22 +78,30 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
   if (!fetchImpl) throw new Error('fetchImpl not available');
   const records = [];
   const errors = [];
+  const transportEvents = [];
+  let requests = 0;
   for (const ref of Array.isArray(fileRefs) ? fileRefs : []) {
     let rawUrl;
     try {
       rawUrl = normalizeGithubRefToRaw(source, ref);
     } catch (e) {
-      errors.push({ ref, error: String(e && e.message ? e.message : e) });
+      const message = String(e && e.message ? e.message : e);
+      errors.push({ ref, error: message });
+      transportEvents.push({ ref, code: 'github.raw.ref.invalid', severity: 'error', message });
       continue;
     }
     if (!isHttps(rawUrl)) {
       errors.push({ ref, error: 'non-https URL' });
+      transportEvents.push({ ref, code: 'github.raw.non-https', severity: 'error', message: 'non-https URL' });
       continue;
     }
     try {
+      requests += 1;
       const res = await fetchImpl(rawUrl, { cache: 'no-store' });
       if (!res || !res.ok) {
-        errors.push({ ref, error: `${res?.status || 'ERR'} ${res?.statusText || ''}`.trim() });
+        const message = `${res?.status || 'ERR'} ${res?.statusText || ''}`.trim();
+        errors.push({ ref, error: message });
+        transportEvents.push({ ref, url: rawUrl, status: res?.status || 0, code: 'github.raw.fetch.failed', severity: 'error', message });
         continue;
       }
       const markdown = await res.text();
@@ -101,8 +109,10 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
       const rec = createRecordFromMarkdown(markdown, { path: rawUrl, name, sourceMode: 'github-source' });
       records.push(rec);
     } catch (e) {
-      errors.push({ ref, error: String(e && e.message ? e.message : e) });
+      const message = String(e && e.message ? e.message : e);
+      errors.push({ ref, error: message });
+      transportEvents.push({ ref, url: rawUrl || '', code: 'github.raw.fetch.exception', severity: 'error', message });
     }
   }
-  return { records, errors, okCount: records.length, failCount: errors.length };
+  return { records, errors, okCount: records.length, failCount: errors.length, diagnostics: { requests, transportEvents } };
 }

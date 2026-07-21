@@ -28,15 +28,40 @@ function loadPersistence() {
 }
 
 const { persistence, env, historyUrls } = loadPersistence();
-const state = { version: 1, activeWorkspaceId: 'local-demo', view: { workspaceVerse: 'feed' }, workspaces: [{ id: 'local-demo', name: 'Demo' }] };
+const state = {
+  version: 1,
+  activeWorkspaceId: 'local-demo',
+  view: { workspaceVerse: 'tree', query: 'topic' },
+  workspaces: [{
+    id: 'local-demo',
+    name: 'Demo',
+    records: [
+      { id: 'r1', title: 'Topic', path: 'topics/topic.md', markdown: '# Topic', sourceMode: 'local-draft', source: { kind: 'local-session', adapterId: 'local' } },
+      { id: 'r2', title: 'Remote', path: 'topics/remote.md', markdown: '# Remote should not be cache authority', sourceMode: 'source-backed', source: { kind: 'github-tree', adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef' } }
+    ],
+    assets: [
+      { id: 'a1', path: 'assets/icon.svg', name: 'icon.svg', content: '<svg/>', previewState: 'available', source: { kind: 'local-session', adapterId: 'archive' } },
+      { id: 'a2', path: 'assets/remote.svg', name: 'remote.svg', content: '<svg>remote</svg>', previewState: 'available', source: { kind: 'github-tree', adapterId: 'github' } }
+    ],
+    workspaceMergeCandidates: [{ id: 'w1', title: 'Workspace', path: 'demo.workspace.md', markdown: '# Demo workspace' }],
+    importLog: [{ kind: 'fixture', at: '2026-07-21T00:00:00.000Z' }]
+  }]
+};
 if (persistence.readInitialState({ storage: env.localStorage, location: env.location }) !== null) throw new Error('clean URL must not restore local storage implicitly');
 const hash = persistence.writeState(state, { storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
 if (!hash.startsWith('#state=')) throw new Error('state must be written to hash');
 if (historyUrls[0]?.[0] !== 'push') throw new Error('workspace route creation should be push-history capable');
 if (env.location.hash !== hash) throw new Error('hash should be history-owned');
 if (persistence.readHashState(env.location).activeWorkspaceId !== 'local-demo') throw new Error('hash state should restore active workspace');
-if (persistence.readInitialState({ storage: env.localStorage, location: env.location }).workspaces[0].name !== 'Demo') throw new Error('explicit hash should restore state');
-if (persistence.readStoredState(env.localStorage).workspaces[0].name !== 'Demo') throw new Error('local storage cache should mirror workspace');
+const restored = persistence.readInitialState({ storage: env.localStorage, location: env.location });
+if (restored.workspaces[0].name !== 'Demo') throw new Error('explicit hash should restore state');
+if (restored.workspaces[0].records[0].markdown !== '# Topic') throw new Error('hash reload should hydrate local record markdown from session cache');
+if (restored.workspaces[0].records[1].markdown !== '') throw new Error('hash reload should keep source-backed record markdown metadata-only');
+if (restored.workspaces[0].records[1].cacheState !== 'source-backed-metadata-only-session-cache') throw new Error('source-backed record must disclose metadata-only cache state');
+if (restored.workspaces[0].assets[0].content !== '<svg/>') throw new Error('hash reload should hydrate local assets from session cache');
+if (restored.workspaces[0].assets[1].content !== '') throw new Error('hash reload should keep source-backed asset content metadata-only');
+if (restored.workspaces[0].workspaceMergeCandidates[0].markdown !== '# Demo workspace') throw new Error('hash reload should hydrate workspace candidates from session cache');
+if (persistence.readStoredState(env.localStorage).workspaces[0].records[0].path !== 'topics/topic.md') throw new Error('local storage cache should mirror workspace material');
 
 env.location.hash = '';
 if (persistence.readInitialState({ storage: env.localStorage, location: env.location }) !== null) throw new Error('clean URL should ignore stale local storage cache');

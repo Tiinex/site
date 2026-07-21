@@ -419,7 +419,9 @@
 
   function setWorkspaceVerse(state, verse) {
     const next = cloneState(state);
-    next.view = Object.assign({}, next.view || {}, { workspaceVerse: verse === 'tree' ? 'tree' : 'feed' });
+    const requested = String(verse || '').trim();
+    const workspaceVerse = ['feed', 'tree', 'lineage', 'audit'].includes(requested) ? requested : 'feed';
+    next.view = Object.assign({}, next.view || {}, { workspaceVerse });
     return next;
   }
 

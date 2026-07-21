@@ -33,10 +33,10 @@ writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v119-react-workspace-add-flow',
+  source: 'v158-source-transport-policy',
   publicRuntime: 'vite-react-bundle',
   entry: 'src/main.jsx',
   legacyReference: '.old is source-only behavior reference, not public runtime',
-  releaseCacheKey: `v119-${Date.now()}`
+  releaseCacheKey: `v158-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built Vite React public shell to ${out}`);

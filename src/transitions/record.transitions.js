@@ -1,3 +1,6 @@
+import { validateTransitionDraft } from './transition.validate.js';
+import { buildArtifactCreationContract, createArtifactDraftMarkdown, validateArtifactCreationResult } from '../schemas/creation.contracts.js';
+
 export const RECORD_TRANSITION_CONTRACT_ID = 'tiinex.record.transitions.v1';
 export const RECORD_TRANSITION_RESULT_SCHEMA_ID = 'tiinex.record.transition.result.v1';
 export const ROOT_SCHEMA_ID = 'tiinex.root.v1';
@@ -11,7 +14,8 @@ export function listContinuationTargets(schemaRegistry = {}) {
       label: module.label || labelFromSchemaId(module.id),
       summary: module.summary || 'Schema-backed Tiinex leaf.',
       parentSchemaId: module.parentSchemaId || '',
-      contract: RECORD_TRANSITION_CONTRACT_ID
+      contract: RECORD_TRANSITION_CONTRACT_ID,
+      creationContract: `creation:continue-from-record:${module.id}`
     }));
 }
 
@@ -23,8 +27,9 @@ export function createContinuationDraft(parentRecord = {}, target = {}, input = 
   const summary = normalizeSummary(input.summary || `Continuation leaf drafted from ${parentTitle}.`);
   const path = `continuations/${slugify(parentTitle)}--${slugify(targetLabel)}.md`;
   const createdAt = nowIso(options);
-  const markdown = createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt });
-  return {
+  const creationContract = buildArtifactCreationContract({ schemaId: targetId, transitionType: 'continue-from-record' });
+  const markdown = createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract });
+  const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
     title,
     summary,
@@ -35,6 +40,7 @@ export function createContinuationDraft(parentRecord = {}, target = {}, input = 
     sourceMode: 'local-transition',
     hasContinuityContext: true,
     hasIntegrity: true,
+    creationContract,
     transition: {
       schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
       contract: RECORD_TRANSITION_CONTRACT_ID,
@@ -43,9 +49,13 @@ export function createContinuationDraft(parentRecord = {}, target = {}, input = 
       parentPath: parentRecord.path || '',
       parentBoundary: boundaryForRecord(parentRecord),
       targetSchemaId: targetId,
-      createdAt
+      createdAt,
+      creationContractId: creationContract.id
     }
   };
+  draft.creationValidation = validateArtifactCreationResult(draft, parentRecord, { contract: creationContract });
+  draft.validation = validateTransitionDraft(draft, parentRecord);
+  return draft;
 }
 
 export function createReferenceDraft(parentRecord = {}, input = {}, options = {}) {
@@ -54,35 +64,31 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
   const summary = normalizeSummary(input.summary || `Reference leaf preserving ${parentTitle}.`);
   const path = `references/${slugify(parentTitle)}.md`;
   const createdAt = nowIso(options);
-  const markdown = [
-    createRootEnvelope({
-      parentRecord,
-      currentSchemaId: 'tiinex.evidence.v1',
-      createdAt,
-      summary,
-      status: 'draft/local',
-      why: 'Created as a browser-local reference draft from an existing Tiinex record.'
-    }),
-    '',
-    '---',
-    '',
-    `# ${title}`,
-    '',
-    '## Reference',
-    '',
-    parentRecord.summary || 'No summary available.',
-    '',
-    '## Source Boundary',
-    '',
-    `- ${boundaryForRecord(parentRecord)}`,
-    parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
-    parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
-    '',
-    parentRecord.markdown ? '## Source Excerpt\n\n```markdown\n' + truncate(parentRecord.markdown, 1800) + '\n```' : '',
-    '',
-    createDraftIntegrity()
-  ].filter(Boolean).join('\n');
-  return {
+  const creationContract = buildArtifactCreationContract({ schemaId: 'tiinex.evidence.v1', transitionType: 'reference-record' });
+  const markdown = createArtifactDraftMarkdown(creationContract, {
+    parentRecord,
+    title,
+    summary,
+    createdAt,
+    status: 'draft/local',
+    why: 'Created as a browser-local reference draft from an existing Tiinex record.',
+    bodyMarkdown: [
+      `# ${title}`,
+      '',
+      '## Reference',
+      '',
+      parentRecord.summary || 'No summary available.',
+      '',
+      '## Source Boundary',
+      '',
+      `- ${boundaryForRecord(parentRecord)}`,
+      parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
+      parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
+      '',
+      parentRecord.markdown ? '## Source Excerpt\n\n```markdown\n' + truncate(parentRecord.markdown, 1800) + '\n```' : ''
+    ].filter(Boolean).join('\n')
+  });
+  const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
     title,
     summary,
@@ -93,6 +99,7 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
     sourceMode: 'local-reference',
     hasContinuityContext: true,
     hasIntegrity: true,
+    creationContract,
     transition: {
       schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
       contract: RECORD_TRANSITION_CONTRACT_ID,
@@ -101,42 +108,42 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
       parentPath: parentRecord.path || '',
       parentBoundary: boundaryForRecord(parentRecord),
       targetSchemaId: 'tiinex.evidence.v1',
-      createdAt
+      createdAt,
+      creationContractId: creationContract.id
     }
   };
+  draft.creationValidation = validateArtifactCreationResult(draft, parentRecord, { contract: creationContract });
+  draft.validation = validateTransitionDraft(draft, parentRecord);
+  return draft;
 }
 
-function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt }) {
-  return [
-    createRootEnvelope({
-      parentRecord,
-      currentSchemaId: targetId,
-      createdAt,
-      summary,
-      status: 'draft/local',
-      why: 'Created as a browser-local continuation draft. No source provenance is inferred.'
-    }),
-    '',
-    '---',
-    '',
-    `# ${title}`,
-    '',
-    `## ${targetLabel} Draft`,
-    '',
+function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract }) {
+  return createArtifactDraftMarkdown(creationContract, {
+    parentRecord,
+    currentSchemaId: targetId,
+    title,
     summary,
-    '',
-    '## Source Boundary',
-    '',
-    `- ${boundaryForRecord(parentRecord)}`,
-    parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
-    parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
-    '',
-    '## Source Excerpt',
-    '',
-    truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._',
-    '',
-    createDraftIntegrity()
-  ].filter(Boolean).join('\n');
+    createdAt,
+    status: 'draft/local',
+    why: 'Created as a browser-local continuation draft. No source provenance is inferred.',
+    bodyMarkdown: [
+      `# ${title}`,
+      '',
+      `## ${targetLabel} Draft`,
+      '',
+      summary,
+      '',
+      '## Source Boundary',
+      '',
+      `- ${boundaryForRecord(parentRecord)}`,
+      parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
+      parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
+      '',
+      '## Source Excerpt',
+      '',
+      truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._'
+    ].filter(Boolean).join('\n')
+  });
 }
 
 function createRootEnvelope({ parentRecord, currentSchemaId, createdAt, summary, status, why }) {

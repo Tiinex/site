@@ -4133,3 +4133,493 @@ pre { white-space: pre-wrap; overflow:auto; }
     white-space: normal;
   }
 }
+
+/* v139: make path Tree feel branched, not just indented. Folders are material lineage too. */
+.tx-path-tree-state {
+  --tx-tree-line: rgba(189,115,255,0.22);
+  --tx-tree-line-soft: rgba(101,242,231,0.16);
+}
+.tx-tree-folder {
+  position: relative;
+}
+.tx-tree-folder-children {
+  position: relative;
+  border-left: 1px solid var(--tx-tree-line);
+}
+.tx-tree-folder-children::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0.95rem;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--tx-tree-line), rgba(189,115,255,0.06));
+  pointer-events: none;
+}
+.tx-tree-folder > .tx-tree-folder-summary,
+.tx-tree-folder-children > .tx-tree-leaf-row,
+.tx-tree-folder-children > .tx-tree-folder {
+  position: relative;
+}
+.tx-tree-folder-children > .tx-tree-leaf-row::before,
+.tx-tree-folder-children > .tx-tree-folder > .tx-tree-folder-summary::after {
+  content: '';
+  position: absolute;
+  left: calc(-0.62rem - 1px);
+  top: 50%;
+  width: 0.52rem;
+  height: 1px;
+  background: linear-gradient(to right, var(--tx-tree-line), var(--tx-tree-line-soft));
+  pointer-events: none;
+}
+.tx-tree-folder-children > .tx-tree-folder > .tx-tree-folder-summary::after {
+  left: calc(-0.72rem - 1px);
+}
+.tx-tree-leaf-row:hover::before,
+.tx-tree-leaf-row:focus-visible::before,
+.tx-tree-folder-summary:hover::after,
+.tx-tree-folder-summary:focus-visible::after {
+  background: rgba(101,242,231,0.42);
+}
+@media (max-width: 760px) {
+  .tx-tree-folder-children > .tx-tree-leaf-row::before,
+  .tx-tree-folder-children > .tx-tree-folder > .tx-tree-folder-summary::after {
+    left: calc(-0.5rem - 1px);
+    width: 0.42rem;
+  }
+}
+
+/* v141: loaded lineage projection and reload-safe cache disclosure. */
+.tx-workspace-lineage-state {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tx-lineage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.tx-lineage-header > div:first-child {
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+}
+
+.tx-lineage-header strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.tx-lineage-header small,
+.tx-lineage-node-meta small,
+.tx-lineage-edge-row small {
+  color: rgba(226, 232, 240, 0.68);
+}
+
+.tx-lineage-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tx-lineage-stats span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 3.2rem;
+  padding: 0.32rem 0.44rem;
+  border-radius: 12px;
+  background: rgba(148, 163, 184, 0.11);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.tx-lineage-stats strong {
+  line-height: 1;
+}
+
+.tx-lineage-stats small {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tx-lineage-findings,
+.tx-lineage-edge-list,
+.tx-lineage-node-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tx-lineage-findings {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tx-lineage-finding {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 0.24rem 0.48rem;
+  background: rgba(15, 23, 42, 0.28);
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.76rem;
+}
+
+.tx-lineage-finding.tx-warning,
+.tx-lineage-edge-missing {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: rgba(120, 53, 15, 0.14);
+}
+
+.tx-lineage-edge-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.tx-lineage-edge-row button,
+.tx-lineage-node {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.34);
+  color: inherit;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.tx-lineage-edge-row button {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+  padding: 0.36rem 0.5rem;
+}
+
+.tx-lineage-edge-row button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.tx-lineage-edge-row button span,
+.tx-lineage-edge-row button small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-lineage-edge-connector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tx-lineage-node {
+  display: grid;
+  gap: 0.36rem;
+  padding: 0.56rem 0.64rem;
+  width: 100%;
+}
+
+.tx-lineage-node-main,
+.tx-lineage-node-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.tx-lineage-node-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .tx-lineage-header,
+  .tx-lineage-edge-row {
+    grid-template-columns: 1fr;
+    display: grid;
+    align-items: stretch;
+  }
+  .tx-lineage-stats {
+    justify-content: flex-start;
+  }
+  .tx-lineage-edge-connector {
+    justify-content: center;
+  }
+}
+
+/* v142: loaded-only Audit projection. Audit is explicit workspace reading, not a hidden background claim. */
+.tx-workspace-audit-state {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.tx-audit-header,
+.tx-audit-stats,
+.tx-audit-finding-summary,
+.tx-audit-lineage-findings,
+.tx-audit-record-list,
+.tx-audit-record-row,
+.tx-audit-record-main,
+.tx-audit-record-meta {
+  min-width: 0;
+}
+
+.tx-audit-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
+  border: 1px solid rgba(115, 189, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.26);
+  padding: 0.68rem 0.74rem;
+}
+
+.tx-audit-header strong,
+.tx-audit-header small {
+  display: block;
+}
+
+.tx-audit-header small {
+  margin-top: 0.18rem;
+  color: rgba(226, 232, 240, 0.62);
+  line-height: 1.35;
+}
+
+.tx-audit-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.42rem;
+}
+
+.tx-audit-stats span,
+.tx-audit-finding-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.28);
+  padding: 0.26rem 0.52rem;
+  font-size: 0.76rem;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.tx-audit-stats small {
+  color: rgba(226, 232, 240, 0.52);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+.tx-audit-finding-summary,
+.tx-audit-lineage-findings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tx-audit-record-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.tx-audit-record-row {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.24);
+  color: inherit;
+  display: grid;
+  gap: 0.34rem;
+  padding: 0.56rem 0.64rem;
+  text-align: left;
+  width: 100%;
+}
+
+.tx-audit-record-row:hover {
+  border-color: rgba(115, 189, 255, 0.28);
+  background: rgba(30, 41, 59, 0.34);
+}
+
+.tx-audit-status-invalid-or-incomplete {
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+.tx-audit-record-main,
+.tx-audit-record-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tx-audit-record-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-audit-record-findings {
+  color: rgba(226, 232, 240, 0.58);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .tx-audit-header {
+    grid-template-columns: 1fr;
+  }
+  .tx-audit-stats {
+    justify-content: flex-start;
+  }
+}
+
+/* v143: loaded audit recoverability summary; semantic, not decorative. */
+.tx-audit-recovery-summary {
+  border: 1px solid var(--tx-border, rgba(148, 163, 184, 0.28));
+  border-radius: 1rem;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.025);
+  display: grid;
+  gap: 0.65rem;
+}
+.tx-audit-recovery-summary header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: baseline;
+}
+.tx-audit-recovery-summary header strong {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+.tx-audit-recovery-summary header small,
+.tx-audit-recovery-latest {
+  color: var(--tx-muted, #64748b);
+  margin: 0;
+}
+.tx-audit-recovery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.tx-audit-recovery-grid span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+  padding: 0.22rem 0.48rem;
+  background: rgba(255,255,255,0.45);
+}
+.tx-audit-recovery-grid strong { font-size: 0.82rem; }
+.tx-audit-recovery-grid small { color: var(--tx-muted, #64748b); }
+.tx-audit-recovery-guarantees {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--tx-muted, #64748b);
+  display: grid;
+  gap: 0.2rem;
+}
+.tx-audit-recovery-issues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.tx-audit-recovery-issues span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+}
+.tx-audit-recovery-latest {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* v144: transition conformance is surfaced as a compact action result, not hidden console state. */
+.tx-transition-validation {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.58rem 0.68rem;
+  border: 1px solid rgba(101,242,231,0.22);
+  border-radius: 12px;
+  background: rgba(101,242,231,0.045);
+  color: rgba(247,248,251,0.78);
+  font-size: 0.78rem;
+}
+.tx-transition-validation strong {
+  color: rgba(247,248,251,0.9);
+  font-size: 0.8rem;
+}
+.tx-transition-validation span {
+  color: rgba(247,248,251,0.56);
+}
+.tx-transition-validation ul {
+  margin: 0.1rem 0 0;
+  padding-left: 1rem;
+  color: rgba(255,218,143,0.82);
+}
+.tx-transition-validation-invalid,
+.tx-transition-validation-degraded {
+  border-color: rgba(255,196,87,0.24);
+  background: rgba(255,196,87,0.04);
+}
+
+/* v145: publication/source-boundary preflight belongs to recoverability, not remote mutation UI. */
+.tx-audit-publication-preflight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin: 0.55rem 0 0;
+  font-size: 0.76rem;
+}
+.tx-audit-publication-preflight span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px solid var(--tx-border-subtle, rgba(148, 163, 184, 0.22));
+  border-radius: 999px;
+  padding: 0.22rem 0.48rem;
+  background: var(--tx-surface-soft, rgba(15, 23, 42, 0.32));
+  color: var(--tx-text-muted, #94a3b8);
+}
+.tx-audit-publication-preflight.tx-preflight-blocked span:first-child,
+.tx-audit-publication-preflight.tx-preflight-degraded span:first-child {
+  color: var(--tx-warning, #fbbf24);
+}

@@ -10,6 +10,9 @@ import { createContinuationDraft, createReferenceDraft, listContinuationTargets 
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
+import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
+import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
+import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 
 export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
@@ -51,6 +54,10 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          : verse === 'lineage'
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} onOpenRecord={onOpenRecord} />
+          : verse === 'audit'
+            ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
             ? <>
                 {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
@@ -140,6 +147,8 @@ function ModeToolbar({ state, query, onVerse, onQuery }) {
       <div className="tx-segment" aria-label="Workspace verse">
         <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
         <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
+        <button type="button" className={verse === 'lineage' ? 'tx-active' : ''} onClick={() => onVerse('lineage')}>Lineage</button>
+        <button type="button" className={verse === 'audit' ? 'tx-active' : ''} onClick={() => onVerse('audit')}>Audit</button>
       </div>
       <label className="tx-search-field tx-search-field-icon">
         <Icon name="search" />
@@ -254,6 +263,227 @@ function TreeCountBadges({ counts = {} }) {
 }
 
 
+
+
+function WorkspaceAuditState({ workspace, query = '', records = [], assets = [], workspaceCandidates = [], onOpenRecord }) {
+  const audit = buildWorkspaceAuditView(workspace, { records, query });
+  const recovery = buildWorkspaceRecoverabilityView(workspace, { records, assets, workspaceCandidates });
+  const counts = audit.visibleCounts || audit.counts || {};
+  return (
+    <section className="tx-workspace-audit-state" aria-label="Loaded audit">
+      <header className="tx-audit-header">
+        <div>
+          <strong><Icon name="audit" /> {audit.title}</strong>
+          <small>{audit.boundary}</small>
+        </div>
+        <div className="tx-audit-stats" aria-label="Audit stats">
+          <span><strong>{counts.records || 0}</strong><small>records</small></span>
+          <span><strong>{counts.invalid || 0}</strong><small>invalid</small></span>
+          <span><strong>{counts.degraded || 0}</strong><small>degraded</small></span>
+          <span><strong>{counts.missingLineage || 0}</strong><small>missing lineage</small></span>
+        </div>
+      </header>
+      <div className="tx-audit-finding-summary" aria-label="Audit finding summary">
+        <span><Icon name={counts.errors ? 'warning' : 'check'} /> {counts.errors || 0} errors</span>
+        <span><Icon name={counts.warnings ? 'warning' : 'check'} /> {counts.warnings || 0} warnings</span>
+        <span><Icon name="audit" /> {counts.fallbackUsed || 0} root fallback</span>
+        <span><Icon name="lineage" /> {counts.lineageFindings || 0} lineage findings</span>
+      </div>
+      {audit.lineage.findings.length ? (
+        <div className="tx-audit-lineage-findings" aria-label="Loaded lineage audit findings">
+          {audit.lineage.findings.slice(0, 6).map((finding, index) => (
+            <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>
+              <Icon name={(finding.severity === 'warning' || finding.severity === 'error') ? 'warning' : 'check'} /> {finding.code}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <AuditRecoverabilitySummary recovery={recovery} />
+      <div className="tx-audit-record-list" role="list" aria-label="Loaded audit records">
+        {audit.items.map((item) => <AuditRecordRow key={item.id} item={item} onOpenRecord={onOpenRecord} />)}
+      </div>
+      {audit.empty ? <p className="tx-tree-empty">No loaded records match this audit view.</p> : null}
+    </section>
+  );
+}
+
+
+function AuditRecoverabilitySummary({ recovery }) {
+  if (!recovery) return null;
+  const counts = recovery.counts || {};
+  const latest = recovery.latestImport;
+  return (
+    <section className={`tx-audit-recovery-summary tx-recovery-${recovery.status || 'recoverable'}`} aria-label="Recoverability summary">
+      <header>
+        <strong><Icon name={recovery.status === 'needs-attention' ? 'warning' : 'check'} /> {recovery.status || 'recoverable'}</strong>
+        <small>{recovery.boundary}</small>
+      </header>
+      <div className="tx-audit-recovery-grid">
+        <span><strong>{counts.localRecords || 0}</strong><small>local records</small></span>
+        <span><strong>{counts.sourceBackedRecords || 0}</strong><small>source-backed</small></span>
+        <span><strong>{counts.assets || 0}</strong><small>assets</small></span>
+        <span><strong>{counts.workspaceCandidates || 0}</strong><small>workspaces</small></span>
+        <span><strong>{counts.previewOmitted || 0}</strong><small>preview omitted</small></span>
+      </div>
+      {latest ? <p className="tx-audit-recovery-latest"><Icon name={latest.ok ? 'check' : 'warning'} /> {latest.message}</p> : null}
+      {recovery.publicationPreflight ? <AuditPublicationPreflight preflight={recovery.publicationPreflight} /> : null}
+      {recovery.reingestPlan ? <AuditReingestPlan plan={recovery.reingestPlan} /> : null}
+      {recovery.exportPackagePreflight ? <AuditExportPackagePreflight preflight={recovery.exportPackagePreflight} /> : null}
+      {recovery.exportPackageManifest ? <AuditExportPackageManifest manifest={recovery.exportPackageManifest} receipt={recovery.exportPackageReceipt} /> : null}
+      <ul className="tx-audit-recovery-guarantees">
+        {(recovery.guarantees || []).slice(0, 4).map((item) => <li key={item}>{item}</li>)}
+      </ul>
+      {(recovery.errors?.length || recovery.warnings?.length) ? (
+        <div className="tx-audit-recovery-issues">
+          {[...(recovery.errors || []), ...(recovery.warnings || [])].slice(0, 6).map((issue, index) => (
+            <span key={`${issue.code}-${issue.path}-${index}`} title={issue.message || issue.code}><Icon name="warning" /> {issue.code}{issue.path ? ` · ${compactPath(issue.path)}` : ''}</span>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+
+function AuditPublicationPreflight({ preflight }) {
+  const counts = preflight.counts || {};
+  return (
+    <div className={`tx-audit-publication-preflight tx-preflight-${preflight.status || 'unknown'}`} aria-label="Publication preflight">
+      <span><Icon name={preflight.status === 'blocked' ? 'warning' : 'check'} /> publication preflight: <strong>{preflight.status || 'unknown'}</strong></span>
+      <span>{counts.publishableLocalDrafts || 0} publishable local draft{(counts.publishableLocalDrafts || 0) === 1 ? '' : 's'}</span>
+      <span>{counts.sourceReferences || 0} source reference{(counts.sourceReferences || 0) === 1 ? '' : 's'}</span>
+      {(counts.errors || counts.warnings) ? <span>{counts.errors || 0} errors · {counts.warnings || 0} warnings</span> : null}
+    </div>
+  );
+}
+
+function AuditExportPackagePreflight({ preflight }) {
+  const counts = preflight.counts || {};
+  return (
+    <div className={`tx-audit-publication-preflight tx-export-package-${preflight.status || 'unknown'}`} aria-label="Export package preflight">
+      <span><Icon name={preflight.status === 'blocked' ? 'warning' : 'check'} /> export package: <strong>{preflight.status || 'unknown'}</strong></span>
+      <span>{counts.packageEntries || 0} package entr{(counts.packageEntries || 0) === 1 ? 'y' : 'ies'}</span>
+      <span>{counts.localDraftEntries || 0} local draft{(counts.localDraftEntries || 0) === 1 ? '' : 's'} · {counts.sourceReferenceEntries || 0} source ref{(counts.sourceReferenceEntries || 0) === 1 ? '' : 's'}</span>
+      {(counts.errors || counts.warnings) ? <span>{counts.errors || 0} errors · {counts.warnings || 0} warnings</span> : null}
+    </div>
+  );
+}
+
+
+function AuditExportPackageManifest({ manifest, receipt }) {
+  const counts = manifest.counts || {};
+  return (
+    <div className={`tx-audit-publication-preflight tx-export-manifest-${manifest.status || 'unknown'}`} aria-label="Export package manifest">
+      <span><Icon name={manifest.status === 'blocked' ? 'warning' : 'check'} /> package manifest: <strong>{manifest.status || 'unknown'}</strong></span>
+      <span>{counts.entries || 0} planned entr{(counts.entries || 0) === 1 ? 'y' : 'ies'} · {counts.blocked || 0} blocked</span>
+      <span>{manifest.integrity?.fingerprint || 'no fingerprint'}</span>
+      {receipt ? <span>receipt: {receipt.state || 'unknown'}</span> : null}
+    </div>
+  );
+}
+
+function AuditReingestPlan({ plan }) {
+  const counts = plan.counts || {};
+  return (
+    <div className={`tx-audit-publication-preflight tx-reingest-${plan.status || 'unknown'}`} aria-label="Re-ingest plan">
+      <span><Icon name={plan.status === 'blocked' ? 'warning' : 'check'} /> re-ingest plan: <strong>{plan.status || 'unknown'}</strong></span>
+      <span>{counts.pinnedSourceTargets || 0}/{counts.sourceTargets || 0} pinned source target{(counts.sourceTargets || 0) === 1 ? '' : 's'}</span>
+      <span>{counts.localDraftTargets || 0} local draft target{(counts.localDraftTargets || 0) === 1 ? '' : 's'}</span>
+      {(counts.errors || counts.warnings) ? <span>{counts.errors || 0} errors · {counts.warnings || 0} warnings</span> : null}
+    </div>
+  );
+}
+
+function AuditRecordRow({ item, onOpenRecord }) {
+  const findings = item.findings || [];
+  return (
+    <button type="button" className={`tx-audit-record-row tx-audit-status-${item.status || 'unknown'}`} role="listitem" onClick={() => onOpenRecord?.(item.id)} title={item.path || ''}>
+      <span className="tx-audit-record-main">
+        <Icon name={item.status === 'readable' ? 'check' : 'warning'} />
+        <strong>{item.title}</strong>
+      </span>
+      <span className="tx-audit-record-meta">
+        <Badge>{item.status}</Badge>
+        <Badge>{item.schemaId || 'markdown'}</Badge>
+        <Badge>{item.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
+        {item.fallbackUsed ? <Badge>root fallback</Badge> : null}
+        {item.path ? <small>{compactPath(item.path)}</small> : null}
+      </span>
+      {findings.length ? <small className="tx-audit-record-findings">{findings.slice(0, 3).map((finding) => finding.code).join(' · ')}</small> : null}
+    </button>
+  );
+}
+
+function WorkspaceLineageState({ workspace, query = '', records = [], onOpenRecord }) {
+  const lineage = buildWorkspaceLineageView(workspace, { records, query });
+  return (
+    <section className="tx-workspace-lineage-state" aria-label="Loaded lineage">
+      <header className="tx-lineage-header">
+        <div>
+          <strong><Icon name="lineage" /> {lineage.title}</strong>
+          <small>Loaded-only Parent Trace/Origin resolution · no network guesses</small>
+        </div>
+        <div className="tx-lineage-stats" aria-label="Lineage stats">
+          <span><strong>{lineage.stats.visibleNodes}</strong><small>nodes</small></span>
+          <span><strong>{lineage.stats.visibleEdges}</strong><small>edges</small></span>
+          <span><strong>{lineage.stats.missingEdges || 0}</strong><small>missing</small></span>
+          <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
+        </div>
+      </header>
+      {lineage.findings.length ? (
+        <div className="tx-lineage-findings" aria-label="Lineage findings">
+          {lineage.findings.slice(0, 5).map((finding, index) => (
+            <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>
+              <Icon name={(finding.severity === 'warning' || finding.severity === 'error') ? 'warning' : 'check'} /> {finding.code}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {lineage.edges.length ? (
+        <div className="tx-lineage-edge-list" role="list" aria-label="Resolved lineage edges">
+          {lineage.edges.map((edge) => (
+            <LineageEdgeRow key={edge.id} edge={edge} onOpenRecord={onOpenRecord} />
+          ))}
+        </div>
+      ) : null}
+      <div className="tx-lineage-node-list" role="list" aria-label="Loaded lineage nodes">
+        {lineage.nodes.map((node) => (
+          <button key={node.id} type="button" className="tx-lineage-node" onClick={() => onOpenRecord?.(node.id)} title={node.path || ''}>
+            <span className="tx-lineage-node-main"><Icon name={node.hasContinuityContext ? 'lineage' : 'open'} /> <strong>{node.title}</strong></span>
+            <span className="tx-lineage-node-meta">
+              {node.schemaId ? <Badge>{node.schemaId}</Badge> : <Badge>markdown</Badge>}
+              <Badge>{node.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
+              {node.trace ? <small>Trace: {compactPath(node.trace)}</small> : null}
+              {node.origin ? <small>Origin: {compactPath(node.origin)}</small> : null}
+            </span>
+          </button>
+        ))}
+      </div>
+      {lineage.empty ? <p className="tx-tree-empty">No loaded lineage nodes match this view.</p> : null}
+    </section>
+  );
+}
+
+function LineageEdgeRow({ edge, onOpenRecord }) {
+  const missing = edge.status === 'missing';
+  return (
+    <div className={`tx-lineage-edge-row ${missing ? 'tx-lineage-edge-missing' : ''}`} role="listitem">
+      <button type="button" disabled={missing || !edge.from} onClick={() => onOpenRecord?.(edge.from)}>
+        <span>{edge.fromTitle}</span>
+        {edge.fromPath ? <small>{compactPath(edge.fromPath)}</small> : null}
+      </button>
+      <span className="tx-lineage-edge-connector" title={`${edge.kind} · ${edge.method || edge.status}`}>
+        <Icon name={missing ? 'warning' : 'lineage'} /> {edge.kind}
+      </span>
+      <button type="button" onClick={() => onOpenRecord?.(edge.to)}>
+        <span>{edge.toTitle}</span>
+        {edge.toPath ? <small>{compactPath(edge.toPath)}</small> : null}
+      </button>
+      <Badge>{edge.status}</Badge>
+    </div>
+  );
+}
+
 function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   return (
     <article className="tx-artifact-card tx-workspace-candidate-card">
@@ -361,6 +591,13 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
           {record?.path ? <div><dt>Path</dt><dd>{record.path}</dd></div> : null}
           {source.label ? <div><dt>Source</dt><dd>{source.label}</dd></div> : null}
           {source.adapterId ? <div><dt>Adapter</dt><dd>{source.adapterId} · {source.sourceKind || source.kind || 'source'}</dd></div> : null}
+          {record?.envelopeSchemaId ? <div><dt>Envelope</dt><dd>{record.envelopeSchemaId}</dd></div> : null}
+          {record?.schemaId ? <div><dt>Current schema</dt><dd>{record.schemaId}</dd></div> : null}
+          {record?.currentCreatedAt ? <div><dt>Current created</dt><dd>{record.currentCreatedAt}</dd></div> : null}
+          {record?.parentSchemaId ? <div><dt>Parent schema</dt><dd>{record.parentSchemaId}</dd></div> : null}
+          {record?.trace ? <div><dt>Trace</dt><dd>{record.trace}</dd></div> : null}
+          {record?.origin ? <div><dt>Origin</dt><dd>{record.origin}</dd></div> : null}
+          {record?.rootDisclosure ? <div><dt>Root fallback</dt><dd>{record.rootDisclosure}</dd></div> : null}
         </dl>
         {record?.markdown ? <pre className="tx-record-markdown-preview">{String(record.markdown).slice(0, 2400)}</pre> : <p className="tx-muted">No embedded Markdown preview is available for this record.</p>}
         <div className="tx-dialog-actions">
@@ -391,6 +628,7 @@ export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, 
             <Badge>{draft.transition.parentBoundary}</Badge>
           </div>
           <p className="tx-muted">Creates a browser-local evidence/reference draft. The parent boundary is preserved; no source provenance is inferred.</p>
+          <TransitionValidationNotice validation={draft.validation} />
           <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
           <div className="tx-dialog-actions">
             <Button variant="ghost" onClick={onDismiss}>Close</Button>
@@ -453,12 +691,26 @@ function ContinuationDialog({ record, schemaRegistry, onDismiss, onCreateTransit
           <summary>Preview continuation Markdown</summary>
           <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
         </details>
+        <TransitionValidationNotice validation={draft.validation} />
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Cancel</Button>
           <Button variant="primary" icon="continue" onClick={() => onCreateTransition?.(record, draft)}>Create local continuation</Button>
         </div>
       </div>
     </Modal>
+  );
+}
+
+
+function TransitionValidationNotice({ validation }) {
+  if (!validation) return null;
+  const severe = (validation.findings || []).filter((finding) => finding.severity === 'error' || finding.severity === 'warning').slice(0, 3);
+  return (
+    <div className={`tx-transition-validation tx-transition-validation-${validation.status || (validation.ok ? 'valid' : 'invalid')}`}>
+      <strong>{validation.ok ? 'Transition conformance passed' : 'Transition conformance needs attention'}</strong>
+      <span>{validation.counts?.error || 0} errors · {validation.counts?.warning || 0} warnings · local draft boundary</span>
+      {severe.length ? <ul>{severe.map((finding) => <li key={finding.code}>{finding.message}</li>)}</ul> : null}
+    </div>
   );
 }
 

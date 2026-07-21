@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
+import { buildWorkspaceLineageView } from './workspace.lineageView.js';
+
+function record({ id, title, path, trace = '', origin = '' }) {
+  const markdown = [
+    '# Continuity Context',
+    '',
+    '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+    trace || origin ? '- Parent' : '',
+    trace || origin ? '  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)' : '',
+    trace ? `  - Trace: ${trace}` : '',
+    origin ? `  - Origin: ${origin}` : '',
+    '- Current',
+    '  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+    '  - Created At: 2026-07-21T00:00:00.000Z',
+    `  - Summary: ${title}`,
+    '',
+    '---',
+    '',
+    `# ${title}`,
+    '',
+    '# Continuity Integrity',
+    '',
+    '- Fixture Integrity',
+    '  - Method: fixture',
+    '  - Value: ok'
+  ].filter(Boolean).join('\n');
+  return Object.assign(createRecordFromMarkdown(markdown, { path }), { id });
+}
+
+const parent = record({ id: 'p1', title: 'Parent Topic', path: 'topics/parent.md' });
+const child = record({ id: 'c1', title: 'Child Topic', path: 'topics/child.md', trace: 'record:p1', origin: 'topics/parent.md' });
+const missing = record({ id: 'c2', title: 'Missing Parent Child', path: 'topics/missing-child.md', trace: 'record:nope' });
+const view = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] });
+
+assert.equal(view.schema, 'tiinex.workspace.loadedLineageView.v1');
+assert.equal(view.stats.visibleNodes, 3);
+assert(view.edges.some((edge) => edge.from === 'p1' && edge.to === 'c1' && edge.kind === 'parent'), 'lineage view should surface parent edge');
+assert(view.edges.some((edge) => edge.to === 'c2' && edge.status === 'missing'), 'lineage view should surface missing parent edge');
+assert(view.findings.some((finding) => finding.code === 'lineage.parent.missing'), 'lineage view should keep missing-parent findings');
+
+const filtered = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] }, { query: 'child topic' });
+assert(filtered.nodes.some((node) => node.id === 'c1'), 'filtered lineage should include matching child');
+assert(filtered.nodes.some((node) => node.id === 'p1'), 'filtered lineage should include immediate parent context');
+assert(filtered.edges.some((edge) => edge.from === 'p1' && edge.to === 'c1'), 'filtered lineage should preserve resolved edge context');
+
+console.log('✓ workspace.lineageView tests passed');

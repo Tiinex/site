@@ -25,6 +25,7 @@ async function runTests() {
   const r1 = await loadGithubFilesForSource(source, [raw], { fetchImpl });
   assert(r1.okCount === 1 && r1.failCount === 0, 'raw URL should load');
   assert(called.includes(raw), 'raw URL should be fetched');
+  assert(r1.diagnostics.requests === 1, 'raw URL should count one request');
 
   // blob URL normalizes to raw and should load
   called.length = 0;
@@ -48,6 +49,7 @@ async function runTests() {
   const noRef = await loadGithubFilesForSource({ repo: 'owner/repo', ref: '', rootPath: '.topics' }, ['foo.md'], { fetchImpl });
   assert(noRef.okCount === 0 && noRef.failCount === 1, 'repo-relative paths should require explicit/resolved ref');
   assert(called.length === 0, 'missing ref should fail before fetch');
+  assert(noRef.diagnostics.transportEvents.some((event) => event.code === 'github.raw.ref.invalid'), 'invalid ref should produce a transport event');
 
   // Unsupported host should be rejected without calling fetch
   called.length = 0;
@@ -70,6 +72,8 @@ async function runTests() {
   const r6 = await loadGithubFilesForSource(source, [valid, invalid], { fetchImpl });
   assert(r6.okCount === 1 && r6.failCount === 1, 'partial success should return records + errors');
   assert(r6.records[0] && !r6.records[0].source, 'records must not include source');
+  assert(r6.diagnostics.requests === 2, 'partial success should count attempted fetches');
+  assert(r6.diagnostics.transportEvents.some((event) => event.status === 404), 'partial failure should expose HTTP status as transport event');
 
   console.log('✓ github.loader tests passed');
 }
