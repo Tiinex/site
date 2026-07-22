@@ -119,7 +119,7 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
     }
     try {
       requests += 1;
-      const res = await fetchImpl(rawUrl, { cache: 'no-store' });
+      const res = await fetchImpl(rawUrl, {});
       if (!res || !res.ok) {
         const message = `${res?.status || 'ERR'} ${res?.statusText || ''}`.trim();
         errorsByIndex[index] = { ref, error: message };

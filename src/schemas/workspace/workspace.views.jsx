@@ -247,6 +247,7 @@ function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
 
 function sourceTransportMode(source = {}) {
   const label = String(source.transportLabel || source.transport || '').toLowerCase();
+  if (label.includes('→') || (label.includes('cache') && label.includes('direct'))) return 'cache→direct';
   if (label.includes('cache')) return 'cache';
   if (label.includes('mirror')) return 'mirror';
   if (label.includes('proxy')) return 'proxy';

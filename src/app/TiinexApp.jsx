@@ -93,10 +93,10 @@ function summarizeGithubMaterialization(sourceLabel, out = {}) {
   const firstWarning = warnings[0];
   const firstError = errors[0];
   if (okCount > 0 && failCount === 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}.`;
+    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
   }
   if (okCount > 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred.`;
+    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
   }
   if (firstWarning?.message) return `${sourceLabel} source registered. ${firstWarning.message}`;
   if (firstError?.error) return `${sourceLabel} source registered; source loading failed: ${firstError.error}.`;
@@ -354,7 +354,7 @@ export function TiinexApp() {
       repoDiscovery: Boolean(input.repoDiscovery),
       issueDiscovery: Boolean(input.issueDiscovery),
       issueUrls: input.issueUrls || '',
-      transportLabel: 'direct public GitHub API/raw'
+      transportLabel: 'cache → mirror → proxy → direct'
     });
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
@@ -403,7 +403,7 @@ export function TiinexApp() {
       finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
         sourceId: result.source.id,
         phase: input.repoDiscovery ? 'repo-discovery' : input.issueDiscovery ? 'issue-snapshots' : 'source-materialization',
-        label: `${result.source.label} accepted · ${operationLabel} via direct public GitHub transport`,
+        label: `${result.source.label} accepted · ${operationLabel} via cache → mirror → proxy → direct transport`,
         active: true,
         quantified: false,
         discoveryState: 'loading'
@@ -413,7 +413,7 @@ export function TiinexApp() {
       commit(finalState, 'push');
       try {
         const transportPolicy = buildSourceTransportPolicy({
-          mode: 'bounded-online',
+          mode: 'cache-mirror-proxy-direct',
           maxRequestsPerOperation: Number(input.maxRequestsPerOperation || 550),
           now: new Date().toISOString(),
           offline: Boolean(input.offline)
@@ -423,7 +423,7 @@ export function TiinexApp() {
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, onProgress: publishGithubProgress });
+        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress });
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {

@@ -73,7 +73,7 @@ const limitedFetch = makeFetch({
   [repoApi]: { json: { default_branch: 'main' } },
   [treeApi]: { ok: false, status: 403, statusText: 'Forbidden', json: { message: 'API rate limit exceeded' } }
 });
-const limited = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl: limitedFetch });
+const limited = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl: limitedFetch, allowCache: false });
 assert.equal(limited.okCount, 0, 'rate-limited repo discovery should not materialize records');
 assert.equal(limited.failCount, 0, 'rate-limited repo discovery should be a warning, not a file failure');
 assert.equal(limited.errors.length, 0, 'rate-limited repo discovery should not be a fatal adapter error');
@@ -86,7 +86,7 @@ const budgetCalled = [];
 const budgetLimited = await materializeGithubSource(
   { id: 'github:owner/repo', repo, ref: 'main', rootPath: '.topics' },
   { repoDiscovery: false, fileRefs: ['.topics/a.md', '.topics/nested/b.trace.md'] },
-  { fetchImpl: makeFetch(map, budgetCalled), maxRequestsPerOperation: 1 }
+  { fetchImpl: makeFetch(map, budgetCalled), maxRequestsPerOperation: 1, allowCache: false }
 );
 assert.equal(budgetLimited.records.length, 0, 'transport budget should block raw materialization before fetching');
 assert.equal(budgetLimited.okCount, 0, 'budget-blocked materialization should not claim loaded records');
@@ -117,7 +117,7 @@ const discoveryBudgetCalled = [];
 const discoveryBudgetBlocked = await materializeGithubSource(
   { id: 'github:owner/repo', repo, ref: '', rootPath: '.topics' },
   { repoDiscovery: true, fileRefs: [] },
-  { fetchImpl: makeFetch(map, discoveryBudgetCalled), maxRequestsPerOperation: 1 }
+  { fetchImpl: makeFetch(map, discoveryBudgetCalled), maxRequestsPerOperation: 1, allowCache: false }
 );
 assert.equal(discoveryBudgetBlocked.records.length, 0, 'transport budget should block repo discovery before fetching');
 assert.equal(discoveryBudgetBlocked.diagnostics.discoveryBlockedByPolicy, true, 'repo discovery policy block must be diagnosed');

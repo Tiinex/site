@@ -173,8 +173,8 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
         <small>{activeSurfaces.length ? 'Submit starts visible source materialization with progress and a loaded/skipped/failed receipt.' : 'Use Register only to create a source boundary with no loading running.'}</small>
       </div>
       <div className="tx-transport-contract-panel" aria-label="Transport contract">
-        <span><strong>Transport</strong><small>direct public GitHub API/raw · no hidden mirror/proxy claim</small></span>
-        <span><strong>Result</strong><small>{activeSurfaces.length ? 'progress, then loaded/skipped/failed summary' : 'source boundary only'}</small></span>
+        <span><strong>Transport</strong><small>cache → mirror → proxy → direct · only configured/available tiers are used</small></span>
+        <span><strong>Result</strong><small>{activeSurfaces.length ? 'progress, transport tier, then loaded/skipped/failed summary' : 'source boundary only'}</small></span>
       </div>
       {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
       <div className="tx-dialog-actions tx-github-dialog-actions">

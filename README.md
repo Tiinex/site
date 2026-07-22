@@ -1,26 +1,26 @@
-# Tiinex Site v184
+# Tiinex Site v185
 
-v184 is a selected-Lineage layout/read-card and source-receipt checkpoint for the React/Vite refactor. It builds on v183's correct selected traversal claim, but moves the browser-visible Lineage surface away from the older two-column diagnostic summary layout that collapsed in split-screen testing.
+v185 is a source-transport checkpoint for the React/Vite refactor. It builds on v184's selected-Lineage layout/read-card repair and moves GitHub workspace file intake away from a direct-first mental model toward the PoC-shaped transport ladder:
 
-## v184 batch
+```txt
+cache → mirror → proxy → direct
+```
 
-- Selected Lineage now owns a vertical read-card stack:
-  - selected card;
-  - ancestor/root cards;
-  - terminal traversal result;
-  - secondary workspace overview still collapsed.
-- Ancestor/root cards expose compact schema-owned read snippets instead of only generic graph node metadata.
-- Legacy `.tx-lineage-selected-summary` two-column/button rules are overridden for selected Lineage cards so badges, actions, and read content do not collapse into a side rail at normal split-screen widths.
-- Tree/workspace count labels distinguish loaded records from visible/filter-scoped artifacts/leaves.
-- GitHub source receipts now carry per-surface diagnostics:
-  - repo files discovered/loaded;
-  - explicit files requested/loaded;
-  - issue snapshots deferred/unavailable in browser runtime.
-- GitHub raw Markdown loading now uses bounded concurrency instead of one serial fetch at a time. It still stays within the request budget and still reports measured N/M progress.
+## v185 batch
+
+- GitHub materialization now builds an explicit transport plan per source.
+- Reads try cache first, then configured mirror, then configured proxy, then direct raw/API fallback.
+- Browser/source cache hits are first-class diagnostics, not hidden provenance.
+- Configured mirrors/proxies are honored only when a usable browser reader is available; unavailable proxy/mirror tiers are recorded as skipped rather than silently claimed.
+- GitHub dialog/source state no longer describes the operation as direct-only.
+- GitHub receipts and diagnostics include transport tier events alongside per-surface results.
+- Existing repo/issue/asset surface receipts from v184 remain in place.
 
 ## Source/material boundaries
 
-Local/draft material remains local. GitHub material remains explicit source-backed material. v184 does not introduce hidden binary asset crawling and does not implement a real browser issue snapshot reader; those surfaces are reported honestly as referenced/deferred/unavailable when applicable.
+Canonical source identity is unchanged by transport. A cache hit, mirror snapshot, proxy read, or direct raw fallback is only the material access route; it must not rewrite Parent, Origin, repository identity, or local/source boundaries.
+
+v185 still does not implement a real browser issue snapshot reader and does not introduce automatic binary asset fetching. Those remain explicit deferred/referenced-unloaded states.
 
 ## Supported local start
 
