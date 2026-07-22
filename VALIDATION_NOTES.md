@@ -1,45 +1,37 @@
-# Validation Notes v199
+# Validation Notes v200
 
-Base: v198 source checkpoint with portable-tooling paths present.
+Base: latest user-provided source after v199 toolbar/audit action work and portable-tooling overlay.
 
 ## Scope
 
-v199 focuses only on Lineage toolbar cleanup:
+v200 keeps the Lineage card structure stable and changes only the audit affordance and mobile chrome density:
 
-- remove the selected-artifact chip from Lineage mode;
-- remove the textual `Audit details` pill from Lineage mode;
-- keep audit reachable through a normal compact icon action;
-- preserve v198 one-line Discovery/Lineage search behavior.
+- Lineage Audit is now a scoped inline action for the selected lineage chain.
+- The full workspace Audit view remains available but is not launched by the Lineage toolbar Audit button.
+- Mobile chrome is compressed so artifact cards appear earlier in the first viewport.
+- `npm run validate` now includes the aggregate portable-tooling test.
 
-Portable-tooling paths were not changed.
-
-## Commands run in workspace
+## Commands run
 
 ```bash
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js src/ui/primitives/Icon.jsx
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-## Commands run from source-clean zip
+Source-clean zip verification:
 
 ```bash
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js src/ui/primitives/Icon.jsx
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-## Not run
+## Known limits
 
-Full `npm run test` was not run because runtime smoke and public build require installed Vite/React dependencies in the sandbox.
-
-## Browser focus
-
-- Lineage toolbar should show Back, a compact audit icon action, and search.
-- It should not show a selected-artifact chip.
-- It should not show a textual `Audit details` pill.
-- Audit should still be reachable explicitly.
-- Discovery/Lineage search rows should remain one line at the tested split-screen widths.
+- Full `npm run test` was not completed in the sandbox because runtime/public build smoke requires installed Vite/React dependencies.
+- Dependency pinning and lockfile release reproducibility remain open consolidation items.
+- Full workspace Audit remains dense; v200 only removes it from the primary Lineage Audit action.

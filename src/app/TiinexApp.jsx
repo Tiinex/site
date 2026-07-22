@@ -11,6 +11,7 @@ import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { clearGithubSourceTextCacheForSource, hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
+import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { inferRecordMaterialRole, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
@@ -571,7 +572,7 @@ export function TiinexApp() {
     setActiveRecordId('');
     if (!id) return;
     const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'lineage', selectedRecordId: id, expandedLineageRecordIds: [] });
+    next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'lineage', selectedRecordId: id, expandedLineageRecordIds: [], lineageAuditReport: null });
     commit(next, 'push');
   }
 
@@ -664,6 +665,44 @@ export function TiinexApp() {
     const next = structuredClone(state);
     next.activeWorkspaceId = workspaces[nextIndex]?.id || state.activeWorkspaceId;
     commit(next, 'push');
+  }
+
+  function runLineageAudit() {
+    if (!active) return;
+    const selectedRecordId = String(state.view?.selectedRecordId || '').trim();
+    const records = Array.isArray(active.records) ? active.records : [];
+    if (!selectedRecordId) {
+      setNotice('Select an artifact lineage before running Audit.');
+      return;
+    }
+    const lineage = buildWorkspaceLineageView(active, { records, query: state.view?.query || '', selectedRecordId });
+    const audit = buildWorkspaceAuditView(active, { records, query: '' });
+    const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
+    const traversalNodes = Array.isArray(lineage.selectedTraversal?.nodes) && lineage.selectedTraversal.nodes.length
+      ? lineage.selectedTraversal.nodes
+      : records.filter((record) => record.id === selectedRecordId).map((record) => ({ id: record.id, record }));
+    const counts = { ok: 0, mismatch: 0, open: 0, pending: 0 };
+    for (const node of traversalNodes) {
+      const id = String(node.id || node.record?.id || '');
+      const item = auditById.get(id);
+      const status = String(item?.status || '').toLowerCase();
+      if (status === 'readable' && !item?.fallbackUsed) counts.ok += 1;
+      else if (status === 'pending-unavailable') counts.pending += 1;
+      else if (status === 'readable' || status === 'degraded' || item?.fallbackUsed || !status) counts.open += 1;
+      else counts.mismatch += 1;
+    }
+    const next = structuredClone(state);
+    next.view = Object.assign({}, next.view || {}, {
+      lineageAuditReport: {
+        schema: 'tiinex.workspace.lineageAuditInline.v1',
+        selectedRecordId,
+        nodes: traversalNodes.length,
+        rootReached: Boolean(lineage.selectedTraversal?.rootReached),
+        counts,
+        generatedAt: new Date().toISOString()
+      }
+    });
+    commit(next, 'replace');
   }
 
   function setVerse(verse) {
@@ -783,7 +822,9 @@ export function TiinexApp() {
           onViewScroll={noteViewScroll}
           stageScrollTop={currentStageScrollTop()}
           expandedLineageRecordIds={state.view?.expandedLineageRecordIds || []}
+          lineageAuditReport={state.view?.lineageAuditReport || null}
           onToggleLineageCard={toggleLineageCard}
+          onRunLineageAudit={runLineageAudit}
         />
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />

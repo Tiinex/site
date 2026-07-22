@@ -6924,3 +6924,133 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-mode-strip.tx-column-toolbar .tx-mode-audit-button {
   color: rgba(214,204,229,0.86);
 }
+
+
+/* v200: Audit in Lineage is an inline report action, not a mode switch into a full audit viewer. */
+.tx-mode-strip.tx-column-toolbar .tx-mode-audit-run-button {
+  width: auto;
+  min-width: 0;
+  gap: .34rem;
+  padding: 0 .66rem;
+  border-color: rgba(189,115,255,.34);
+  color: rgba(247,248,251,.9);
+  background: rgba(189,115,255,.09);
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-audit-run-button span {
+  font-size: .72rem;
+  font-weight: 760;
+  letter-spacing: .01em;
+}
+.tx-lineage-audit-inline {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .42rem;
+  margin: 0 0 .58rem;
+  padding: .44rem .62rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  color: rgba(247,248,251,.82);
+  background: rgba(0,0,0,.16);
+  font-size: .78rem;
+  line-height: 1.25;
+}
+.tx-lineage-audit-inline strong {
+  color: rgba(247,248,251,.94);
+  font-size: .78rem;
+}
+.tx-lineage-audit-inline small {
+  color: rgba(247,248,251,.58);
+}
+.tx-lineage-audit-inline-ok {
+  border-color: rgba(101,242,231,.2);
+}
+.tx-lineage-audit-inline-ok .tx-icon {
+  color: rgba(101,242,231,.9);
+}
+.tx-lineage-audit-inline-warn {
+  border-color: rgba(255,128,160,.32);
+  background: rgba(255,88,128,.06);
+}
+.tx-lineage-audit-inline-warn .tx-icon {
+  color: rgba(255,170,190,.95);
+}
+
+/* v200: mobile should show artifact value earlier; secondary chrome stays reachable but does not consume the first viewport. */
+@media (max-width: 760px) {
+  .tx-react-runtime {
+    padding: .45rem .42rem 32px;
+  }
+  .tx-top-dock {
+    top: .3rem;
+    margin-bottom: .55rem;
+  }
+  .tx-dock-core {
+    gap: .24rem;
+    padding: .25rem .3rem;
+  }
+  .tx-dock-side .tx-button strong,
+  .tx-dock-side .tx-button span:not(.tx-icon) {
+    display: none;
+  }
+  .tx-compact-column-window {
+    width: min(100%, calc(100vw - .55rem));
+    border-radius: 16px;
+  }
+  .tx-compact-window-header {
+    padding: .52rem .62rem .42rem;
+    gap: .42rem;
+  }
+  .tx-compact-window-actions .tx-stat-pill {
+    display: none;
+  }
+  .tx-source-strip.workspace-source-strip {
+    padding: .32rem .52rem;
+  }
+  .tx-source-strip .tx-source-list {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tx-source-strip .tx-source-list::-webkit-scrollbar { display: none; }
+  .tx-workspace-material-summary {
+    display: none;
+  }
+  .tx-mode-strip.tx-column-toolbar {
+    padding: .46rem .55rem;
+    gap: .32rem;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-mode-name {
+    font-size: .68rem;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-mode-link,
+  .tx-mode-strip.tx-column-toolbar .tx-display-options-trigger {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-search-field-icon {
+    flex: 1 1 9.5rem;
+    width: auto;
+    min-width: 8.5rem;
+    max-width: none;
+    margin-left: 0;
+  }
+  .tx-primary-stage.tx-column-primary-stage {
+    padding: .5rem;
+  }
+  .tx-old-like-record-card .tx-legacy-card-badges {
+    padding: .58rem .68rem .12rem;
+  }
+  .tx-old-like-record-card h3 {
+    margin-left: .72rem;
+    margin-right: .72rem;
+    font-size: clamp(.98rem, 5.3vw, 1.18rem);
+  }
+  .tx-old-like-record-card p,
+  .tx-old-like-record-card .tx-card-pathline {
+    margin-left: .72rem;
+    margin-right: .72rem;
+  }
+}

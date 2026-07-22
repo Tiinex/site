@@ -132,7 +132,7 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], onToggleLineageCard }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, onToggleLineageCard, onRunLineageAudit }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -182,13 +182,13 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} />
+      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenAudit={() => onVerse('audit')} expandedRecordIds={expandedLineageRecordIds} onToggleLineageCard={onToggleLineageCard} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} expandedRecordIds={expandedLineageRecordIds} onToggleLineageCard={onToggleLineageCard} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -358,7 +358,7 @@ function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, onQuery, onOpenDisplayOptions }) {
+function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit }) {
   const verse = state.view?.workspaceVerse || 'feed';
   const discoveryVerse = verse === 'feed' || verse === 'tree';
   const lineageVerse = verse === 'lineage';
@@ -378,8 +378,8 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
       {lineageVerse && selectedRecord ? (
-        <button type="button" className="tx-mode-action-button tx-mode-audit-button" onClick={() => onVerse('audit')} title="Audit details" aria-label="Audit details">
-          <Icon name="audit" />
+        <button type="button" className="tx-mode-action-button tx-mode-audit-button tx-mode-audit-run-button" onClick={onRunLineageAudit} title="Audit lineage" aria-label="Audit lineage">
+          <Icon name="audit" /><span>Audit</span>
         </button>
       ) : null}
       {discoveryVerse ? <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button> : null}
@@ -668,7 +668,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, onOpenAudit, expandedRecordIds = [], onToggleLineageCard }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, expandedRecordIds = [], onToggleLineageCard }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
     ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
@@ -692,7 +692,10 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           </div>
         ) : null}
       </header>
-      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onOpenAudit={onOpenAudit} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} /> : null}
+      {selected ? <>
+          <LineageAuditInlineReport report={lineageAuditReport} selectedRecordId={selected.id} />
+          <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} />
+        </> : null}
       {!selected ? (
         <details className="tx-lineage-workspace-overview" open aria-label="Workspace lineage overview">
           <summary>Diagnostics overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
@@ -733,7 +736,27 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onShareRecord, onOpenAudit, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard }) {
+function LineageAuditInlineReport({ report = null, selectedRecordId = '' }) {
+  if (!report || String(report.selectedRecordId || '') !== String(selectedRecordId || '')) return null;
+  const counts = report.counts || {};
+  const parts = [
+    `${Number(counts.ok || 0)} OK`,
+    `${Number(counts.mismatch || 0)} mismatch`,
+    `${Number(counts.open || 0)} open`,
+    `${Number(counts.pending || 0)} pending`
+  ];
+  return (
+    <div className={`tx-lineage-audit-inline ${Number(counts.mismatch || 0) ? 'tx-lineage-audit-inline-warn' : 'tx-lineage-audit-inline-ok'}`} role="status" aria-live="polite">
+      <Icon name={Number(counts.mismatch || 0) ? 'warning' : 'check'} />
+      <strong>Lineage audit complete</strong>
+      <span>{parts.join(' · ')}</span>
+      {report.rootReached ? <small>root reached</small> : null}
+    </div>
+  );
+}
+
+
+function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onShareRecord, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard }) {
   const traversal = lineage.selectedTraversal || null;
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
@@ -767,7 +790,7 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
       <LineagePathResult traversal={traversal} status={selectedLineage} />
       {secondaryFindings.length ? (
         <details className="tx-lineage-secondary-diagnostics">
-          <summary>Audit details · {secondaryFindings.length}</summary>
+          <summary>Diagnostics · {secondaryFindings.length}</summary>
           <div className="tx-lineage-findings" aria-label="Selected lineage audit details">
             {secondaryFindings.slice(0, 5).map((finding, index) => (
               <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>

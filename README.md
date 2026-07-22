@@ -1,23 +1,26 @@
-# Tiinex Site v199
+# Tiinex Site v200
 
-v199 is a narrow Lineage toolbar cleanup on top of v198. It keeps the v194 source-plan reconciliation, v195 view-state work, v197 Feed ordering, and v198 canonical schema artifact/display polish, but removes the last Lineage-mode header badges that made the viewer feel busier than the PoC.
+v200 is a focused audit-affordance and mobile chrome pass on top of v199 plus the portable-tooling overlay. It keeps the v194 source-plan reconciliation, v195 display/view-state work, v197 Feed ordering, v198 schema-artifact display handling, and v199 simpler Lineage toolbar, but changes Lineage audit from a mode-switch into a scoped inline action.
 
-## v199 batch
+## v200 batch
 
-- Removes the selected-artifact chip from the Lineage mode toolbar.
-- Removes the textual `Audit details` pill from the Lineage mode toolbar.
-- Replaces audit access with a normal compact icon action in the toolbar.
-- Keeps audit reachable as an explicit action without making audit state part of the default Lineage viewer chrome.
-- Keeps Discovery/Lineage search sizing from v198.
-- Leaves Lineage cards, material-role logic, feed ordering, source transport, and portable-tooling paths unchanged.
+- Changes the Lineage toolbar Audit action from a full Audit Details view jump into a scoped inline report for the current selected Lineage chain.
+- The inline Lineage Audit reports only the current chain first: node count, OK/mismatch/open/pending counts, and root reached when applicable.
+- Keeps the full workspace Audit view available as a secondary workspace surface, but it is no longer the primary Lineage audit affordance.
+- Renames the selected-Lineage secondary finding drawer to Diagnostics, so raw audit/finding codes are not presented as the main Audit action.
+- Preserves the v192+ unified RecordCard Lineage model and v195 Lineage expand/collapse behavior.
+- Reduces mobile first-viewport chrome: hides workspace stat pills, hides the material summary row, compresses dock/workspace/source/toolbars, and lets artifact cards appear earlier.
+- Adds the aggregate portable-tooling test to `npm run validate`, addressing the external validator’s warning that portable tests were not part of the main validation spine.
+- Leaves portable-tooling source paths untouched.
 
 ## Still intentionally out of scope
 
-- Feed product modes beyond the current recent/activity ordering.
+- Full workspace Audit redesign beyond making it secondary from Lineage.
+- Feed product modes beyond PoC-compatible created-time ordering.
 - A real browser issue snapshot reader.
 - Partial record promotion during GitHub import.
-- Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
-- Further Lineage card redesign; current Lineage card parity is being protected.
+- Full mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
+- Dependency pinning / lockfile release hardening; noted for the consolidation pause.
 
 ## Supported local start
 
@@ -38,7 +41,7 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js src/ui/primitives/Icon.jsx
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
 `npm run build:public` still requires installed Vite/React dependencies.
