@@ -16,9 +16,15 @@ export function buildGithubTransportPlan(source = {}, options = {}) {
   const proxies = configuredProxiesFor(repo, workspaceConfig, options);
   const allow = {
     cache: options.allowCache !== false,
-    mirror: options.allowMirror !== false && Boolean(mirrors.length || options.mirrorFetchImpl || options.mirrorRawUrl || options.mirrorApiUrl),
-    proxy: options.allowProxy !== false && Boolean(proxies.length || options.proxyFetchImpl || options.proxyRawUrl || options.proxyApiUrl),
+    mirror: options.allowMirror !== false,
+    proxy: options.allowProxy !== false,
     direct: options.allowDirect !== false
+  };
+  const configured = {
+    cache: true,
+    mirror: Boolean(mirrors.length || options.mirrorFetchImpl || options.mirrorRawUrl || options.mirrorApiUrl),
+    proxy: Boolean(proxies.length || options.proxyFetchImpl || options.proxyRawUrl || options.proxyApiUrl),
+    direct: true
   };
   const tiers = order
     .filter((tier) => allow[tier])
@@ -30,6 +36,7 @@ export function buildGithubTransportPlan(source = {}, options = {}) {
     order: Object.freeze(order),
     tiers: Object.freeze(tiers),
     allow: Object.freeze(allow),
+    configured: Object.freeze(configured),
     mirrors: Object.freeze(mirrors),
     proxies: Object.freeze(proxies),
     label: tiers.join(' → ') || 'unavailable',
@@ -150,6 +157,34 @@ export function hydrateGithubRecordFromSourceCache(record = {}, options = {}) {
     materialUnavailable: false,
     cacheState: `source-text-cache-hydrated:${cached.cache || 'cache'}`
   });
+}
+
+export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
+  const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
+  if (!repo) return 0;
+  const [owner, name] = repo.split('/');
+  const rawNeedle = `raw.githubusercontent.com/${owner}/${name}/`;
+  const memory = options.sourceCache || moduleMemoryCache;
+  let removed = 0;
+  for (const key of Object.keys(memory || {})) {
+    if (key.startsWith(SOURCE_CACHE_PREFIX) && key.includes(rawNeedle)) {
+      delete memory[key];
+      removed += 1;
+    }
+  }
+  const storage = options.storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  try {
+    const keys = [];
+    for (let index = 0; index < (storage?.length || 0); index += 1) {
+      const key = storage.key(index);
+      if (key && key.startsWith(SOURCE_CACHE_PREFIX) && key.includes(rawNeedle)) keys.push(key);
+    }
+    for (const key of keys) {
+      storage.removeItem(key);
+      removed += 1;
+    }
+  } catch (_) {}
+  return removed;
 }
 
 function normalizeOrder(input = DEFAULT_ORDER) {

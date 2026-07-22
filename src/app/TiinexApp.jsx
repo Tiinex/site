@@ -9,7 +9,7 @@ import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
-import { hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
+import { clearGithubSourceTextCacheForSource, hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { inferRecordMaterialRole, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
@@ -226,6 +226,12 @@ export function TiinexApp() {
   useEffect(() => {
     document.title = workspaceConfig?.viewerIdentity?.browserTitle || 'Tiinex';
   }, [workspaceConfig]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 9000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   function commit(nextState, mode = 'push') {
     setState(nextState);
@@ -474,7 +480,10 @@ export function TiinexApp() {
             explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
             issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
           },
-          surfaces: out.diagnostics?.surfaces || {}
+          surfaces: out.diagnostics?.surfaces || {},
+          transportTiers: out.diagnostics?.transportTiers || {},
+          transportPlan: out.diagnostics?.transportPlan || {},
+          transportLabel: out.diagnostics?.transportPlan?.label || 'cache → mirror → proxy → direct'
         }));
         if (updatedSource?.ok) finalState = updatedSource.state;
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
@@ -497,6 +506,17 @@ export function TiinexApp() {
     setNotice(noticeMessage);
     setGithubRequestPending(false);
     commit(finalState, 'push');
+  }
+
+  function refreshSourceTransport(sourceId) {
+    const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
+    if (!source) {
+      setNotice('Source not found.');
+      return;
+    }
+    const removed = clearGithubSourceTextCacheForSource(source);
+    setNotice(`${source.label || 'Source'} cache cleared (${removed} entr${removed === 1 ? 'y' : 'ies'}). Source controls opened; retry uses mirror/proxy before direct when configured.`);
+    openAddToWorkspace(source.id || sourceId);
   }
 
   function openRecord(recordId) {
@@ -703,12 +723,13 @@ export function TiinexApp() {
           onShareRecord={shareRecord}
           onRecordAction={openRecordAction}
           onToggleTreeFolder={toggleTreeFolder}
+          onSourceTransportRefresh={refreshSourceTransport}
         />
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />
       )}
 
-      {notice ? <div className="tx-toast" role="status">{notice}</div> : null}
+      {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
 
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}

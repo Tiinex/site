@@ -1,6 +1,6 @@
-# Tiinex Site v186 Validation Notes
+# Tiinex Site v187 Validation Notes
 
-v186 follows the v185 usage-video review and Q's lineage-mode feedback: selected Lineage should feel like a viewer made of equal artifact cards, not a debugger report where only the originally selected card is fully interactive. It also closes the observed continuity symptom where a loaded/source-backed Tree leaf could open a Detail dialog without Markdown body when the same source text was already available in the source cache.
+v187 follows the v186 usage-video review and Q's feedback that Lineage mode was closer, but still felt too much like a debugger and that Tree artifact clicks should behave like artifact/card clicks by entering Lineage for that artifact.
 
 ## Validation run in workspace
 
@@ -9,37 +9,39 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/workspaces/workspace.lifecycle.js src/sources/github/github.transport.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/sources/github/github.transport.js src/adapters/github/github.adapter.js
 ```
 
 All completed successfully in the workspace.
 
 ## Added/updated guards
 
+Existing guards that were exercised:
+
 ```txt
 node src/sources/github/github.transport.test.mjs
+node src/adapters/github/github.adapter.test.mjs
 node src/workspaces/workspace.lifecycle.test.mjs
+node src/workspaces/workspace.pathTree.test.mjs
+node src/workspaces/workspace.lineageView.test.mjs
 ```
 
-These now cover:
-
-- source-backed route/tree/detail shells can hydrate readable Markdown from the source text cache;
-- cache-hydrated source material discloses `materialAvailability: available` for read/detail views;
-- configured sources preserve requested/deferred discovery surfaces for continuation;
-- existing transport ladder checks from v185 still cover cache → mirror → proxy → direct order.
+The changed behavior is also covered by UI-shape/source-static checks for the same code paths.
 
 ## Browser test focus
 
-1. Open a multi-node Lineage path. Each node should be a separate artifact card with comparable rendering and actions.
-2. Use `Anchor here` on an ancestor/root card. It should move the Lineage reference point to that card.
-3. `Open details` and `Show markdown` should work from ancestor/root cards, not only from the original selected card.
-4. Workspace diagnostics should stay behind the diagnostics/details surface, not dominate the viewer.
-5. Open a source-backed Tree leaf after GitHub import. If the source text was cached during import, Detail/Markdown should be readable instead of saying the embedded body is missing.
-6. Reopen Discover on a source where issue snapshots were requested but deferred. The continuation dialog should remember the deferred issue surface rather than defaulting only to repo files.
+1. In Tree verse, click a Tiinex artifact row. It should enter Lineage for that artifact, not open Detail.
+2. In Lineage, each card should be a comparable artifact card with audit/lifecycle/schema/source evidence and comparable actions.
+3. The audit/workspace diagnostics footer should not appear as part of the default selected Lineage viewer.
+4. `root reached` should be readable once as the path status, not repeated as a debugging report.
+5. Import notice should dismiss or expire instead of covering Lineage for the whole session.
+6. Click the source transport chip after a GitHub load; it should clear same-source text cache and reopen source controls for an explicit retry.
+7. Transport chip title should distinguish plan from observed delivery tiers.
 
 ## Known limits
 
 - Full `npm run test` was not run here because the Vite/React build-smoke path requires installed dependencies.
-- v186 does not implement partial record promotion during import.
-- v186 does not implement a real issue snapshot browser reader.
-- v186 does not implement binary asset fetching.
+- Mirror/proxy repository snapshot execution is still limited by available browser/configured readers; unavailable tiers are now explicit rather than silently skipped.
+- v187 does not implement partial record promotion during import.
+- v187 does not implement a real issue snapshot browser reader.
+- v187 does not implement binary asset fetching.

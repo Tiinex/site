@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v186",
+  "version": "0.2.10-v187",
   "private": true,
-  "description": "Tiinex Site v185: GitHub source transport ladder with cache/mirror/proxy/direct diagnostics and surface receipts.",
+  "description": "Tiinex Site v187: Lineage viewer de-debug, Tree-to-Lineage navigation, and transport outcome clarity.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
