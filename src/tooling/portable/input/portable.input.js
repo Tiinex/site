@@ -29,7 +29,8 @@ export function normalizePortableInput(input = {}) {
       size: Number(file.size || byteLengthOfText(content) || 0),
       type: String(file.type || ''),
       sourceMode: file.sourceMode || input.sourceMode || 'portable-local',
-      contentAvailable: Boolean(content)
+      contentAvailable: Boolean(content || file.data || file.bytes || file.buffer),
+      locator: file.locator ? Object.freeze({ ...file.locator }) : null
     });
 
     if (kind === 'record' || kind === 'workspace') {
@@ -184,7 +185,8 @@ function fileSummary(file = {}, index = 0) {
     size: Number(file.size || byteLengthOfText(content) || 0),
     kind: file.kind || '',
     type: String(file.type || ''),
-    contentAvailable: Boolean(content)
+    contentAvailable: Boolean(content || file.data || file.bytes || file.buffer),
+    locator: file.locator ? Object.freeze({ ...file.locator }) : null
   });
 }
 

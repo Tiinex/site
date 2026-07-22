@@ -21,10 +21,12 @@ export function describeTiinexLlmEntrypoint() {
     boundary: Object.freeze({
       material: 'supplied attachments, project sources, or explicit records',
       sourceProvenance: 'explicit-only; local material is never guessed as GitHub-backed',
-      remoteFetch: false,
+      remoteFetch: 'host-mediated only through explicit provider adapters or provider-response handoff',
       remoteWrite: false,
       sourceMutation: false,
-      receivedCodeExecution: false
+      receivedCodeExecution: false,
+      toolingDiscovery: 'capability-level; product-specific tool names are not required',
+      unknownSchemaResolution: 'loaded/cache/provider response first; otherwise self-describing host request'
     }),
     operations: listPortableOperations().operations,
     bootstrap: 'src/tooling/portable/bootstrap/tiinex.llm.bootstrap.md'

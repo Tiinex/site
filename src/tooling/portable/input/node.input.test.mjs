@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { loadNodePortableInput } from './node.input.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { openPortableSession } from '../session/portable.session.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-portable-'));
 try {
@@ -11,11 +12,13 @@ try {
   await mkdir(nested, { recursive: true });
   await writeFile(path.join(nested, 'artifact.md'), topicMarkdown(), 'utf8');
   await writeFile(path.join(nested, 'asset.bin'), Buffer.from([1, 2, 3, 4]));
+  await writeFile(path.join(nested, 'preview.png'), Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   try { await symlink(path.join(nested, 'artifact.md'), path.join(nested, 'linked.md')); } catch {}
 
   const directoryInput = await loadNodePortableInput(nested);
   assert.equal(directoryInput.files.some((file) => file.path === 'artifact.md'), true);
   assert.equal(directoryInput.files.some((file) => file.path === 'asset.bin' && file.kind === 'asset'), true);
+  assert.equal(directoryInput.files.some((file) => file.path === 'preview.png' && file.locator?.kind === 'node-file'), true);
   assert.equal(directoryInput.files.some((file) => file.path === 'linked.md'), false);
 
   const zipPath = path.join(root, 'received.zip');
@@ -46,6 +49,8 @@ try {
   assert.equal(operations.some((operation) => operation.name === 'make-writer-brief'), true);
   assert.equal(operations.some((operation) => operation.name === 'schema-guide'), true);
   assert.equal(operations.some((operation) => operation.name === 'search-lineage'), true);
+  assert.equal(operations.some((operation) => operation.name === 'create-checkpoint'), true);
+  assert.equal(operations.some((operation) => operation.name === 'build-runtime-package'), true);
 
   const searchOutput = [];
   assert.equal(await runPortableCli(['search-lineage', nested, '--query', 'portable local'], { log(value) { searchOutput.push(value); }, error() {} }), 0);
@@ -57,6 +62,89 @@ try {
   const guideOutput = [];
   assert.equal(await runPortableCli(['schema-guide', schemaDir, '--schema', 'tiinex.topic.v1', '--task', 'create'], { log(value) { guideOutput.push(value); }, error() {} }), 0);
   assert.equal(JSON.parse(guideOutput[0]).guide.schema, 'tiinex.llm.schema-guide.v1');
+
+  await writeFile(path.join(schemaDir, 'tiinex.evidence.v1.schema.md'), await readFile(new URL('../../../schemas/core/evidence/tiinex.evidence.v1.schema.md', import.meta.url), 'utf8'), 'utf8');
+  await writeFile(path.join(schemaDir, 'tiinex.preservation.v1.schema.md'), await readFile(new URL('../../../schemas/core/preservation/tiinex.preservation.v1.schema.md', import.meta.url), 'utf8'), 'utf8');
+  await writeFile(path.join(schemaDir, 'tiinex.root.v1.schema.md'), await readFile(new URL('../../../schemas/tiinex.root.v1.schema.md', import.meta.url), 'utf8'), 'utf8');
+  const hostPath = path.join(root, 'host.json');
+  await writeFile(hostPath, JSON.stringify({ tools: [
+    { name: 'GitHub.search', description: 'Search repository files.' },
+    { name: 'GitHub.fetch_file', description: 'Read repository files.' },
+    { name: 'vision.open_image', description: 'Open image for multimodal analysis.' },
+    { name: 'archive.extract', description: 'Extract zip archive entries.' }
+  ] }), 'utf8');
+  const resolveOutput = [];
+  assert.equal(await runPortableCli(['resolve-schema-material', schemaDir, '--schema', 'tiinex.evidence.v1', '--host', hostPath], { log(value) { resolveOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(resolveOutput[0]).status, 'resolved');
+
+  const valuesPath = path.join(root, 'values.json');
+  await writeFile(valuesPath, JSON.stringify({
+    'Supported Claim Or Question': 'whether overflow was observed',
+    'Evidence Role': 'supports observation',
+    'Known Source': 'explicit local fixture',
+    'Preservation Basis': 'test fixture',
+    'Provenance Limits': 'no surrounding context',
+    'Material': 'Overflow was observed.',
+    'Material Kind': 'excerpt',
+    'Preservation State': 'readable markdown',
+    'Fidelity Notes': 'test representation',
+    'Known Losses': 'device details',
+    'Does Not Prove': 'cause or fix',
+    'Must Not Be Treated As': 'completion or consent'
+  }), 'utf8');
+  const parentPath = path.join(root, 'parent.json');
+  await writeFile(parentPath, JSON.stringify({ id: 'parent-record', path: 'parent.md', schemaId: 'tiinex.preservation.v1', boundary: 'portable local material; no GitHub provenance inferred' }), 'utf8');
+  const createOutput = [];
+  assert.equal(await runPortableCli(['create-local-draft', schemaDir, '--schema', 'tiinex.evidence.v1', '--values', valuesPath, '--parent', parentPath, '--title', 'CLI Evidence'], { log(value) { createOutput.push(value); }, error() {} }), 0);
+  const createdDraft = JSON.parse(createOutput[0]);
+  assert.equal(createdDraft.status, 'created-clean');
+  assert.equal(createdDraft.draft.markdown.includes('## Evidence Material'), true);
+
+  const sessionPath = path.join(root, 'session.json');
+  const staged = { ...createdDraft.draft, qualification: createdDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
+  await writeFile(sessionPath, JSON.stringify(openPortableSession({ files: directoryInput.files, stagedArtifacts: [staged], currentFocus: staged.path }).snapshot()), 'utf8');
+  const checkpointOutput = [];
+  assert.equal(await runPortableCli(['create-checkpoint', sessionPath, '--created-at', '2026-07-23T04:00:00.000Z'], { log(value) { checkpointOutput.push(value); }, error() {} }), 0);
+  const checkpoint = JSON.parse(checkpointOutput[0]);
+  assert.equal(checkpoint.operation, 'create-checkpoint');
+  assert.equal(checkpoint.boundary.canonicalHandoffArtifact, false);
+  const checkpointPath = path.join(root, 'checkpoint.json');
+  await writeFile(checkpointPath, JSON.stringify({ schema: checkpoint.resultSchema, version: checkpoint.version, checkpointId: checkpoint.checkpointId, createdAt: checkpoint.createdAt, status: checkpoint.status, summary: checkpoint.summary, session: checkpoint.session, integrity: checkpoint.integrity, boundary: checkpoint.boundary, findings: checkpoint.findings, findingSummary: checkpoint.findingSummary }), 'utf8');
+  const restoreCheckpointOutput = [];
+  assert.equal(await runPortableCli(['restore-checkpoint', checkpointPath], { log(value) { restoreCheckpointOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(restoreCheckpointOutput[0]).status, 'restored');
+
+  const stagedPath = path.join(root, 'staged.json');
+  await writeFile(stagedPath, JSON.stringify([staged]), 'utf8');
+  const packageOutput = [];
+  assert.equal(await runPortableCli(['build-runtime-package', '--staged', stagedPath, '--title', 'CLI package'], { log(value) { packageOutput.push(value); }, error() {} }), 0);
+  const runtimePackage = JSON.parse(packageOutput[0]);
+  assert.equal(runtimePackage.operation, 'build-runtime-package');
+  assert.equal(runtimePackage.qualification.canonicalPackageSchemaLocked, false);
+  const bundlePath = path.join(root, 'bundle.json');
+  await writeFile(bundlePath, JSON.stringify(runtimePackage.bundle), 'utf8');
+  const packageInspectionOutput = [];
+  assert.equal(await runPortableCli(['inspect-runtime-package', bundlePath], { log(value) { packageInspectionOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(packageInspectionOutput[0]).status, 'valid');
+  const packageZipPath = path.join(root, 'runtime-package.zip');
+  const packageWriteOutput = [];
+  assert.equal(await runPortableCli(['build-runtime-package', '--staged', stagedPath, '--output', packageZipPath], { log(value) { packageWriteOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(packageWriteOutput[0]).writeReceipt.status, 'written');
+  const packageZipInput = await loadNodePortableInput(packageZipPath);
+  assert.equal(packageZipInput.files.some((file) => file.path === 'tiinex.package/manifest.json'), true);
+  const rehydrateOutput = [];
+  assert.equal(await runPortableCli(['rehydrate-runtime-package', packageZipPath], { log(value) { rehydrateOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(rehydrateOutput[0]).status, 'rehydrated');
+  const serializedRoundTripOutput = [];
+  assert.equal(await runPortableCli(['roundtrip-runtime-package', packageZipPath], { log(value) { serializedRoundTripOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(serializedRoundTripOutput[0]).comparison.status, 'match');
+
+  const assetOutput = [];
+  assert.equal(await runPortableCli(['inspect-assets', nested], { log(value) { assetOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(assetOutput[0]).counts.images, 1);
+  const assetPrepareOutput = [];
+  assert.equal(await runPortableCli(['prepare-asset-analysis', nested, '--asset', 'preview.png', '--host', hostPath], { log(value) { assetPrepareOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(assetPrepareOutput[0]).status, 'host-action-ready');
 } finally {
   await rm(root, { recursive: true, force: true });
 }

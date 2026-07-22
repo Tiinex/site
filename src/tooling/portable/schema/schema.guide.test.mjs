@@ -4,6 +4,7 @@ import { compilePortableSchemaGuide, planPortableArtifactCreation, readPortableS
 
 const evidenceSchema = await readFile(new URL('../../../schemas/core/evidence/tiinex.evidence.v1.schema.md', import.meta.url), 'utf8');
 const rootSchema = await readFile(new URL('../../../schemas/tiinex.root.v1.schema.md', import.meta.url), 'utf8');
+const topicSchema = await readFile(new URL('../../../schemas/core/topic/tiinex.topic.v1.schema.md', import.meta.url), 'utf8');
 const material = { files: [{ path: 'schemas/tiinex.evidence.v1.schema.md', content: evidenceSchema }] };
 
 const first = compilePortableSchemaGuide({ ...material, schemaId: 'tiinex.evidence.v1', task: 'create', detail: 'compact' });
@@ -99,5 +100,27 @@ assert.equal(rootGuide.guide.requiredFields.includes('Current Schema'), true);
 assert.equal(rootGuide.guide.requiredFields.includes('Parent Schema'), false);
 assert.equal(rootGuide.guide.requiredFields.includes('Trace'), false);
 assert.equal(rootGuide.guide.conditionalRequirements.some((entry) => entry.group === 'Parent'), true);
+
+
+const topicMaterial = { files: [{ path: 'schemas/tiinex.topic.v1.schema.md', content: topicSchema }] };
+const topicGuide = compilePortableSchemaGuide({ ...topicMaterial, schemaId: 'tiinex.topic.v1', task: 'create', detail: 'standard' });
+assert.deepEqual(topicGuide.guide.requiredInputs, ['Summary', 'Current Read', 'Design Direction', 'Next Artifacts']);
+assert.deepEqual(topicGuide.guide.requiredStructure, ['Current Read', 'Design Direction', 'Next Artifacts']);
+assert.equal(topicGuide.guide.requiredInputs.includes('version'), false);
+assert.equal(topicGuide.guide.requiredInputs.includes('createTitle'), false);
+assert.equal(topicGuide.guide.toolingConfiguration.authoringInputs, false);
+assert.equal(topicGuide.guide.toolingConfiguration.fields.includes('summaryPrompt'), true);
+const topicPlan = planPortableArtifactCreation({
+  ...topicMaterial,
+  schemaId: 'tiinex.topic.v1',
+  inputs: {
+    Summary: 'Portable topic',
+    'Current Read': 'Current state.',
+    'Design Direction': 'Next direction.',
+    'Next Artifacts': 'Follow-up artifacts.'
+  }
+});
+assert.equal(topicPlan.plan.readyToDraft, true);
+assert.deepEqual(topicPlan.plan.missingInputs, []);
 
 console.log('✓ portable schema guide, progressive retrieval, companion hints, and artifact plan passed');

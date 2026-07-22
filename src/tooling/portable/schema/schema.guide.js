@@ -10,16 +10,19 @@ import {
   optionalSchemaFields,
   optionalSchemaSections,
   optionalCreationInputFields,
+  creationToolingConfigurationFields,
   parsePortableSchemaDocument,
   readPortableSchemaSections,
+  requiredCreationContentInputs,
   requiredCreationInputFields,
+  requiredCreationSections,
   requiredSchemaFields,
   requiredSchemaSections
 } from './schema.contract.js';
 import { resolvePortableLlmCompanion } from './llm.companion.js';
 
 export const PORTABLE_SCHEMA_GUIDE_SCHEMA_ID = 'tiinex.llm.schema-guide.v1';
-export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '1';
+export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '2';
 
 export function buildPortableSchemaGuide(input = {}, options = {}) {
   const schemaId = String(input.schemaId || options.schemaId || '').trim();
@@ -35,20 +38,25 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
   const creationContract = task === 'create' || task === 'continue' ? buildArtifactCreationContract({ schemaId, transitionType: task === 'continue' ? 'continue' : 'create-artifact' }) : null;
   const companionResult = resolvePortableLlmCompanion({ schemaId, task, module, input, options });
   const companion = companionResult.companion;
-  const requiredSections = document ? requiredSchemaSections(document) : [];
+  const creationRequested = task === 'create' || task === 'continue';
+  const requiredSections = document ? uniqueStrings([
+    ...requiredSchemaSections(document),
+    ...(creationRequested ? requiredCreationSections(document) : [])
+  ]) : [];
   const requiredFields = document ? requiredSchemaFields(document) : [];
   const optionalSections = detail === 'compact' ? [] : document ? optionalSchemaSections(document) : [];
   const optionalFields = detail === 'full' ? (document ? optionalSchemaFields(document) : []) : [];
-  const creationRequested = task === 'create' || task === 'continue';
   const conditionalRequirements = document ? buildConditionalRequirements(document) : [];
   const rules = document ? contractRules(document.validation) : [];
   const creationRules = document ? contractRules(document.creation) : [];
   const requiredInputs = creationRequested ? uniqueStrings([
     ...(creationContract?.inputs?.required || []),
     ...(document ? requiredCreationInputFields(document) : []),
+    ...(document ? requiredCreationContentInputs(document) : []),
     ...requiredFields
   ]) : [];
   const optionalInputs = creationRequested && document ? optionalCreationInputFields(document) : [];
+  const toolingConfiguration = creationRequested && document ? creationToolingConfigurationFields(document) : [];
   const hardRules = prioritizeRules([...rules, ...creationRules], task, detail);
   const purpose = companion.purpose || document?.summary || module?.label || `Work with ${schemaId || 'an unknown Tiinex schema'}.`;
   const findings = [...companionResult.findings];
@@ -88,6 +96,11 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
     requiredStructure: Object.freeze(limitList(requiredSections, detail === 'compact' ? 14 : 80)),
     requiredFields: Object.freeze(limitList(requiredFields, detail === 'compact' ? 24 : 120)),
     optionalInputs: Object.freeze(limitList(optionalInputs, detail === 'compact' ? 18 : 80)),
+    toolingConfiguration: Object.freeze({
+      fields: Object.freeze(limitList(toolingConfiguration, detail === 'compact' ? 18 : 80)),
+      authoringInputs: false,
+      statement: 'Create-surface prompt configuration is tooling metadata, not artifact content.'
+    }),
     conditionalRequirements: Object.freeze(conditionalRequirements.slice(0, detail === 'compact' ? 12 : 80)),
     optionalStructure: Object.freeze(optionalSections),
     optionalFields: Object.freeze(optionalFields),

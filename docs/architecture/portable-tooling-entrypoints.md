@@ -4,9 +4,9 @@
 
 This document describes the additive portable-tooling line now present on `Tiinex/site@refactor`.
 
-The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch adds LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering.
+The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch added LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering. The third batch added capability-level host discovery, material/schema providers, unknown-schema parent-chain material resolution, explicit schema cache, safe local draft creation/staging, task orchestration, and host-mediated asset analysis preparation. The fourth batch adds explicit durable-finding materialization, recoverable non-handoff checkpoints, and the current site runtime-package build/inspection/round-trip surface with optional local ZIP serialization in the Node CLI.
 
-The work was compatibility-checked against the current v193 branch head. It does not introduce a second Tiinex engine.
+The work is grounded and validated against the supplied v194 checkpoint. It does not introduce a second Tiinex engine.
 
 ## Ownership
 
@@ -48,6 +48,20 @@ The portable core imports no React components, DOM APIs, router state, localStor
 
 Node filesystem and zip handling are isolated in `input/node.input.js` and the CLI adapter. Browser or host callers pass explicit file-like objects to the ESM API.
 
+## Bootstrap And Startup Modes
+
+`bootstrap/tiinex.llm.bootstrap.pointer.json` is the compact machine-readable locator for the full bootstrap, ESM entrypoint, and CLI. The full bootstrap documents five supported startup modes:
+
+```text
+project source plus uploaded Markdown/archive material
+bootstrap travelling inside an archive
+bootstrap present without a handoff
+pre-prompt only, with host-mediated versioned bootstrap retrieval
+bootstrap present without a separate pre-prompt
+```
+
+When only a pre-prompt exists, the host should use its equivalent repository or HTTP reader to fetch an explicitly versioned `Tiinex/site` bootstrap. If that is unavailable, the LLM must request bootstrap material rather than reconstruct Tiinex rules from memory.
+
 ## Operation Catalog
 
 Each operation descriptor declares its name, safety class, input/output schema ids, remote boundaries, source-mutation boundary, and serializability.
@@ -55,6 +69,11 @@ Each operation descriptor declares its name, safety class, input/output schema i
 Current operations:
 
 ```text
+prepare-task
+discover-tooling
+list-material-providers
+resolve-schema-material
+resolve-schema-chain-material
 inspect
 audit
 resolve-lineage
@@ -66,14 +85,26 @@ make-writer-brief
 schema-guide
 read-schema-section
 plan-artifact
+create-local-draft
 validate-draft
 explain-findings
 repair-plan
+stage-draft
+inspect-assets
+prepare-asset-analysis
+plan-durable-materialization
+materialize-durable-findings
+create-checkpoint
+restore-checkpoint
+build-runtime-package
+inspect-runtime-package
+rehydrate-runtime-package
+roundtrip-runtime-package
 serialize-session
 restore-session
 ```
 
-The current surface is read-only, planning-only, or explicit local session state. It does not expose durable creation, package writes, source mutation, or remote writes.
+The current surface is read-only, planning-only, explicit local draft/session/package state, or optional host-mediated schema reads. The portable operation catalog does not publish, mutate sources, authorize remote writes, claim a canonical handoff, or execute received code. The Node CLI may perform an explicit local filesystem write when `build-runtime-package --output <file.zip>` is requested.
 
 ## Source Boundary
 
@@ -82,7 +113,7 @@ Portable input is supplied material.
 - Local material is never guessed as GitHub-backed.
 - Explicit source metadata can be preserved, but is marked as supplied and unverified unless the existing source model already qualifies it.
 - Lineage traversal and search are loaded-only.
-- No operation fetches missing parents or origins.
+- Missing artifact parents and origins are not fetched automatically. Readable schema material may be resolved through explicit host-mediated provider adapters or provider-response handoff.
 - Received package code is data and is not executed.
 - No operation performs source mutation or remote writes.
 
@@ -100,6 +131,49 @@ fallback.parentCapabilitiesEvaluated = false
 ```
 
 Root validation must not be presented as proof of child-schema validity.
+
+
+## Host Capability Discovery And Task Orchestration
+
+`discover-tooling` classifies host tool descriptors by capability rather than product name. It recognizes attachment/project-source access, filesystem/archive access, repository search/read, execution, multimodal reading, and mutation availability. Remote write availability is separate from explicit authorization.
+
+`prepare-task` turns a requested task into one explicit next action. Supported orchestration targets are:
+
+```text
+read-schema
+create-artifact
+validate-draft
+search-lineage
+analyze-asset
+materialize-findings
+checkpoint
+package
+```
+
+The result may ask the host to fetch a schema, collect required inputs, create a local draft, run a repair plan, stage a draft, search loaded lineage, or expose an asset to a multimodal reader. This keeps bootstrap prompts small and lets the LLM query the system instead of memorizing host-specific procedures.
+
+## Schema Material Providers
+
+Provider selection is explicit and ordered:
+
+```text
+loaded material
+→ serializable schema cache
+→ supplied provider responses
+→ local directory/Git checkout
+→ archive
+→ host repository connector
+→ explicit HTTP provider
+→ preserve-only
+```
+
+`resolve-schema-material` verifies the schema identity from the readable artifact envelope. A matching filename alone is insufficient. Registered source repository/commit/path/checksum metadata is compared when available.
+
+`resolve-schema-chain-material` repeats this process through declared schema parents and returns a compact chain, explicit material files, and cache updates. It does not claim that the current shared runtime executed semantic-parent capability fallback.
+
+Executable providers are host-supplied functions passed in operation options. When the host connector is available to the LLM but not callable from the JavaScript sandbox, the operation returns a serializable `providerRequest` containing search queries, expected paths, response shape, and the next operation. The LLM invokes its equivalent host tools and supplies the response explicitly.
+
+The schema cache is explicit session data. It preserves source qualification and is never hidden global process state.
 
 ## LLM Schema Guide
 
@@ -231,6 +305,74 @@ Search remains loaded-only and does not infer missing edges or fetch remote mate
 
 This describes ancestry for a human or LLM. It does not itself execute validation or creation through those parents.
 
+
+## Local Draft Creation And Staging
+
+`create-local-draft` consumes explicit inputs and produces an in-memory local draft. Exact registered creation contracts are reused when available. Otherwise, supplied readable child schema material may drive a generic schema-structured writer fallback.
+
+The operation:
+
+```text
+never inherits a parent source adapter object
+never performs a file or remote write
+blocks missing unconditional inputs by default
+allows explicit incomplete local checkpoints only through allowIncomplete
+runs draft validation before returning qualification
+```
+
+`stage-draft` returns a serializable staged-artifact record. Validation errors block staging unless an explicitly incomplete local checkpoint is requested. Staging does not imply export readiness, publication, exact child validation, or package conformance.
+
+## Durable Finding Materialization
+
+Durable conversation outcomes remain explicit session findings until a caller maps them to an explicit target schema.
+
+```text
+plan-durable-materialization
+→ validate finding ids and explicit schema selections
+
+materialize-durable-findings
+→ resolve readable schema chain
+→ create local draft
+→ validate
+→ optionally stage
+→ remove only successfully materialized findings from session state
+```
+
+Portable tooling does not infer whether a durable finding is a decision, evidence, outcome, topic, or another artifact family. Unmapped findings remain visible and recoverable.
+
+## Recoverable Portable Checkpoints
+
+`create-checkpoint` captures explicit portable session state, including loaded material, focus, staged artifacts, durable findings, and schema cache. The checkpoint carries a deterministic non-cryptographic corruption guard and an explicit boundary:
+
+```text
+canonical handoff artifact: false
+canonical package format locked: false
+hidden chat state included: false
+```
+
+`restore-checkpoint` verifies the version and corruption guard before restoring the session. A portable checkpoint is a recoverability mechanism, not a substitute for a schema-qualified Tiinex handoff artifact.
+
+## Current Runtime Package And Round Trip
+
+`build-runtime-package`, `inspect-runtime-package`, `rehydrate-runtime-package`, and `roundtrip-runtime-package` reuse the existing `src/export/**` runtime implementation. They do not define a second package engine.
+
+The round-trip check verifies that:
+
+```text
+local staged artifact Markdown survives import unchanged
+source references remain source references
+local records are not guessed as GitHub-backed
+bundle inspection and import planning remain valid
+```
+
+`rehydrate-runtime-package` reconstructs the runtime file map from explicitly supplied serialized package entries, such as the entries produced by the archive adapter. This allows an actual ZIP to be parsed, rehydrated, and passed through the same import/round-trip checks. The result always states that this is the current site runtime contract, not a locked canonical handoff/package schema. The Node-only `output/node.zip.js` adapter can serialize a valid in-memory bundle to a local ZIP when the caller explicitly supplies an output path.
+
+## Asset Index And Host Multimodal Handoff
+
+`inspect-assets` indexes asset path, MIME/media kind, size, references, content availability, and safe local/archive locators without interpreting binary content.
+
+`prepare-asset-analysis` returns a host action for image or PDF analysis when the host profile exposes that capability. Portable core does not implement vision. The response keeps the source asset and generated interpretation distinct and does not promote a description into evidence automatically.
+
 ## Writer Fallback
 
 `make-writer-brief` has three outcomes:
@@ -256,9 +398,10 @@ staged artifacts
 durable findings awaiting materialization
 last checkpoint metadata
 qualification
+explicit schema cache
 ```
 
-Session methods expose the same schema-guide, search, planning, validation, and repair operations. Hidden chat state is not provenance.
+Session methods expose the same schema-guide, search, planning, validation, repair, materialization, checkpoint, and runtime-package operations. Hidden chat state is not provenance.
 
 ## Adapter Reuse
 
@@ -279,14 +422,16 @@ Editor and agent adapters may add transport and UX, but may not raise semantic q
 
 ## Known Limits
 
-- No durable artifact creation in the portable facade.
-- No canonical handoff/package generation or package-format lock.
+- Local draft creation, staging, materialization, and checkpointing are in-memory/serializable. Only the explicit Node CLI package-output path writes a local file.
+- The current site runtime package is supported and round-trip tested, but no canonical handoff/package schema or package-format lock is claimed.
+- Portable checkpoints are not canonical handoff artifacts.
 - No production MCP, LSP, or VS Code adapter.
-- No remote discovery or source mutation.
+- Schema reads may be host-mediated, but artifact-parent/origin discovery remains explicit and separate.
 - No automatic execution of received code.
 - Parent capability fallback remains a shared-core follow-up.
 - Schema-specific LLM companions are runtime hints, not canonical authority.
 - Contract-driven draft checks cover explicit structured requirements, not every prose semantic.
+- Host multimodal analysis remains interpretation produced by the host, not source evidence by default.
 - Schema snapshot binding/checksum diagnostics remain owned by the existing schema-binding validation path.
 
 ## Validation

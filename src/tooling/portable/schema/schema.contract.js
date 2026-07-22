@@ -123,15 +123,44 @@ export function optionalSchemaFields(document = {}) {
 }
 
 export function requiredCreationInputFields(document = {}) {
-  return uniqueStrings(unconditionalContractCategoryItems(document.creation, [
-    'Required Inputs', 'Required Fields', 'Creation Fields', 'Prompt Fields'
-  ]).map(cleanContractToken));
+  return uniqueStrings(contractCategoryItemsExcludingToolingGroups(document.creation, [
+    'Required Inputs', 'Required Fields', 'Creation Fields'
+  ], { unconditionalOnly: true }).map(cleanContractToken));
 }
 
 export function optionalCreationInputFields(document = {}) {
-  return uniqueStrings(unconditionalContractCategoryItems(document.creation, [
+  return uniqueStrings(contractCategoryItemsExcludingToolingGroups(document.creation, [
     'Optional Inputs', 'Optional Fields'
-  ]).map(cleanContractToken));
+  ], { unconditionalOnly: true }).map(cleanContractToken));
+}
+
+export function requiredCreationSections(document = {}) {
+  const direct = contractCategoryItemsExcludingToolingGroups(document.creation, ['Required Sections', 'Header Sections', 'Footer Sections'], { unconditionalOnly: true });
+  const shape = contractCategoryItemsExcludingToolingGroups(document.creation, ['Required Shape'], { unconditionalOnly: true })
+    .flatMap(extractHeadingRequirements)
+    .filter((heading) => !isTemplatePlaceholderHeading(heading));
+  return uniqueStrings([...direct.map(cleanContractToken), ...shape]);
+}
+
+export function requiredCreationContentInputs(document = {}) {
+  const placeholders = contractCategoryItemsExcludingToolingGroups(document.creation, ['Required Shape'], { unconditionalOnly: true })
+    .flatMap(extractTemplatePlaceholders)
+    .map(humanizeToken);
+  const validationGroups = new Map((document.validation?.groups || []).map((group) => [normalizeKey(group.name), group]));
+  const sectionInputs = requiredCreationSections(document).filter((section) => {
+    const group = validationGroups.get(normalizeKey(section));
+    return groupCategoryItems(group, ['Required Fields', 'Required Entries']).length === 0;
+  });
+  return uniqueStrings([...placeholders, ...sectionInputs]);
+}
+
+export function creationToolingConfigurationFields(document = {}) {
+  const fields = [];
+  for (const group of document.creation?.groups || []) {
+    if (!isToolingConfigurationGroup(group)) continue;
+    fields.push(...groupCategoryItems(group, ['Required Fields', 'Optional Fields', 'Prompt Fields']).map(cleanContractToken));
+  }
+  return uniqueStrings(fields);
 }
 
 export function conditionalCreationInputs(document = {}) {
@@ -248,6 +277,27 @@ function parseContractGroups(section = null) {
   return Object.freeze({ groups: Object.freeze(groups) });
 }
 
+function contractCategoryItemsExcludingToolingGroups(contract = {}, categoryNames = [], options = {}) {
+  const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
+  const items = [];
+  for (const group of contract.groups || []) {
+    if (isToolingConfigurationGroup(group)) continue;
+    if (options.unconditionalOnly && groupRequiredWhen(group).length) continue;
+    for (const category of group.categories || []) {
+      if (names.has(normalizeKey(category.name))) items.push(...category.items);
+    }
+  }
+  return uniqueStrings(items);
+}
+
+function isToolingConfigurationGroup(group = {}) {
+  const key = normalizeKey(group.name);
+  return key === 'prompt fields'
+    || key.includes('tooling configuration')
+    || key.includes('create surface configuration')
+    || key.includes('ui configuration');
+}
+
 function groupCategoryItems(group = {}, categoryNames = []) {
   const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
   return uniqueStrings((group.categories || []).flatMap((category) => names.has(normalizeKey(category.name)) ? category.items : []));
@@ -268,6 +318,19 @@ function extractHeadingRequirements(value = '') {
   if (matches.length) return matches;
   const plain = text.match(/^(#{1,6})\s+(.+)$/);
   return plain ? [plain[2].trim()] : [];
+}
+
+function isTemplatePlaceholderHeading(value = '') {
+  return /^\{\{\s*[a-zA-Z0-9_.-]+\s*\}\}$/.test(String(value || '').trim());
+}
+
+function extractTemplatePlaceholders(value = '') {
+  return [...String(value || '').matchAll(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g)].map((match) => match[1]);
+}
+
+function humanizeToken(value = '') {
+  const text = String(value || '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[._-]+/g, ' ').trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
 
 function cleanContractToken(value = '') {

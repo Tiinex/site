@@ -75,11 +75,11 @@ async function readSingleFile(absolute, files, findings, options = {}) {
     return;
   }
   if (!TEXT_RE.test(absolute)) {
-    files.push(Object.freeze({ path: materialPath, size: info.size, type: '', kind: 'asset', sourceMode: 'portable-node-local' }));
+    files.push(Object.freeze({ path: materialPath, size: info.size, type: '', kind: 'asset', sourceMode: 'portable-node-local', locator: Object.freeze({ kind: 'node-file', localPath: absolute }) }));
     return;
   }
   if (info.size > positiveInteger(options.maxTextBytes, DEFAULT_MAX_TEXT_BYTES)) {
-    files.push(Object.freeze({ path: materialPath, size: info.size, type: 'text/plain', kind: 'asset', sourceMode: 'portable-node-local' }));
+    files.push(Object.freeze({ path: materialPath, size: info.size, type: 'text/plain', kind: 'asset', sourceMode: 'portable-node-local', locator: Object.freeze({ kind: 'node-file', localPath: absolute }) }));
     findings.push(portableFinding('warning', 'portable.node.text-too-large', 'Text-like input exceeded the configured text limit and was retained as metadata only.', { ref: materialPath, size: info.size }));
     return;
   }
@@ -98,7 +98,7 @@ async function readZipFile(absolute, files, findings, options = {}) {
       if (files.length >= positiveInteger(options.maxFiles, DEFAULT_MAX_FILES)) break;
       const tooLargeText = typeof entry.content === 'string' && Number(entry.size || 0) > positiveInteger(options.maxTextBytes, DEFAULT_MAX_TEXT_BYTES);
       if (tooLargeText) {
-        files.push(Object.freeze({ path: entry.path, size: entry.size, type: entry.type, kind: 'asset', sourceMode: 'portable-node-zip' }));
+        files.push(Object.freeze({ path: entry.path, size: entry.size, type: entry.type, kind: 'asset', sourceMode: 'portable-node-zip', locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) }));
         findings.push(portableFinding('warning', 'portable.node.zip-text-too-large', 'Zip text material exceeded the configured text limit and was retained as metadata only.', { ref: entry.path, size: entry.size }));
       } else {
         files.push(Object.freeze({
@@ -107,7 +107,8 @@ async function readZipFile(absolute, files, findings, options = {}) {
           size: entry.size,
           type: entry.type,
           kind: entry.kind,
-          sourceMode: 'portable-node-zip'
+          sourceMode: 'portable-node-zip',
+          ...(typeof entry.content === 'string' ? {} : { locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) })
         }));
       }
     }

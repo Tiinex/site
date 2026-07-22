@@ -12,9 +12,115 @@ import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContrac
 import { searchPortableLineage as searchPortableLineageIndex } from './lineage/lineage.search.js';
 import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
 import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
+import { createPortableLocalDraft, stagePortableDraft } from './draft/draft.create.js';
+import { discoverPortableHostCapabilities } from './host/host.capabilities.js';
+import { listPortableMaterialProviders, resolvePortableSchemaChainMaterial, resolvePortableSchemaMaterial } from './providers/schema.providers.js';
+import { inspectPortableAssets, preparePortableAssetAnalysis } from './assets/asset.operations.js';
+import { preparePortableTask } from './orchestration/task.prepare.js';
 
 export const PORTABLE_RESULT_SCHEMA_ID = 'tiinex.portable.operation.result.v1';
 export const PORTABLE_SCHEMA_CHAIN_SCHEMA_ID = 'tiinex.portable.schema-chain.v1';
+
+export async function preparePortableTaskOperation(input = {}, options = {}) {
+  const result = await preparePortableTask(input, options);
+  return operationResult('prepare-task', {
+    task: result.task,
+    status: result.status,
+    route: result.route,
+    host: result.host,
+    result: result.result,
+    nextAction: result.nextAction,
+    boundary: result.boundary,
+    findings: result.findings
+  });
+}
+
+export function discoverPortableTooling(input = {}, options = {}) {
+  const result = discoverPortableHostCapabilities(input, options);
+  return operationResult('discover-tooling', {
+    profile: result.profile,
+    routes: result.routes,
+    findings: result.findings
+  });
+}
+
+export function listPortableProviders(input = {}, options = {}) {
+  const result = listPortableMaterialProviders(input, options);
+  return operationResult('list-material-providers', {
+    providers: result.providers,
+    host: result.host,
+    findings: result.findings
+  });
+}
+
+export async function resolvePortableSchemaMaterialOperation(input = {}, options = {}) {
+  const result = await resolvePortableSchemaMaterial(input, options);
+  return operationResult('resolve-schema-material', {
+    requestedSchema: result.requestedSchema,
+    status: result.status,
+    material: result.material,
+    providerCatalog: result.providerCatalog,
+    providerRequest: result.providerRequest,
+    findings: result.findings
+  });
+}
+
+export async function resolvePortableSchemaChainMaterialOperation(input = {}, options = {}) {
+  const result = await resolvePortableSchemaChainMaterial(input, options);
+  return operationResult('resolve-schema-chain-material', {
+    requestedSchema: result.requestedSchema,
+    status: result.status,
+    maxDepth: result.maxDepth,
+    nodes: result.nodes,
+    materials: result.materials,
+    providerRequest: result.providerRequest,
+    findings: result.findings
+  });
+}
+
+export function createPortableArtifactDraft(input = {}, options = {}) {
+  const result = createPortableLocalDraft(input, options);
+  return operationResult('create-local-draft', {
+    status: result.status,
+    schemaId: result.schemaId,
+    draft: result.draft,
+    plan: result.plan,
+    guide: result.guide,
+    validation: result.validation || null,
+    qualification: result.qualification,
+    findings: result.findings
+  });
+}
+
+export function stagePortableArtifactDraft(input = {}, options = {}) {
+  const result = stagePortableDraft(input, options);
+  return operationResult('stage-draft', {
+    status: result.status,
+    stagedArtifact: result.stagedArtifact,
+    validation: result.validation,
+    findings: result.findings
+  });
+}
+
+export function inspectPortableAssetIndex(input = {}, options = {}) {
+  const result = inspectPortableAssets(input, options);
+  return operationResult('inspect-assets', {
+    boundary: result.boundary,
+    assets: result.assets,
+    counts: result.counts,
+    findings: result.findings
+  });
+}
+
+export function preparePortableAssetAnalysisOperation(input = {}, options = {}) {
+  const result = preparePortableAssetAnalysis(input, options);
+  return operationResult('prepare-asset-analysis', {
+    status: result.status,
+    request: result.request,
+    host: result.host,
+    findings: result.findings
+  });
+}
 
 export function inspectPortableMaterial(input = {}, options = {}) {
   const material = normalizePortableInput(input);
