@@ -9,7 +9,7 @@
     - [relative](../../tiinex.root.v1.schema.md)
     - [browse + git](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/tiinex.root.v1.schema.md)
 - Current
-  - Current Schema: [tiinex.preservation.v1](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/core/preservation/tiinex.preservation.v1.schema.md)
+  - Current Schema: [tiinex.preservation.v1](https://github.com/Tiinex/site/blob/4003e05b794d2f0bd12066ac0645151a3b4267fa/src/schemas/core/preservation/tiinex.preservation.v1.schema.md)
   - Created At: 2026-06-30 00:00:00
   - Summary: Schema for material that has been captured, copied, archived, photographed, transcribed, exported, taken into custody, or otherwise made available for later judgment.
 
@@ -309,4 +309,4 @@ The body headings required for artifacts using this schema are: `## Preserved Ma
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: aOLeU7LJyIItzjubToX1fEseP6EVKKe196TVDc-TGrg
+  - Value: y_xcgnoOEgAkik45rJS3Zba7SL4mUu7yRjvXtX_L4ew
