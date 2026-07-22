@@ -1,13 +1,15 @@
 import { portableFinding } from '../findings.js';
+import { buildPortableToolBindings, normalizePortableHostTools } from './tool.bindings.js';
 
 export const PORTABLE_HOST_CAPABILITIES_SCHEMA_ID = 'tiinex.portable.host-capabilities.v1';
 export const PORTABLE_TOOLING_DISCOVERY_SCHEMA_ID = 'tiinex.portable.tooling-discovery.v1';
 
 export function discoverPortableHostCapabilities(input = {}, options = {}) {
-  const tools = normalizeTools(input.tools || input.availableTools || options.tools || []);
+  const tools = normalizePortableHostTools(input.tools || input.availableTools || options.tools || []);
+  const toolBindings = buildPortableToolBindings({ tools });
   const explicit = input.capabilities || input.hostCapabilities || directCapabilityProfile(input) || options.capabilities || directCapabilityProfile(options) || {};
-  const findings = [];
-  const inferred = inferToolCapabilities(tools);
+  const findings = [...(toolBindings.findings || [])];
+  const inferred = inferToolCapabilities(toolBindings);
   const capabilities = Object.freeze({
     materialAccess: Object.freeze({
       attachments: explicitBoolean(explicit.materialAccess?.attachments, inferred.attachments),
@@ -47,7 +49,8 @@ export function discoverPortableHostCapabilities(input = {}, options = {}) {
     profile: Object.freeze({
       schema: PORTABLE_HOST_CAPABILITIES_SCHEMA_ID,
       capabilities,
-      tools: Object.freeze(tools.map(({ raw, ...tool }) => Object.freeze(tool)))
+      tools: Object.freeze(tools),
+      toolBindings: toolBindings.bindings
     }),
     routes: buildTaskRoutes(capabilities),
     findings: Object.freeze(findings)
@@ -98,39 +101,26 @@ function directCapabilityProfile(value = {}) {
   return (value.materialAccess || value.repositories || value.execution || value.multimodal || value.mutation) ? value : null;
 }
 
-function inferToolCapabilities(tools = []) {
-  const corpus = tools.map((tool) => `${tool.name} ${tool.description}`.toLowerCase()).join('\n');
-  const any = (...patterns) => patterns.some((pattern) => pattern.test(corpus));
+function inferToolCapabilities(toolBindings = {}) {
+  const bindings = toolBindings.bindings || {};
+  const available = (name) => Boolean(bindings[name]?.selected);
   return {
-    attachments: any(/attachment/, /uploaded file/, /project source/),
-    projectSources: any(/project source/, /file library/),
-    filesystemRead: any(/filesystem/, /read file/, /open file/, /container/, /shell/, /terminal/),
-    archiveRead: any(/\bzip\b/, /archive/, /extract/, /unpack/),
-    repositorySearch: any(/github.*search/, /search.*repository/, /search files.*repo/, /code search/),
-    repositoryRead: any(/github.*fetch/, /fetch file/, /repository content/, /read.*github/, /read.*repository/),
-    httpRead: any(/http/, /web fetch/, /download url/, /open url/),
-    javascript: any(/javascript/, /\bnode\b/, /code execution/, /python/),
-    shell: any(/shell/, /terminal/, /container/, /exec/),
-    images: any(/vision/, /image analysis/, /open image/, /multimodal/, /screenshot/),
-    pdf: any(/pdf/, /screenshot.*page/),
-    filesystemWrite: any(/write file/, /create file/, /update file/, /save file/),
-    remoteWriteAvailable: any(/github.*create/, /github.*update/, /remote write/, /create.*repository file/, /update.*repository file/)
+    attachments: available('attachments'),
+    projectSources: available('projectSources'),
+    filesystemRead: available('filesystemRead'),
+    archiveRead: available('archiveRead'),
+    repositorySearch: available('repositorySearch'),
+    repositoryRead: available('repositoryRead'),
+    httpRead: available('httpRead'),
+    javascript: available('javascript'),
+    shell: available('shell'),
+    images: available('images'),
+    pdf: available('pdf'),
+    filesystemWrite: available('filesystemWrite'),
+    remoteWriteAvailable: available('remoteWriteAvailable')
   };
 }
 
-function normalizeTools(value) {
-  const list = Array.isArray(value) ? value : value ? [value] : [];
-  return list.map((item, index) => {
-    if (typeof item === 'string') return Object.freeze({ id: item, name: item, description: '', raw: item });
-    const name = String(item?.name || item?.id || item?.tool || `tool-${index + 1}`).trim();
-    return Object.freeze({
-      id: String(item?.id || name),
-      name,
-      description: String(item?.description || item?.summary || ''),
-      raw: item
-    });
-  });
-}
 
 function route(task, status, sequence) {
   return Object.freeze({ task, status, sequence: Object.freeze([...new Set(sequence.filter(Boolean))]) });

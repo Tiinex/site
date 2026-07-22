@@ -4,7 +4,7 @@
 
 This bootstrap gives an LLM a thin entrypoint to the same JavaScript parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic used by `Tiinex/site`.
 
-It also exposes capability-level host discovery, schema providers, compact schema guides, bounded schema retrieval, loaded-lineage search/filtering, local draft creation/staging, draft validation, repair planning, durable-finding materialization, recoverable checkpoints, the current site runtime-package round trip, and host-mediated asset analysis preparation so an LLM does not need to repeatedly reread every Markdown file in full.
+It also exposes capability-level host discovery, concrete host-tool binding and receipt normalization, schema providers, compact schema guides, bounded schema retrieval, loaded-lineage search/filtering, local draft creation/staging, draft validation, repair planning, durable-finding materialization, recoverable checkpoints, the current site runtime-package round trip, and host-mediated asset analysis preparation so an LLM does not need to repeatedly reread every Markdown file in full.
 
 It is not a second Tiinex runtime. It does not make a chat, IDE, CLI, MCP host, or LLM prompt the semantic authority for a Tiinex artifact.
 
@@ -128,6 +128,41 @@ package
 ```
 
 It returns one explicit `nextAction`, such as collecting missing inputs, calling a host repository provider, creating a local draft, repairing findings, staging, or exposing an asset to host vision.
+
+## Bind Capabilities To Concrete Host Tools
+
+`discover-tooling` reports both capability availability and ranked concrete tool bindings. Use `plan-host-action` when the next step must leave the JavaScript runtime and be executed by the host:
+
+```js
+const plan = await runTiinexLlmOperation('plan-host-action', {
+  action: 'repository-schema-resolution',
+  tools: hostToolDescriptions,
+  request: providerRequest
+});
+```
+
+A plan includes selected tool ids/names, alternatives, generic argument templates, expected normalized results, and a receipt contract. Adapt the generic template to the selected host tool's real argument schema; do not invent unsupported parameters.
+
+After the host call, return an explicit receipt rather than passing opaque raw output directly into Tiinex logic:
+
+```js
+const accepted = await runTiinexLlmOperation('accept-host-receipt', {
+  plan,
+  receipt: {
+    schema: 'tiinex.portable.host-action-receipt.v1',
+    actionId: plan.actionId,
+    action: plan.action,
+    steps: [{
+      stepId: plan.steps[0].stepId,
+      toolId: plan.steps[0].tool.id,
+      status: 'completed',
+      normalized: { /* explicit result matching the receipt contract */ }
+    }]
+  }
+});
+```
+
+Repository material becomes `providerResponses`; local/archive material remains local; image/PDF descriptions remain generated interpretations and are not source evidence. Missing repository commits are disclosed as moving-ref qualification. Remote writes remain blocked unless explicitly authorized by the human.
 
 ## Resolve Unknown Schemas Through Providers
 

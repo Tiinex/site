@@ -4,9 +4,9 @@
 
 This document describes the additive portable-tooling line now present on `Tiinex/site@refactor`.
 
-The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch added LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering. The third batch added capability-level host discovery, material/schema providers, unknown-schema parent-chain material resolution, explicit schema cache, safe local draft creation/staging, task orchestration, and host-mediated asset analysis preparation. The fourth batch adds explicit durable-finding materialization, recoverable non-handoff checkpoints, and the current site runtime-package build/inspection/round-trip surface with optional local ZIP serialization in the Node CLI.
+The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch added LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering. The third batch added capability-level host discovery, material/schema providers, unknown-schema parent-chain material resolution, explicit schema cache, safe local draft creation/staging, task orchestration, and host-mediated asset analysis preparation. The fourth batch added explicit durable-finding materialization, recoverable non-handoff checkpoints, and the current site runtime-package build/inspection/round-trip surface with optional local ZIP serialization in the Node CLI. The fifth batch binds capability-level needs to concrete host tools, ranked alternatives, invocation templates, and explicit normalized receipts so the LLM can identify not only that a capability exists, but which tool to call and how to return the result safely.
 
-The work is grounded and validated against the supplied v194 checkpoint. It does not introduce a second Tiinex engine.
+The cumulative portable line is grounded and validated against the supplied v197 checkpoint (`site(11).zip`). It does not introduce a second Tiinex engine.
 
 ## Ownership
 
@@ -71,6 +71,8 @@ Current operations:
 ```text
 prepare-task
 discover-tooling
+plan-host-action
+accept-host-receipt
 list-material-providers
 resolve-schema-material
 resolve-schema-chain-material
@@ -151,6 +153,25 @@ package
 ```
 
 The result may ask the host to fetch a schema, collect required inputs, create a local draft, run a repair plan, stage a draft, search loaded lineage, or expose an asset to a multimodal reader. This keeps bootstrap prompts small and lets the LLM query the system instead of memorizing host-specific procedures.
+
+## Concrete Host Tool Binding And Receipts
+
+Capability booleans alone are insufficient for autonomous use. `discover-tooling` now preserves a ranked binding from each portable capability to concrete host tool descriptors. For example, repository search can select `GitHub.search` over an unrelated public-web search tool, while repository reads can select `GitHub.fetch_file`.
+
+`plan-host-action` turns a capability-level request into:
+
+```text
+selected concrete tool
+ranked alternatives
+argument template
+expected normalized result
+receipt contract
+continuation operation
+```
+
+The planner never invokes the host itself. The LLM or host executes the selected tool and returns an explicit `tiinex.portable.host-action-receipt.v1` object. `accept-host-receipt` verifies the plan/action/step identities and normalizes only the explicit receipt. Raw tool output is not silently promoted to provenance.
+
+Repository receipts require explicit repository identity and remain moving-ref qualified when no commit is supplied. Local or archive receipts cannot acquire GitHub provenance, even when a caller accidentally supplies repository metadata. Multimodal receipts are stored as generated interpretations separate from the source asset. Remote-write plans remain blocked until explicit human authorization is present.
 
 ## Schema Material Providers
 

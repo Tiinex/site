@@ -27,6 +27,9 @@ const providerNeeded = await preparePortableTask({
 });
 assert.equal(providerNeeded.status, 'provider-action-required');
 assert.equal(providerNeeded.nextAction.capability, 'repository-search-and-read');
+assert.equal(providerNeeded.nextAction.hostActionPlan.status, 'ready');
+assert.equal(providerNeeded.nextAction.hostActionPlan.steps[0].tool.name, 'GitHub.search');
+assert.equal(providerNeeded.nextAction.hostActionPlan.steps[1].tool.name, 'GitHub.fetch_file');
 
 const search = await preparePortableTask({
   task: 'search-lineage',

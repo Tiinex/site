@@ -28,6 +28,7 @@ import { summarizePortableFindings } from './findings.js';
 import { createPortableCheckpoint, restorePortableCheckpoint } from './checkpoint/portable.checkpoint.js';
 import { materializePortableDurableFindings, planPortableDurableMaterialization } from './materialization/durable.materialize.js';
 import { buildPortableRuntimePackage, inspectPortableRuntimePackage, rehydratePortableRuntimePackage, roundTripPortableRuntimePackage } from './package/runtime.package.js';
+import { acceptPortableHostActionReceipt, planPortableHostAction } from './host/tool.bindings.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
 
@@ -46,6 +47,21 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only',
     inputSchema: 'tiinex.portable.tooling-discovery.request.v1',
     handler: discoverPortableTooling
+  }),
+  'plan-host-action': operation({
+    name: 'plan-host-action',
+    description: 'Bind a capability-level request to concrete host tools, ranked alternatives, argument templates, and an explicit receipt contract without invoking the host.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.host-action-plan.request.v1',
+    remoteFetch: 'host-mediated-optional',
+    handler: (input = {}, options = {}) => wrapPortableResult('plan-host-action', planPortableHostAction(input, options))
+  }),
+  'accept-host-receipt': operation({
+    name: 'accept-host-receipt',
+    description: 'Validate an explicit host-tool receipt and normalize repository material, local material, or generated multimodal interpretations without treating raw tool output as provenance.',
+    safety: 'read-only-normalization',
+    inputSchema: 'tiinex.portable.host-action-receipt.accept.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('accept-host-receipt', acceptPortableHostActionReceipt(input, options))
   }),
   'list-material-providers': operation({
     name: 'list-material-providers',

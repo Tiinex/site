@@ -5,6 +5,7 @@ import { buildPortableSchemaGuide, planPortableArtifact } from '../schema/schema
 import { validatePortableDraft } from '../draft/draft.operations.js';
 import { searchPortableLineage } from '../lineage/lineage.search.js';
 import { preparePortableAssetAnalysis } from '../assets/asset.operations.js';
+import { planPortableHostAction } from '../host/tool.bindings.js';
 
 export const PORTABLE_TASK_PREPARATION_SCHEMA_ID = 'tiinex.portable.task-preparation.v1';
 
@@ -25,8 +26,10 @@ export async function preparePortableTask(input = {}, options = {}) {
       findings.push(...(chain.findings || []));
       if (chain.status === 'provider-action-required') {
         status = 'provider-action-required';
-        nextAction = chain.providerRequest;
-        result = Object.freeze({ schemaChain: chain });
+        const hostActionPlan = planPortableHostAction({ ...input, action: 'repository-schema-resolution', request: chain.providerRequest, host: input.host || input }, options);
+        findings.push(...(hostActionPlan.findings || []));
+        nextAction = Object.freeze({ ...chain.providerRequest, hostActionPlan });
+        result = Object.freeze({ schemaChain: chain, hostActionPlan });
       } else {
         const context = { ...input, files: chain.materials.files, schemaCache: chain.materials.schemaCache, schemaId };
         if (task === 'read-schema') {
@@ -65,7 +68,10 @@ export async function preparePortableTask(input = {}, options = {}) {
     findings.push(...(prepared.findings || []));
     result = Object.freeze({ assetAnalysis: prepared });
     status = prepared.status;
-    nextAction = prepared.request?.hostAction || null;
+    const action = prepared.request?.requiredCapability === 'multimodal.pdf' ? 'pdf-analysis' : 'image-analysis';
+    const hostActionPlan = prepared.request ? planPortableHostAction({ ...input, action, request: prepared.request, host: input.host || input }, options) : null;
+    if (hostActionPlan) findings.push(...(hostActionPlan.findings || []));
+    nextAction = prepared.request ? Object.freeze({ ...prepared.request.hostAction, hostActionPlan }) : null;
   } else if (task === 'materialize-findings') {
     const { planPortableDurableMaterialization } = await import('../materialization/durable.materialize.js');
     const plan = planPortableDurableMaterialization(input);

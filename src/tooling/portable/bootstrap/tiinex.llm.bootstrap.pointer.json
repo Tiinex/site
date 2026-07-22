@@ -1,7 +1,7 @@
 {
   "schema": "tiinex.portable.bootstrap.pointer.v1",
   "version": 1,
-  "portableToolingLine": "v4",
+  "portableToolingLine": "v5",
   "repository": "Tiinex/site",
   "bootstrapPath": "src/tooling/portable/bootstrap/tiinex.llm.bootstrap.md",
   "entrypointPath": "src/tooling/portable/index.js",
@@ -9,6 +9,7 @@
   "preferredRefPolicy": "Use an explicit commit or release ref when available; disclose when a moving branch was used.",
   "firstOperations": [
     "discover-tooling",
+    "plan-host-action",
     "prepare-task"
   ],
   "fallback": "When JavaScript is unavailable, read the bootstrap Markdown and supplied schema/artifact Markdown directly while preserving all stated source and qualification boundaries.",

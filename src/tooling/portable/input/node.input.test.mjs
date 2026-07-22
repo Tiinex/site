@@ -73,6 +73,15 @@ try {
     { name: 'vision.open_image', description: 'Open image for multimodal analysis.' },
     { name: 'archive.extract', description: 'Extract zip archive entries.' }
   ] }), 'utf8');
+  const actionRequestPath = path.join(root, 'action-request.json');
+  await writeFile(actionRequestPath, JSON.stringify({ schemaId: 'tiinex.remote.v1', repository: 'Tiinex/docs', ref: 'master', searchQueries: ['tiinex.remote.v1.schema.md'], nextOperation: 'resolve-schema-material' }), 'utf8');
+  const actionOutput = [];
+  assert.equal(await runPortableCli(['plan-host-action', 'repository-schema-resolution', '--host', hostPath, '--request', actionRequestPath], { log(value) { actionOutput.push(value); }, error() {} }), 0);
+  const actionPlan = JSON.parse(actionOutput[0]);
+  assert.equal(actionPlan.status, 'ready');
+  assert.equal(actionPlan.steps[0].tool.name, 'GitHub.search');
+  assert.equal(actionPlan.steps[1].tool.name, 'GitHub.fetch_file');
+
   const resolveOutput = [];
   assert.equal(await runPortableCli(['resolve-schema-material', schemaDir, '--schema', 'tiinex.evidence.v1', '--host', hostPath], { log(value) { resolveOutput.push(value); }, error() {} }), 0);
   assert.equal(JSON.parse(resolveOutput[0]).status, 'resolved');

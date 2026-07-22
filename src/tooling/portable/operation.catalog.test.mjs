@@ -9,6 +9,8 @@ assert.equal(new Set(catalog.operations.map((operation) => operation.name)).size
 const expected = [
   'prepare-task',
   'discover-tooling',
+  'plan-host-action',
+  'accept-host-receipt',
   'resolve-schema-material',
   'search-lineage',
   'schema-guide',

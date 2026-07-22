@@ -7,11 +7,14 @@ const bootstrap = await readFile(new URL('./tiinex.llm.bootstrap.md', import.met
 assert.equal(pointer.schema, 'tiinex.portable.bootstrap.pointer.v1');
 assert.equal(pointer.repository, 'Tiinex/site');
 assert.equal(pointer.firstOperations.includes('discover-tooling'), true);
+assert.equal(pointer.firstOperations.includes('plan-host-action'), true);
 assert.equal(pointer.boundary.remoteWrite, false);
 assert.equal(pointer.boundary.sourceMutation, false);
 assert.equal(bootstrap.includes('## Startup Modes'), true);
 assert.equal(bootstrap.includes('Pre-prompt only; no bootstrap source is loaded'), true);
 assert.equal(bootstrap.includes(pointer.bootstrapPath), true);
 assert.equal(bootstrap.includes('do not execute package code'), true);
+assert.equal(bootstrap.includes('## Bind Capabilities To Concrete Host Tools'), true);
+assert.equal(bootstrap.includes('tiinex.portable.host-action-receipt.v1'), true);
 
 console.log('✓ portable bootstrap pointer and startup-mode contract passed');

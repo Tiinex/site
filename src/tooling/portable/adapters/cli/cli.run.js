@@ -98,8 +98,22 @@ async function commandInput(parsed) {
     return { input: host, options: {} };
   }
 
+  if (parsed.command === 'plan-host-action') {
+    const host = await readOptionalJson(flags.host || flags.tools);
+    const request = await readOptionalJson(flags.request);
+    return {
+      input: { ...host, host, action: flags.action || flags.capability || parsed.positionals[0] || '', request },
+      options: { allowRemoteWrite: Boolean(flags['allow-remote-write']) }
+    };
+  }
+  if (parsed.command === 'accept-host-receipt') {
+    const plan = await readOptionalJson(flags.plan || parsed.positionals[0]);
+    const receipt = await readOptionalJson(flags.receipt || parsed.positionals[1]);
+    return { input: { plan: plan.result || plan, receipt: receipt.result || receipt }, options: {} };
+  }
+
   const targets = parsed.positionals.length ? parsed.positionals : flags.input ? [flags.input] : [];
-  const operationsWithoutMaterial = new Set(['prepare-task', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
+  const operationsWithoutMaterial = new Set(['prepare-task', 'plan-host-action', 'accept-host-receipt', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
   if (!targets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
   const material = targets.length ? await loadNodePortableInput(targets, {
     maxFiles: flags['max-files'],
@@ -296,6 +310,8 @@ function helpText() {
     'node tools/tiinex-portable.mjs operations',
     'node tools/tiinex-portable.mjs prepare-task [file|dir|zip] --task <read-schema|create-artifact|validate-draft|search-lineage|analyze-asset> [--schema <id>] [--host host-profile.json]',
     'node tools/tiinex-portable.mjs discover-tooling [--host host-profile.json]',
+    'node tools/tiinex-portable.mjs plan-host-action <action> --host host-profile.json [--request request.json]',
+    'node tools/tiinex-portable.mjs accept-host-receipt --plan plan.json --receipt receipt.json',
     'node tools/tiinex-portable.mjs list-material-providers [file|dir|zip] [--host host-profile.json]',
     'node tools/tiinex-portable.mjs resolve-schema-material [file|dir|zip] --schema <schema-id> [--host host-profile.json]',
     'node tools/tiinex-portable.mjs resolve-schema-chain-material [file|dir|zip] --schema <schema-id> [--depth 16]',

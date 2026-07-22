@@ -5,6 +5,7 @@ const tests = [
   './operation.catalog.test.mjs',
   './bootstrap/bootstrap.test.mjs',
   './host/host.capabilities.test.mjs',
+  './host/tool.bindings.test.mjs',
   './orchestration/task.prepare.test.mjs',
   './providers/schema.providers.test.mjs',
   './schema/schema.guide.test.mjs',

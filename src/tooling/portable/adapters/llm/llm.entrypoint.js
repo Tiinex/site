@@ -25,7 +25,7 @@ export function describeTiinexLlmEntrypoint() {
       remoteWrite: false,
       sourceMutation: false,
       receivedCodeExecution: false,
-      toolingDiscovery: 'capability-level; product-specific tool names are not required',
+      toolingDiscovery: 'capability-level with ranked concrete host-tool bindings and explicit normalized receipts; product-specific names are optional inputs, not semantic authority',
       unknownSchemaResolution: 'loaded/cache/provider response first; otherwise self-describing host request'
     }),
     operations: listPortableOperations().operations,

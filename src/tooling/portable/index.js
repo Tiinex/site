@@ -11,6 +11,7 @@ export * from './schema/llm.companion.js';
 export * from './lineage/lineage.search.js';
 export * from './draft/draft.operations.js';
 export * from './host/host.capabilities.js';
+export * from './host/tool.bindings.js';
 export * from './providers/schema.providers.js';
 export * from './draft/draft.create.js';
 export * from './assets/asset.operations.js';

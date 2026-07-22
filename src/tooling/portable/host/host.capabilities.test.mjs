@@ -17,6 +17,8 @@ assert.equal(discovered.profile.capabilities.materialAccess.archiveRead, true);
 assert.equal(discovered.profile.capabilities.multimodal.images, true);
 assert.equal(discovered.profile.capabilities.mutation.remoteWriteAvailable, true);
 assert.equal(discovered.profile.capabilities.mutation.remoteWriteAuthorized, false);
+assert.equal(discovered.profile.toolBindings.repositorySearch.selected.tool.name, 'GitHub.search');
+assert.equal(discovered.profile.toolBindings.repositoryRead.selected.tool.name, 'GitHub.fetch_file');
 assert.equal(discovered.routes['resolve-unknown-schema'].status, 'ready');
 assert.equal(discovered.routes['analyze-image-asset'].status, 'ready');
 assert.equal(discovered.routes['publish-or-remote-write'].status, 'blocked');
