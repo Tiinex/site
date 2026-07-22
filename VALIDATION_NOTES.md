@@ -1,33 +1,32 @@
-# Validation Notes — v195 display/tree/view-state parity
+# Validation Notes — v196 Lineage runtime crash guard
 
 ## Base
 
-- Checkpoint base: `site(9).zip` supplied by Q.
-- Site base reported by package before changes: `0.2.14-v194`.
+- Checkpoint base: `tiinex-site-v195-display-tree-viewstate-source.zip`.
+- Site base reported by package before changes: `0.2.15-v195`.
 - Portable tooling paths were present and left untouched.
 
 ## Scope
 
-v195 narrows to the owners identified by the 1-fps review and audit:
+v196 is deliberately narrow. The v195 review video showed a runtime blank-screen failure after Lineage/view navigation. DevTools showed:
 
-- Display options default and copy: `Leaves only` is default-on; visible `Leaves first` is removed.
-- Material-role inference: source/schema/adapter support surfaces are not work leaves merely because they have schema identity or continuity metadata.
-- Tree/Feed parity: both use the same material-role truth via the existing filtered record list and path-tree counters.
-- Lineage interaction: the unified RecordCard chain stays, but card click toggles read preview; anchor/reference movement is explicit.
-- Route/view continuity: scroll positions are captured and restored across Discovery/Tree/Lineage transitions and route restoration.
+```text
+Uncaught ReferenceError: expandedRecordIds is not defined
+    at WorkspaceLineageState
+```
 
-Out of scope:
+The root cause was that `WorkspaceColumnSurface` passed `expandedRecordIds` and `onToggleLineageCard` into `WorkspaceLineageState`, but `WorkspaceLineageState` did not accept those props in its own signature before forwarding them to `LineageSelectedSummary`.
 
-- Feed ranking rewrite or recency/product decision;
-- partial promotion;
-- real issue reader;
-- full mirror/proxy parity;
-- new Lineage layout polish;
-- portable-tooling edits.
+## Changes
+
+- `WorkspaceLineageState` now owns `expandedRecordIds = []` and `onToggleLineageCard` in its argument destructuring.
+- `tools/check-ui-shape.mjs` now extracts the `WorkspaceLineageState` signature and fails if those props are missing.
+- No source-plan, material-role, transport, portable tooling, or schema companion semantics were changed.
 
 ## Validation run
 
 ```bash
+node --check tools/check-ui-shape.mjs
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
@@ -37,22 +36,13 @@ npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bun
 
 All green in the working tree.
 
-## Additional guarded behavior
-
-`src/workspaces/workspace.materialRole.test.mjs` checks that:
-
-- `.trace.md` Topic material remains a work leaf;
-- canonical `.schema.md` snapshots are schema definitions;
-- adapter/source support surfaces are supporting material, not work leaves;
-- plain Markdown without Tiinex leaf evidence remains supporting material.
-
 ## Browser test focus
 
-- Display options opens with `Leaves only` checked and no visible `Leaves first` row.
-- Concrete `.adapters` / source-support paths no longer inflate leaf counts solely due to schema identity.
-- Discovery scroll restores after opening Lineage and going back.
-- Browser Back/Forward restores view state without rerunning source discovery.
-- In Lineage, clicking a card toggles preview; the explicit Anchor action changes reference point.
+- Enter Lineage from a record.
+- Click a Lineage card to expand/collapse preview.
+- Use UI Back and browser Back/Forward.
+- Confirm the app does not blank and the console does not report `expandedRecordIds is not defined`.
+- Confirm v195 behavior still holds: `Leaves only` default, unified RecordCard Lineage, and scroll restoration.
 
 ## Known limits
 

@@ -1,21 +1,18 @@
-# Tiinex Site v195
+# Tiinex Site v196
 
-v195 is a display/tree/view-state parity pass on top of v194. It keeps the v194 source-plan reconciliation and the portable-tooling slice intact, but moves the next user-observed issues to their actual owners: leaf/material-role truth, Display options defaults, Lineage card interaction semantics, and view scroll continuity.
+v196 is a focused Lineage runtime crash repair on top of v195. It preserves the v195 Display options, material-role, Tree, scroll, and unified RecordCard Lineage direction, but fixes the browser regression observed in the v195 review video: entering/backing through Lineage could blank the app with `expandedRecordIds is not defined`.
 
-## v195 batch
+## v196 batch
 
-- Changes the default Discovery presentation to `Leaves only` on, matching the PoC-style leaf workspace default.
-- Removes the visible `Leaves first` option from Display options; it remains only as an internal/migration field.
-- Narrows material-role inference so schema/source/adapter/support surfaces are not promoted to work leaves merely because they carry a schema id or continuity envelope.
-- Adds a focused material-role guard for trace leaves, schema snapshots, adapter/source support material, and plain supporting Markdown.
-- Keeps Discovery and Lineage on the same RecordCard surface, but changes Lineage card click to expand/collapse the card read preview.
-- Keeps anchor/reference-point movement as an explicit Lineage action instead of overloading the whole card click.
-- Stores and restores view scroll positions across Discovery → Lineage → Back / browser Back-Forward.
-- Keeps portable-tooling paths untouched.
+- Passes `expandedRecordIds` and `onToggleLineageCard` through `WorkspaceLineageState` instead of only through its caller.
+- Keeps Lineage card click as expand/collapse and keeps anchor/reference movement as an explicit action.
+- Adds a UI-shape guard that inspects the `WorkspaceLineageState` signature so this missing-prop runtime crash cannot silently return.
+- Leaves v194 source-plan reconciliation and portable-tooling paths untouched.
+- Leaves v195 `Leaves only` default, material-role inference, Tree/Feed filtering, and scroll restore behavior intact.
 
 ## Still intentionally out of scope
 
-- Feed ranking/product sorting decisions beyond removing the confusing default role-first toggle.
+- Feed ranking/product sorting decisions.
 - Partial record promotion during GitHub import.
 - A real browser issue snapshot reader.
 - Automatic binary asset fetching.

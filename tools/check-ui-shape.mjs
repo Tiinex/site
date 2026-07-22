@@ -32,6 +32,8 @@ if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte o
 if (!appAndWorkspace.includes('schema ok')) failures.push('audit status badge should use schema/readability wording instead of byte integrity wording');
 if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evidence operation must not be presented as old Reference parity');
 if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage mode must show selected artifact trust/audit status after artifact selection');
+const lineageStateSignature = appAndWorkspace.match(/function WorkspaceLineageState\(\{([^}]*)\}\)/s)?.[1] || '';
+if (!lineageStateSignature.includes('expandedRecordIds = []') || !lineageStateSignature.includes('onToggleLineageCard')) failures.push('Lineage card expansion props must be owned by WorkspaceLineageState; missing props can blank the app at runtime');
 if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');
 if (appAndWorkspace.includes('aria-label="Workspace verse"')) failures.push('Lineage must not be presented as a workspace verse tab');
 if (!appAndWorkspace.includes('Display options')) failures.push('workspace presentation needs display options for assets/supporting material');

@@ -664,7 +664,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, onOpenAudit }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, onOpenAudit, expandedRecordIds = [], onToggleLineageCard }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
     ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
