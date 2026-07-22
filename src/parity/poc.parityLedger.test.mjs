@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { pocParityLedger, POC_PARITY_LEDGER_SCHEMA_ID, PoCParityStatus, summarizePoCParity } from './poc.parityLedger.js';
 
 assert.equal(pocParityLedger.schema, POC_PARITY_LEDGER_SCHEMA_ID, 'ledger must declare schema');
-assert.equal(pocParityLedger.checkpoint, 'v180', 'ledger checkpoint should match package checkpoint');
+assert.equal(pocParityLedger.checkpoint, 'v181', 'ledger checkpoint should match package checkpoint');
 assert(pocParityLedger.scenarios.length >= 6, 'ledger must cover multiple PoC loops');
 for (const scenario of pocParityLedger.scenarios) {
   assert(scenario.id, 'scenario requires id');
@@ -83,7 +83,7 @@ assert(continueReference.legacyBehavior.includes('old Reference'), 'ledger must 
 assert(continueReference.manualChecks.some((item) => item.includes('old Reference relation')), 'old Reference relation needs explicit manual parity evidence');
 
 const summary = summarizePoCParity();
-assert.equal(summary.checkpoint, 'v180', 'summary checkpoint matches ledger');
+assert.equal(summary.checkpoint, 'v181', 'summary checkpoint matches ledger');
 assert(summary.notParity.includes('declared-lineage-tree'), 'summary should expose remaining non-parity loops');
 
 console.log('✓ PoC parity ledger tests passed');

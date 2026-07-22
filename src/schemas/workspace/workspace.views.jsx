@@ -158,7 +158,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">
         <div className="tx-window-title-block">
           <h1>{presentation.title}</h1>
-          <span className="tx-window-kicker tx-local-workspace-kicker" title="Local/session workspace; source provenance is not inferred."><Icon name="workspace" /><span>local</span></span>
+          <WorkspaceBoundaryKicker workspace={workspace} />
         </div>
         <div className="tx-window-actions tx-compact-window-actions" aria-label="Workspace actions">
           <span className="tx-stat-pill" title="Shown artifacts"><Icon name="manualFiles" />{records.length}</span>
@@ -178,7 +178,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAudit={() => onVerse('audit')} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onOpenAudit={() => onVerse('audit')} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -191,6 +191,23 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       </section>
     </section>
   );
+}
+
+
+function WorkspaceBoundaryKicker({ workspace = {} }) {
+  const records = Array.isArray(workspace.records) ? workspace.records : [];
+  const assets = Array.isArray(workspace.assets) ? workspace.assets : [];
+  const candidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
+  const localCount = records.filter((record) => recordSourceClass(record) === 'local').length + assets.length + candidates.length;
+  const sourceCount = records.filter((record) => recordSourceClass(record) === 'source-backed').length;
+  if (!localCount && !sourceCount) return null;
+  const label = sourceCount && localCount ? 'mixed' : sourceCount ? 'source-backed' : 'local';
+  const title = sourceCount && localCount
+    ? 'Workspace contains both browser-local and explicit source-backed material.'
+    : sourceCount
+      ? 'Workspace is currently showing explicit source-backed material.'
+      : 'Browser-local session material; source provenance is not inferred.';
+  return <span className={`tx-window-kicker tx-boundary-workspace-kicker tx-${label}`} title={title}><Icon name={sourceCount ? 'source' : 'workspace'} /><span>{label}</span></span>;
 }
 
 
@@ -241,6 +258,7 @@ function WorkspaceMaterialSummary({ summary }) {
   if (!shouldShowWorkspaceSummary(summary)) return null;
   const counts = summary.counts || {};
   const latest = summary.latestImport;
+  const noisyLatest = latest && (latest.ok === false || counts.errors || counts.warnings || counts.previewOmitted);
   return (
     <section className="tx-workspace-material-summary" aria-label="Workspace material summary">
       <div className="tx-material-summary-counts">
@@ -249,7 +267,7 @@ function WorkspaceMaterialSummary({ summary }) {
         <span><Icon name="workspace" /><strong>{counts.workspaceCandidates || 0}</strong><small>workspaces</small></span>
         {counts.sourceBackedRecords ? <span><Icon name="source" /><strong>{counts.sourceBackedRecords}</strong><small>source-backed</small></span> : null}
       </div>
-      {latest ? (
+      {noisyLatest ? (
         <div className={`tx-material-summary-import ${latest.ok ? 'tx-import-ok' : 'tx-import-degraded'}`} title={latest.message}>
           <Icon name={latest.ok ? 'check' : 'warning'} />
           <span>{latest.message}</span>
@@ -410,11 +428,15 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onOpenAsset, 
 
 function TreeCountBadges({ counts = {} }) {
   const records = Number(counts.records || 0);
+  const leaves = Number(counts.leaves || 0);
+  const supporting = Number(counts.supporting || 0) + Number(counts.schemaDefinitions || 0);
   const assets = Number(counts.assets || 0);
   const candidates = Number(counts.workspaceCandidates || 0);
   return (
-    <span className="tx-tree-counts" aria-label={`${records} artifacts, ${assets} assets, ${candidates} workspace candidates`}>
-      {records ? <span className="tx-tree-count-chip"><Icon name="manualFiles" />{records}</span> : null}
+    <span className="tx-tree-counts" aria-label={`${records} artifacts, ${leaves} leaves, ${supporting} supporting, ${assets} assets, ${candidates} workspace candidates`}>
+      {records ? <span className="tx-tree-count-chip"><Icon name="manualFiles" />{records}<small>artifacts</small></span> : null}
+      {leaves ? <span className="tx-tree-count-chip tx-tree-leaf-chip"><Icon name="lineage" />{leaves}<small>leaves</small></span> : null}
+      {supporting ? <span className="tx-tree-count-chip tx-tree-supporting-chip" title="Supporting/schema docs"><Icon name="open" />{supporting}</span> : null}
       {assets ? <span className="tx-tree-count-chip"><Icon name="asset" />{assets}</span> : null}
       {candidates ? <span className="tx-tree-count-chip"><Icon name="workspace" />{candidates}</span> : null}
     </span>
@@ -574,7 +596,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAudit }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onOpenAudit }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query });
   const selected = selectedRecordId ? lineage.nodes.find((node) => node.id === selectedRecordId) : null;
   const selectedAudit = selected ? auditById.get(selected.id) : null;
@@ -592,7 +614,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
         </div>
       </header>
-      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onOpenAudit={onOpenAudit} /> : null}
+      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onOpenAudit={onOpenAudit} /> : null}
       <details className="tx-lineage-workspace-overview" open={!selected} aria-label="Workspace lineage overview">
         <summary>Workspace lineage overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
         {lineage.findings.length ? (
@@ -631,29 +653,64 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onOpenAudit }) {
-  const badge = auditBadgeForRecord(node.record, auditItem);
+function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onOpenAudit }) {
+  const [expanded, setExpanded] = useState(false);
+  const findings = (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage);
-  const findings = auditItem?.findings || [];
+  const record = node.record || {};
+  const sourceText = node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session');
+  const markdownAction = { id: RecordActionKind.markdown, label: 'Show markdown', icon: 'open' };
   return (
-    <section className={`tx-lineage-selected-summary tx-audit-badge-${badge.tone}`} aria-label="Selected artifact lineage status">
-      <div>
-        <strong>{node.title || 'Selected artifact'}</strong>
-        <small>{node.path ? compactPath(node.path) : 'Loaded lineage focus'}</small>
+    <section className={`tx-lineage-selected-summary tx-selected-lineage-card ${expanded ? 'tx-selected-lineage-expanded' : ''}`} aria-label="Selected artifact lineage" role="button" tabIndex="0" onClick={() => setExpanded((value) => !value)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpanded((value) => !value); } }}>
+      <div className="tx-card-badges tx-legacy-card-badges">
+        <Badge className="tx-selected-status-badge">{selectedLineage.label}</Badge>
+        <AuditStatusBadge record={record} item={auditItem} />
+        <Badge>{recordSchemaBadge(record)}</Badge>
+        <Badge>{sourceText}</Badge>
       </div>
-      <span className="tx-lineage-selected-badges">
-        <Badge>{selectedLineage.label}</Badge>
-        <AuditStatusBadge record={node.record} item={auditItem} />
-        <Badge>{node.schemaId || 'markdown'}</Badge>
-        <Badge>{node.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
-      </span>
-      <p>{findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : selectedLineage.message}</p>
-      <div className="tx-lineage-selected-actions">
-        <button type="button" onClick={() => onOpenRecord?.(node.id)}>Open detail</button>
-        <button type="button" onClick={onOpenAudit}>Audit details</button>
+      <h3>{node.title}</h3>
+      <p>{record.summary || selectedLineage.message}</p>
+      {node.path ? <div className="tx-card-pathline" title={node.path}><Icon name="folderOpen" />{compactPath(node.path)}</div> : null}
+      <div className="tx-lineage-selected-message">
+        {findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : selectedLineage.message}
+      </div>
+      {expanded ? <LineageInlineRecordDetails record={record} node={node} findings={findings} /> : <small className="tx-lineage-expand-hint">Click selected card for key details</small>}
+      <div className="tx-lineage-selected-actions" onClick={(event) => event.stopPropagation()}>
+        <button type="button" onClick={() => onOpenRecord?.(node.id)}><Icon name="open" /> Open details</button>
+        <button type="button" onClick={() => onRecordAction?.(record, markdownAction)}><Icon name="open" /> Show markdown</button>
+        <button type="button" onClick={onOpenAudit}><Icon name="audit" /> Audit details</button>
       </div>
     </section>
   );
+}
+
+function LineageInlineRecordDetails({ record = {}, node = {}, findings = [] }) {
+  const details = [
+    ['Schema', record.schemaId || node.schemaId || record.kind || 'artifact'],
+    ['Source', node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session')],
+    record.currentCreatedAt || record.createdAt ? ['Created', record.currentCreatedAt || record.createdAt] : null,
+    record.trace || node.trace ? ['Trace', record.trace || node.trace] : null,
+    record.origin || node.origin ? ['Origin', record.origin || node.origin] : null,
+    findings.length ? ['Findings', findings.slice(0, 3).map((finding) => finding.code).join(' · ')] : null
+  ].filter(Boolean);
+  return (
+    <div className="tx-lineage-inline-details" aria-label="Selected artifact key details">
+      <dl>
+        {details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>
+      {record.markdown ? <pre>{extractImportantMarkdown(record.markdown)}</pre> : null}
+    </div>
+  );
+}
+
+function extractImportantMarkdown(markdown = '') {
+  const lines = String(markdown || '').split(/\r?\n/).filter((line) => line.trim());
+  const picked = [];
+  for (const line of lines) {
+    if (/^#{1,3}\s/.test(line) || /^[-*]\s+/.test(line) || /^\w[\w\s-]{0,28}:\s+/.test(line)) picked.push(line);
+    if (picked.length >= 10) break;
+  }
+  return (picked.length ? picked : lines.slice(0, 8)).join('\n').slice(0, 1200);
 }
 
 function selectedLineageStatus(node = {}, lineage = {}) {
@@ -790,7 +847,7 @@ function actionLabel(action = {}) {
 }
 
 function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction }) {
-  const actions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.lineage);
+  const actions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.lineage && action.id !== RecordActionKind.reference);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
   const sourceBadge = recordSourceBadge(record);
@@ -799,7 +856,7 @@ function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onS
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusLineage(); }
   };
   return (
-    <article className="tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card" role="button" tabIndex="0" aria-label={`Open lineage for ${record.title || 'artifact'}`} onClick={focusLineage} onKeyDown={onKey}>
+    <article className="tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card" role="button" tabIndex="0" aria-label={`Focus lineage for ${record.title || 'artifact'}`} onClick={focusLineage} onKeyDown={onKey}>
       <div className="tx-card-badges tx-legacy-card-badges">
         <AuditStatusBadge record={record} item={auditItem} />
         <Badge>{schemaBadge}</Badge>

@@ -15,7 +15,7 @@ console.log(JSON.stringify({
   activeFiles:files.length,
   legacyArchived: existsSync(join(root,'.old')) && statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v180-card-source-material-role-parity'),
+  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v181-card-lineage-navigation-parity'),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,

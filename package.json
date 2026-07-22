@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v180",
+  "version": "0.2.10-v181",
   "private": true,
-  "description": "Tiinex Site v180: card/source/material-role parity repair with PoC-like GitHub discovery surfaces, explicit register-only boundary, granular source progress, and clearer source continuation.",
+  "description": "Tiinex Site v181: card/lineage navigation parity repair with old-like card click behavior, expandable selected Lineage details, source-summary cleanup, and Tree leaf counts.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

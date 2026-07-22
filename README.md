@@ -1,25 +1,21 @@
-# Tiinex Site v180
+# Tiinex Site v181
 
-v180 is a card/source/material-role parity repair checkpoint for the React/Vite refactor. It keeps v176-v178 presentation corrections while making GitHub source work harder to confuse with either idle registration or active materialization.
+v181 is a card/lineage navigation parity repair checkpoint for the React/Vite refactor. It builds on v180 by tightening the old-like card contract: the card itself focuses Lineage, while Open details and Show markdown remain separate dialogs. It also removes passive source-summary boilerplate and makes Tree counts closer to the old artifacts/leaves model.
 
-## v180 batch
+## v181 batch
 
-- Display options now separates ordering, membership, and semantic filters:
-  - `Leaves only`
-  - `Mismatches only`
-  - schema filter
-  - artifact/source class filter
-  - supporting docs, workspace candidates, and assets.
-- Supporting-doc counts are category-specific instead of showing the workspace total.
-- GitHub Add now separates source boundary, discovery surfaces, explicit paths, and issue targets:
-  - repo files discovery is a visible checkbox surface, checked by default for the primary load action;
-  - issue snapshot discovery is a separate checkbox surface;
-  - explicit Markdown paths/URLs can be added without changing modes;
-  - `Register only` is a separate no-loading action.
-- Materialization progress now reports concrete phases such as resolving the ref, finding Markdown refs, loading `N/M` files, and promoting records.
-- A deferred source remains a source control point: `Discover` opens the GitHub form prefilled with that source context.
-- Source pills expose transport mode and idle/loading state without claiming mirror/proxy behavior that is not active.
-- Dialog layout avoids horizontal clipping/scroll at split-screen desktop widths.
+- Workspace boundary label is now material-aware:
+  - hidden when empty;
+  - `local` only when local material exists;
+  - `source-backed` when imported GitHub/source material is the visible material;
+  - `mixed` when both are present.
+- Clean successful import boilerplate is no longer shown as a full row after every import. Source counts/state remain visible on the source rail.
+- Feed cards remain clickable as Lineage-focus targets, but the primary action row is less text-heavy.
+- `Open details` remains a detail dialog.
+- `Show markdown` remains a Markdown dialog.
+- Evidence preservation is no longer a dominant primary card action while the old Reference relation is not restored.
+- Lineage selected-card view is expandable: clicking the selected card in Lineage reveals key details from the artifact without opening the full detail dialog.
+- Tree counts now expose both total artifacts and leaf counts, rather than only raw record counts.
 
 ## Supported local start
 

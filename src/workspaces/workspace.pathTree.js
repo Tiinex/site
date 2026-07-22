@@ -1,3 +1,5 @@
+import { inferRecordMaterialRole, MaterialRole } from './workspace.materialRole.js';
+
 const ITEM_TYPE_ORDER = { record: 0, workspace: 1, asset: 2 };
 
 export function normalizeTreePath(value = '') {
@@ -61,6 +63,7 @@ function makeTreeItem(type, source = {}) {
     title: source.title || source.name || name,
     kind: source.kind || source.schema || source.type || type,
     previewState: source.previewState || '',
+    materialRole: type === 'record' ? inferRecordMaterialRole(source) : type === 'asset' ? MaterialRole.asset : type === 'workspace' ? MaterialRole.workspaceCandidate : '',
     source
   };
 }
@@ -96,24 +99,33 @@ function makeFolderNode(name, path, depth) {
     depth,
     folders: [],
     items: [],
-    counts: { records: 0, assets: 0, workspaceCandidates: 0, total: 0 },
+    counts: { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceCandidates: 0, total: 0 },
     _folderMap: new Map()
   };
 }
 
 function finalizeFolder(folder) {
-  const counts = { records: 0, assets: 0, workspaceCandidates: 0, total: 0 };
+  const counts = { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceCandidates: 0, total: 0 };
   for (const child of folder.folders) {
     finalizeFolder(child);
     counts.records += child.counts.records;
     counts.assets += child.counts.assets;
+    counts.leaves += child.counts.leaves || 0;
+    counts.supporting += child.counts.supporting || 0;
+    counts.schemaDefinitions += child.counts.schemaDefinitions || 0;
     counts.workspaceCandidates += child.counts.workspaceCandidates;
     counts.total += child.counts.total;
   }
   for (const item of folder.items) {
     if (item.type === 'asset') counts.assets += 1;
     else if (item.type === 'workspace') counts.workspaceCandidates += 1;
-    else counts.records += 1;
+    else {
+      counts.records += 1;
+      const role = item.materialRole || inferRecordMaterialRole(item.source || {});
+      if (role === MaterialRole.leaf) counts.leaves += 1;
+      else if (role === MaterialRole.schemaDefinition) counts.schemaDefinitions += 1;
+      else counts.supporting += 1;
+    }
     counts.total += 1;
   }
   folder.counts = counts;

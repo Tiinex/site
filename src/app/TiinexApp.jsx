@@ -627,7 +627,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v180-card-source-material-role-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v181-card-lineage-navigation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
