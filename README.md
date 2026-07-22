@@ -1,25 +1,23 @@
-# Tiinex Site v198
+# Tiinex Site v199
 
-v198 is a focused Discovery/Lineage material-role and toolbar polish pass on top of v197 plus the portable-tooling overlay. It keeps the v194 source-plan reconciliation, v195 view-state work, v196 crash guard, and v197 Feed ordering, but corrects the remaining parity drift around canonical Tiinex/docs schema artifacts, schema-owned read bullets, and Discovery/Lineage search row layout.
+v199 is a narrow Lineage toolbar cleanup on top of v198. It keeps the v194 source-plan reconciliation, v195 view-state work, v197 Feed ordering, and v198 canonical schema artifact/display polish, but removes the last Lineage-mode header badges that made the viewer feel busier than the PoC.
 
-## v198 batch
+## v199 batch
 
-- Treats canonical Tiinex/docs schema notes under `.topics/.schemas/**/*.schema.md` as readable Tiinex artifacts/leaves when they carry continuity context.
-- Keeps local implementation snapshots under `src/schemas/**` as schema-definition/support material.
-- Preserves support classification for adapter/source/tool/interface implementation surfaces that are not canonical schema artifacts.
-- Keeps `Leaves only` from hiding canonical schema artifacts that are real source-backed Tiinex leaves.
-- Renders schema-owned read sections with real list bullets instead of displaying Markdown hyphens as plain text.
-- Keeps Discovery and Lineage search controls on one physical row with matching search width.
-- Leaves the v197 Feed comparator intact: artifact created timestamp descending, then path/id tie-breakers.
-- Leaves portable-tooling paths intact.
+- Removes the selected-artifact chip from the Lineage mode toolbar.
+- Removes the textual `Audit details` pill from the Lineage mode toolbar.
+- Replaces audit access with a normal compact icon action in the toolbar.
+- Keeps audit reachable as an explicit action without making audit state part of the default Lineage viewer chrome.
+- Keeps Discovery/Lineage search sizing from v198.
+- Leaves Lineage cards, material-role logic, feed ordering, source transport, and portable-tooling paths unchanged.
 
 ## Still intentionally out of scope
 
-- Feed product modes beyond PoC-compatible recent/activity ordering.
+- Feed product modes beyond the current recent/activity ordering.
 - A real browser issue snapshot reader.
 - Partial record promotion during GitHub import.
-- Full mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
-- Further Lineage card redesign; the unified RecordCard model is preserved.
+- Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
+- Further Lineage card redesign; current Lineage card parity is being protected.
 
 ## Supported local start
 
@@ -40,7 +38,7 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js src/ui/primitives/Icon.jsx
 ```
 
 `npm run build:public` still requires installed Vite/React dependencies.

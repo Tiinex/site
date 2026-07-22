@@ -30,6 +30,7 @@ import { faCircle, faFileLines } from '@fortawesome/free-regular-svg-icons';
 const ICONS = {
   add: faCirclePlus,
   archive: faFolder,
+  audit: faCircleCheck,
   check: faCircleCheck,
   asset: faFileLines,
   close: faXmark,

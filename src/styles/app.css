@@ -6894,3 +6894,33 @@ pre { white-space: pre-wrap; overflow:auto; }
     min-width: 9rem;
   }
 }
+
+/* v199: Lineage mode header should be a simple viewer toolbar, not status badges. */
+.tx-mode-strip.tx-column-toolbar .tx-mode-action-button {
+  flex: 0 0 auto;
+  width: 1.92rem;
+  height: 1.92rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  color: rgba(247,248,251,0.74);
+  background: rgba(0,0,0,0.18);
+  cursor: pointer;
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-action-button:hover,
+.tx-mode-strip.tx-column-toolbar .tx-mode-action-button:focus-visible {
+  color: rgba(247,248,251,0.96);
+  border-color: rgba(189,115,255,0.42);
+  background: rgba(189,115,255,0.1);
+  box-shadow: var(--tx-focus-ring);
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-action-button .tx-icon {
+  width: .86rem;
+  height: .86rem;
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-audit-button {
+  color: rgba(214,204,229,0.86);
+}

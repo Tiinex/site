@@ -377,8 +377,11 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
       ) : (
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
-      {lineageVerse && selectedRecord ? <span className="tx-selected-lineage-chip" title={selectedRecord.path || selectedRecord.title}>Selected · {compactPath(selectedRecord.title || selectedRecord.path || 'artifact')}</span> : null}
-      {lineageVerse && selectedRecord ? <button type="button" className="tx-mode-link tx-audit-details-trigger" onClick={() => onVerse('audit')}>Audit details</button> : null}
+      {lineageVerse && selectedRecord ? (
+        <button type="button" className="tx-mode-action-button tx-mode-audit-button" onClick={() => onVerse('audit')} title="Audit details" aria-label="Audit details">
+          <Icon name="audit" />
+        </button>
+      ) : null}
       {discoveryVerse ? <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button> : null}
       <label className="tx-search-field tx-search-field-icon">
         <Icon name="search" />

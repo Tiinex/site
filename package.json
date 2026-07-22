@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.18-v198",
+  "version": "0.2.19-v199",
   "private": true,
-  "description": "Tiinex Site v198: canonical schema artifact leaf parity, schema read bullets, and Discovery/Lineage search row polish.",
+  "description": "Tiinex Site v199: simpler Lineage toolbar with selected/audit badges removed and audit as a normal icon action.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
