@@ -1,6 +1,6 @@
 {
   "type": "tiinex.web.schema-module.manifest.v1",
-  "version": "v119",
+  "version": "v190",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "52ecdea0a75893882ce282214d155f70e1309c2a",
   "modules": [

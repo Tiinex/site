@@ -18,6 +18,8 @@ export const moduleSchemaModule = defineSchemaModule({
   capabilities: moduleCapabilities,
   validate: moduleValidate,
   present: modulePresent,
+  read: Object.freeze({ label: 'Schema Module', sections: Object.freeze(['Schema Module', 'Module Contract', 'Companion Contract', 'Usage', 'Interpretation Limits']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
   transitions: moduleTransitions,
   i18n: moduleI18n,
   findings: moduleFindings

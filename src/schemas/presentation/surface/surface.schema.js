@@ -18,6 +18,8 @@ export const surfaceSchemaModule = defineSchemaModule({
   capabilities: surfaceCapabilities,
   validate: surfaceValidate,
   present: surfacePresent,
+  read: Object.freeze({ label: 'Presentation Surface', sections: Object.freeze(['Surface', 'Presentation Surface', 'Contract', 'Usage', 'Interpretation Limits']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
   transitions: surfaceTransitions,
   i18n: surfaceI18n,
   findings: surfaceFindings

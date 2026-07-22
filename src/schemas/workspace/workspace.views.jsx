@@ -14,7 +14,7 @@ import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageVie
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
-import { parseArtifactMarkdown } from '../../artifacts/artifact.parse.js';
+import { schemaCanonicalBinding, schemaLineageActions, schemaReadPresentation, schemaReadSummaryItems } from '../companion.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   leavesFirst: true,
@@ -735,6 +735,7 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
   const title = item.title || record.title || item.id;
   const sourceText = item.sourceLabel || record.source?.label || (item.sourceBacked ? 'source-backed' : 'local/session');
   const schemaBadge = recordSchemaBadge(record || item);
+  const schemaBinding = schemaCanonicalBinding(record || item);
   const hasMarkdown = Boolean(String(record.markdown || '').trim());
   return (
     <article className={`tx-lineage-viewer-card tx-lineage-path-card ${isAnchor ? 'tx-lineage-current-anchor' : ''} ${terminal ? 'tx-lineage-terminal-card' : ''}`} aria-label={`${role}: ${title}`}>
@@ -742,17 +743,23 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
         <div className="tx-card-badges tx-legacy-card-badges tx-lineage-primary-badges">
           {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
           {record?.id ? <AuditStatusBadge record={record} item={auditItem} /> : null}
-          <Badge>{schemaBadge}</Badge>
+          {schemaBinding.permalink ? <a className="tx-badge tx-schema-badge-link" href={schemaBinding.permalink} target="_blank" rel="noopener noreferrer" title={`Open canonical schema snapshot: ${schemaBinding.snapshot || schemaBinding.sourcePath || schemaBadge}`}>{schemaBadge}</a> : <Badge>{schemaBadge}</Badge>}
           <Badge>{sourceText}</Badge>
         </div>
         <span className="tx-lineage-node-role" title={`Lineage role: ${role}`}>{role}</span>
       </header>
       <button type="button" className="tx-lineage-card-read-target" onClick={onToggle} aria-expanded={expanded} title={expanded ? 'Collapse read view' : 'Expand read view'}>
-        <h3>{title}</h3>
-        {record.summary || item.summary ? <p>{record.summary || item.summary}</p> : null}
-        {expanded ? <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp /> : null}
-        {expanded && (item.path || record.path) ? <div className="tx-card-pathline" title={item.path || record.path}><Icon name="folderOpen" />{compactPath(item.path || record.path)}</div> : null}
+        <span className="tx-lineage-card-copy">
+          <h3>{title}</h3>
+          {record.summary || item.summary ? <p>{record.summary || item.summary}</p> : null}
+        </span>
       </button>
+      {expanded ? (
+        <div className="tx-lineage-card-expanded-read">
+          <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp />
+          {(item.path || record.path) ? <div className="tx-card-pathline" title={item.path || record.path}><Icon name="folderOpen" />{compactPath(item.path || record.path)}</div> : null}
+        </div>
+      ) : null}
       <footer className="tx-lineage-viewer-card-actions" onClick={(event) => event.stopPropagation()}>
         {viewerActionButton({
           key: 'anchor',
@@ -792,10 +799,7 @@ function renderLineageExtraAction(record, action, onRecordAction) {
 
 function lineageCardActions(record = {}) {
   if (!record?.id) return [];
-  return presentRecordActions(record).filter((action) => {
-    if (action.enabled === false) return false;
-    return action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.source;
-  });
+  return schemaLineageActions(record, { surface: 'lineage', hideShare: true });
 }
 
 function LineagePathResult({ traversal = null, status = {} }) {
@@ -1139,116 +1143,6 @@ function SchemaReadView({ record = {}, compact = false, maxSections = null, show
       </div>
     </section>
   );
-}
-
-const SCHEMA_READ_SECTIONS = Object.freeze({
-  'tiinex.topic.v1': ['Content', 'Current Read', 'Design Direction', 'Next Artifacts', 'Good Child Candidates', 'Transition Boundary'],
-  'tiinex.feedback.v1': ['Feedback Received', 'Feedback Target', 'Target', 'Disposition', 'Feedback Context', 'Limits', 'Interpretation Limits', 'Artifact Body'],
-  'tiinex.task.v1': ['Objective', 'Task Objective', 'Done Criteria', 'Scope', 'Dependencies', 'Grounding', 'Non-Goals'],
-  'tiinex.evidence.v1': ['Supported Claim', 'Supports', 'Evidence Material', 'Unavailable Material', 'Provenance', 'Interpretation Limits', 'Interpretation Notes and Limits'],
-  'tiinex.pointer.v1': ['Pointer Target', 'Target', 'Linked Artifacts', 'Pointer Reason', 'Reason', 'Interpretation Limits', 'Limits']
-});
-
-function schemaReadPresentation(record = {}, options = {}) {
-  const parsed = parseRecordMarkdown(record);
-  const schema = String(record.schemaId || record.currentSchemaId || record.kind || parsed.envelope?.current?.schema?.id || '').trim();
-  const sections = extractMarkdownSections(parsed.body?.text || record.markdown || '');
-  const wanted = SCHEMA_READ_SECTIONS[schema] || [];
-  const picked = [];
-  for (const label of wanted) {
-    const value = sectionValueByName(sections, label);
-    if (value) picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
-  }
-  if (!picked.length) {
-    for (const [label, value] of sections.entries()) {
-      if (/^(continuity context|continuity integrity)$/i.test(label)) continue;
-      if (options.compact && isRedundantIdentitySection(label, value, record, schema)) continue;
-      if (picked.length >= (options.compact ? 2 : 5)) break;
-      picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
-    }
-  }
-  if (!picked.length && parsed.body?.text) picked.push({ label: 'Artifact body', value: trimReadValue(parsed.body.text, options) });
-  const maxSections = Number(options.maxSections || 0);
-  const visibleSections = maxSections > 0 ? picked.slice(0, maxSections) : picked;
-  return {
-    schema,
-    label: schema ? schema.replace(/^tiinex\./, '').replace(/\.v\d+$/, '') : 'artifact',
-    title: record.title || parsed.title || 'Untitled artifact',
-    summary: record.summary || parsed.envelope?.current?.summary || '',
-    sections: visibleSections
-  };
-}
-
-function schemaReadSummaryItems(record = {}, limit = 2) {
-  const presentation = schemaReadPresentation(record, { compact: true, lineClamp: true });
-  return (presentation.sections || []).slice(0, limit).map((section) => ({
-    label: section.label,
-    value: trimReadValue(section.value, { compact: true }).replace(/\s+/g, ' ')
-  })).filter((section) => section.value);
-}
-
-function parseRecordMarkdown(record = {}) {
-  try { return parseArtifactMarkdown(record.markdown || ''); }
-  catch (error) { return { title: record.title || '', envelope: {}, body: { text: record.markdown || '' } }; }
-}
-
-function extractMarkdownSections(markdown = '') {
-  const text = String(markdown || '').replace(/\r\n?/g, '\n').trim();
-  const map = new Map();
-  if (!text) return map;
-  const lines = text.split('\n');
-  let current = '';
-  let buffer = [];
-  const flush = () => {
-    if (!current) return;
-    const value = buffer.join('\n').trim();
-    if (value) map.set(current, value);
-  };
-  for (const line of lines) {
-    const match = line.match(/^(#{1,6})\s+(.+?)\s*$/);
-    if (match) {
-      flush();
-      current = match[2].trim();
-      buffer = [];
-    } else if (current) {
-      buffer.push(line);
-    }
-  }
-  flush();
-  if (!map.size && text) map.set('Artifact body', text);
-  return map;
-}
-
-function sectionValueByName(sections = new Map(), name = '') {
-  const wanted = normalizeSectionName(name);
-  for (const [label, value] of sections.entries()) {
-    if (normalizeSectionName(label) === wanted) return value;
-  }
-  return '';
-}
-
-function normalizeSectionName(name = '') {
-  return String(name || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
-}
-
-function displaySectionLabel(label = '') {
-  return String(label || '').replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function isRedundantIdentitySection(label = '', value = '', record = {}, schema = '') {
-  const normalized = normalizeSectionName(label);
-  const schemaName = normalizeSectionName(String(schema || '').replace(/^tiinex\./, '').replace(/\.v\d+$/, ''));
-  if (!normalized || !schemaName || normalized !== schemaName) return false;
-  const text = String(value || '').toLowerCase();
-  const title = String(record.title || '').toLowerCase().trim();
-  const summary = String(record.summary || '').toLowerCase().trim();
-  return Boolean((title && text.includes(title)) || (summary && text.includes(summary)));
-}
-
-function trimReadValue(value = '', options = {}) {
-  const clean = String(value || '').trim();
-  const limit = options.lineClamp ? 300 : (options.compact ? 520 : 1600);
-  return clean.length > limit ? `${clean.slice(0, limit).trimEnd()}\n…` : clean;
 }
 
 export function RecordDetailDialog({ record, onDismiss, onShare }) {

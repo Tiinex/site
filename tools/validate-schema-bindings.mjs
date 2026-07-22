@@ -53,6 +53,11 @@ for (const file of bindingFiles) {
 
   const snap = join(dirname(file), binding.snapshot || '');
   const mod = join(dirname(file), binding.module || '');
+  const expectedSnapshotName = `${binding.schemaId}.schema.md`;
+  if (binding.snapshot && binding.snapshot.split('/').pop() !== expectedSnapshotName) failures.push(`${rel} snapshot must use canonical filename ${expectedSnapshotName}`);
+  for (const alias of Array.isArray(binding.snapshotAliases) ? binding.snapshotAliases : []) {
+    if (!existsSync(join(dirname(file), alias))) failures.push(`${rel} snapshot alias missing: ${alias}`);
+  }
   if (!existsSync(snap)) failures.push(`${rel} snapshot missing`);
   if (!existsSync(mod)) failures.push(`${rel} module missing`);
 

@@ -6538,3 +6538,93 @@ pre { white-space: pre-wrap; overflow:auto; }
   display: grid;
   place-items: center;
 }
+
+/* v190: schema-companion lineage viewer closure. Keep card chrome compact and keep focus/decor out of read content. */
+.tx-lineage-card-read-target {
+  border-radius: .65rem;
+  overflow: hidden;
+}
+.tx-lineage-card-read-target:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 rgba(101,242,231,.58);
+  background: rgba(101,242,231,.035);
+}
+.tx-lineage-card-copy {
+  display: grid;
+  gap: .22rem;
+  padding-inline-start: .32rem;
+}
+.tx-lineage-card-copy h3,
+.tx-lineage-card-copy p {
+  position: relative;
+  z-index: 1;
+}
+.tx-lineage-card-expanded-read {
+  display: grid;
+  gap: .44rem;
+  margin: .1rem .88rem .16rem;
+  padding: .56rem .62rem;
+  border: 1px solid rgba(255,255,255,.075);
+  border-radius: .78rem;
+  background: rgba(255,255,255,.022);
+  overflow: hidden;
+}
+.tx-lineage-card-expanded-read .tx-schema-read-view,
+.tx-lineage-card-expanded-read .tx-schema-read-sections {
+  margin: 0;
+}
+.tx-lineage-card-expanded-read::before,
+.tx-lineage-card-expanded-read::after,
+.tx-lineage-card-expanded-read *::before,
+.tx-lineage-card-expanded-read *::after {
+  max-width: 0 !important;
+  max-height: 0 !important;
+  pointer-events: none !important;
+}
+.tx-schema-badge-link {
+  text-decoration: none;
+}
+.tx-schema-badge-link:hover,
+.tx-schema-badge-link:focus-visible {
+  border-color: rgba(101,242,231,.55);
+  background: rgba(101,242,231,.09);
+  color: #eafff7;
+  outline: none;
+}
+.tx-lineage-viewer-card .tx-lineage-card-read-target .tx-icon,
+.tx-lineage-viewer-card .tx-lineage-card-expanded-read .tx-icon,
+.tx-lineage-viewer-card .tx-lineage-viewer-card-actions .tx-icon,
+.tx-lineage-viewer-card svg.tx-icon,
+.tx-lineage-viewer-card .svg-inline--fa {
+  inline-size: 1em !important;
+  block-size: 1em !important;
+  max-inline-size: 1em !important;
+  max-block-size: 1em !important;
+  overflow: visible !important;
+  transform: none !important;
+}
+.tx-lineage-viewer-card-actions .tx-button,
+.tx-lineage-viewer-card-actions .tx-lineage-extra-action {
+  position: relative;
+  overflow: hidden;
+}
+.tx-lineage-viewer-card-actions .tx-button::before,
+.tx-lineage-viewer-card-actions .tx-button::after,
+.tx-lineage-viewer-card-actions .tx-lineage-extra-action::before,
+.tx-lineage-viewer-card-actions .tx-lineage-extra-action::after {
+  content: none !important;
+  display: none !important;
+}
+/* v190: optically recenter the logo glyph without touching the image asset. */
+.tx-react-runtime .tx-logo-command img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command img {
+  width: 122%;
+  height: 122%;
+  transform: translateX(.5px) translateY(0);
+  object-position: center center;
+}
+.tx-react-runtime .tx-dock-core {
+  padding: .075rem .13rem;
+  gap: .22rem;
+}

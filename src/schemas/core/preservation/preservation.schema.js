@@ -18,6 +18,8 @@ export const preservationSchemaModule = defineSchemaModule({
   capabilities: preservationCapabilities,
   validate: preservationValidate,
   present: preservationPresent,
+  read: Object.freeze({ label: 'Preservation', sections: Object.freeze(['Preserved Material', 'Preservation Act', 'Provenance', 'Fidelity And Loss', 'Custody Or Storage Boundary', 'Interpretation Limits']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
   transitions: preservationTransitions,
   i18n: preservationI18n,
   findings: preservationFindings

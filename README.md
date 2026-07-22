@@ -1,17 +1,22 @@
-# Tiinex Site v189
+# Tiinex Site v190
 
-v189 is a focused Lineage viewer readability repair on top of v188. It keeps the v182-v187 resolver, transport and source-boundary work, but tightens the Lineage surface toward the PoC: compact peer cards by default, no path/debug/header bulk in the selected viewer, icon-first secondary actions, and a smaller curated expanded read view.
+v190 is a schema-companion Lineage viewer closure on top of v189. It keeps the compact peer-card Lineage direction, but removes the largest remaining hardcoded read-view drift: schema-specific read sections and Lineage actions are now resolved through schema companions rather than being owned directly by the generic workspace view.
 
-## v189 batch
+It also canonicalizes embedded schema snapshot filenames so Tiinex/docs-backed schemas keep the exact upstream artifact names from `.topics/.schemas/README.md`.
 
-- Hides the selected Lineage header chrome from the visual viewer while keeping the region accessible.
-- Keeps Lineage cards collapsed by default: badges, title, summary, and compact actions first.
-- Removes the default pathline and expand hint from collapsed Lineage cards.
-- Limits expanded read view to two short schema-owned sections; full depth remains in Open details / Show markdown.
-- Converts secondary Lineage card actions to compact icon buttons, while Continue and Preserve remain visible action text.
-- Keeps each node as a peer artifact card with Anchor, details, markdown, and source/continuation actions when available.
-- Adds defensive icon sizing and overlay suppression inside Lineage cards so decorative or icon rendering cannot cover text.
-- Applies another CSS-only optical adjustment to the top-dock logo/home command.
+## v190 batch
+
+- Adds `src/schemas/companion.js` as the schema-owned projection/transition boundary for runtime viewer surfaces.
+- Moves schema read-section selection out of `workspace.views.jsx` and into schema companions.
+- Lets schema companions declare Lineage viewer actions for their own artifacts.
+- Keeps the generic Lineage viewer responsible only for card stack, anchoring, dialogs, markdown display, and dispatch.
+- Adds a schema-companion guard test for Evidence read projection and Lineage actions.
+- Canonicalizes embedded schema Markdown snapshot filenames, for example `tiinex.root.v1.schema.md` instead of `root.schema.md`.
+- Keeps old short snapshot names as explicit `snapshotAliases` while migration is in flight.
+- Tightens validation so schema bindings must point their `snapshot` at the canonical schema filename.
+- Splits expanded Lineage read content out of the focusable card button, removing the oversized focus/ellipse overlay over readable text.
+- Adds a schema badge link to the canonical schema snapshot when the binding provides a permalink.
+- Keeps the logo/home adjustment CSS-only.
 
 ## Still intentionally out of scope
 
@@ -20,7 +25,6 @@ v189 is a focused Lineage viewer readability repair on top of v188. It keeps the
 - Automatic binary asset fetching.
 - Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
 - Changing image assets; the logo adjustment is CSS-only.
-
 
 ## Supported local start
 
@@ -41,7 +45,7 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js
 ```
 
 `npm run build:public` still requires installed Vite/React dependencies.

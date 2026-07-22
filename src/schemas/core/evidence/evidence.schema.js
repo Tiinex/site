@@ -18,6 +18,8 @@ export const evidenceSchemaModule = defineSchemaModule({
   capabilities: evidenceCapabilities,
   validate: evidenceValidate,
   present: evidencePresent,
+  read: Object.freeze({ label: 'Evidence', sections: Object.freeze(['Supported Claim', 'Supports', 'Evidence Material', 'Unavailable Material', 'Provenance', 'Interpretation Limits', 'Interpretation Notes and Limits']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
   transitions: evidenceTransitions,
   i18n: evidenceI18n,
   findings: evidenceFindings

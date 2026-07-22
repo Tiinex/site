@@ -3,7 +3,7 @@
   "kind": "concrete",
   "role": "presentation-surface-artifact",
   "module": "./surface.schema.js",
-  "snapshot": "./surface.schema.md",
+  "snapshot": "./tiinex.presentation.surface.v1.schema.md",
   "canonicalUri": "tiinex://schemas/presentation/surface/tiinex.presentation.surface.v1",
   "permalink": "https://github.com/Tiinex/docs/blob/52ecdea0a75893882ce282214d155f70e1309c2a/.topics/.schemas/presentation/surface/tiinex.presentation.surface.v1.schema.md",
   "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/52ecdea0a75893882ce282214d155f70e1309c2a/.topics/.schemas/presentation/surface/tiinex.presentation.surface.v1.schema.md",
@@ -17,5 +17,8 @@
   },
   "capabilityContract": "tiinex.schema.module.v1",
   "snapshotCompleteness": "grounded-contract-excerpt-snapshot",
-  "bindingVersion": "tiinex.web.schema-binding.v1"
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "snapshotAliases": [
+    "./surface.schema.md"
+  ]
 }

@@ -18,6 +18,8 @@ export const rootSchemaModule = defineSchemaModule({
   capabilities: rootCapabilities,
   validate: rootValidate,
   present: rootPresent,
+  read: Object.freeze({ label: 'Root', sections: Object.freeze(['Summary', 'Root Semantics', 'Contract Reading Model']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
   transitions: rootTransitions,
   i18n: rootI18n,
   findings: rootFindings
