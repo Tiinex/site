@@ -8,7 +8,7 @@
   - Origin:
     - [browse + git](https://github.com/Tiinex/docs/blob/3b0eec3ee450c31078e1c485a769e57d2ce43258/.topics/.schemas/tiinex.root.v1.schema.md)
 - Current
-  - Current Schema: [tiinex.presentation.surface.v1](tiinex.presentation.surface.v1.schema.md)
+  - Current Schema: [tiinex.presentation.surface.v1](https://github.com/Tiinex/site/blob/6807b03b39bbdd9859b69168b2910d7273cb2072/src/schemas/presentation/surface/tiinex.presentation.surface.v1.schema.md)
   - Created At: 2026-07-02 00:00:00
   - Status: Draft schema proposal
   - Why: Defines implementation-neutral presentation surfaces so artifacts, interaction units, audit reports, and schema modules can describe bounded display/interaction contexts without making a framework or app registry the authority.
@@ -473,4 +473,4 @@ Must Not Be Used To Claim: that hidden material is absent or that summarized mat
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: 7oFMa0TlXtqBTQao0TOftxYycUhvvHxXCikt4cesVuw
+  - Value: 5hGk_VqPOynqB1ucSsyZbZQxd8-g_gqhUQpsZJcJrVo
