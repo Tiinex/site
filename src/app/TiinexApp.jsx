@@ -330,9 +330,14 @@ export function TiinexApp() {
   }
 
   function openRecord(recordId) {
+    const id = String(recordId || '');
     setRecordAction(null);
     setActiveAssetId('');
-    setActiveRecordId(String(recordId || ''));
+    setActiveRecordId('');
+    if (!id) return;
+    const next = structuredClone(state);
+    next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'lineage', selectedRecordId: id });
+    commit(next, 'push');
   }
 
   function dismissRecord() {
@@ -428,6 +433,9 @@ export function TiinexApp() {
 
   function setVerse(verse) {
     const next = runtime().lifecycle?.setWorkspaceVerse?.(state, verse) || state;
+    if (verse === 'feed' || verse === 'tree') {
+      next.view = Object.assign({}, next.view || {}, { selectedRecordId: '' });
+    }
     commit(next, 'push');
   }
 
@@ -474,7 +482,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v173-presentation-display-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v174-lineage-presentation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}

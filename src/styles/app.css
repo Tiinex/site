@@ -4776,7 +4776,7 @@ pre { white-space: pre-wrap; overflow:auto; }
     linear-gradient(180deg, rgba(245,238,255,0.86), rgba(189,115,255,0.64) 52%, rgba(101,242,231,0.42));
 }
 
-/* v173: presentation parity controls. Discovery keeps Feed/Tree as tabs; Lineage/Audit are explicit modes/details. */
+/* v174: lineage presentation parity. Discovery keeps Feed/Tree; artifact selection enters Lineage with per-card audit badges. */
 .tx-lineage-trust-strip {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, auto) auto;
@@ -4904,4 +4904,135 @@ pre { white-space: pre-wrap; overflow:auto; }
   .tx-lineage-trust-actions {
     justify-content: flex-start;
   }
+}
+
+/* v174 presentation parity: old-like lineage entry and per-card trust badges. */
+.tx-react-runtime {
+  --tx-toolbar-logo-scale: 1.2;
+}
+.tx-react-runtime .tx-logo-command {
+  overflow: visible;
+}
+.tx-react-runtime .tx-logo-command img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command img {
+  width: 106%;
+  height: 106%;
+  object-fit: contain;
+}
+.tx-card-badges .tx-audit-badge,
+.tx-tree-row-badges .tx-audit-badge,
+.tx-lineage-selected-badges .tx-audit-badge {
+  font-weight: 850;
+  letter-spacing: .01em;
+}
+.tx-audit-badge-ok {
+  border-color: rgba(128,255,214,.48);
+  background: rgba(128,255,214,.11);
+  color: #d9fff3;
+}
+.tx-audit-badge-mismatch {
+  border-color: rgba(255,107,138,.55);
+  background: rgba(255,107,138,.13);
+  color: #ffd7df;
+}
+.tx-audit-badge-pending,
+.tx-audit-badge-open {
+  border-color: rgba(220,176,255,.38);
+  background: rgba(189,115,255,.09);
+  color: #f0ddff;
+}
+.tx-tree-row-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: 0 0 auto;
+}
+.tx-selected-lineage-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  max-width: 14rem;
+  padding: .25rem .58rem;
+  border: 1px solid rgba(189,115,255,.22);
+  border-radius: 999px;
+  background: rgba(189,115,255,.06);
+  color: rgba(247,248,251,.74);
+  font-size: .72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tx-lineage-selected-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .55rem .75rem;
+  align-items: start;
+  margin-bottom: .7rem;
+  padding: .72rem .82rem;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: .95rem;
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(189,115,255,.035));
+}
+.tx-lineage-selected-summary strong,
+.tx-lineage-selected-summary small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tx-lineage-selected-summary small,
+.tx-lineage-selected-summary p {
+  color: var(--tx-brand-muted);
+}
+.tx-lineage-selected-summary p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: .8rem;
+  line-height: 1.28;
+}
+.tx-lineage-selected-summary button {
+  justify-self: end;
+  border: 1px solid rgba(115,189,255,.42);
+  border-radius: 999px;
+  color: #cfe4ff;
+  background: rgba(30,87,177,.14);
+  padding: .35rem .68rem;
+  cursor: pointer;
+}
+.tx-lineage-selected-badges {
+  display: inline-flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.tx-mode-link.tx-display-options-trigger {
+  justify-self: start;
+}
+.tx-dialog-record-detail,
+.tx-dialog-display-options {
+  width: min(100%, 42rem);
+}
+.tx-add-flow-modal {
+  width: min(100%, 42rem);
+}
+.tx-dialog-body {
+  max-height: min(72vh, 42rem);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(189,115,255,0.56) rgba(10,8,16,0.64);
+}
+.tx-record-card .tx-card-badges,
+.tx-tree-leaf-row .tx-tree-row-badges {
+  align-items: center;
+}
+.tx-record-card h3 {
+  margin-top: .25rem;
+}
+.tx-record-card p {
+  color: rgba(214,204,229,.86);
+}
+@media (max-width: 760px) {
+  .tx-lineage-selected-summary { grid-template-columns: 1fr; }
+  .tx-lineage-selected-summary button { justify-self: start; }
+  .tx-selected-lineage-chip { max-width: 100%; }
 }

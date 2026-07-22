@@ -1,8 +1,8 @@
-# Tiinex Site v173
+# Tiinex Site v174
 
-v173 is a presentation-closure checkpoint for the React/Vite refactor. It keeps the v172 audit support-material truth and restores old-like presentation controls: Discovery mode is Feed/Tree, Lineage is an explicit mode, Audit is reachable as details from the visible trust signal, and assets are hidden from Feed/Tree by default through Display options.
+v174 is a presentation-closure checkpoint for the React/Vite refactor. It keeps the v172 audit support-material truth and restores old-like presentation controls: Discovery mode is Feed/Tree, Lineage is an explicit mode, Audit is reachable as details from the visible trust signal, and assets are hidden from Feed/Tree by default through Display options.
 
-## v173 batch
+## v174 batch
 
 - Lineage is no longer presented as a tab beside Feed/Tree.
 - Audit status is surfaced immediately as a compact Lineage trust strip with ok/mismatch/pending/open signals.

@@ -1,6 +1,6 @@
-# Tiinex Site v173 Validation Notes
+# Tiinex Site v174 Validation Notes
 
-v173 continues closure repair after v172 audit support-material work.
+v174 continues closure repair after v172 audit support-material work.
 
 Validated in this checkpoint:
 

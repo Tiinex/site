@@ -21,7 +21,10 @@ if (!appAndWorkspace.includes('tx-column-window')) failures.push('created worksp
 if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
 if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty workspace drop hint must stay available');
 if (!appAndWorkspace.includes('tx-mode-strip tx-column-toolbar')) failures.push('mode/search toolbar must remain a primary landmark');
-if (!appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/audit trust signal must be visible outside tab navigation');
+if (appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/audit trust must not be a persistent always-visible row');
+if (!appAndWorkspace.includes('tx-audit-badge')) failures.push('cards and tree rows must expose old-like per-artifact audit/status badges');
+if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact selection must own transition from Discovery to Lineage mode');
+if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage mode must show selected artifact trust/audit status after artifact selection');
 if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');
 if (appAndWorkspace.includes('aria-label="Workspace verse"')) failures.push('Lineage must not be presented as a workspace verse tab');
 if (!appAndWorkspace.includes('Display options')) failures.push('workspace presentation needs display options for assets/supporting material');
@@ -58,6 +61,7 @@ has('src/styles/app.css', '/* v119.3 dock ergonomics:', 'dock recognition ergono
 has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must wrap visible controls instead of stretching toward the column');
 has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
 has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
+has('src/styles/app.css', 'width: 106%;', 'logo image itself must be larger without increasing the button size');
 
 has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');
 has('src/styles/app.css', '.tx-empty-stage-mode .tx-empty-stage {', 'empty start must override card-frame stage CSS');

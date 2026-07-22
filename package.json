@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v173",
+  "version": "0.2.10-v174",
   "private": true,
-  "description": "Tiinex Site v173: presentation display options, visible lineage trust, and Discovery/Lineage mode separation.",
+  "description": "Tiinex Site v174: presentation parity for lineage mode entry, per-card audit badges, dialog sizing, and larger logo image.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
