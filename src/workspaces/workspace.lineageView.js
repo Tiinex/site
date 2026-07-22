@@ -1,4 +1,5 @@
 import { resolveLineage } from '../lineage/lineage.resolve.js';
+import { traverseLoadedLineage } from '../lineage/lineage.traverse.js';
 
 export const WORKSPACE_LINEAGE_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedLineageView.v1';
 
@@ -7,6 +8,8 @@ export function buildWorkspaceLineageView(workspace = {}, input = {}) {
   const query = String(input.query || '').trim().toLowerCase();
   const resolved = resolveLineage(records, { depth: 'loaded-workspace' });
   const nodesById = new Map(resolved.nodes.map((node) => [node.id, node]));
+  const selectedRecordId = String(input.selectedRecordId || '').trim();
+  const selectedTraversal = selectedRecordId ? traverseLoadedLineage(records, { resolvedLineage: resolved, startId: selectedRecordId, direction: 'ancestors', maxDepth: 32 }) : null;
   const matchedNodeIds = new Set();
 
   if (query) {
@@ -42,12 +45,40 @@ export function buildWorkspaceLineageView(workspace = {}, input = {}) {
     nodes: visibleNodes.map((node) => presentNode(node)),
     edges: visibleEdges.map((edge) => presentEdge(edge, nodesById)),
     findings: visibleFindings,
+    selectedTraversal: selectedTraversal ? presentSelectedTraversal(selectedTraversal, nodesById) : null,
     stats: Object.assign({}, resolved.stats, {
       visibleNodes: visibleNodes.length,
       visibleEdges: visibleEdges.length,
       visibleFindings: visibleFindings.length
     }),
     empty: !visibleNodes.length
+  };
+}
+
+
+
+function presentSelectedTraversal(traversal = {}, nodesById = new Map()) {
+  const traversalNodeIds = new Set((traversal.nodes || []).map((node) => node.id));
+  return {
+    schema: traversal.schema,
+    boundary: traversal.boundary,
+    direction: traversal.direction,
+    maxDepth: traversal.maxDepth,
+    startIds: Array.isArray(traversal.startIds) ? traversal.startIds.slice() : [],
+    nodes: (traversal.nodes || []).map((node) => {
+      const resolvedNode = nodesById.get(node.id) || {};
+      return Object.assign({}, node, {
+        path: node.path || resolvedNode.path || '',
+        sourceLabel: resolvedNode.record?.source?.label || '',
+        sourceBacked: Boolean(resolvedNode.record?.source?.adapterId && resolvedNode.record.source.adapterId !== 'local'),
+        record: resolvedNode.record || null
+      });
+    }),
+    edges: (traversal.edges || []).map((edge) => presentEdge(edge, nodesById)),
+    missingEdges: (traversal.missingEdges || []).map((edge) => presentEdge(edge, nodesById)),
+    findings: (traversal.findings || []).slice(),
+    selectedFindings: (traversal.findings || []).filter((finding) => !finding.nodeId || traversalNodeIds.has(finding.nodeId)),
+    stats: Object.assign({}, traversal.stats || {})
   };
 }
 

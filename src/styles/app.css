@@ -5653,3 +5653,56 @@ pre { white-space: pre-wrap; overflow:auto; }
 @media (max-width: 760px) {
   .tx-lineage-inline-details dl { grid-template-columns: 1fr; }
 }
+
+.tx-lineage-selected-traversal {
+  border: 1px solid var(--tx-border-subtle, rgba(148, 163, 184, 0.28));
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(15, 23, 42, 0.18);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tx-lineage-selected-traversal-head,
+.tx-lineage-selected-traversal li,
+.tx-lineage-selected-missing span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tx-lineage-selected-traversal-head {
+  justify-content: space-between;
+}
+
+.tx-lineage-selected-traversal ol {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tx-lineage-selected-traversal li {
+  justify-content: flex-start;
+  padding: 0.35rem 0.45rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tx-lineage-selected-traversal li > span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+.tx-lineage-traversal-start {
+  outline: 1px solid var(--tx-accent-muted, rgba(168, 85, 247, 0.45));
+}
+
+.tx-lineage-selected-missing {
+  display: grid;
+  gap: 0.35rem;
+}

@@ -597,7 +597,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
 }
 
 function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onOpenAudit }) {
-  const lineage = buildWorkspaceLineageView(workspace, { records, query });
+  const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selected = selectedRecordId ? lineage.nodes.find((node) => node.id === selectedRecordId) : null;
   const selectedAudit = selected ? auditById.get(selected.id) : null;
   return (
@@ -655,8 +655,9 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 
 function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onOpenAudit }) {
   const [expanded, setExpanded] = useState(false);
-  const findings = (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
-  const selectedLineage = selectedLineageStatus(node, lineage);
+  const traversal = lineage.selectedTraversal || null;
+  const findings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
+  const selectedLineage = selectedLineageStatus(node, lineage, traversal);
   const record = node.record || {};
   const sourceText = node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session');
   const markdownAction = { id: RecordActionKind.markdown, label: 'Show markdown', icon: 'open' };
@@ -674,6 +675,7 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
       <div className="tx-lineage-selected-message">
         {findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : selectedLineage.message}
       </div>
+      {traversal ? <LineageSelectedTraversal traversal={traversal} selectedId={node.id} onFocusRecordLineage={null} /> : null}
       {expanded ? <LineageInlineRecordDetails record={record} node={node} findings={findings} /> : <small className="tx-lineage-expand-hint">Click selected card for key details</small>}
       <div className="tx-lineage-selected-actions" onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={() => onOpenRecord?.(node.id)}><Icon name="open" /> Open details</button>
@@ -681,6 +683,31 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
         <button type="button" onClick={onOpenAudit}><Icon name="audit" /> Audit details</button>
       </div>
     </section>
+  );
+}
+
+function LineageSelectedTraversal({ traversal = {}, selectedId = '' }) {
+  const nodes = Array.isArray(traversal.nodes) ? traversal.nodes : [];
+  const missing = Array.isArray(traversal.missingEdges) ? traversal.missingEdges : [];
+  const stats = traversal.stats || {};
+  if (!nodes.length && !missing.length) return null;
+  return (
+    <div className="tx-lineage-selected-traversal" aria-label="Selected lineage traversal">
+      <div className="tx-lineage-selected-traversal-head">
+        <strong>Selected ancestors</strong>
+        <small>{stats.visitedNodes || nodes.length} visited · {stats.missingEdges || missing.length} missing · loaded-only</small>
+      </div>
+      <ol>
+        {nodes.map((item) => (
+          <li key={item.id} className={item.id === selectedId ? 'tx-lineage-traversal-start' : ''}>
+            <span>{item.role === 'start' ? 'selected' : item.role || 'ancestor'}</span>
+            <strong>{item.title || item.id}</strong>
+            {item.path ? <small>{compactPath(item.path)}</small> : null}
+          </li>
+        ))}
+      </ol>
+      {missing.length ? <div className="tx-lineage-selected-missing">{missing.slice(0, 3).map((edge) => <span key={edge.id}><Icon name="warning" /> missing {compactPath(edge.target || edge.from || 'target')}</span>)}</div> : null}
+    </div>
   );
 }
 
@@ -713,18 +740,21 @@ function extractImportantMarkdown(markdown = '') {
   return (picked.length ? picked : lines.slice(0, 8)).join('\n').slice(0, 1200);
 }
 
-function selectedLineageStatus(node = {}, lineage = {}) {
+function selectedLineageStatus(node = {}, lineage = {}, traversal = null) {
   const id = String(node.id || '');
-  const selectedFindings = (lineage.findings || []).filter((finding) => finding.nodeId === id);
-  const selectedEdges = (lineage.edges || []).filter((edge) => edge.from === id || edge.to === id);
-  if (selectedFindings.some((finding) => finding.code === 'lineage.parent.missing' || finding.code === 'lineage.target.ambiguous')) {
-    return { label: 'selected mismatch', message: 'Selected artifact has unresolved or ambiguous declared lineage. Workspace findings below may include unrelated records.' };
+  const traversalFindings = traversal?.findings || [];
+  const traversalMissing = traversal?.missingEdges || [];
+  const traversalNodes = traversal?.nodes || [];
+  const selectedFindings = traversalFindings.length ? traversalFindings : (lineage.findings || []).filter((finding) => finding.nodeId === id);
+  const selectedEdges = traversal?.edges?.length ? traversal.edges : (lineage.edges || []).filter((edge) => edge.from === id || edge.to === id);
+  if (selectedFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || traversalMissing.length) {
+    return { label: 'selected mismatch', message: 'Selected artifact traversal stops at unresolved or ambiguous lineage. Workspace findings below are separate.' };
   }
-  if (selectedFindings.some((finding) => finding.code === 'lineage.root')) {
-    return { label: 'root reached', message: 'Selected artifact is a loaded lineage root. Workspace findings below may include unrelated records.' };
+  if (selectedFindings.some((finding) => finding.code === 'lineage.root') || (traversalNodes.length === 1 && !selectedEdges.length && !traversalMissing.length)) {
+    return { label: 'root reached', message: 'Selected artifact is a loaded lineage root or has no declared loaded ancestors. Workspace findings below are separate.' };
   }
-  if (selectedEdges.length) {
-    return { label: 'selected lineage', message: 'Selected artifact has loaded lineage context. Workspace overview below remains separate.' };
+  if (selectedEdges.length || traversalNodes.length > 1) {
+    return { label: 'selected lineage', message: 'Selected artifact traversal uses the same resolved workspace graph, shown ancestors-first.' };
   }
   return { label: 'selected open', message: 'Selected artifact has no resolved lineage finding in the loaded workspace.' };
 }

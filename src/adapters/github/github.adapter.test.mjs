@@ -39,7 +39,7 @@ const map = {
     { type: 'blob', path: '.topics/image.png' },
     { type: 'blob', path: 'README.md' }
   ] } },
-  [rawTopic]: { text: '# A\n\nBody' },
+  [rawTopic]: { text: '# A\n\n![diagram](diagram.png)' },
   [rawNested]: { text: '# B\n\nBody' }
 };
 
@@ -64,6 +64,8 @@ assert.equal(materialized.diagnostics.resolvedRef, 'main', 'adapter result shoul
 assert.equal(materialized.diagnostics.requests, 2, 'raw materialization should count fetch requests');
 assert(progressEvents.some((event) => event.phase === 'repo-discovery' && /Found 2 Markdown/.test(event.label || '')), 'repo discovery should emit a visible found-count progress event');
 assert(progressEvents.some((event) => event.phase === 'raw-file-load' && event.total === 2), 'raw loading should emit concrete N/M progress');
+assert.equal(materialized.diagnostics.assetReferences.counts['referenced-unloaded'], 1, 'adapter should report referenced-but-unloaded source assets without fetching binaries');
+assert(materialized.warnings.some((warning) => warning.code === 'github.asset.referenced-unloaded'), 'referenced source assets should be surfaced as honest non-fetch warnings');
 
 const limitedFetch = makeFetch({
   [repoApi]: { json: { default_branch: 'main' } },

@@ -3,7 +3,7 @@ import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { resolveLineage } from './lineage.resolve.js';
 import { resolveAuditLineage } from '../audit/lineage/auditLineage.resolve.js';
 
-function leaf({ title, id, trace = '', origin = '', path = `${id}.md` }) {
+function leaf({ title, id, trace = '', origin = '', path = `${id}.md`, source = null }) {
   const markdown = [
     '# Continuity Context',
     '',
@@ -27,7 +27,9 @@ function leaf({ title, id, trace = '', origin = '', path = `${id}.md` }) {
     '  - Method: fixture',
     '  - Value: ok'
   ].filter(Boolean).join('\n');
-  return Object.assign(createRecordFromMarkdown(markdown, { path }), { id });
+  const record = Object.assign(createRecordFromMarkdown(markdown, { path }), { id });
+  if (source) record.source = Object.assign({}, source);
+  return record;
 }
 
 const parent = leaf({ id: 'parent-1', title: 'Parent', path: 'topics/parent.md' });
@@ -75,6 +77,42 @@ const childByNestedOriginUrl = Object.assign(createRecordFromMarkdown(nestedOrig
 const urlResult = resolveLineage([parent, childByNestedOriginUrl]);
 assert.equal(childByNestedOriginUrl.origin, 'https://github.com/Tiinex/docs/blob/abcdef/topics/parent.md', 'parser should preserve nested Origin link target');
 assert(urlResult.edges.some((edge) => edge.from === 'parent-1' && edge.to === 'child-url' && edge.kind === 'origin' && edge.method === 'path-suffix'), 'origin URL should resolve loaded parent by explicit path suffix');
+
+
+
+const sourceA = { id: 'github:tiinex-docs:master:.topics', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' };
+const sourceB = { id: 'github:tiinex-docs-other:master:.topics', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/other', repo: 'Tiinex/other', ref: 'master', rootPath: '.topics' };
+const doomTrace = leaf({ id: 'doom-trace', title: 'Doom Trace', path: '.topics/educational/memes/doom/001.trace.md', source: sourceA });
+const doomMeme = leaf({ id: 'doom-meme', title: 'World Wide Wave 3 Meme', path: '.topics/educational/memes/doom/world-wide-wave-3-meme.md', trace: '001.trace.md', source: sourceA });
+const unrelatedTrace = leaf({ id: 'other-trace', title: 'Other Trace', path: '.topics/educational/memes/other/001.trace.md', source: sourceA });
+const relative = resolveLineage([doomTrace, doomMeme, unrelatedTrace]);
+assert(relative.edges.some((edge) => edge.from === 'doom-trace' && edge.to === 'doom-meme' && edge.method === 'relative-path'), 'filename-relative Parent Trace should resolve against declaring record directory');
+assert(!relative.edges.some((edge) => edge.from === 'other-trace' && edge.to === 'doom-meme'), 'filename-relative Parent Trace must not fall back to a global basename match');
+assert(!relative.findings.some((finding) => finding.nodeId === 'doom-meme' && finding.code === 'lineage.target.ambiguous'), 'sibling-relative target should not become ambiguous because another folder has the same basename');
+
+const missingSiblingOnly = leaf({ id: 'missing-sibling-only', title: 'Missing Sibling Only', path: '.topics/educational/memes/none/meme.md', trace: '001.trace.md', source: sourceA });
+const noGlobalBasename = resolveLineage([unrelatedTrace, missingSiblingOnly]);
+assert(noGlobalBasename.findings.some((finding) => finding.nodeId === 'missing-sibling-only' && finding.code === 'lineage.parent.missing'), 'missing sibling-relative target should be missing, not guessed from another folder basename');
+assert(!noGlobalBasename.edges.some((edge) => edge.from === 'other-trace' && edge.to === 'missing-sibling-only'), 'global basename fallback must never create a guessed edge');
+
+const parentViaDotDot = leaf({ id: 'dotdot-parent', title: 'Dot Dot Parent', path: '.topics/lineage/parent.trace.md', source: sourceA });
+const childViaDotDot = leaf({ id: 'dotdot-child', title: 'Dot Dot Child', path: '.topics/lineage/child/child.md', trace: '../parent.trace.md', source: sourceA });
+const dotdot = resolveLineage([parentViaDotDot, childViaDotDot]);
+assert(dotdot.edges.some((edge) => edge.from === 'dotdot-parent' && edge.to === 'dotdot-child' && edge.method === 'relative-path'), '../ Parent Trace should resolve within the declaring source root');
+
+const narrowRoot = { id: 'github:tiinex-docs:master:.topics-area', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics/area' };
+const outsideParent = leaf({ id: 'outside-parent', title: 'Outside Parent', path: '.topics/parent.trace.md', source: narrowRoot });
+const boundaryChild = leaf({ id: 'boundary-child', title: 'Boundary Child', path: '.topics/area/child.md', trace: '../parent.trace.md', source: narrowRoot });
+const boundary = resolveLineage([outsideParent, boundaryChild]);
+assert(boundary.findings.some((finding) => finding.nodeId === 'boundary-child' && finding.code === 'lineage.target.outOfBoundary'), 'relative Trace outside the configured source root should be boundary-blocked');
+assert(!boundary.edges.some((edge) => edge.from === 'outside-parent' && edge.to === 'boundary-child'), 'out-of-boundary relative Trace must not create an edge');
+
+const samePathA2 = leaf({ id: 'same-a2', title: 'Same A2', path: 'shared/topic.md', source: sourceA });
+const samePathB2 = leaf({ id: 'same-b2', title: 'Same B2', path: 'shared/topic.md', source: sourceB });
+const childFromA = leaf({ id: 'child-from-a', title: 'Child From A', path: 'children/child-from-a.md', origin: 'shared/topic.md', source: sourceA });
+const sourceScoped = resolveLineage([samePathA2, samePathB2, childFromA]);
+assert(sourceScoped.edges.some((edge) => edge.from === 'same-a2' && edge.to === 'child-from-a'), 'source-backed child should resolve repo-relative targets within its own source identity');
+assert(!sourceScoped.edges.some((edge) => edge.from === 'same-b2' && edge.to === 'child-from-a'), 'source-backed child must not cross source identity for a repo-relative target');
 
 const audit = resolveAuditLineage([parent, childByTrace]);
 assert.equal(audit.schema, 'tiinex.audit.lineage.resolve.v1', 'audit lineage result declares schema');

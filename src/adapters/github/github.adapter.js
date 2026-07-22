@@ -2,6 +2,7 @@ import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '.
 import { loadGithubFilesForSource } from '../../sources/github/github.loader.js';
 import { materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { authorizeSourceTransport } from '../../sources/transport.policy.js';
+import { collectSourceAssetReferences } from '../../sources/source.assetReferences.js';
 
 export const GITHUB_ADAPTER_ID = 'github';
 const MARKDOWN_EXTENSIONS = /\.(md|markdown|trace\.md|schema\.md|validator\.md|workspace\.md)$/i;
@@ -228,6 +229,16 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   diagnostics.requests = Number(result.diagnostics?.requests || 0);
   diagnostics.transportEvents = diagnostics.transportEvents.concat(result.diagnostics?.transportEvents || []);
   const records = result.records.concat(issueSnapshotResult.records || []);
+  const assetReferenceDiscovery = collectSourceAssetReferences(records, { source: sourceForLoad });
+  if (assetReferenceDiscovery.counts.total) {
+    diagnostics.assetReferences = {
+      schema: assetReferenceDiscovery.schema,
+      counts: assetReferenceDiscovery.counts,
+      references: assetReferenceDiscovery.references.slice(0, 25)
+    };
+    if (assetReferenceDiscovery.counts['referenced-unloaded']) warnings.push({ code: 'github.asset.referenced-unloaded', severity: 'info', message: `${assetReferenceDiscovery.counts['referenced-unloaded']} source asset reference(s) were found in Markdown but not fetched in this slice.` });
+    if (assetReferenceDiscovery.counts.blocked) warnings.push({ code: 'github.asset.reference.blocked', severity: 'warning', message: `${assetReferenceDiscovery.counts.blocked} source asset reference(s) resolve outside the configured root boundary and were not fetched.` });
+  }
   return makeAdapterResult({
     adapterId: GITHUB_ADAPTER_ID,
     sourceId: source?.id || '',

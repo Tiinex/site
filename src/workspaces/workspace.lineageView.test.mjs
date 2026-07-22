@@ -45,4 +45,16 @@ assert(filtered.nodes.some((node) => node.id === 'c1'), 'filtered lineage should
 assert(filtered.nodes.some((node) => node.id === 'p1'), 'filtered lineage should include immediate parent context');
 assert(filtered.edges.some((edge) => edge.from === 'p1' && edge.to === 'c1'), 'filtered lineage should preserve resolved edge context');
 
+
+
+const selected = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] }, { selectedRecordId: 'c1' });
+assert.equal(selected.selectedTraversal.schema, 'tiinex.lineage.traversal.v1', 'selected lineage should expose a loaded traversal');
+assert.deepEqual(selected.selectedTraversal.nodes.map((node) => node.id), ['c1', 'p1'], 'selected traversal should present selected ancestors first');
+assert(selected.selectedTraversal.edges.some((edge) => edge.from === 'p1' && edge.to === 'c1'), 'selected traversal should reuse the workspace-resolved parent edge');
+assert.equal(selected.selectedTraversal.stats.loadedNodes, selected.stats.nodes, 'selected traversal must be based on the same resolved workspace graph');
+
+const selectedMissing = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] }, { selectedRecordId: 'c2' });
+assert.equal(selectedMissing.selectedTraversal.missingEdges.length, 1, 'selected traversal should expose missing edge for selected leaf only');
+assert(selectedMissing.selectedTraversal.findings.some((finding) => finding.code === 'lineage.traversal.missingTarget'), 'selected traversal should explain where the selected lineage stops');
+
 console.log('✓ workspace.lineageView tests passed');

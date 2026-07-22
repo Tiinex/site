@@ -90,6 +90,38 @@ if (noCacheRecord.cacheState !== 'route-shell-material-unavailable') throw new E
 if (noCacheRestored.workspaces[0].assets[0].materialAvailability !== 'material-unavailable') throw new Error('route-only assets should disclose unavailable material');
 if (noCacheRestored.workspaces[0].workspaceMergeCandidates[0].materialAvailability !== 'material-unavailable') throw new Error('route-only workspace candidates should disclose unavailable material');
 
+
+
+const scaleEnv = loadPersistence();
+const scaleSource = { id: 'github:tiinex-docs:master:.topics', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics', boundary: 'explicit source boundary' };
+const scaleRecords = Array.from({ length: 325 }, (_, index) => ({
+  id: `source:${scaleSource.id}:.topics/topic-${index}.md`,
+  title: `Topic ${index}`,
+  path: `.topics/topic-${index}.md`,
+  markdown: `# Continuity Context\n\n- Current\n  - Summary: Topic ${index}\n\n---\n\n# Topic ${index}`,
+  sourceMode: 'source-backed',
+  source: scaleSource,
+  materialRole: 'leaf',
+  materialAvailability: 'available',
+  hasContinuityContext: true,
+  schemaId: 'tiinex.topic.v1'
+}));
+const scaleState = {
+  version: 1,
+  activeWorkspaceId: 'scale-w',
+  view: { workspaceVerse: 'lineage', query: '', selectedRecordId: scaleRecords[200].id },
+  workspaces: [{ id: 'scale-w', name: 'Scale', sources: [scaleSource], sourceOrder: [scaleSource.id], records: scaleRecords, assets: [], workspaceMergeCandidates: [], importLog: [] }]
+};
+scaleEnv.persistence.writeState(scaleState, { storage: scaleEnv.env.localStorage, location: scaleEnv.env.location, history: scaleEnv.env.history, mode: 'push' });
+const scaleRestored = scaleEnv.persistence.readInitialState({ storage: scaleEnv.env.localStorage, location: scaleEnv.env.location });
+if (scaleRestored.workspaces[0].records.length !== 325) throw new Error('scale restore should keep all source-backed record shells');
+const restoredScaleRecord = scaleRestored.workspaces[0].records[200];
+if (!restoredScaleRecord.markdown.includes('# Topic 200')) throw new Error('scale restore should keep source-backed markdown in same-session cache');
+if (restoredScaleRecord.cacheState !== 'source-backed-session-cache-complete') throw new Error('scale restore should disclose complete source-backed session cache state');
+if (restoredScaleRecord.materialRole !== 'leaf') throw new Error('scale restore should preserve materialRole across hash restore');
+if (scaleRestored.view.selectedRecordId !== scaleRecords[200].id) throw new Error('scale restore should preserve selected record view state');
+
+
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
 if (persistence.readStoredState(env.localStorage)) throw new Error('clear should remove local storage cache');
 if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('closing last workspace should be push-history capable');

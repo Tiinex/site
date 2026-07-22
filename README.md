@@ -1,21 +1,22 @@
-# Tiinex Site v181
+# Tiinex Site v182
 
-v181 is a card/lineage navigation parity repair checkpoint for the React/Vite refactor. It builds on v180 by tightening the old-like card contract: the card itself focuses Lineage, while Open details and Show markdown remain separate dialogs. It also removes passive source-summary boilerplate and makes Tree counts closer to the old artifacts/leaves model.
+v182 is a focused Lineage closure checkpoint for the React/Vite refactor. It builds on v181 by moving the work from presentation polish to the lineage/source-material model: relative Parent Trace resolution is now contextual, selected Lineage is traversal-first, and source asset references are discovered as explicit unloaded/blocked material rather than silently disappearing.
 
-## v181 batch
+## v182 batch
 
-- Workspace boundary label is now material-aware:
-  - hidden when empty;
-  - `local` only when local material exists;
-  - `source-backed` when imported GitHub/source material is the visible material;
-  - `mixed` when both are present.
-- Clean successful import boilerplate is no longer shown as a full row after every import. Source counts/state remain visible on the source rail.
-- Feed cards remain clickable as Lineage-focus targets, but the primary action row is less text-heavy.
-- `Open details` remains a detail dialog.
-- `Show markdown` remains a Markdown dialog.
-- Evidence preservation is no longer a dominant primary card action while the old Reference relation is not restored.
-- Lineage selected-card view is expandable: clicking the selected card in Lineage reveals key details from the artifact without opening the full detail dialog.
-- Tree counts now expose both total artifacts and leaf counts, rather than only raw record counts.
+- Relative Parent Trace resolution is now context-aware:
+  - filename-relative traces such as `001.trace.md` resolve against the declaring record directory;
+  - `../parent.trace.md` resolves relative to the declaring record directory;
+  - resolution is constrained by the declaring source identity and configured source root;
+  - global basename fallback is not used.
+- Ambiguity is safe:
+  - same path in multiple unsourced/source-ambiguous records becomes ambiguous;
+  - same path in multiple configured sources resolves only inside the declaring source;
+  - out-of-root relative targets are boundary-blocked rather than guessed.
+- Selected Lineage now uses the same resolved workspace graph and then traverses ancestors from the selected record. The selected traversal is presented first; workspace-wide Lineage remains secondary/collapsed.
+- Same-session route/cache continuity has a 325-record guard: source-backed Markdown, selected record state and materialRole must survive hash restoration.
+- Source-backed asset references are detected as a contract only. Markdown image/media references are classified as `loaded`, `referenced-unloaded`, `blocked`, or external/unloaded in diagnostics. v182 does not perform general binary asset fetching.
+- Issue/discussion snapshots remain explicitly deferred in browser runtime unless fixture-backed. The UI may present the surface, but the adapter result must be honest about the deferred reader.
 
 ## Supported local start
 
