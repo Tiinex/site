@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.11-v191",
+  "version": "0.2.12-v192",
   "private": true,
-  "description": "Tiinex Site v191: schema-binding resync and Lineage viewer focus/readability closure.",
+  "description": "Tiinex Site v192: unified Discovery/Lineage record-card surface.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

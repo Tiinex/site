@@ -1,16 +1,15 @@
-# Tiinex Site v191
+# Tiinex Site v192
 
-v191 is a focused repair on top of v190 after Q's canonical schema snapshot updates. It keeps the schema-companion Lineage viewer model, restores schema-binding validation after the snapshot content changed, and removes the remaining focus/read-target owner that could draw a large blue focus/ellipse over Lineage card text.
+v192 is a focused unified record-card Lineage pass on top of v191. It removes the separate Lineage-specific card chrome for selected traversal and renders the selected artifact and parent/root chain through the same `RecordCard` surface that Discovery uses.
 
-## v191 batch
+## v192 batch
 
-- Recomputes schema snapshot checksums after the repaired canonical `.schema.md` files landed on `refactor`.
-- Removes stale short-name `snapshotAliases` that pointed at deleted pre-canonical schema files.
-- Keeps canonical snapshot filenames as the binding authority, matching the current Tiinex/docs naming convention.
-- Moves the Lineage card title/summary out of a focusable read-toggle button and makes compact preview an explicit card action.
-- Adds a tighter Lineage copy indent so title and summary read more like peer artifact cards.
-- Keeps expanded read preview companion-owned and bounded; full depth remains in Open details / Show markdown.
-- Applies a final CSS-only larger centered logo treatment without changing image assets.
+- Treats Lineage as a filtered/ordered record list: selected artifact followed by its parents to root.
+- Reuses the same record-card component in Discovery and Lineage.
+- Moves current/parent/root context out of card chrome into small relation separators between cards.
+- Keeps card actions, companion projections, compact/expanded expectations, and click-to-Lineage behavior aligned with Discovery.
+- Keeps workspace lineage diagnostics secondary and hidden unless explicitly needed.
+- Leaves portable-tooling paths untouched.
 
 ## Still intentionally out of scope
 
@@ -18,7 +17,6 @@ v191 is a focused repair on top of v190 after Q's canonical schema snapshot upda
 - A real browser issue snapshot reader.
 - Automatic binary asset fetching.
 - Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
-- Changing image assets; logo adjustments remain CSS-only.
 - Portable tooling paths reserved by the other LLM: `src/tooling/portable/**`, `tools/tiinex-portable.mjs`, and `docs/architecture/portable-tooling-entrypoints.md`.
 
 ## Supported local start
