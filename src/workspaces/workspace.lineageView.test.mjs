@@ -52,6 +52,15 @@ assert.equal(selected.selectedTraversal.schema, 'tiinex.lineage.traversal.v1', '
 assert.deepEqual(selected.selectedTraversal.nodes.map((node) => node.id), ['c1', 'p1'], 'selected traversal should present selected ancestors first');
 assert(selected.selectedTraversal.edges.some((edge) => edge.from === 'p1' && edge.to === 'c1'), 'selected traversal should reuse the workspace-resolved parent edge');
 assert.equal(selected.selectedTraversal.stats.loadedNodes, selected.stats.nodes, 'selected traversal must be based on the same resolved workspace graph');
+assert.equal(selected.selectedTraversal.rootReached, true, 'selected traversal should report that the terminal ancestor is a loaded root');
+assert.equal(selected.selectedTraversal.status.label, 'root reached', 'selected traversal status should describe the path result, not whether the selected node itself is root');
+
+
+const childWithMissingOrigin = record({ id: 'c3', title: 'Child With Missing Origin', path: 'topics/child-origin.md', trace: 'record:p1', origin: 'topics/not-loaded-origin.md' });
+const selectedWithSecondaryOrigin = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, childWithMissingOrigin] }, { selectedRecordId: 'c3' });
+assert.equal(selectedWithSecondaryOrigin.selectedTraversal.rootReached, true, 'missing Origin hint must not override a successful Parent Trace traversal');
+assert.equal(selectedWithSecondaryOrigin.selectedTraversal.status.label, 'root reached', 'root reached should dominate secondary origin diagnostics');
+assert(selectedWithSecondaryOrigin.selectedTraversal.secondaryFindings.some((finding) => finding.code === 'lineage.origin.unresolved'), 'unresolved origin should remain available as secondary audit context');
 
 const selectedMissing = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] }, { selectedRecordId: 'c2' });
 assert.equal(selectedMissing.selectedTraversal.missingEdges.length, 1, 'selected traversal should expose missing edge for selected leaf only');

@@ -5706,3 +5706,209 @@ pre { white-space: pre-wrap; overflow:auto; }
   display: grid;
   gap: 0.35rem;
 }
+
+/* v183 selected-lineage read model parity: graph traversal as navigable artifact path. */
+.tx-selected-lineage-card {
+  gap: .72rem;
+  cursor: default;
+}
+.tx-lineage-selected-primary {
+  display: grid;
+  gap: .45rem;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.tx-lineage-selected-primary:hover h3,
+.tx-lineage-selected-primary:focus-visible h3 {
+  color: #ffffff;
+}
+.tx-lineage-selected-primary:focus-visible {
+  outline: 2px solid rgba(101,242,231,.48);
+  outline-offset: 3px;
+  border-radius: .75rem;
+}
+.tx-lineage-selected-message {
+  border-left: 3px solid rgba(101,242,231,.38);
+  padding-left: .6rem;
+}
+.tx-lineage-secondary-note {
+  color: rgba(214,204,229,.62);
+}
+.tx-selected-status-ok,
+.tx-lineage-terminal-status.tx-ok {
+  border-color: rgba(128,255,214,.42);
+  background: rgba(128,255,214,.1);
+  color: #d9fff3;
+}
+.tx-selected-status-mismatch {
+  border-color: rgba(255,107,138,.55);
+  background: rgba(255,107,138,.13);
+  color: #ffd7df;
+}
+.tx-lineage-selected-traversal {
+  background: rgba(255,255,255,.025);
+}
+.tx-lineage-selected-traversal li {
+  padding: 0;
+  background: transparent;
+}
+.tx-lineage-traversal-card {
+  display: grid;
+  gap: .22rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: .85rem;
+  background: rgba(255,255,255,.04);
+  color: rgba(247,248,251,.86);
+  padding: .55rem .65rem;
+  cursor: pointer;
+}
+.tx-lineage-traversal-card:hover,
+.tx-lineage-traversal-card:focus-visible {
+  border-color: rgba(101,242,231,.36);
+  background: rgba(101,242,231,.06);
+  outline: none;
+}
+.tx-lineage-traversal-card strong,
+.tx-lineage-traversal-card small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tx-lineage-node-role {
+  color: rgba(101,242,231,.68);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .68rem;
+  font-weight: 850;
+}
+.tx-lineage-node-summary {
+  color: rgba(247,248,251,.7);
+  line-height: 1.28;
+}
+.tx-lineage-node-path {
+  color: rgba(214,204,229,.58);
+}
+.tx-lineage-traversal-root .tx-lineage-traversal-card {
+  border-color: rgba(128,255,214,.28);
+  background: rgba(128,255,214,.055);
+}
+.tx-lineage-terminal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  width: fit-content;
+  border: 1px solid rgba(128,255,214,.32);
+  border-radius: 999px;
+  padding: .32rem .58rem;
+  font-size: .74rem;
+  font-weight: 800;
+}
+.tx-lineage-inline-details {
+  min-width: 0;
+}
+.tx-inline-provenance-details,
+.tx-record-provenance-details {
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: .9rem;
+  padding: .7rem .8rem;
+  background: rgba(255,255,255,.025);
+}
+.tx-inline-provenance-details summary,
+.tx-record-provenance-details summary {
+  cursor: pointer;
+  color: rgba(101,242,231,.8);
+  font-weight: 850;
+}
+.tx-inline-provenance-details dl {
+  display: grid;
+  gap: .42rem;
+  margin: .7rem 0 0;
+}
+.tx-inline-provenance-details dl > div {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: .5rem;
+}
+.tx-inline-provenance-details dt {
+  color: rgba(189,115,255,.72);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .62rem;
+  font-weight: 850;
+}
+.tx-inline-provenance-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: rgba(247,248,251,.75);
+}
+.tx-schema-read-view {
+  display: grid;
+  gap: .75rem;
+  min-width: 0;
+}
+.tx-schema-read-view header {
+  display: grid;
+  gap: .22rem;
+}
+.tx-schema-read-view header > span {
+  color: rgba(101,242,231,.72);
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tx-schema-read-view h3 {
+  margin: 0;
+  color: #fff7ff;
+  font-size: 1rem;
+}
+.tx-schema-read-view p {
+  margin: 0;
+  color: rgba(247,248,251,.7);
+  line-height: 1.36;
+}
+.tx-schema-read-sections {
+  display: grid;
+  gap: .65rem;
+}
+.tx-schema-read-section {
+  display: grid;
+  gap: .35rem;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: .9rem;
+  background: rgba(255,255,255,.035);
+  padding: .68rem .76rem;
+}
+.tx-schema-read-section > span {
+  color: rgba(189,115,255,.82);
+  font-size: .72rem;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.tx-schema-read-section pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: rgba(247,248,251,.82);
+  font: inherit;
+  line-height: 1.4;
+}
+.tx-schema-read-compact .tx-schema-read-section {
+  padding: .58rem .66rem;
+}
+.tx-schema-read-compact .tx-schema-read-sections {
+  gap: .48rem;
+}
+.tx-record-read-detail .tx-record-provenance-details .tx-record-meta {
+  margin-top: .75rem;
+}
+@media (max-width: 760px) {
+  .tx-inline-provenance-details dl > div { grid-template-columns: 1fr; }
+}

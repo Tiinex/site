@@ -1,6 +1,6 @@
-# Tiinex Site v182 Validation Notes
+# Tiinex Site v183 Validation Notes
 
-v182 is a focused Lineage closure batch after the v181 usage-video review and co-designer feedback.
+v183 follows the v182 usage-video review and co-designer feedback. v182's relative Trace resolver looked correct; this batch targets the next gap: correct traversal needed to become a readable and navigable artifact path.
 
 Validated in the working tree:
 
@@ -9,27 +9,25 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/workspaces/workspace.lineageView.js src/lineage/lineage.resolve.js src/sources/source.assetReferences.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/workspaces/workspace.lineageView.js src/artifacts/artifact.record.js
 ```
 
 Full `npm run test` was not completed in this sandbox because Vite/React build-smoke requires installed dependencies and `node_modules` is not present here. Run it locally/CI after `npm install`.
 
 Focused guards added/covered:
 
-1. Filename-relative Parent Trace: `001.trace.md` resolves against the declaring record directory.
-2. No global basename fallback: another folder's `001.trace.md` must not become a guessed edge.
-3. `../parent.trace.md` resolves inside the configured source root.
-4. Relative targets outside source root are boundary-blocked with no edge.
-5. Same path across configured sources resolves only inside the declaring source identity.
-6. Selected Lineage traversal reuses the workspace resolver result and presents selected ancestors first.
-7. Same-session hash restore keeps 325 source-backed records' Markdown, materialRole and selected record state.
-8. Source asset references are discovered as loaded/referenced-unloaded/blocked diagnostics without binary crawling.
-9. Issue snapshot reader remains explicitly deferred without fixtures.
+1. Selected traversal still reuses the workspace resolver result.
+2. A selected child whose loaded ancestor is a root reports `root reached` for the traversal result.
+3. An unresolved Origin hint does not override a successful Parent Trace chain; it remains secondary context.
+4. Ancestor rows are intended as navigation targets, not passive traversal-report rows.
+5. Detail reading is schema/artifact-first, while provenance and envelope metadata remain available behind a secondary disclosure.
+6. Lifecycle state, when present in the Continuity envelope, is preserved on the record and can be rendered separately from Audit status.
 
 Manual browser focus for Q:
 
-1. Load Tiinex/docs source-backed records and open `World Wide Wave 3 Meme` or equivalent sibling-trace leaf.
-2. Confirm a relative `001.trace.md` parent in the same folder resolves as a parent edge instead of disconnected/missing.
-3. In Lineage, selected traversal should show the selected leaf and its ancestors first; workspace-wide findings should remain secondary.
-4. Back/forward after loading ~325 source records should not collapse `schema ok`/materialRole/Markdown into metadata-only `open`.
-5. Evidence Markdown with a relative image should show an explicit referenced/unloaded or blocked asset diagnostic if the asset itself was not loaded.
+1. In local 11-record workspace, click a record with resolved ancestors; selected Lineage should read as an artifact path, not a debug list.
+2. Click ancestor/root rows; each should focus that ancestor in Lineage rather than expanding the original selected card.
+3. A complete chain such as `Archimas -> Jockes -> Rulles` should say `root reached` / `Lineage root reached`, not be dominated by `lineage.origin.unresolved`.
+4. Expand the selected card in split-screen width; it should stay readable and avoid the v182 layout collapse.
+5. Open details for a Feedback/Evidence/Topic-style artifact; schema-owned sections should appear before provenance metadata.
+6. Use Show markdown for exact source Markdown; it should remain separate from Open details.

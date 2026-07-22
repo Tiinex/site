@@ -1,22 +1,23 @@
-# Tiinex Site v182
+# Tiinex Site v183
 
-v182 is a focused Lineage closure checkpoint for the React/Vite refactor. It builds on v181 by moving the work from presentation polish to the lineage/source-material model: relative Parent Trace resolution is now contextual, selected Lineage is traversal-first, and source asset references are discovered as explicit unloaded/blocked material rather than silently disappearing.
+v183 is a selected-Lineage read-model checkpoint for the React/Vite refactor. It builds on v182's resolver closure: the graph now understands relative Parent Trace resolution, and this batch makes the already-correct selected traversal more readable and navigable instead of presenting it like a diagnostics report.
 
-## v182 batch
+## v183 batch
 
-- Relative Parent Trace resolution is now context-aware:
-  - filename-relative traces such as `001.trace.md` resolve against the declaring record directory;
-  - `../parent.trace.md` resolves relative to the declaring record directory;
-  - resolution is constrained by the declaring source identity and configured source root;
-  - global basename fallback is not used.
-- Ambiguity is safe:
-  - same path in multiple unsourced/source-ambiguous records becomes ambiguous;
-  - same path in multiple configured sources resolves only inside the declaring source;
-  - out-of-root relative targets are boundary-blocked rather than guessed.
-- Selected Lineage now uses the same resolved workspace graph and then traverses ancestors from the selected record. The selected traversal is presented first; workspace-wide Lineage remains secondary/collapsed.
-- Same-session route/cache continuity has a 325-record guard: source-backed Markdown, selected record state and materialRole must survive hash restoration.
-- Source-backed asset references are detected as a contract only. Markdown image/media references are classified as `loaded`, `referenced-unloaded`, `blocked`, or external/unloaded in diagnostics. v182 does not perform general binary asset fetching.
-- Issue/discussion snapshots remain explicitly deferred in browser runtime unless fixture-backed. The UI may present the surface, but the adapter result must be honest about the deferred reader.
+- Selected Lineage traversal is rendered as a navigable artifact path:
+  - the selected card expands only from its own primary area;
+  - ancestor/root rows are explicit buttons that focus that record in Lineage;
+  - workspace overview remains secondary/collapsed.
+- Selected status now describes the path result, not just the selected node:
+  - `root reached` is shown when the selected traversal reaches a loaded root ancestor;
+  - missing/ambiguous parent remains dominant when the parent chain actually stops;
+  - unresolved Origin hints stay available as secondary Audit context instead of overriding a successful Parent Trace chain.
+- Detail reading is artifact-first:
+  - `Open details` now shows schema-owned/read sections before provenance metadata;
+  - provenance/envelope fields are still available, but behind a secondary details section;
+  - `Show markdown` remains the exact-source dialog.
+- Lifecycle/publication state is displayed as a separate badge when present, rather than competing with Audit/conformance status.
+- The expanded selected card uses the same schema-read projection as details to avoid the v182 layout collapse caused by mixing metadata grids, findings and Markdown excerpts in one compact card.
 
 ## Supported local start
 

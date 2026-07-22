@@ -14,6 +14,7 @@ import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageVie
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
+import { parseArtifactMarkdown } from '../../artifacts/artifact.parse.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   leavesFirst: true,
@@ -614,7 +615,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
         </div>
       </header>
-      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onOpenAudit={onOpenAudit} /> : null}
+      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onOpenAudit={onOpenAudit} onFocusRecordLineage={onFocusRecordLineage} /> : null}
       <details className="tx-lineage-workspace-overview" open={!selected} aria-label="Workspace lineage overview">
         <summary>Workspace lineage overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
         {lineage.findings.length ? (
@@ -653,30 +654,36 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onOpenAudit }) {
+function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onOpenAudit, onFocusRecordLineage }) {
   const [expanded, setExpanded] = useState(false);
   const traversal = lineage.selectedTraversal || null;
-  const findings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
+  const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
   const record = node.record || {};
   const sourceText = node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session');
   const markdownAction = { id: RecordActionKind.markdown, label: 'Show markdown', icon: 'open' };
+  const secondaryFindings = selectedSecondaryFindings(rawFindings, traversal, selectedLineage);
+  const toggleExpanded = () => setExpanded((value) => !value);
+  const onKey = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleExpanded(); } };
   return (
-    <section className={`tx-lineage-selected-summary tx-selected-lineage-card ${expanded ? 'tx-selected-lineage-expanded' : ''}`} aria-label="Selected artifact lineage" role="button" tabIndex="0" onClick={() => setExpanded((value) => !value)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setExpanded((value) => !value); } }}>
-      <div className="tx-card-badges tx-legacy-card-badges">
-        <Badge className="tx-selected-status-badge">{selectedLineage.label}</Badge>
-        <AuditStatusBadge record={record} item={auditItem} />
-        <Badge>{recordSchemaBadge(record)}</Badge>
-        <Badge>{sourceText}</Badge>
-      </div>
-      <h3>{node.title}</h3>
-      <p>{record.summary || selectedLineage.message}</p>
-      {node.path ? <div className="tx-card-pathline" title={node.path}><Icon name="folderOpen" />{compactPath(node.path)}</div> : null}
-      <div className="tx-lineage-selected-message">
-        {findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : selectedLineage.message}
-      </div>
-      {traversal ? <LineageSelectedTraversal traversal={traversal} selectedId={node.id} onFocusRecordLineage={null} /> : null}
-      {expanded ? <LineageInlineRecordDetails record={record} node={node} findings={findings} /> : <small className="tx-lineage-expand-hint">Click selected card for key details</small>}
+    <section className={`tx-lineage-selected-summary tx-selected-lineage-card ${expanded ? 'tx-selected-lineage-expanded' : ''}`} aria-label="Selected artifact lineage">
+      <button type="button" className="tx-lineage-selected-primary" aria-expanded={expanded} onClick={toggleExpanded} onKeyDown={onKey}>
+        <div className="tx-card-badges tx-legacy-card-badges">
+          <Badge className={`tx-selected-status-badge tx-selected-status-${selectedLineage.tone || 'open'}`}>{selectedLineage.label}</Badge>
+          {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
+          <AuditStatusBadge record={record} item={auditItem} />
+          <Badge>{recordSchemaBadge(record)}</Badge>
+          <Badge>{sourceText}</Badge>
+        </div>
+        <h3>{node.title}</h3>
+        <p>{record.summary || selectedLineage.message}</p>
+        {node.path ? <div className="tx-card-pathline" title={node.path}><Icon name="folderOpen" />{compactPath(node.path)}</div> : null}
+        <div className="tx-lineage-selected-message">{selectedLineage.message}</div>
+        {secondaryFindings.length ? <small className="tx-lineage-secondary-note">{secondaryFindings.length} secondary recovery/audit note{secondaryFindings.length === 1 ? '' : 's'} available in Audit details.</small> : null}
+        <small className="tx-lineage-expand-hint">{expanded ? 'Hide selected read view' : 'Expand selected read view'}</small>
+      </button>
+      {traversal ? <LineageSelectedTraversal traversal={traversal} selectedId={node.id} onFocusRecordLineage={onFocusRecordLineage} /> : null}
+      {expanded ? <LineageInlineRecordDetails record={record} node={node} findings={rawFindings} /> : null}
       <div className="tx-lineage-selected-actions" onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={() => onOpenRecord?.(node.id)}><Icon name="open" /> Open details</button>
         <button type="button" onClick={() => onRecordAction?.(record, markdownAction)}><Icon name="open" /> Show markdown</button>
@@ -686,26 +693,31 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
   );
 }
 
-function LineageSelectedTraversal({ traversal = {}, selectedId = '' }) {
+function LineageSelectedTraversal({ traversal = {}, selectedId = '', onFocusRecordLineage }) {
   const nodes = Array.isArray(traversal.nodes) ? traversal.nodes : [];
   const missing = Array.isArray(traversal.missingEdges) ? traversal.missingEdges : [];
   const stats = traversal.stats || {};
+  const status = traversal.status || {};
   if (!nodes.length && !missing.length) return null;
   return (
     <div className="tx-lineage-selected-traversal" aria-label="Selected lineage traversal">
       <div className="tx-lineage-selected-traversal-head">
-        <strong>Selected ancestors</strong>
+        <strong>{status.label || 'Selected lineage path'}</strong>
         <small>{stats.visitedNodes || nodes.length} visited · {stats.missingEdges || missing.length} missing · loaded-only</small>
       </div>
       <ol>
         {nodes.map((item) => (
-          <li key={item.id} className={item.id === selectedId ? 'tx-lineage-traversal-start' : ''}>
-            <span>{item.role === 'start' ? 'selected' : item.role || 'ancestor'}</span>
-            <strong>{item.title || item.id}</strong>
-            {item.path ? <small>{compactPath(item.path)}</small> : null}
+          <li key={item.id} className={`${item.id === selectedId ? 'tx-lineage-traversal-start' : ''} ${item.root ? 'tx-lineage-traversal-root' : ''}`}>
+            <button type="button" className="tx-lineage-traversal-card" onClick={(event) => { event.stopPropagation(); onFocusRecordLineage?.(item.id); }} aria-label={`Focus ${item.title || item.id} in lineage`}>
+              <span className="tx-lineage-node-role">{item.id === selectedId ? 'selected' : item.root ? 'root' : item.role || 'ancestor'}</span>
+              <strong>{item.title || item.id}</strong>
+              {item.record?.summary ? <small className="tx-lineage-node-summary">{item.record.summary}</small> : null}
+              {item.path ? <small className="tx-lineage-node-path">{compactPath(item.path)}</small> : null}
+            </button>
           </li>
         ))}
       </ol>
+      {traversal.rootReached ? <div className="tx-lineage-terminal-status tx-ok"><Icon name="check" /> Lineage root reached</div> : null}
       {missing.length ? <div className="tx-lineage-selected-missing">{missing.slice(0, 3).map((edge) => <span key={edge.id}><Icon name="warning" /> missing {compactPath(edge.target || edge.from || 'target')}</span>)}</div> : null}
     </div>
   );
@@ -714,18 +726,19 @@ function LineageSelectedTraversal({ traversal = {}, selectedId = '' }) {
 function LineageInlineRecordDetails({ record = {}, node = {}, findings = [] }) {
   const details = [
     ['Schema', record.schemaId || node.schemaId || record.kind || 'artifact'],
+    recordLifecycleBadge(record) ? ['Lifecycle', recordLifecycleBadge(record)] : null,
     ['Source', node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session')],
-    record.currentCreatedAt || record.createdAt ? ['Created', record.currentCreatedAt || record.createdAt] : null,
     record.trace || node.trace ? ['Trace', record.trace || node.trace] : null,
     record.origin || node.origin ? ['Origin', record.origin || node.origin] : null,
-    findings.length ? ['Findings', findings.slice(0, 3).map((finding) => finding.code).join(' · ')] : null
+    findings.length ? ['Audit notes', findings.slice(0, 3).map((finding) => finding.code).join(' · ')] : null
   ].filter(Boolean);
   return (
-    <div className="tx-lineage-inline-details" aria-label="Selected artifact key details">
-      <dl>
-        {details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      </dl>
-      {record.markdown ? <pre>{extractImportantMarkdown(record.markdown)}</pre> : null}
+    <div className="tx-lineage-inline-details" aria-label="Selected artifact read view">
+      <SchemaReadView record={record} compact />
+      <details className="tx-inline-provenance-details">
+        <summary>Provenance and audit notes</summary>
+        <dl>{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+      </details>
     </div>
   );
 }
@@ -741,22 +754,42 @@ function extractImportantMarkdown(markdown = '') {
 }
 
 function selectedLineageStatus(node = {}, lineage = {}, traversal = null) {
+  if (traversal?.status) return traversal.status;
   const id = String(node.id || '');
-  const traversalFindings = traversal?.findings || [];
   const traversalMissing = traversal?.missingEdges || [];
   const traversalNodes = traversal?.nodes || [];
-  const selectedFindings = traversalFindings.length ? traversalFindings : (lineage.findings || []).filter((finding) => finding.nodeId === id);
+  const selectedFindings = (lineage.findings || []).filter((finding) => finding.nodeId === id);
   const selectedEdges = traversal?.edges?.length ? traversal.edges : (lineage.edges || []).filter((edge) => edge.from === id || edge.to === id);
   if (selectedFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || traversalMissing.length) {
-    return { label: 'selected mismatch', message: 'Selected artifact traversal stops at unresolved or ambiguous lineage. Workspace findings below are separate.' };
+    return { label: 'missing parent', tone: 'mismatch', message: 'Selected artifact traversal stops at unresolved or ambiguous lineage. Workspace findings below are separate.' };
   }
   if (selectedFindings.some((finding) => finding.code === 'lineage.root') || (traversalNodes.length === 1 && !selectedEdges.length && !traversalMissing.length)) {
-    return { label: 'root reached', message: 'Selected artifact is a loaded lineage root or has no declared loaded ancestors. Workspace findings below are separate.' };
+    return { label: 'loaded root', tone: 'open', message: 'Selected artifact has no loaded parent trace in this workspace.' };
   }
   if (selectedEdges.length || traversalNodes.length > 1) {
-    return { label: 'selected lineage', message: 'Selected artifact traversal uses the same resolved workspace graph, shown ancestors-first.' };
+    return { label: 'parent chain loaded', tone: 'ok', message: 'Selected artifact traversal uses the same resolved workspace graph, shown ancestors-first.' };
   }
-  return { label: 'selected open', message: 'Selected artifact has no resolved lineage finding in the loaded workspace.' };
+  return { label: 'selected open', tone: 'open', message: 'Selected artifact has no resolved lineage finding in the loaded workspace.' };
+}
+
+function selectedSecondaryFindings(findings = [], traversal = null, primaryStatus = {}) {
+  const hiddenWhenRootReached = new Set(['lineage.root', 'lineage.origin.unresolved']);
+  const primaryCodes = new Set(['lineage.root', 'lineage.parent.missing', 'lineage.target.ambiguous', 'lineage.traversal.missingTarget']);
+  const source = Array.isArray(findings) ? findings : [];
+  const secondary = source.filter((finding) => {
+    const code = finding?.code || '';
+    if (primaryStatus?.label === 'root reached' && hiddenWhenRootReached.has(code)) return true;
+    return !primaryCodes.has(code);
+  });
+  const traversalSecondary = Array.isArray(traversal?.secondaryFindings) ? traversal.secondaryFindings : [];
+  const combined = [...secondary, ...traversalSecondary];
+  const seen = new Set();
+  return combined.filter((finding) => {
+    const key = `${finding?.code || ''}:${finding?.nodeId || ''}:${finding?.target || ''}`;
+    if (!finding?.code || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function LineageEdgeRow({ edge, onFocusRecordLineage }) {
@@ -863,6 +896,15 @@ function recordSourceBadge(record = {}) {
   return 'Local';
 }
 
+function recordLifecycleBadge(record = {}) {
+  const values = [record.lifecycleStatus, record.currentStatus, record.status, record.envelope?.current?.status];
+  const text = values.map((value) => String(value || '').trim()).find(Boolean) || '';
+  if (!text) return '';
+  const clean = text.toLowerCase();
+  if (clean === 'schema ok' || clean === 'local') return '';
+  return text;
+}
+
 function actionClassName(action = {}) {
   const id = action.id;
   const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference;
@@ -889,6 +931,7 @@ function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onS
     <article className="tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card" role="button" tabIndex="0" aria-label={`Focus lineage for ${record.title || 'artifact'}`} onClick={focusLineage} onKeyDown={onKey}>
       <div className="tx-card-badges tx-legacy-card-badges">
         <AuditStatusBadge record={record} item={auditItem} />
+        {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
         <Badge>{schemaBadge}</Badge>
         {dateBadge ? <Badge>{dateBadge}</Badge> : null}
         <Badge>{sourceBadge}</Badge>
@@ -938,32 +981,150 @@ export function AssetDetailDialog({ asset, onDismiss }) {
   );
 }
 
+
+function SchemaReadView({ record = {}, compact = false }) {
+  const presentation = schemaReadPresentation(record, { compact });
+  if (!presentation.sections.length) {
+    return <p className="tx-muted">No schema-owned read view is available. Use Show markdown for the exact source.</p>;
+  }
+  return (
+    <section className={`tx-schema-read-view ${compact ? 'tx-schema-read-compact' : ''}`} aria-label="Schema-owned artifact read view">
+      <header>
+        <span>{presentation.label}</span>
+        <h3>{presentation.title}</h3>
+        {presentation.summary ? <p>{presentation.summary}</p> : null}
+      </header>
+      <div className="tx-schema-read-sections">
+        {presentation.sections.map((section) => (
+          <article key={section.label} className="tx-schema-read-section">
+            <span>{section.label}</span>
+            <pre>{section.value}</pre>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const SCHEMA_READ_SECTIONS = Object.freeze({
+  'tiinex.topic.v1': ['Content', 'Current Read', 'Design Direction', 'Next Artifacts', 'Good Child Candidates', 'Transition Boundary'],
+  'tiinex.feedback.v1': ['Feedback Received', 'Feedback Target', 'Target', 'Disposition', 'Feedback Context', 'Limits', 'Interpretation Limits', 'Artifact Body'],
+  'tiinex.task.v1': ['Objective', 'Task Objective', 'Done Criteria', 'Scope', 'Dependencies', 'Grounding', 'Non-Goals'],
+  'tiinex.evidence.v1': ['Supported Claim', 'Supports', 'Evidence Material', 'Unavailable Material', 'Provenance', 'Interpretation Limits', 'Interpretation Notes and Limits'],
+  'tiinex.pointer.v1': ['Pointer Target', 'Target', 'Linked Artifacts', 'Pointer Reason', 'Reason', 'Interpretation Limits', 'Limits']
+});
+
+function schemaReadPresentation(record = {}, options = {}) {
+  const parsed = parseRecordMarkdown(record);
+  const schema = String(record.schemaId || record.currentSchemaId || record.kind || parsed.envelope?.current?.schema?.id || '').trim();
+  const sections = extractMarkdownSections(parsed.body?.text || record.markdown || '');
+  const wanted = SCHEMA_READ_SECTIONS[schema] || [];
+  const picked = [];
+  for (const label of wanted) {
+    const value = sectionValueByName(sections, label);
+    if (value) picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
+  }
+  if (!picked.length) {
+    for (const [label, value] of sections.entries()) {
+      if (/^(continuity context|continuity integrity)$/i.test(label)) continue;
+      if (picked.length >= (options.compact ? 2 : 5)) break;
+      picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
+    }
+  }
+  if (!picked.length && parsed.body?.text) picked.push({ label: 'Artifact body', value: trimReadValue(parsed.body.text, options) });
+  return {
+    schema,
+    label: schema ? schema.replace(/^tiinex\./, '').replace(/\.v\d+$/, '') : 'artifact',
+    title: record.title || parsed.title || 'Untitled artifact',
+    summary: record.summary || parsed.envelope?.current?.summary || '',
+    sections: picked
+  };
+}
+
+function parseRecordMarkdown(record = {}) {
+  try { return parseArtifactMarkdown(record.markdown || ''); }
+  catch (error) { return { title: record.title || '', envelope: {}, body: { text: record.markdown || '' } }; }
+}
+
+function extractMarkdownSections(markdown = '') {
+  const text = String(markdown || '').replace(/\r\n?/g, '\n').trim();
+  const map = new Map();
+  if (!text) return map;
+  const lines = text.split('\n');
+  let current = '';
+  let buffer = [];
+  const flush = () => {
+    if (!current) return;
+    const value = buffer.join('\n').trim();
+    if (value) map.set(current, value);
+  };
+  for (const line of lines) {
+    const match = line.match(/^(#{1,6})\s+(.+?)\s*$/);
+    if (match) {
+      flush();
+      current = match[2].trim();
+      buffer = [];
+    } else if (current) {
+      buffer.push(line);
+    }
+  }
+  flush();
+  if (!map.size && text) map.set('Artifact body', text);
+  return map;
+}
+
+function sectionValueByName(sections = new Map(), name = '') {
+  const wanted = normalizeSectionName(name);
+  for (const [label, value] of sections.entries()) {
+    if (normalizeSectionName(label) === wanted) return value;
+  }
+  return '';
+}
+
+function normalizeSectionName(name = '') {
+  return String(name || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+}
+
+function displaySectionLabel(label = '') {
+  return String(label || '').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function trimReadValue(value = '', options = {}) {
+  const clean = String(value || '').trim();
+  const limit = options.compact ? 520 : 1600;
+  return clean.length > limit ? `${clean.slice(0, limit).trimEnd()}\n…` : clean;
+}
+
 export function RecordDetailDialog({ record, onDismiss, onShare }) {
   const source = record?.source || {};
   const isSourceBacked = Boolean(source.adapterId && source.adapterId !== 'local');
   return (
     <Modal title={record?.title || 'Artifact'} onDismiss={onDismiss} className="tx-dialog-record-detail">
-      <div className="tx-record-detail">
+      <div className="tx-record-detail tx-record-read-detail">
         <div className="tx-card-badges">
-          <Badge>{record?.status || 'local'}</Badge>
-          <Badge>{record?.kind || 'artifact'}</Badge>
+          {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
+          {record?.status ? <Badge title="Record status">{record.status}</Badge> : null}
+          <Badge>{recordSchemaBadge(record)}</Badge>
           <Badge>{isSourceBacked ? 'source-backed' : 'local/session'}</Badge>
         </div>
-        <p className="tx-muted">{record?.summary || 'No summary available.'}</p>
-        <dl className="tx-record-meta">
-          <div><dt>Boundary</dt><dd>{isSourceBacked ? (source.boundary || 'Explicit source boundary') : 'Browser-local session material; no GitHub provenance inferred.'}</dd></div>
-          {record?.path ? <div><dt>Path</dt><dd>{record.path}</dd></div> : null}
-          {source.label ? <div><dt>Source</dt><dd>{source.label}</dd></div> : null}
-          {source.adapterId ? <div><dt>Adapter</dt><dd>{source.adapterId} · {source.sourceKind || source.kind || 'source'}</dd></div> : null}
-          {record?.envelopeSchemaId ? <div><dt>Envelope</dt><dd>{record.envelopeSchemaId}</dd></div> : null}
-          {record?.schemaId ? <div><dt>Current schema</dt><dd>{record.schemaId}</dd></div> : null}
-          {record?.currentCreatedAt ? <div><dt>Current created</dt><dd>{record.currentCreatedAt}</dd></div> : null}
-          {record?.parentSchemaId ? <div><dt>Parent schema</dt><dd>{record.parentSchemaId}</dd></div> : null}
-          {record?.trace ? <div><dt>Trace</dt><dd>{record.trace}</dd></div> : null}
-          {record?.origin ? <div><dt>Origin</dt><dd>{record.origin}</dd></div> : null}
-          {record?.rootDisclosure ? <div><dt>Root fallback</dt><dd>{record.rootDisclosure}</dd></div> : null}
-        </dl>
-        {record?.markdown ? <pre className="tx-record-markdown-preview">{String(record.markdown).slice(0, 2400)}</pre> : <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown preview is available for this record.'}</p>}
+        <SchemaReadView record={record} />
+        <details className="tx-record-provenance-details">
+          <summary>Provenance / envelope</summary>
+          <dl className="tx-record-meta">
+            <div><dt>Boundary</dt><dd>{isSourceBacked ? (source.boundary || 'Explicit source boundary') : 'Browser-local session material; no GitHub provenance inferred.'}</dd></div>
+            {record?.path ? <div><dt>Path</dt><dd>{record.path}</dd></div> : null}
+            {source.label ? <div><dt>Source</dt><dd>{source.label}</dd></div> : null}
+            {source.adapterId ? <div><dt>Adapter</dt><dd>{source.adapterId} · {source.sourceKind || source.kind || 'source'}</dd></div> : null}
+            {record?.envelopeSchemaId ? <div><dt>Envelope</dt><dd>{record.envelopeSchemaId}</dd></div> : null}
+            {record?.schemaId ? <div><dt>Current schema</dt><dd>{record.schemaId}</dd></div> : null}
+            {record?.currentCreatedAt ? <div><dt>Current created</dt><dd>{record.currentCreatedAt}</dd></div> : null}
+            {record?.parentSchemaId ? <div><dt>Parent schema</dt><dd>{record.parentSchemaId}</dd></div> : null}
+            {record?.trace ? <div><dt>Trace</dt><dd>{record.trace}</dd></div> : null}
+            {record?.origin ? <div><dt>Origin</dt><dd>{record.origin}</dd></div> : null}
+            {record?.rootDisclosure ? <div><dt>Root fallback</dt><dd>{record.rootDisclosure}</dd></div> : null}
+          </dl>
+        </details>
+        {!record?.markdown ? <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown body is available for this record.'}</p> : null}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
           <Button variant="primary" icon="shareNodes" onClick={onShare}>Share session</Button>

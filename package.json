@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v182",
+  "version": "0.2.10-v183",
   "private": true,
-  "description": "Tiinex Site v182: lineage closure with context-safe relative Trace resolution, selected traversal first, and source asset-reference contract diagnostics.",
+  "description": "Tiinex Site v183: selected Lineage read-model parity with navigable ancestor cards, root-path status, schema-owned detail reading, and lifecycle/audit separation.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

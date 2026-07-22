@@ -21,6 +21,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     schemaKey: schemaKey(schemaId),
     schemaBadgeClass: schemaBadgeClass(schemaId),
     status: parsed.hasIntegrity ? 'schema ok' : 'local',
+    lifecycleStatus: current.status || meta.lifecycleStatus || '',
     currentCreatedAt: current.createdAt || '',
     path: meta.path || meta.name || '',
     markdown,

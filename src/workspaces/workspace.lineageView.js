@@ -45,7 +45,7 @@ export function buildWorkspaceLineageView(workspace = {}, input = {}) {
     nodes: visibleNodes.map((node) => presentNode(node)),
     edges: visibleEdges.map((edge) => presentEdge(edge, nodesById)),
     findings: visibleFindings,
-    selectedTraversal: selectedTraversal ? presentSelectedTraversal(selectedTraversal, nodesById) : null,
+    selectedTraversal: selectedTraversal ? presentSelectedTraversal(selectedTraversal, nodesById, resolved.findings) : null,
     stats: Object.assign({}, resolved.stats, {
       visibleNodes: visibleNodes.length,
       visibleEdges: visibleEdges.length,
@@ -57,8 +57,16 @@ export function buildWorkspaceLineageView(workspace = {}, input = {}) {
 
 
 
-function presentSelectedTraversal(traversal = {}, nodesById = new Map()) {
+function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolvedFindings = []) {
   const traversalNodeIds = new Set((traversal.nodes || []).map((node) => node.id));
+  const findingsByNodeId = groupFindingsByNodeId(resolvedFindings);
+  const resolvedTraversalFindings = (Array.isArray(resolvedFindings) ? resolvedFindings : []).filter((finding) => finding.nodeId && traversalNodeIds.has(finding.nodeId));
+  const terminalNodes = terminalTraversalNodes(traversal);
+  const rootNodeIds = new Set(resolvedTraversalFindings.filter((finding) => finding.code === 'lineage.root').map((finding) => finding.nodeId));
+  const rootReached = Boolean(!traversal.missingEdges?.length && terminalNodes.some((node) => rootNodeIds.has(node.id)));
+  const ambiguous = Boolean(resolvedTraversalFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || (traversal.findings || []).some((finding) => finding.code === 'lineage.target.ambiguous'));
+  const hasMissing = Boolean((traversal.missingEdges || []).length || (traversal.findings || []).some((finding) => finding.code === 'lineage.traversal.missingTarget'));
+  const secondaryFindings = resolvedTraversalFindings.filter((finding) => finding.code !== 'lineage.root' && finding.code !== 'lineage.parent.missing' && finding.code !== 'lineage.target.ambiguous');
   return {
     schema: traversal.schema,
     boundary: traversal.boundary,
@@ -71,14 +79,24 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map()) {
         path: node.path || resolvedNode.path || '',
         sourceLabel: resolvedNode.record?.source?.label || '',
         sourceBacked: Boolean(resolvedNode.record?.source?.adapterId && resolvedNode.record.source.adapterId !== 'local'),
-        record: resolvedNode.record || null
+        record: resolvedNode.record || null,
+        findings: findingsByNodeId.get(node.id) || [],
+        terminal: terminalNodes.some((terminal) => terminal.id === node.id),
+        root: rootNodeIds.has(node.id)
       });
     }),
     edges: (traversal.edges || []).map((edge) => presentEdge(edge, nodesById)),
     missingEdges: (traversal.missingEdges || []).map((edge) => presentEdge(edge, nodesById)),
     findings: (traversal.findings || []).slice(),
     selectedFindings: (traversal.findings || []).filter((finding) => !finding.nodeId || traversalNodeIds.has(finding.nodeId)),
-    stats: Object.assign({}, traversal.stats || {})
+    resolvedFindings: resolvedTraversalFindings,
+    secondaryFindings,
+    rootReached,
+    ambiguous,
+    hasMissing,
+    terminalNodeIds: terminalNodes.map((node) => node.id),
+    status: traversalStatus({ rootReached, ambiguous, hasMissing, traversal }),
+    stats: Object.assign({}, traversal.stats || {}, { rootReached, ambiguous, hasMissing })
   };
 }
 
@@ -132,4 +150,33 @@ function nodeMatchesQuery(node = {}, query = '') {
     record.kind,
     record.source?.label
   ].some((value) => String(value || '').toLowerCase().includes(query));
+}
+
+
+function groupFindingsByNodeId(findings = []) {
+  const map = new Map();
+  for (const finding of Array.isArray(findings) ? findings : []) {
+    const id = String(finding?.nodeId || '').trim();
+    if (!id) continue;
+    if (!map.has(id)) map.set(id, []);
+    map.get(id).push(finding);
+  }
+  return map;
+}
+
+function terminalTraversalNodes(traversal = {}) {
+  const nodes = Array.isArray(traversal.nodes) ? traversal.nodes : [];
+  if (!nodes.length) return [];
+  const maxDepth = Math.max(...nodes.map((node) => Number(node.depth || 0)));
+  return nodes.filter((node) => Number(node.depth || 0) === maxDepth);
+}
+
+function traversalStatus({ rootReached = false, ambiguous = false, hasMissing = false, traversal = {} } = {}) {
+  if (ambiguous) return { label: 'ambiguous parent', tone: 'mismatch', message: 'Selected lineage has an ambiguous declared target; no guessed edge was created.' };
+  if (hasMissing) return { label: 'missing parent', tone: 'mismatch', message: 'Selected lineage stops because a declared parent is not loaded.' };
+  if (rootReached) return { label: 'root reached', tone: 'ok', message: 'Selected Parent Trace chain reaches a loaded root.' };
+  const nodes = Array.isArray(traversal.nodes) ? traversal.nodes : [];
+  if (nodes.length > 1) return { label: 'parent chain loaded', tone: 'ok', message: 'Selected Parent Trace chain is loaded; no missing parent was found.' };
+  if (nodes.length === 1) return { label: 'loaded root', tone: 'open', message: 'Selected artifact has no loaded parent trace in this workspace.' };
+  return { label: 'selected open', tone: 'open', message: 'No selected lineage traversal is loaded.' };
 }
