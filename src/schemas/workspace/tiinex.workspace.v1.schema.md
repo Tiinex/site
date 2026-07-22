@@ -1,14 +1,14 @@
 # Continuity Context
 
-- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/site/blob/6ac71a3a3d3be0d3fc73450dc3c1d45a0a4ed94a/src/schemas/tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
+  - Parent Schema: [tiinex.root.v1](https://github.com/Tiinex/site/blob/6ac71a3a3d3be0d3fc73450dc3c1d45a0a4ed94a/src/schemas/tiinex.root.v1.schema.md)
   - Created At: 2026-06-14 00:00:00
-  - Trace: [tiinex.root.v1.schema.md](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
+  - Trace: [tiinex.root.v1.schema.md](../tiinex.root.v1.schema.md)
   - Origin:
-    - [browse + git](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/6ac71a3a3d3be0d3fc73450dc3c1d45a0a4ed94a/src/schemas/tiinex.root.v1.schema.md)
 - Current
-  - Current Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)
+  - Current Schema: [tiinex.workspace.v1](https://github.com/Tiinex/site/blob/17283cd2f0b9b0782a149a0cd113fb88a5a55ef3/src/schemas/workspace/tiinex.workspace.v1.schema.md)
   - Created At: 2026-06-16 00:00:00
   - Why: Defines a portable multi-lineage workspace entrypoint schema as a descendant of the Tiinex root schema.
   - Summary: Schema for markdown-first Tiinex workspace artifacts.
@@ -477,5 +477,9 @@ Rules
 # Continuity Integrity
 
 - sha256-base64url-c14n-v1
-  - Towards: [tiinex.root.v1.schema.md](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
-  - Value: MB29XuzpMrwUc396COqKR2nVPX4E9gmUv0CS1zLYSKY
+  - Towards: [tiinex.root.v1.schema.md](https://github.com/Tiinex/site/blob/6ac71a3a3d3be0d3fc73450dc3c1d45a0a4ed94a/src/schemas/tiinex.root.v1.schema.md)
+  - Value: BFWYft1v0Ue0gUoO236DGScvnixS7_MIEwO6mhJhkNw
+
+- sha256-base64url-c14n-v2
+  - Towards: self
+  - Value: 6wPbubtrbUsVZU8y49m3L9S-VDTgO7bqFXaYjXl2mXs
