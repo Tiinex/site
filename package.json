@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.17-v197",
+  "version": "0.2.18-v198",
   "private": true,
-  "description": "Tiinex Site v197: PoC-compatible Discovery feed ordering and annotation leaf classification repair.",
+  "description": "Tiinex Site v198: canonical schema artifact leaf parity, schema read bullets, and Discovery/Lineage search row polish.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

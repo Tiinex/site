@@ -1051,6 +1051,58 @@ export function AssetDetailDialog({ asset, onDismiss }) {
 }
 
 
+function SchemaReadSectionBody({ value = '' }) {
+  const blocks = schemaReadBlocks(value);
+  if (!blocks.length) return <p className="tx-schema-read-paragraph">—</p>;
+  return (
+    <div className="tx-schema-read-body">
+      {blocks.map((block, index) => block.type === 'list' ? (
+        <ul key={`list-${index}`}>
+          {block.items.map((item, itemIndex) => <li key={`${index}-${itemIndex}`}>{item}</li>)}
+        </ul>
+      ) : (
+        <p key={`paragraph-${index}`} className="tx-schema-read-paragraph">{block.text}</p>
+      ))}
+    </div>
+  );
+}
+
+function schemaReadBlocks(value = '') {
+  const lines = String(value || '').split(/\r?\n/);
+  const blocks = [];
+  let list = null;
+  let paragraph = [];
+  const flushParagraph = () => {
+    const text = paragraph.join(' ').replace(/\s+/g, ' ').trim();
+    if (text && text !== '---') blocks.push({ type: 'paragraph', text });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list?.items?.length) blocks.push(list);
+    list = null;
+  };
+  for (const rawLine of lines) {
+    const line = String(rawLine || '').trim();
+    if (!line || line === '---') {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    const bullet = line.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      if (!list) list = { type: 'list', items: [] };
+      list.items.push(bullet[1].trim());
+      continue;
+    }
+    flushList();
+    paragraph.push(line);
+  }
+  flushParagraph();
+  flushList();
+  return blocks;
+}
+
 function SchemaReadView({ record = {}, compact = false, maxSections = null, showHeader = true, lineClamp = false }) {
   const presentation = schemaReadPresentation(record, { compact, maxSections, lineClamp });
   if (!presentation.sections.length) {
@@ -1069,7 +1121,7 @@ function SchemaReadView({ record = {}, compact = false, maxSections = null, show
         {presentation.sections.map((section) => (
           <article key={section.label} className="tx-schema-read-section">
             <span>{section.label}</span>
-            <pre>{section.value}</pre>
+            <SchemaReadSectionBody value={section.value} />
           </article>
         ))}
       </div>
@@ -1322,7 +1374,7 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
           </label>
         </div>
         <label className="tx-display-option-row tx-display-option-primary">
-          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} Tiinex/work leaf{Number(counts.leaves || 0) === 1 ? '' : 's'} · hides supporting Markdown</small></span>
+          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} Tiinex artifact {Number(counts.leaves || 0) === 1 ? 'leaf' : 'leaves'} · includes canonical docs schema artifacts; hides support files</small></span>
           <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">

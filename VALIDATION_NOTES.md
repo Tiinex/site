@@ -1,24 +1,21 @@
-# Validation Notes — v197
+# Validation Notes v198
 
-## Base
+Base: latest provided site zip containing v197 plus portable-tooling additions.
 
-- Source base: v196 Lineage runtime crash guard checkpoint supplied by Q.
-- Scope: Discovery Feed ordering and annotation-family material-role classification.
-- Portable-tooling paths were not touched.
+## Scope
 
-## Root cause
+v198 focuses on:
 
-The v195/v196 Discovery Feed preserved loaded/source order because `Leaves first` had been removed from default behavior and the remaining comparator was tied to that option. This made the new viewer look arbitrarily ordered compared with the PoC. The PoC Feed uses a date-descending artifact comparator with path as tie-breaker.
+- canonical Tiinex/docs schema notes as readable source-backed artifacts/leaves;
+- preserving local runtime schema snapshots as schema-definition/support material;
+- schema-owned list rendering using real bullet symbols;
+- one-line, equal-width Discovery/Lineage search controls.
 
-A second visible drift came from material-role classification: `tiinex.adapter.annotation.v1` and related annotation-family schemas are artifact families in Tiinex/docs, but the support classifier treated any `tiinex.adapter.*` schema as adapter-support material. With `Leaves only` default-on, those artifacts could disappear or appear in a different surface from the PoC.
+Portable-tooling paths were not changed.
 
-## Validation run
-
-In the working tree:
+## Commands run in workspace
 
 ```bash
-node src/workspaces/workspace.feedSort.test.mjs
-node src/workspaces/workspace.materialRole.test.mjs
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
@@ -26,7 +23,7 @@ npm run metrics
 npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-From a source-clean verification unzip:
+## Commands run from source-clean zip
 
 ```bash
 npm run validate
@@ -35,8 +32,13 @@ npm run usecase:uc001
 npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-## Known limits
+## Not run
 
-- Full `npm run test` was not run because runtime smoke/public build require installed Vite/React dependencies in this sandbox.
-- This batch does not implement a real browser issue reader, partial promotion, or new Feed mode selector.
-- Tree remains path/folder sorted like the PoC tree; Feed is sorted by artifact timestamp descending.
+Full `npm run test` was not run because runtime smoke and public build require installed Vite/React dependencies in the sandbox.
+
+## Browser focus
+
+- Tiinex/docs Discovery with `Leaves only` default-on should still show canonical `.topics/.schemas/**/*.schema.md` artifacts when they are source-backed Tiinex artifacts.
+- Local `src/schemas/**` snapshots should remain schema-definition/support material.
+- Discovery and Lineage toolbar rows should not wrap into a double-line search row at the tested split-screen widths.
+- Expanded Lineage read sections should show real bullets, not raw `-` markers.

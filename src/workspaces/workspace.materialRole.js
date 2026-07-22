@@ -24,6 +24,7 @@ export function inferRecordMaterialRole(record = {}) {
   const markdown = String(record.markdown || '');
 
   if (isWorkspaceCandidatePath(path) || kind.includes('workspace')) return MaterialRole.workspaceCandidate;
+  if (isCanonicalSchemaArtifactPath(path) && hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
   if (isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
   if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
   if (hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
@@ -69,10 +70,12 @@ function normalizeMaterialRole(value = '') {
 function hasDeclaredTiinexLeaf(record = {}, markdown = '') {
   const path = String(record.path || record.name || '').toLowerCase();
   const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
-  if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema)) return false;
+  if (!isCanonicalSchemaArtifactPath(path) && (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema))) return false;
   if (path.endsWith('.trace.md')) return true;
   if (record.trace || record.parentSchemaId) return true;
-  if (record.hasContinuityContext || record.hasIntegrity || /^\s*#\s*Continuity Context\b/im.test(markdown)) {
+  const hasContinuity = record.hasContinuityContext || record.hasIntegrity || /^\s*#\s*Continuity Context\b/im.test(markdown);
+  if (isCanonicalSchemaArtifactPath(path) && hasContinuity) return true;
+  if (hasContinuity) {
     return !isKnownSupportSchema(schema);
   }
   if (schema && !isKnownSupportSchema(schema) && isKnownWorkSchema(schema)) return true;
@@ -157,6 +160,12 @@ function isKnownWorkSchema(schema = '') {
     || value.startsWith('tiinex.style.annotation.')
     || value.startsWith('tiinex.validation.annotation.')
     || value.startsWith('tiinex.adapter.annotation.');
+}
+
+function isCanonicalSchemaArtifactPath(path = '') {
+  const value = String(path || '').toLowerCase();
+  return (value.includes('/.topics/.schemas/') || value.startsWith('.topics/.schemas/'))
+    && value.endsWith('.schema.md');
 }
 
 function isKnownSupportSurfacePath(path = '') {

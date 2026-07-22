@@ -6807,3 +6807,90 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-lineage-as-record-card .tx-legacy-action {
   position: relative;
 }
+
+/* v198: canonical Tiinex/docs schema notes are artifacts, and read sections render bullets as UI lists. */
+.tx-schema-read-body {
+  display: grid;
+  gap: .42rem;
+  min-width: 0;
+  color: rgba(247,248,251,.84);
+  font-size: inherit;
+  line-height: 1.42;
+}
+.tx-schema-read-body p,
+.tx-schema-read-body ul {
+  margin: 0;
+}
+.tx-schema-read-body ul {
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+.tx-schema-read-body li {
+  margin: .16rem 0;
+  padding-left: .1rem;
+}
+.tx-schema-read-body li::marker {
+  color: rgba(101,242,231,.78);
+}
+.tx-lineage-card-read-target .tx-schema-read-body {
+  max-height: 7.8rem;
+  overflow: hidden;
+  font-size: .78rem;
+  line-height: 1.34;
+}
+.tx-lineage-card-read-target .tx-schema-read-section pre {
+  display: none;
+}
+
+/* v198: keep Discovery and Lineage search controls as one physical row with matching search width. */
+.tx-mode-strip.tx-column-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: .42rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.tx-mode-strip.tx-column-toolbar .tx-mode-name,
+.tx-mode-strip.tx-column-toolbar .tx-segment,
+.tx-mode-strip.tx-column-toolbar .tx-mode-return,
+.tx-mode-strip.tx-column-toolbar .tx-mode-link,
+.tx-mode-strip.tx-column-toolbar .tx-selected-lineage-chip {
+  flex: 0 0 auto;
+}
+.tx-mode-strip.tx-column-toolbar .tx-selected-lineage-chip {
+  max-width: 9.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-mode-strip.tx-column-toolbar .tx-search-field-icon {
+  flex: 0 1 17rem;
+  width: 17rem;
+  max-width: 17rem;
+  min-width: 12rem;
+  margin-left: auto;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  background: rgba(0,0,0,0.18);
+  padding: 0 .35rem 0 .2rem;
+}
+.tx-mode-strip.tx-column-toolbar .tx-search-field-icon input {
+  min-height: 1.95rem;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: .34rem .42rem .34rem 0;
+}
+.tx-mode-strip.tx-column-toolbar .tx-search-field-icon:focus-within {
+  border-color: rgba(101,242,231,0.62);
+  box-shadow: var(--tx-focus-ring);
+}
+@media (max-width: 720px) {
+  .tx-mode-strip.tx-column-toolbar .tx-selected-lineage-chip { display: none; }
+  .tx-mode-strip.tx-column-toolbar .tx-search-field-icon {
+    flex-basis: 12rem;
+    width: 12rem;
+    min-width: 9rem;
+  }
+}
