@@ -157,7 +157,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const explicitRefs = Array.isArray(input.fileRefs) ? input.fileRefs : [];
   let refs = explicitRefs.slice();
   let resolvedRef = String(source?.ref || '').trim();
-  const diagnostics = { transport: 'public-github-api/raw', explicitFileRefs: explicitRefs.length, discoveredFileRefs: 0, transportEvents: [] };
+  const diagnostics = { transport: 'public-github-api/raw', explicitFileRefs: explicitRefs.length, discoveredFileRefs: 0, transportEvents: [], surfaces: { explicitFiles: { requested: explicitRefs.length > 0, requestedCount: explicitRefs.length, loaded: 0, failed: 0 }, repoFiles: { requested: Boolean(input.repoDiscovery), discovered: 0, loaded: 0, failed: 0 }, issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls), targets: 0, loaded: 0, deferred: false, unavailable: false } } };
   const warnings = [];
   const errors = [];
 
@@ -181,6 +181,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         refs = refs.concat(discovered.refs);
         resolvedRef = discovered.ref || resolvedRef;
         diagnostics.discoveredFileRefs = discovered.refs.length;
+        diagnostics.surfaces.repoFiles.discovered = discovered.refs.length;
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: discovered.refs.length, label: `Found ${discovered.refs.length} Markdown file${discovered.refs.length === 1 ? '' : 's'} under source roots` });
         diagnostics.treeUrl = discovered.treeUrl;
         diagnostics.resolvedBy = discovered.resolvedBy;
@@ -196,19 +197,28 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   }
 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
+  let parsedIssueTargets = { targets: [], errors: [], counts: { targets: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
     reportProgress(options, { phase: 'issue-snapshots', percent: refs.length ? 32 : 24, label: 'Checking explicit GitHub issue/discussion snapshot targets' });
-    const parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
+    parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
     diagnostics.issueSnapshotTargets = parsedIssueTargets.counts.targets;
+    diagnostics.surfaces.issueSnapshots.targets = parsedIssueTargets.counts.targets;
     if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ ref: entry.ref }, entry)));
     if (options.issueSnapshotFixtures && parsedIssueTargets.counts.targets) {
       issueSnapshotResult = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
       warnings.push(...issueSnapshotResult.warnings);
       errors.push(...issueSnapshotResult.errors);
       diagnostics.issueSnapshotRecords = issueSnapshotResult.records.length;
+      diagnostics.surfaces.issueSnapshots.loaded = issueSnapshotResult.records.length;
     } else if (parsedIssueTargets.counts.targets) {
       warnings.push({ code: 'github.issue.reader.deferred', severity: 'warning', message: 'Explicit GitHub issue/discussion targets were parsed, but snapshot fetching is deferred without fixtures or a future reader slice.' });
+      diagnostics.surfaces.issueSnapshots.deferred = true;
     }
+  }
+  if ((input.issueDiscovery || input.issueUrls) && !parsedIssueTargets?.counts?.targets && !issueSnapshotResult.records?.length) {
+    warnings.push({ code: 'github.issue.reader.deferred', severity: 'warning', message: 'Issue snapshot discovery was selected, but browser runtime has no repo-wide issue reader yet; provide explicit issue/discussion URLs or use a future reader slice.' });
+    diagnostics.surfaces.issueSnapshots.deferred = true;
+    diagnostics.surfaces.issueSnapshots.unavailable = true;
   }
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
@@ -227,6 +237,10 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   }
   if (unique.length || issueSnapshotResult.records?.length) reportProgress(options, { phase: 'source-promote', percent: 94, loaded: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0), total: unique.length + (issueSnapshotResult.counts?.targets || 0), label: `Promoting ${(result.okCount || 0) + (issueSnapshotResult.records?.length || 0)} source-backed records` });
   diagnostics.requests = Number(result.diagnostics?.requests || 0);
+  diagnostics.surfaces.explicitFiles.loaded = Math.min(result.okCount || 0, explicitRefs.length);
+  diagnostics.surfaces.explicitFiles.failed = Math.min(result.failCount || 0, explicitRefs.length);
+  diagnostics.surfaces.repoFiles.loaded = Math.max(0, (result.okCount || 0) - diagnostics.surfaces.explicitFiles.loaded);
+  diagnostics.surfaces.repoFiles.failed = Math.max(0, (result.failCount || 0) - diagnostics.surfaces.explicitFiles.failed);
   diagnostics.transportEvents = diagnostics.transportEvents.concat(result.diagnostics?.transportEvents || []);
   const records = result.records.concat(issueSnapshotResult.records || []);
   const assetReferenceDiscovery = collectSourceAssetReferences(records, { source: sourceForLoad });

@@ -103,6 +103,26 @@ function summarizeGithubMaterialization(sourceLabel, out = {}) {
   return `${sourceLabel} source registered; no source files loaded.`;
 }
 
+function githubSurfaceSummary(out = {}) {
+  const surfaces = out.diagnostics?.surfaces || {};
+  const parts = [];
+  const repo = surfaces.repoFiles || {};
+  const explicit = surfaces.explicitFiles || {};
+  const issues = surfaces.issueSnapshots || {};
+  if (repo.requested) parts.push(`Repo files: ${Number(repo.loaded || 0)} loaded${repo.discovered != null ? ` / ${Number(repo.discovered || 0)} discovered` : ''}`);
+  if (explicit.requested) parts.push(`Explicit files: ${Number(explicit.loaded || 0)} loaded${explicit.requestedCount != null ? ` / ${Number(explicit.requestedCount || 0)} requested` : ''}`);
+  if (issues.requested) {
+    const issueState = Number(issues.loaded || 0) > 0
+      ? `${Number(issues.loaded || 0)} loaded`
+      : issues.deferred || issues.unavailable
+        ? 'deferred in browser runtime'
+        : `${Number(issues.targets || 0)} targets`;
+    parts.push(`Issue snapshots: ${issueState}`);
+  }
+  return parts.join(' · ');
+}
+
+
 function isSupportingMarkdownForDisplay(record = {}) {
   return isSupportingRecord(record);
 }
@@ -154,7 +174,7 @@ function summarizeGithubAdapterResult(out = {}) {
   return {
     schema: 'tiinex.workspace.import.result.v1',
     ok: Number(out.okCount || 0) > 0 || warnings.length > 0,
-    message: `GitHub source materialization: ${Number(out.okCount || 0)} loaded · ${warnings.length} warning${warnings.length === 1 ? '' : 's'} · ${errors.length} error${errors.length === 1 ? '' : 's'}.`,
+    message: `GitHub source materialization: ${Number(out.okCount || 0)} loaded · ${warnings.length} warning${warnings.length === 1 ? '' : 's'} · ${errors.length} error${errors.length === 1 ? '' : 's'}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`,
     counts: {
       records: Number(out.okCount || 0),
       assets: 0,

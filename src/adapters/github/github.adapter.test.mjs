@@ -62,6 +62,8 @@ assert.equal(materialized.records.length, 2, 'records should be materialized');
 assert(materialized.records.every((record) => !record.source), 'adapter must not assign lifecycle source provenance');
 assert.equal(materialized.diagnostics.resolvedRef, 'main', 'adapter result should expose resolved ref');
 assert.equal(materialized.diagnostics.requests, 2, 'raw materialization should count fetch requests');
+assert.equal(materialized.diagnostics.surfaces.repoFiles.discovered, 2, 'repo surface should report discovered markdown count');
+assert.equal(materialized.diagnostics.surfaces.repoFiles.loaded, 2, 'repo surface should report loaded markdown count');
 assert(progressEvents.some((event) => event.phase === 'repo-discovery' && /Found 2 Markdown/.test(event.label || '')), 'repo discovery should emit a visible found-count progress event');
 assert(progressEvents.some((event) => event.phase === 'raw-file-load' && event.total === 2), 'raw loading should emit concrete N/M progress');
 assert.equal(materialized.diagnostics.assetReferences.counts['referenced-unloaded'], 1, 'adapter should report referenced-but-unloaded source assets without fetching binaries');
@@ -97,6 +99,12 @@ assert(budgetLimited.diagnostics.transportEvents.some((event) => event.code === 
 const issueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
 assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred without fixtures');
 assert.equal(issueDeferred.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
+assert.equal(issueDeferred.diagnostics.surfaces.issueSnapshots.deferred, true, 'issue surface should report deferred browser reader state');
+
+
+const repoWideIssueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: '' }, { fetchImpl });
+assert(repoWideIssueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'repo-wide issue discovery without explicit URLs should be an honest deferred surface');
+assert.equal(repoWideIssueDeferred.diagnostics.surfaces.issueSnapshots.unavailable, true, 'issue surface should report unavailable repo-wide browser reader');
 
 const issueSnapshot = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl, issueSnapshotFixtures: { 'https://github.com/owner/repo/issues/1': { title: 'Fixture issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z' } } });
 assert.equal(issueSnapshot.records.length, 1, 'fixture-backed issue snapshot should materialize one evidence record');

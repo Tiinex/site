@@ -1,38 +1,33 @@
-# Tiinex Site v183
+# Tiinex Site v184
 
-v183 is a selected-Lineage read-model checkpoint for the React/Vite refactor. It builds on v182's resolver closure: the graph now understands relative Parent Trace resolution, and this batch makes the already-correct selected traversal more readable and navigable instead of presenting it like a diagnostics report.
+v184 is a selected-Lineage layout/read-card and source-receipt checkpoint for the React/Vite refactor. It builds on v183's correct selected traversal claim, but moves the browser-visible Lineage surface away from the older two-column diagnostic summary layout that collapsed in split-screen testing.
 
-## v183 batch
+## v184 batch
 
-- Selected Lineage traversal is rendered as a navigable artifact path:
-  - the selected card expands only from its own primary area;
-  - ancestor/root rows are explicit buttons that focus that record in Lineage;
-  - workspace overview remains secondary/collapsed.
-- Selected status now describes the path result, not just the selected node:
-  - `root reached` is shown when the selected traversal reaches a loaded root ancestor;
-  - missing/ambiguous parent remains dominant when the parent chain actually stops;
-  - unresolved Origin hints stay available as secondary Audit context instead of overriding a successful Parent Trace chain.
-- Detail reading is artifact-first:
-  - `Open details` now shows schema-owned/read sections before provenance metadata;
-  - provenance/envelope fields are still available, but behind a secondary details section;
-  - `Show markdown` remains the exact-source dialog.
-- Lifecycle/publication state is displayed as a separate badge when present, rather than competing with Audit/conformance status.
-- The expanded selected card uses the same schema-read projection as details to avoid the v182 layout collapse caused by mixing metadata grids, findings and Markdown excerpts in one compact card.
+- Selected Lineage now owns a vertical read-card stack:
+  - selected card;
+  - ancestor/root cards;
+  - terminal traversal result;
+  - secondary workspace overview still collapsed.
+- Ancestor/root cards expose compact schema-owned read snippets instead of only generic graph node metadata.
+- Legacy `.tx-lineage-selected-summary` two-column/button rules are overridden for selected Lineage cards so badges, actions, and read content do not collapse into a side rail at normal split-screen widths.
+- Tree/workspace count labels distinguish loaded records from visible/filter-scoped artifacts/leaves.
+- GitHub source receipts now carry per-surface diagnostics:
+  - repo files discovered/loaded;
+  - explicit files requested/loaded;
+  - issue snapshots deferred/unavailable in browser runtime.
+- GitHub raw Markdown loading now uses bounded concurrency instead of one serial fetch at a time. It still stays within the request budget and still reports measured N/M progress.
+
+## Source/material boundaries
+
+Local/draft material remains local. GitHub material remains explicit source-backed material. v184 does not introduce hidden binary asset crawling and does not implement a real browser issue snapshot reader; those surfaces are reported honestly as referenced/deferred/unavailable when applicable.
 
 ## Supported local start
 
-Use `npm run dev` after installing dependencies. Opening source `index.html` directly from the filesystem is not a supported runtime because the React/Vite entry needs module bundling.
+Use the React dev server:
 
-## Validation
-
-This source zip is intended for source-clean replacement. The supported local loop remains:
-
-```bash
-npm install --no-audit --no-fund
-npm run validate
-npm run ui:shape
-npm run usecase:uc001
-npm run metrics
+```txt
+npm run dev
 ```
 
-`npm run test` additionally runs Vite build/runtime checks and therefore requires installed React/Vite dependencies.
+The old static runtime is archived under `.old/` for behavioral reference only.

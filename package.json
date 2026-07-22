@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v183",
+  "version": "0.2.10-v184",
   "private": true,
-  "description": "Tiinex Site v183: selected Lineage read-model parity with navigable ancestor cards, root-path status, schema-owned detail reading, and lifecycle/audit separation.",
+  "description": "Tiinex Site v184: selected Lineage vertical read-card stack, count-scope labels, per-surface GitHub receipts, and bounded concurrent source loading.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

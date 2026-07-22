@@ -76,52 +76,87 @@ export function normalizeGithubRefToRaw(source, ref) {
 export async function loadGithubFilesForSource(source, fileRefs = [], options = {}) {
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!fetchImpl) throw new Error('fetchImpl not available');
-  const records = [];
-  const errors = [];
-  const transportEvents = [];
-  let requests = 0;
   const refs = Array.isArray(fileRefs) ? fileRefs : [];
   const total = refs.length;
-  for (let index = 0; index < refs.length; index += 1) {
+  const concurrency = Math.max(1, Math.min(Number(options.concurrency || options.maxConcurrency || 8) || 8, 12, Math.max(total, 1)));
+  const recordsByIndex = new Array(total);
+  const errorsByIndex = new Array(total);
+  const transportEvents = [];
+  let requests = 0;
+  let nextIndex = 0;
+  let completed = 0;
+  let lastReported = -1;
+
+  const report = (loaded, labelPrefix = 'Loaded') => {
+    if (typeof options.onProgress !== 'function') return;
+    if (loaded === lastReported && loaded !== 0 && loaded !== total) return;
+    if (loaded !== 0 && loaded !== total && loaded % 10 !== 0) return;
+    lastReported = loaded;
+    options.onProgress({
+      phase: 'raw-file-load',
+      loaded,
+      total,
+      percent: total ? Math.min(92, 40 + Math.round((loaded / total) * 50)) : 90,
+      label: `${labelPrefix} GitHub Markdown ${loaded}/${total}`
+    });
+  };
+
+  const loadOne = async (index) => {
     const ref = refs[index];
     let rawUrl;
-    if (typeof options.onProgress === 'function' && (index === 0 || index % 10 === 0 || index === total - 1)) {
-      options.onProgress({ phase: 'raw-file-load', loaded: index, total, percent: total ? Math.min(88, 40 + Math.round((index / total) * 48)) : 40, label: `Loading GitHub Markdown ${Math.min(index + 1, total)}/${total}` });
-    }
     try {
       rawUrl = normalizeGithubRefToRaw(source, ref);
     } catch (e) {
       const message = String(e && e.message ? e.message : e);
-      errors.push({ ref, error: message });
+      errorsByIndex[index] = { ref, error: message };
       transportEvents.push({ ref, code: 'github.raw.ref.invalid', severity: 'error', message });
-      continue;
+      return;
     }
     if (!isHttps(rawUrl)) {
-      errors.push({ ref, error: 'non-https URL' });
+      errorsByIndex[index] = { ref, error: 'non-https URL' };
       transportEvents.push({ ref, code: 'github.raw.non-https', severity: 'error', message: 'non-https URL' });
-      continue;
+      return;
     }
     try {
       requests += 1;
       const res = await fetchImpl(rawUrl, { cache: 'no-store' });
       if (!res || !res.ok) {
         const message = `${res?.status || 'ERR'} ${res?.statusText || ''}`.trim();
-        errors.push({ ref, error: message });
+        errorsByIndex[index] = { ref, error: message };
         transportEvents.push({ ref, url: rawUrl, status: res?.status || 0, code: 'github.raw.fetch.failed', severity: 'error', message });
-        continue;
+        return;
       }
       const markdown = await res.text();
       const name = rawUrl.split('/').pop() || ref;
-      const rec = createRecordFromMarkdown(markdown, { path: rawUrl, name, sourceMode: 'github-source' });
-      records.push(rec);
+      recordsByIndex[index] = createRecordFromMarkdown(markdown, { path: rawUrl, name, sourceMode: 'github-source' });
     } catch (e) {
       const message = String(e && e.message ? e.message : e);
-      errors.push({ ref, error: message });
+      errorsByIndex[index] = { ref, error: message };
       transportEvents.push({ ref, url: rawUrl || '', code: 'github.raw.fetch.exception', severity: 'error', message });
     }
-    if (typeof options.onProgress === 'function' && ((index + 1) % 10 === 0 || index === total - 1)) {
-      options.onProgress({ phase: 'raw-file-load', loaded: index + 1, total, percent: total ? Math.min(92, 40 + Math.round(((index + 1) / total) * 50)) : 90, label: `Loaded GitHub Markdown ${index + 1}/${total}` });
+  };
+
+  const worker = async () => {
+    for (;;) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= total) return;
+      await loadOne(index);
+      completed += 1;
+      report(completed);
     }
-  }
-  return { records, errors, okCount: records.length, failCount: errors.length, diagnostics: { requests, transportEvents } };
+  };
+
+  if (total) report(0, 'Starting');
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+
+  const records = recordsByIndex.filter(Boolean);
+  const errors = errorsByIndex.filter(Boolean);
+  return {
+    records,
+    errors,
+    okCount: records.length,
+    failCount: errors.length,
+    diagnostics: { requests, concurrency, transportEvents }
+  };
 }
