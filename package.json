@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.13-v193",
+  "version": "0.2.14-v194",
   "private": true,
-  "description": "Tiinex Site v193: Lineage query stability and source continuation receipts.",
+  "description": "Tiinex Site v194: source-plan reconciliation with per-surface receipt and record attribution.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -481,7 +481,10 @@ export function TiinexApp() {
             issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
           },
           surfaces: out.diagnostics?.surfaces || {},
+          sourcePlan: out.diagnostics?.sourcePlan || {},
+          recordAttribution: out.diagnostics?.recordAttribution || [],
           transportTiers: out.diagnostics?.transportTiers || {},
+          transportOutcome: out.diagnostics?.transportOutcome || {},
           transportPlan: out.diagnostics?.transportPlan || {},
           transportLabel: out.diagnostics?.transportPlan?.label || 'cache → mirror → proxy → direct'
         }));

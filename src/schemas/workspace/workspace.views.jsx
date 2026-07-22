@@ -248,19 +248,21 @@ function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSo
 
 function sourceTransportSummary(source = {}) {
   const plan = String(source.transportLabel || source.transport || 'cache → mirror → proxy → direct').replace(/\s*→\s*/g, ' → ');
-  const tiers = source.transportTiers || source.transportOutcome || {};
-  const wins = [];
-  for (const tier of ['cache', 'mirror', 'proxy', 'direct']) {
-    if (Number(tiers[tier] || 0) > 0) wins.push(`${tier} ${Number(tiers[tier] || 0)}`);
-  }
-  const label = wins.length ? wins.map((part) => part.split(' ')[0]).join(' + ') : plan.replace(/\s+/g, '').replace(/→/g, '→');
-  const skipped = Number(tiers.skipped || 0);
-  const failed = Number(tiers.failed || 0);
+  const outcome = source.transportOutcome || {};
+  const tiers = source.transportTiers || {};
+  const winning = Array.isArray(outcome.winningTiers) && outcome.winningTiers.length
+    ? outcome.winningTiers
+    : ['cache', 'mirror', 'proxy', 'direct'].filter((tier) => Number(tiers[tier] || 0) > 0);
+  const attempted = Array.isArray(outcome.attemptedTiers) ? outcome.attemptedTiers : [];
+  const label = winning.length ? `used: ${winning.join('+')}` : 'plan';
+  const skipped = Array.isArray(outcome.skipped) ? outcome.skipped : [];
+  const failed = Array.isArray(outcome.failed) ? outcome.failed : [];
   const titleParts = [
-    `Plan: ${plan}`,
-    wins.length ? `Delivered: ${wins.join(', ')}` : 'Delivered: not browser-verified yet',
-    skipped ? `Skipped/unavailable tiers: ${skipped}` : '',
-    failed ? `Failed tier attempts: ${failed}` : '',
+    `Configured plan: ${plan}`,
+    attempted.length ? `Attempted: ${attempted.join(' → ')}` : 'Attempted: not browser-verified yet',
+    winning.length ? `Delivered by: ${winning.join(', ')}` : 'Delivered by: none recorded yet',
+    skipped.length ? `Skipped/unavailable: ${skipped.map((item) => `${item.tier}${item.message ? ` (${item.message})` : ''}`).join(', ')}` : '',
+    failed.length ? `Failed attempts: ${failed.map((item) => `${item.tier}${item.status ? ` ${item.status}` : ''}`).join(', ')}` : '',
     'Click to clear this source cache and reopen source controls for the next explicit transport attempt.'
   ].filter(Boolean);
   return { label, title: titleParts.join(' · ') };
@@ -286,9 +288,44 @@ function WorkspaceMaterialSummary({ summary }) {
           {(counts.warnings || counts.errors || counts.previewOmitted) ? (
             <small>{counts.errors || 0} errors · {counts.warnings || 0} warnings · {counts.previewOmitted || 0} previews omitted</small>
           ) : null}
+          <SourceReceiptDetails latest={latest} />
         </div>
       ) : null}
     </section>
+  );
+}
+
+
+function SourceReceiptDetails({ latest }) {
+  const surfaces = latest?.diagnostics?.surfaces || latest?.diagnostics?.sourcePlan?.surfaces || null;
+  const outcome = latest?.diagnostics?.transportOutcome || null;
+  if (!surfaces && !outcome) return null;
+  const rows = [];
+  const pushSurface = (key, label) => {
+    const item = surfaces?.[key];
+    if (!item?.requested && !item?.attempted && !Number(item?.loaded || 0) && !item?.deferred && !item?.unavailable) return;
+    const bits = [];
+    if (item.requested) bits.push('requested');
+    if (item.attempted) bits.push('attempted');
+    if (Number(item.discovered || 0)) bits.push(`${Number(item.discovered || 0)} discovered`);
+    if (Number(item.requestedCount || 0) && key !== 'repoFiles') bits.push(`${Number(item.requestedCount || 0)} targets`);
+    if (Number(item.loaded || 0)) bits.push(`${Number(item.loaded || 0)} loaded`);
+    if (Number(item.failed || 0)) bits.push(`${Number(item.failed || 0)} failed`);
+    if (item.deferred) bits.push('deferred');
+    if (item.unavailable) bits.push('unavailable');
+    if (item.skipped) bits.push('skipped');
+    rows.push({ key, label, text: bits.join(' · ') || 'no result' });
+  };
+  pushSurface('repoFiles', 'Repo files');
+  pushSurface('explicitFiles', 'Explicit files');
+  pushSurface('issueSnapshots', 'Issue snapshots');
+  const attempted = Array.isArray(outcome?.attemptedTiers) ? outcome.attemptedTiers.join(' → ') : '';
+  const winning = Array.isArray(outcome?.winningTiers) ? outcome.winningTiers.join(' + ') : '';
+  return (
+    <div className="tx-source-receipt-details" aria-label="Source receipt details">
+      {rows.map((row) => <span key={row.key}><strong>{row.label}</strong><small>{row.text}</small></span>)}
+      {outcome ? <span><strong>Transport</strong><small>{attempted ? `attempted ${attempted}` : 'attempted tiers unavailable'}{winning ? ` · used ${winning}` : ''}</small></span> : null}
+    </div>
   );
 }
 

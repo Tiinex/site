@@ -4,6 +4,30 @@ function isHttps(url) {
   return /^https:\/\//i.test(url);
 }
 
+function normalizeLoadTarget(item, index = 0) {
+  if (item && typeof item === 'object') {
+    const ref = String(item.ref || item.path || item.url || item.target || '').trim();
+    return {
+      ref,
+      surface: String(item.surface || item.sourceSurface || 'explicitFiles').trim() || 'explicitFiles',
+      targetKind: String(item.targetKind || item.kind || 'github-markdown').trim() || 'github-markdown',
+      inputTarget: String(item.inputTarget || item.original || item.ref || ref).trim() || ref,
+      targetIndex: Number.isFinite(Number(item.targetIndex)) ? Number(item.targetIndex) : index
+    };
+  }
+  const ref = String(item || '').trim();
+  return { ref, surface: 'explicitFiles', targetKind: 'github-markdown', inputTarget: ref, targetIndex: index };
+}
+
+function targetAttribution(target = {}) {
+  return {
+    surface: target.surface || 'explicitFiles',
+    targetKind: target.targetKind || 'github-markdown',
+    inputTarget: target.inputTarget || target.ref || '',
+    targetIndex: Number.isFinite(Number(target.targetIndex)) ? Number(target.targetIndex) : 0
+  };
+}
+
 function toRawFromBlobUrl(url) {
   // https://github.com/:owner/:repo/blob/:ref/:path -> https://raw.githubusercontent.com/:owner/:repo/:ref/:path
   const u = new URL(url);
@@ -76,7 +100,7 @@ export function normalizeGithubRefToRaw(source, ref) {
 export async function loadGithubFilesForSource(source, fileRefs = [], options = {}) {
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!fetchImpl) throw new Error('fetchImpl not available');
-  const refs = Array.isArray(fileRefs) ? fileRefs : [];
+  const refs = (Array.isArray(fileRefs) ? fileRefs : []).map((item, index) => normalizeLoadTarget(item, index));
   const total = refs.length;
   const concurrency = Math.max(1, Math.min(Number(options.concurrency || options.maxConcurrency || 8) || 8, 12, Math.max(total, 1)));
   const recordsByIndex = new Array(total);
@@ -102,19 +126,20 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
   };
 
   const loadOne = async (index) => {
-    const ref = refs[index];
+    const target = refs[index];
+    const ref = target.ref;
     let rawUrl;
     try {
       rawUrl = normalizeGithubRefToRaw(source, ref);
     } catch (e) {
       const message = String(e && e.message ? e.message : e);
-      errorsByIndex[index] = { ref, error: message };
-      transportEvents.push({ ref, code: 'github.raw.ref.invalid', severity: 'error', message });
+      errorsByIndex[index] = Object.assign({ ref, error: message }, targetAttribution(target));
+      transportEvents.push(Object.assign({ ref, code: 'github.raw.ref.invalid', severity: 'error', message }, targetAttribution(target)));
       return;
     }
     if (!isHttps(rawUrl)) {
-      errorsByIndex[index] = { ref, error: 'non-https URL' };
-      transportEvents.push({ ref, code: 'github.raw.non-https', severity: 'error', message: 'non-https URL' });
+      errorsByIndex[index] = Object.assign({ ref, error: 'non-https URL' }, targetAttribution(target));
+      transportEvents.push(Object.assign({ ref, code: 'github.raw.non-https', severity: 'error', message: 'non-https URL' }, targetAttribution(target)));
       return;
     }
     try {
@@ -122,17 +147,24 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
       const res = await fetchImpl(rawUrl, {});
       if (!res || !res.ok) {
         const message = `${res?.status || 'ERR'} ${res?.statusText || ''}`.trim();
-        errorsByIndex[index] = { ref, error: message };
-        transportEvents.push({ ref, url: rawUrl, status: res?.status || 0, code: 'github.raw.fetch.failed', severity: 'error', message });
+        errorsByIndex[index] = Object.assign({ ref, error: message }, targetAttribution(target));
+        transportEvents.push(Object.assign({ ref, url: rawUrl, status: res?.status || 0, code: 'github.raw.fetch.failed', severity: 'error', message }, targetAttribution(target)));
         return;
       }
       const markdown = await res.text();
       const name = rawUrl.split('/').pop() || ref;
-      recordsByIndex[index] = createRecordFromMarkdown(markdown, { path: rawUrl, name, sourceMode: 'github-source' });
+      const sourceTarget = Object.assign({
+        schema: 'tiinex.source.material.target.v1',
+        rawUrl,
+        transportTier: res.transportTier || '',
+        loaded: true
+      }, targetAttribution(target));
+      recordsByIndex[index] = Object.assign(createRecordFromMarkdown(markdown, { path: rawUrl, name, sourceMode: 'github-source' }), { sourceTarget });
+      transportEvents.push(Object.assign({ ref, url: rawUrl, tier: res.transportTier || '', code: 'github.raw.record.loaded', severity: 'info' }, targetAttribution(target)));
     } catch (e) {
       const message = String(e && e.message ? e.message : e);
-      errorsByIndex[index] = { ref, error: message };
-      transportEvents.push({ ref, url: rawUrl || '', code: 'github.raw.fetch.exception', severity: 'error', message });
+      errorsByIndex[index] = Object.assign({ ref, error: message }, targetAttribution(target));
+      transportEvents.push(Object.assign({ ref, url: rawUrl || '', code: 'github.raw.fetch.exception', severity: 'error', message }, targetAttribution(target)));
     }
   };
 

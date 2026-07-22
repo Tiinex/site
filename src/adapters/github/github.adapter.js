@@ -142,38 +142,152 @@ function reportProgress(options = {}, progress = {}) {
   if (typeof options.onProgress === 'function') options.onProgress(progress);
 }
 
-function uniqueRefs(items = []) {
+function uniqueFileTargets(items = []) {
   const seen = new Set();
   const out = [];
   for (const item of items) {
-    const key = String(item || '').trim();
-    if (!key || seen.has(key)) continue;
+    const ref = String(item?.ref || '').trim();
+    if (!ref) continue;
+    const key = ref.toLowerCase();
+    if (seen.has(key)) continue;
     seen.add(key);
-    out.push(key);
+    out.push(Object.assign({}, item));
   }
   return out;
 }
 
+function fileTarget(ref, surface, index, targetKind = 'github-markdown') {
+  const clean = String(ref || '').trim();
+  return {
+    ref: clean,
+    surface,
+    targetKind,
+    inputTarget: clean,
+    targetIndex: index
+  };
+}
+
+function makeSurfaceState(requested = false, extra = {}) {
+  return Object.assign({
+    requested: Boolean(requested),
+    attempted: false,
+    requestedCount: 0,
+    discovered: 0,
+    loaded: 0,
+    failed: 0,
+    deferred: false,
+    skipped: false,
+    unavailable: false,
+    records: []
+  }, extra || {});
+}
+
+function makeSourcePlan(source = {}, input = {}, explicitRefs = []) {
+  const issueRequested = Boolean(input.issueDiscovery || input.issueUrls);
+  const repoRequested = Boolean(input.repoDiscovery);
+  const explicitRequested = Boolean(explicitRefs.length);
+  return {
+    schema: 'tiinex.github.source.plan.v1',
+    sourceId: source?.id || '',
+    repo: source?.repo || source?.repository || '',
+    ref: source?.ref || '',
+    rootPath: source?.rootPath || '',
+    surfaces: {
+      boundary: makeSurfaceState(true, { attempted: true }),
+      repoFiles: makeSurfaceState(repoRequested),
+      explicitFiles: makeSurfaceState(explicitRequested, { requestedCount: explicitRefs.length }),
+      issueSnapshots: makeSurfaceState(issueRequested)
+    }
+  };
+}
+
+function cloneSourcePlan(plan = {}) {
+  return JSON.parse(JSON.stringify(plan || {}));
+}
+
+function markSurface(plan, name, patch = {}) {
+  if (!plan.surfaces) plan.surfaces = {};
+  if (!plan.surfaces[name]) plan.surfaces[name] = makeSurfaceState(false);
+  Object.assign(plan.surfaces[name], patch || {});
+  return plan.surfaces[name];
+}
+
+function summarizeSurfaceCountsFromTargets(result = {}) {
+  const counts = {};
+  const bump = (surface, key, amount = 1) => {
+    const name = surface || 'unknown';
+    counts[name] ||= { loaded: 0, failed: 0, records: [] };
+    counts[name][key] = Number(counts[name][key] || 0) + amount;
+  };
+  for (const record of result.records || []) {
+    const target = record.sourceTarget || {};
+    bump(target.surface || 'unknown', 'loaded', 1);
+    if (record.id) counts[target.surface || 'unknown'].records.push(record.id);
+  }
+  for (const error of result.errors || []) bump(error.surface || 'unknown', 'failed', 1);
+  return counts;
+}
+
+function issueSurfaceWarning(parsedIssueTargets = {}, hasFixtures = false) {
+  const targetCount = Number(parsedIssueTargets?.counts?.targets || 0);
+  if (targetCount > 0 && !hasFixtures) return {
+    code: 'github.issue.reader.deferred',
+    severity: 'warning',
+    surface: 'issueSnapshots',
+    requested: true,
+    attempted: true,
+    deferred: true,
+    targetCount,
+    message: 'Explicit GitHub issue/discussion targets were parsed, but snapshot fetching is deferred without fixtures or a future reader slice.'
+  };
+  return {
+    code: 'github.issue.reader.deferred',
+    severity: 'warning',
+    surface: 'issueSnapshots',
+    requested: true,
+    attempted: true,
+    deferred: true,
+    unavailable: true,
+    targetCount: 0,
+    message: 'Issue snapshot discovery was selected, but browser runtime has no repo-wide issue reader yet; provide explicit issue/discussion URLs or use a future reader slice.'
+  };
+}
+
 export async function materializeGithubSource(source, input = {}, options = {}) {
   const explicitRefs = Array.isArray(input.fileRefs) ? input.fileRefs : [];
-  let refs = explicitRefs.slice();
+  const explicitTargets = explicitRefs.map((ref, index) => fileTarget(ref, 'explicitFiles', index, 'explicit-markdown'));
+  let fileTargets = explicitTargets.slice();
   let resolvedRef = String(source?.ref || '').trim();
   const transportRuntime = createGithubTransportFetch(source, options);
   const transportFetchImpl = transportRuntime.fetch;
-  const diagnostics = { transport: transportRuntime.plan.label, transportPlan: transportRuntime.plan, explicitFileRefs: explicitRefs.length, discoveredFileRefs: 0, transportEvents: [], surfaces: { explicitFiles: { requested: explicitRefs.length > 0, requestedCount: explicitRefs.length, loaded: 0, failed: 0 }, repoFiles: { requested: Boolean(input.repoDiscovery), discovered: 0, loaded: 0, failed: 0 }, issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls), targets: 0, loaded: 0, deferred: false, unavailable: false } } };
+  const sourcePlan = makeSourcePlan(source, input, explicitRefs);
+  const diagnostics = {
+    sourcePlan: cloneSourcePlan(sourcePlan),
+    transport: transportRuntime.plan.label,
+    transportPlan: transportRuntime.plan,
+    explicitFileRefs: explicitRefs.length,
+    discoveredFileRefs: 0,
+    transportEvents: [],
+    recordAttribution: [],
+    surfaces: cloneSourcePlan(sourcePlan).surfaces
+  };
   const warnings = [];
   const errors = [];
 
   const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
 
+  if (explicitTargets.length) markSurface(sourcePlan, 'explicitFiles', { attempted: true, requestedCount: explicitTargets.length });
+
   if (input.repoDiscovery) {
+    markSurface(sourcePlan, 'repoFiles', { attempted: true });
     const discoveryAuthorization = policyInput ? authorizeSourceTransport({ kind: 'github.repo-discovery', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: 2 }, policyInput) : null;
     if (discoveryAuthorization && !discoveryAuthorization.allowed) {
       diagnostics.transportPolicy = discoveryAuthorization;
       diagnostics.discoveryUnavailable = true;
       diagnostics.discoveryBlockedByPolicy = true;
+      markSurface(sourcePlan, 'repoFiles', { skipped: true, unavailable: true });
       for (const issue of discoveryAuthorization.findings || []) {
-        const warning = { code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true };
+        const warning = { code: issue.code, severity: issue.severity || 'warning', surface: 'repoFiles', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true };
         warnings.push(warning);
         diagnostics.transportEvents.push(Object.assign({ resultKind: 'repo-discovery-policy' }, warning));
       }
@@ -181,20 +295,22 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       try {
         reportProgress(options, { phase: 'repo-discovery', percent: 18, label: 'Resolving GitHub ref and scanning repo tree' });
         const discovered = await discoverGithubMarkdownRefs(source, Object.assign({}, options, { fetchImpl: transportFetchImpl }));
-        refs = refs.concat(discovered.refs);
+        const discoveredTargets = discovered.refs.map((ref, index) => fileTarget(ref, 'repoFiles', index, 'repo-markdown'));
+        fileTargets = fileTargets.concat(discoveredTargets);
         resolvedRef = discovered.ref || resolvedRef;
         diagnostics.discoveredFileRefs = discovered.refs.length;
-        diagnostics.surfaces.repoFiles.discovered = discovered.refs.length;
+        markSurface(sourcePlan, 'repoFiles', { discovered: discovered.refs.length, requestedCount: discovered.refs.length });
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: discovered.refs.length, label: `Found ${discovered.refs.length} Markdown file${discovered.refs.length === 1 ? '' : 's'} under source roots` });
         diagnostics.treeUrl = discovered.treeUrl;
         diagnostics.resolvedBy = discovered.resolvedBy;
-        warnings.push(...(discovered.warnings || []));
+        warnings.push(...(discovered.warnings || []).map((warning) => Object.assign({ surface: 'repoFiles' }, warning)));
       } catch (error) {
-        const warning = githubDiscoveryWarning(error);
+        const warning = Object.assign({ surface: 'repoFiles' }, githubDiscoveryWarning(error));
         warnings.push(warning);
         diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'repo-discovery' }, warning));
         diagnostics.discoveryUnavailable = true;
         diagnostics.discoveryError = String(error && error.message ? error.message : error);
+        markSurface(sourcePlan, 'repoFiles', { failed: 1, unavailable: true });
       }
     }
   }
@@ -202,51 +318,69 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   let parsedIssueTargets = { targets: [], errors: [], counts: { targets: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
-    reportProgress(options, { phase: 'issue-snapshots', percent: refs.length ? 32 : 24, label: 'Checking explicit GitHub issue/discussion snapshot targets' });
+    reportProgress(options, { phase: 'issue-snapshots', percent: fileTargets.length ? 32 : 24, label: 'Checking explicit GitHub issue/discussion snapshot targets' });
+    markSurface(sourcePlan, 'issueSnapshots', { attempted: true });
     parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
     diagnostics.issueSnapshotTargets = parsedIssueTargets.counts.targets;
-    diagnostics.surfaces.issueSnapshots.targets = parsedIssueTargets.counts.targets;
-    if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ ref: entry.ref }, entry)));
+    markSurface(sourcePlan, 'issueSnapshots', { requestedCount: parsedIssueTargets.counts.targets, targets: parsedIssueTargets.counts.targets });
+    if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ surface: 'issueSnapshots', ref: entry.ref }, entry)));
     if (options.issueSnapshotFixtures && parsedIssueTargets.counts.targets) {
       issueSnapshotResult = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
-      warnings.push(...issueSnapshotResult.warnings);
-      errors.push(...issueSnapshotResult.errors);
+      warnings.push(...issueSnapshotResult.warnings.map((warning) => Object.assign({ surface: 'issueSnapshots' }, warning)));
+      errors.push(...issueSnapshotResult.errors.map((error) => Object.assign({ surface: 'issueSnapshots' }, error)));
       diagnostics.issueSnapshotRecords = issueSnapshotResult.records.length;
-      diagnostics.surfaces.issueSnapshots.loaded = issueSnapshotResult.records.length;
-    } else if (parsedIssueTargets.counts.targets) {
-      warnings.push({ code: 'github.issue.reader.deferred', severity: 'warning', message: 'Explicit GitHub issue/discussion targets were parsed, but snapshot fetching is deferred without fixtures or a future reader slice.' });
-      diagnostics.surfaces.issueSnapshots.deferred = true;
+      markSurface(sourcePlan, 'issueSnapshots', { loaded: issueSnapshotResult.records.length, records: issueSnapshotResult.records.map((record) => record.id).filter(Boolean) });
+      for (const record of issueSnapshotResult.records || []) {
+        record.sourceTarget = Object.assign({ schema: 'tiinex.source.material.target.v1', surface: 'issueSnapshots', targetKind: 'github-issue-snapshot', loaded: true }, record.sourceTarget || {});
+      }
+    } else {
+      const warning = issueSurfaceWarning(parsedIssueTargets, false);
+      warnings.push(warning);
+      markSurface(sourcePlan, 'issueSnapshots', { deferred: true, unavailable: parsedIssueTargets.counts.targets === 0, skipped: true });
     }
-  }
-  if ((input.issueDiscovery || input.issueUrls) && !parsedIssueTargets?.counts?.targets && !issueSnapshotResult.records?.length) {
-    warnings.push({ code: 'github.issue.reader.deferred', severity: 'warning', message: 'Issue snapshot discovery was selected, but browser runtime has no repo-wide issue reader yet; provide explicit issue/discussion URLs or use a future reader slice.' });
-    diagnostics.surfaces.issueSnapshots.deferred = true;
-    diagnostics.surfaces.issueSnapshots.unavailable = true;
   }
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
-  const unique = uniqueRefs(refs);
-  if (unique.length) reportProgress(options, { phase: 'raw-file-load', percent: 38, loaded: 0, total: unique.length, label: `Starting GitHub Markdown load 0/${unique.length}` });
-  const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: unique.length }, policyInput) : null;
+  const uniqueTargets = uniqueFileTargets(fileTargets);
+  if (uniqueTargets.length) reportProgress(options, { phase: 'raw-file-load', percent: 38, loaded: 0, total: uniqueTargets.length, label: `Starting GitHub Markdown load 0/${uniqueTargets.length}` });
+  const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: uniqueTargets.length }, policyInput) : null;
   let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };
   if (authorization && !authorization.allowed) {
     diagnostics.transportPolicy = authorization;
     for (const issue of authorization.findings || []) {
-      warnings.push({ code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true });
+      warnings.push({ code: issue.code, severity: issue.severity || 'warning', surface: 'transport', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, retryable: issue.retryable === true });
       diagnostics.transportEvents.push({ code: issue.code, severity: issue.severity || 'warning', message: issue.message, sourceId: issue.sourceId || source?.id || '', adapterId: GITHUB_ADAPTER_ID, resultKind: 'transport-policy', retryable: issue.retryable === true });
     }
+    for (const target of uniqueTargets) markSurface(sourcePlan, target.surface, { skipped: true, unavailable: true });
   } else {
-    result = unique.length ? await loadGithubFilesForSource(sourceForLoad, unique, Object.assign({}, options, { fetchImpl: transportFetchImpl })) : result;
+    result = uniqueTargets.length ? await loadGithubFilesForSource(sourceForLoad, uniqueTargets, Object.assign({}, options, { fetchImpl: transportFetchImpl })) : result;
   }
-  if (unique.length || issueSnapshotResult.records?.length) reportProgress(options, { phase: 'source-promote', percent: 94, loaded: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0), total: unique.length + (issueSnapshotResult.counts?.targets || 0), label: `Promoting ${(result.okCount || 0) + (issueSnapshotResult.records?.length || 0)} source-backed records` });
+  if (uniqueTargets.length || issueSnapshotResult.records?.length) reportProgress(options, { phase: 'source-promote', percent: 94, loaded: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0), total: uniqueTargets.length + (issueSnapshotResult.counts?.targets || 0), label: `Promoting ${(result.okCount || 0) + (issueSnapshotResult.records?.length || 0)} source-backed records` });
+
+  const surfaceCounts = summarizeSurfaceCountsFromTargets(result);
+  for (const [surfaceName, counts] of Object.entries(surfaceCounts)) {
+    const surface = markSurface(sourcePlan, surfaceName, { attempted: true });
+    surface.loaded = Number(counts.loaded || 0);
+    surface.failed = Number(counts.failed || 0);
+    surface.records = counts.records || [];
+  }
+
   diagnostics.requests = Number(result.diagnostics?.requests || 0);
-  diagnostics.surfaces.explicitFiles.loaded = Math.min(result.okCount || 0, explicitRefs.length);
-  diagnostics.surfaces.explicitFiles.failed = Math.min(result.failCount || 0, explicitRefs.length);
-  diagnostics.surfaces.repoFiles.loaded = Math.max(0, (result.okCount || 0) - diagnostics.surfaces.explicitFiles.loaded);
-  diagnostics.surfaces.repoFiles.failed = Math.max(0, (result.failCount || 0) - diagnostics.surfaces.explicitFiles.failed);
   diagnostics.transportEvents = diagnostics.transportEvents.concat(transportRuntime.events || [], result.diagnostics?.transportEvents || []);
   diagnostics.transportTiers = summarizeTransportTiers(diagnostics.transportEvents);
+  diagnostics.transportOutcome = summarizeTransportOutcome(diagnostics.transportEvents, transportRuntime.plan);
   const records = result.records.concat(issueSnapshotResult.records || []);
+  diagnostics.recordAttribution = records.map((record) => ({
+    recordId: record.id || '',
+    path: record.path || '',
+    surface: record.sourceTarget?.surface || 'unknown',
+    targetKind: record.sourceTarget?.targetKind || '',
+    inputTarget: record.sourceTarget?.inputTarget || '',
+    transportTier: record.sourceTarget?.transportTier || ''
+  }));
+  diagnostics.sourcePlan = cloneSourcePlan(sourcePlan);
+  diagnostics.surfaces = cloneSourcePlan(sourcePlan).surfaces;
+
   const assetReferenceDiscovery = collectSourceAssetReferences(records, { source: sourceForLoad });
   if (assetReferenceDiscovery.counts.total) {
     diagnostics.assetReferences = {
@@ -254,8 +388,8 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       counts: assetReferenceDiscovery.counts,
       references: assetReferenceDiscovery.references.slice(0, 25)
     };
-    if (assetReferenceDiscovery.counts['referenced-unloaded']) warnings.push({ code: 'github.asset.referenced-unloaded', severity: 'info', message: `${assetReferenceDiscovery.counts['referenced-unloaded']} source asset reference(s) were found in Markdown but not fetched in this slice.` });
-    if (assetReferenceDiscovery.counts.blocked) warnings.push({ code: 'github.asset.reference.blocked', severity: 'warning', message: `${assetReferenceDiscovery.counts.blocked} source asset reference(s) resolve outside the configured root boundary and were not fetched.` });
+    if (assetReferenceDiscovery.counts['referenced-unloaded']) warnings.push({ code: 'github.asset.referenced-unloaded', surface: 'assets', severity: 'info', message: `${assetReferenceDiscovery.counts['referenced-unloaded']} source asset reference(s) were found in Markdown but not fetched in this slice.` });
+    if (assetReferenceDiscovery.counts.blocked) warnings.push({ code: 'github.asset.reference.blocked', surface: 'assets', severity: 'warning', message: `${assetReferenceDiscovery.counts.blocked} source asset reference(s) resolve outside the configured root boundary and were not fetched.` });
   }
   return makeAdapterResult({
     adapterId: GITHUB_ADAPTER_ID,
@@ -266,7 +400,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
     okCount: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0),
     failCount: errors.length + (result.failCount || 0),
     diagnostics: Object.assign(diagnostics, {
-      fileRefs: unique.length,
+      fileRefs: uniqueTargets.length,
       resolvedRef
     })
   });
@@ -283,6 +417,31 @@ function summarizeTransportTiers(events = []) {
   return counts;
 }
 
+
+function summarizeTransportOutcome(events = [], plan = {}) {
+  const attempted = new Set();
+  const winning = new Set();
+  const skipped = [];
+  const failed = [];
+  for (const event of Array.isArray(events) ? events : []) {
+    const tier = String(event.tier || '').toLowerCase();
+    const code = String(event.code || '');
+    if (tier && ['cache', 'mirror', 'proxy', 'direct'].includes(tier)) {
+      if (/\.try$|\.miss$|\.hit$|\.ok$|configured-unavailable|unavailable|failed|exception/u.test(code)) attempted.add(tier);
+      if (/\.ok$|\.hit$/u.test(code)) winning.add(tier);
+      if (/configured-unavailable|unavailable/u.test(code)) skipped.push({ tier, code, resource: event.resource || '', message: event.message || '' });
+      if (/failed|exception|exhausted/u.test(code)) failed.push({ tier, code, resource: event.resource || '', status: event.status || 0, message: event.message || '' });
+    }
+  }
+  return {
+    schema: 'tiinex.github.transport.outcome.v1',
+    configuredPlan: Array.isArray(plan.tiers) ? plan.tiers.slice() : [],
+    attemptedTiers: Array.from(attempted),
+    winningTiers: Array.from(winning),
+    skipped,
+    failed
+  };
+}
 export async function materializeGithubFiles(source, fileRefs = [], options = {}) {
   return materializeGithubSource(source, { fileRefs, repoDiscovery: false }, options);
 }

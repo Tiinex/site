@@ -1,11 +1,31 @@
-# Validation Notes — v193
+# Validation Notes — v194 source-plan reconciliation
 
 ## Base
 
-- Source base: v192 unified record-card Lineage checkpoint supplied by Q.
-- No portable-tooling paths touched.
+- Checkpoint base: `site(7).zip` supplied by Q.
+- Site base reported by package before changes: `0.2.13-v193`.
+- Portable tooling paths were present and left untouched.
 
-## Commands run
+## Scope
+
+v194 narrows to source-plan reconciliation:
+
+- boundary / repo files / explicit files / issue snapshots plan model;
+- per-surface requested/attempted/loaded/deferred/skipped/failed result state;
+- record attribution for materialized GitHub Markdown;
+- transport plan vs observed outcome separation;
+- source continuation support via persisted source plan/surface state.
+
+Out of scope:
+
+- Feed ranking;
+- partial promotion;
+- real issue reader;
+- full mirror/proxy parity;
+- Lineage polish;
+- portable-tooling edits.
+
+## Validation run
 
 ```bash
 npm run validate
@@ -15,21 +35,16 @@ npm run metrics
 npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/schemas/companion.js
 ```
 
-All commands above passed in the working tree.
+All green in the working tree.
 
-## Source-clean verification
+## Additional guarded behavior
 
-Run the same source-only guards after extracting the delivery zip:
+`src/adapters/github/github.adapter.test.mjs` now checks that:
 
-```bash
-npm run validate
-npm run ui:shape
-npm run usecase:uc001
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/schemas/companion.js
-```
+- explicit issue/discussion targets with the issue reader deferred do not increment the repo-files surface;
+- deferred issue targets produce no materialized record attribution;
+- issue URLs entered as explicit file targets remain explicit-file failures and never become repo-file material.
 
 ## Known limits
 
-- Full `npm run test` was not run here because runtime/public build checks require installed Vite/React dependencies.
-- Issue snapshot browser reading remains deferred/unavailable unless an explicit future reader slice or fixture is provided.
-- Partial promotion during a long source import is still out of scope.
+`npm run test` was not run end-to-end because public build/runtime smoke requires installed Vite/React dependencies in this sandbox.

@@ -100,7 +100,16 @@ const issueDeferred = await materializeGithubSource(source, { issueDiscovery: tr
 assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred without fixtures');
 assert.equal(issueDeferred.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
 assert.equal(issueDeferred.diagnostics.surfaces.issueSnapshots.deferred, true, 'issue surface should report deferred browser reader state');
+assert.equal(issueDeferred.diagnostics.surfaces.repoFiles.loaded, 0, 'deferred issue targets must not be attributed to repo files');
+assert.deepEqual(issueDeferred.diagnostics.recordAttribution, [], 'deferred issue targets must not claim materialized records');
+assert.equal(issueDeferred.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'normalized source plan should preserve requested issue surface');
+assert.equal(issueDeferred.diagnostics.sourcePlan.surfaces.issueSnapshots.attempted, true, 'normalized source plan should preserve attempted issue surface');
 
+const issueUrlAsExplicitFile = await materializeGithubSource(source, { repoDiscovery: false, fileRefs: ['https://github.com/owner/repo/issues/1'], issueDiscovery: false, issueUrls: '' }, { fetchImpl });
+assert.equal(issueUrlAsExplicitFile.okCount, 0, 'issue URL in explicit file surface must not become a repo file');
+assert.equal(issueUrlAsExplicitFile.diagnostics.surfaces.repoFiles.loaded, 0, 'invalid explicit issue URL must not increment repo file surface');
+assert.equal(issueUrlAsExplicitFile.diagnostics.surfaces.explicitFiles.failed, 1, 'invalid explicit issue URL should be owned by explicit files surface');
+assert(issueUrlAsExplicitFile.errors.some((error) => error.surface === 'explicitFiles'), 'invalid explicit target should preserve owning surface');
 
 const repoWideIssueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: '' }, { fetchImpl });
 assert(repoWideIssueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'repo-wide issue discovery without explicit URLs should be an honest deferred surface');

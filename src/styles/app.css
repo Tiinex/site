@@ -6756,3 +6756,30 @@ pre { white-space: pre-wrap; overflow:auto; }
   font-weight: 800;
   letter-spacing: .04em;
 }
+
+.tx-source-receipt-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  grid-column: 1 / -1;
+}
+.tx-source-receipt-details > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid rgba(149, 234, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(149, 234, 255, 0.055);
+  color: var(--muted);
+}
+.tx-source-receipt-details strong {
+  color: var(--text);
+  font-size: 0.72rem;
+}
+.tx-source-receipt-details small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
