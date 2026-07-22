@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.12-v192",
+  "version": "0.2.13-v193",
   "private": true,
-  "description": "Tiinex Site v192: unified Discovery/Lineage record-card surface.",
+  "description": "Tiinex Site v193: Lineage query stability and source continuation receipts.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

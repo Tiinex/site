@@ -1,8 +1,9 @@
-# Validation Notes v192
+# Validation Notes — v193
 
-Base: v191 schema-binding resync + Lineage focus/readability repair.
+## Base
 
-Scope: unify Lineage selected traversal with the Discovery `RecordCard` surface so Lineage changes only the displayed record set/order, not the card design.
+- Source base: v192 unified record-card Lineage checkpoint supplied by Q.
+- No portable-tooling paths touched.
 
 ## Commands run
 
@@ -11,18 +12,24 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/schemas/companion.js
 ```
 
-Source-clean zip verification:
+All commands above passed in the working tree.
+
+## Source-clean verification
+
+Run the same source-only guards after extracting the delivery zip:
 
 ```bash
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/schemas/companion.js
 ```
 
 ## Known limits
 
-Full `npm run test` requires installed Vite/React dependencies for runtime smoke and public build checks.
+- Full `npm run test` was not run here because runtime/public build checks require installed Vite/React dependencies.
+- Issue snapshot browser reading remains deferred/unavailable unless an explicit future reader slice or fixture is provided.
+- Partial promotion during a long source import is still out of scope.

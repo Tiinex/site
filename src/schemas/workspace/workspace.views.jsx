@@ -188,7 +188,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
                 {records.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
                 {assets.map((asset) => <AssetCard key={asset.id || asset.path} asset={asset} onOpenAsset={onOpenAsset} />)}
               </>
-            : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} />}
+            : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} summary={materialSummary} />}
       </section>
     </section>
   );
@@ -342,19 +342,29 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
   );
 }
 
-function EmptyWorkspaceState({ filtered, hasMaterial, query }) {
+function EmptyWorkspaceState({ filtered, hasMaterial, query, summary = null }) {
+  const latest = summary?.latestImport || null;
+  const hasDeferredSourceReceipt = Boolean(!hasMaterial && latest && (latest.message || latest.warnings?.length || latest.errors?.length));
   const message = filtered
     ? 'No nodes match this view.'
     : hasMaterial
       ? 'No artifacts match this view.'
-      : 'No material yet.';
+      : hasDeferredSourceReceipt
+        ? 'No readable material was produced.'
+        : 'No material yet.';
   const hint = filtered && query
     ? `Search filter: ${query}`
-    : '';
+    : hasDeferredSourceReceipt
+      ? String(latest.message || 'The source boundary is registered, but the selected reader did not produce records.').slice(0, 260)
+      : '';
+  const firstWarning = hasDeferredSourceReceipt && latest.warnings?.length ? latest.warnings[0] : null;
+  const firstError = hasDeferredSourceReceipt && latest.errors?.length ? latest.errors[0] : null;
   return (
     <div className="tx-empty-node-state tx-compact-empty-node-state" role="status" aria-live="polite">
       <p>{message}</p>
       {hint ? <small>{hint}</small> : null}
+      {firstWarning?.message ? <small className="tx-empty-receipt-detail">Warning: {String(firstWarning.message).slice(0, 220)}</small> : null}
+      {firstError?.error ? <small className="tx-empty-receipt-detail">Error: {String(firstError.error).slice(0, 220)}</small> : null}
     </div>
   );
 }
@@ -611,7 +621,11 @@ function AuditRecordRow({ item, onOpenRecord }) {
 
 function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, onOpenAudit }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
-  const selected = selectedRecordId ? lineage.nodes.find((node) => node.id === selectedRecordId) : null;
+  const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
+    ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
+    : null;
+  const selectedFromRecords = selectedRecordId ? records.find((record) => record.id === selectedRecordId) : null;
+  const selected = selectedFromTraversal || (selectedFromRecords ? { id: selectedFromRecords.id, title: selectedFromRecords.title, path: selectedFromRecords.path, schemaId: selectedFromRecords.schemaId, record: selectedFromRecords } : null);
   const selectedAudit = selected ? auditById.get(selected.id) : null;
   return (
     <section className="tx-workspace-lineage-state" aria-label="Loaded lineage">

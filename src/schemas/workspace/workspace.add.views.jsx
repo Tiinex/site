@@ -76,8 +76,12 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const rememberedSurfaces = continuation?.surfaces || continuation?.requestedSurfaces || {};
   const rememberedIssue = continuation?.surfaces?.issueSnapshots || continuation?.requestedSurfaces?.issueSnapshots || {};
   const rememberedRepo = continuation?.surfaces?.repoFiles || continuation?.requestedSurfaces?.repoFiles || {};
-  const [repoDiscovery, setRepoDiscovery] = useState(continuation ? Boolean(rememberedRepo.requested && rememberedRepo.loaded !== rememberedRepo.discovered) : true);
-  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? Boolean(continuation.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable) : false);
+  const repoRequested = Boolean(continuation?.repoDiscovery || rememberedRepo.requested || Number(rememberedRepo.discovered || 0) || Number(rememberedRepo.loaded || 0));
+  const repoIncomplete = Boolean(repoRequested && Number(rememberedRepo.discovered || 0) > 0 && Number(rememberedRepo.loaded || 0) < Number(rememberedRepo.discovered || 0));
+  const issueRequested = Boolean(continuation?.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || Number(rememberedIssue.requestedCount || 0));
+  const issueIncomplete = Boolean(issueRequested && (rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || (Number(rememberedIssue.discovered || rememberedIssue.requestedCount || 0) > 0 && Number(rememberedIssue.loaded || 0) < Number(rememberedIssue.discovered || rememberedIssue.requestedCount || 0))));
+  const [repoDiscovery, setRepoDiscovery] = useState(continuation ? Boolean(repoIncomplete || (!issueIncomplete && (repoRequested || !issueRequested))) : true);
+  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueIncomplete : false);
   const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '');
   const [fileRefs, setFileRefs] = useState('');
   const [error, setError] = useState('');
