@@ -1,49 +1,42 @@
-# Validation Notes — v196 Lineage runtime crash guard
+# Validation Notes — v197
 
 ## Base
 
-- Checkpoint base: `tiinex-site-v195-display-tree-viewstate-source.zip`.
-- Site base reported by package before changes: `0.2.15-v195`.
-- Portable tooling paths were present and left untouched.
+- Source base: v196 Lineage runtime crash guard checkpoint supplied by Q.
+- Scope: Discovery Feed ordering and annotation-family material-role classification.
+- Portable-tooling paths were not touched.
 
-## Scope
+## Root cause
 
-v196 is deliberately narrow. The v195 review video showed a runtime blank-screen failure after Lineage/view navigation. DevTools showed:
+The v195/v196 Discovery Feed preserved loaded/source order because `Leaves first` had been removed from default behavior and the remaining comparator was tied to that option. This made the new viewer look arbitrarily ordered compared with the PoC. The PoC Feed uses a date-descending artifact comparator with path as tie-breaker.
 
-```text
-Uncaught ReferenceError: expandedRecordIds is not defined
-    at WorkspaceLineageState
-```
-
-The root cause was that `WorkspaceColumnSurface` passed `expandedRecordIds` and `onToggleLineageCard` into `WorkspaceLineageState`, but `WorkspaceLineageState` did not accept those props in its own signature before forwarding them to `LineageSelectedSummary`.
-
-## Changes
-
-- `WorkspaceLineageState` now owns `expandedRecordIds = []` and `onToggleLineageCard` in its argument destructuring.
-- `tools/check-ui-shape.mjs` now extracts the `WorkspaceLineageState` signature and fails if those props are missing.
-- No source-plan, material-role, transport, portable tooling, or schema companion semantics were changed.
+A second visible drift came from material-role classification: `tiinex.adapter.annotation.v1` and related annotation-family schemas are artifact families in Tiinex/docs, but the support classifier treated any `tiinex.adapter.*` schema as adapter-support material. With `Leaves only` default-on, those artifacts could disappear or appear in a different surface from the PoC.
 
 ## Validation run
 
+In the working tree:
+
 ```bash
-node --check tools/check-ui-shape.mjs
+node src/workspaces/workspace.feedSort.test.mjs
+node src/workspaces/workspace.materialRole.test.mjs
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-All green in the working tree.
+From a source-clean verification unzip:
 
-## Browser test focus
-
-- Enter Lineage from a record.
-- Click a Lineage card to expand/collapse preview.
-- Use UI Back and browser Back/Forward.
-- Confirm the app does not blank and the console does not report `expandedRecordIds is not defined`.
-- Confirm v195 behavior still holds: `Leaves only` default, unified RecordCard Lineage, and scroll restoration.
+```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
+```
 
 ## Known limits
 
-`npm run test` was not run end-to-end because public build/runtime smoke requires installed Vite/React dependencies in this sandbox.
+- Full `npm run test` was not run because runtime smoke/public build require installed Vite/React dependencies in this sandbox.
+- This batch does not implement a real browser issue reader, partial promotion, or new Feed mode selector.
+- Tree remains path/folder sorted like the PoC tree; Feed is sorted by artifact timestamp descending.

@@ -9,6 +9,7 @@ import { createRecordActionResult, presentRecordActions, RecordActionKind } from
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
+import { sortWorkspaceFeedRecords } from '../../workspaces/workspace.feedSort.js';
 import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
@@ -152,9 +153,9 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
   const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
   const displayChoices = displayOptionChoices(allRecords, auditById);
-  const records = prioritizeDiscoveryRecords(allRecords
+  const records = sortWorkspaceFeedRecords(allRecords
     .filter((record) => displayRecordIncluded(record, displayOptions, auditById))
-    .filter((record) => recordMatchesQuery(record, query)), displayOptions);
+    .filter((record) => recordMatchesQuery(record, query)));
   const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, query)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);

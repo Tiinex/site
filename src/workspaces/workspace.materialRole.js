@@ -82,7 +82,17 @@ function hasDeclaredTiinexLeaf(record = {}, markdown = '') {
 function isKnownSupportSchema(schema = '') {
   const value = String(schema || '').toLowerCase();
   if (!value) return false;
+  if (isKnownWorkSchema(value)) return false;
   return value === 'tiinex.root.v1'
+    || value === 'tiinex.source.v1'
+    || value === 'tiinex.access.v1'
+    || value === 'tiinex.origin.v1'
+    || value === 'tiinex.digital.origin.v1'
+    || value === 'tiinex.natural.origin.v1'
+    || value === 'tiinex.tool.v1'
+    || value === 'tiinex.interface.v1'
+    || value === 'tiinex.adapter.v1'
+    || value === 'tiinex.digital.adapter.v1'
     || value.startsWith('tiinex.source.')
     || value.startsWith('tiinex.access.')
     || value.startsWith('tiinex.origin.')
@@ -90,8 +100,6 @@ function isKnownSupportSchema(schema = '') {
     || value.startsWith('tiinex.natural.origin.')
     || value.startsWith('tiinex.tool.')
     || value.startsWith('tiinex.interface.')
-    || value.startsWith('tiinex.adapter.')
-    || value.startsWith('tiinex.digital.adapter.')
     || value.startsWith('tiinex.schema.')
     || value.startsWith('tiinex.presentation.surface.')
     || value.startsWith('tiinex.validation.method.');
@@ -141,7 +149,14 @@ function isKnownWorkSchema(schema = '') {
     || value.startsWith('tiinex.claim.')
     || value.startsWith('tiinex.derivation.')
     || value.startsWith('tiinex.annotation.')
-    || value.startsWith('tiinex.artifact.annotation.');
+    || value.startsWith('tiinex.artifact.annotation.')
+    || value.startsWith('tiinex.spatial.annotation.')
+    || value.startsWith('tiinex.projection.annotation.')
+    || value.startsWith('tiinex.temporal.annotation.')
+    || value.startsWith('tiinex.semantic.annotation.')
+    || value.startsWith('tiinex.style.annotation.')
+    || value.startsWith('tiinex.validation.annotation.')
+    || value.startsWith('tiinex.adapter.annotation.');
 }
 
 function isKnownSupportSurfacePath(path = '') {

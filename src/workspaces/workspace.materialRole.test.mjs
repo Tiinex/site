@@ -13,6 +13,25 @@ assert.equal(inferRecordMaterialRole({
   hasContinuityContext: true
 }), MaterialRole.schemaDefinition);
 
+
+assert.equal(inferRecordMaterialRole({
+  path: '.topics/.schemas/annotation/adapter/tiinex.adapter.annotation.v1.schema.md',
+  schemaId: 'tiinex.adapter.annotation.v1',
+  hasContinuityContext: true
+}), MaterialRole.schemaDefinition);
+
+assert.equal(inferRecordMaterialRole({
+  path: '.topics/annotations/adapter/001.trace.md',
+  schemaId: 'tiinex.adapter.annotation.v1',
+  hasContinuityContext: true
+}), MaterialRole.leaf);
+
+assert.equal(inferRecordMaterialRole({
+  path: '.topics/annotations/semantic/001.trace.md',
+  schemaId: 'tiinex.semantic.annotation.v1',
+  hasContinuityContext: true
+}), MaterialRole.leaf);
+
 assert.equal(inferRecordMaterialRole({
   path: '.topics/.adapters/github/adapter.md',
   schemaId: 'tiinex.adapter.v1',
