@@ -734,36 +734,60 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
   const role = isAnchor ? 'current' : item.root ? 'root' : 'parent';
   const title = item.title || record.title || item.id;
   const sourceText = item.sourceLabel || record.source?.label || (item.sourceBacked ? 'source-backed' : 'local/session');
+  const schemaBadge = recordSchemaBadge(record || item);
+  const hasMarkdown = Boolean(String(record.markdown || '').trim());
   return (
     <article className={`tx-lineage-viewer-card tx-lineage-path-card ${isAnchor ? 'tx-lineage-current-anchor' : ''} ${terminal ? 'tx-lineage-terminal-card' : ''}`} aria-label={`${role}: ${title}`}>
       <header className="tx-lineage-viewer-card-header">
-        <span className="tx-lineage-node-role">{role}</span>
-        <div className="tx-card-badges tx-legacy-card-badges">
+        <div className="tx-card-badges tx-legacy-card-badges tx-lineage-primary-badges">
           {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
           {record?.id ? <AuditStatusBadge record={record} item={auditItem} /> : null}
-          <Badge>{recordSchemaBadge(record || item)}</Badge>
+          <Badge>{schemaBadge}</Badge>
           <Badge>{sourceText}</Badge>
         </div>
+        <span className="tx-lineage-node-role" title={`Lineage role: ${role}`}>{role}</span>
       </header>
-      <button type="button" className="tx-lineage-card-read-target" onClick={onToggle} aria-expanded={expanded}>
+      <button type="button" className="tx-lineage-card-read-target" onClick={onToggle} aria-expanded={expanded} title={expanded ? 'Collapse read view' : 'Expand read view'}>
         <h3>{title}</h3>
         {record.summary || item.summary ? <p>{record.summary || item.summary}</p> : null}
-        {expanded ? <SchemaReadView record={record} compact maxSections={3} showHeader={false} /> : null}
-        {item.path || record.path ? <div className="tx-card-pathline" title={item.path || record.path}><Icon name="folderOpen" />{compactPath(item.path || record.path)}</div> : null}
-        <small className="tx-lineage-expand-hint">{expanded ? 'Collapse read view' : 'Expand read view'}</small>
+        {expanded ? <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp /> : null}
+        {expanded && (item.path || record.path) ? <div className="tx-card-pathline" title={item.path || record.path}><Icon name="folderOpen" />{compactPath(item.path || record.path)}</div> : null}
       </button>
       <footer className="tx-lineage-viewer-card-actions" onClick={(event) => event.stopPropagation()}>
-        <button type="button" disabled={isAnchor} className="tx-button tx-button-ghost" onClick={() => onFocusRecordLineage?.(item.id)} title={isAnchor ? 'This card is the current lineage reference point' : 'Move lineage reference point to this artifact'}><Icon name="lineage" /> {isAnchor ? 'Anchored' : 'Anchor here'}</button>
-        <button type="button" className="tx-button tx-button-ghost" onClick={() => onOpenRecord?.(item.id)}><Icon name="open" /> Open details</button>
-        <button type="button" className="tx-button tx-button-ghost" disabled={!String(record.markdown || '').trim()} onClick={() => onRecordAction?.(record, markdownAction)}><Icon name="open" /> Show markdown</button>
-        {lineageCardActions(record).map((action) => action.href ? (
-          <a key={action.id} className="tx-button tx-button-ghost tx-lineage-extra-action" href={action.href} target="_blank" rel="noopener noreferrer" title={actionLabel(action)} aria-label={actionLabel(action)}><Icon name={action.icon} /> {actionLabel(action)}</a>
-        ) : (
-          <button key={action.id} type="button" className="tx-button tx-button-ghost tx-lineage-extra-action" disabled={action.enabled === false} title={actionLabel(action)} aria-label={actionLabel(action)} onClick={() => onRecordAction?.(record, action)}><Icon name={action.icon} /> {actionLabel(action)}</button>
-        ))}
+        {viewerActionButton({
+          key: 'anchor',
+          icon: 'lineage',
+          label: isAnchor ? 'Anchored' : 'Anchor here',
+          title: isAnchor ? 'Current lineage reference point' : 'Move lineage reference point to this artifact',
+          disabled: isAnchor,
+          compact: true,
+          onClick: () => onFocusRecordLineage?.(item.id)
+        })}
+        {viewerActionButton({ key: 'details', icon: 'open', label: 'Open details', compact: true, onClick: () => onOpenRecord?.(item.id) })}
+        {viewerActionButton({ key: 'markdown', icon: 'open', label: 'Show markdown', compact: true, disabled: !hasMarkdown, onClick: () => onRecordAction?.(record, markdownAction) })}
+        {lineageCardActions(record).map((action) => renderLineageExtraAction(record, action, onRecordAction))}
       </footer>
     </article>
   );
+}
+
+function viewerActionButton({ key, icon, label, title, compact = false, disabled = false, onClick }) {
+  return (
+    <button key={key} type="button" disabled={disabled} className={`tx-button tx-button-ghost ${compact ? 'tx-lineage-icon-action' : ''}`} onClick={onClick} title={title || label} aria-label={label}>
+      <Icon name={icon} /> <span className="tx-action-label">{label}</span>
+    </button>
+  );
+}
+
+function renderLineageExtraAction(record, action, onRecordAction) {
+  const label = actionLabel(action);
+  const isCompact = action.id === RecordActionKind.source;
+  const displayLabel = action.id === RecordActionKind.reference ? 'Preserve' : label;
+  const className = `tx-button tx-button-ghost tx-lineage-extra-action ${isCompact ? 'tx-lineage-icon-action' : ''}`;
+  if (action.href) {
+    return <a key={action.id} className={className} href={action.href} target="_blank" rel="noopener noreferrer" title={label} aria-label={label}><Icon name={action.icon} /> <span className="tx-action-label">{displayLabel}</span></a>;
+  }
+  return <button key={action.id} type="button" className={className} disabled={action.enabled === false} title={label} aria-label={label} onClick={() => onRecordAction?.(record, action)}><Icon name={action.icon} /> <span className="tx-action-label">{displayLabel}</span></button>;
 }
 
 function lineageCardActions(record = {}) {
@@ -1091,8 +1115,8 @@ export function AssetDetailDialog({ asset, onDismiss }) {
 }
 
 
-function SchemaReadView({ record = {}, compact = false, maxSections = null, showHeader = true }) {
-  const presentation = schemaReadPresentation(record, { compact, maxSections });
+function SchemaReadView({ record = {}, compact = false, maxSections = null, showHeader = true, lineClamp = false }) {
+  const presentation = schemaReadPresentation(record, { compact, maxSections, lineClamp });
   if (!presentation.sections.length) {
     return <p className="tx-muted">No schema-owned read view is available. Use Show markdown for the exact source.</p>;
   }
@@ -1138,6 +1162,7 @@ function schemaReadPresentation(record = {}, options = {}) {
   if (!picked.length) {
     for (const [label, value] of sections.entries()) {
       if (/^(continuity context|continuity integrity)$/i.test(label)) continue;
+      if (options.compact && isRedundantIdentitySection(label, value, record, schema)) continue;
       if (picked.length >= (options.compact ? 2 : 5)) break;
       picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
     }
@@ -1155,7 +1180,7 @@ function schemaReadPresentation(record = {}, options = {}) {
 }
 
 function schemaReadSummaryItems(record = {}, limit = 2) {
-  const presentation = schemaReadPresentation(record, { compact: true });
+  const presentation = schemaReadPresentation(record, { compact: true, lineClamp: true });
   return (presentation.sections || []).slice(0, limit).map((section) => ({
     label: section.label,
     value: trimReadValue(section.value, { compact: true }).replace(/\s+/g, ' ')
@@ -1210,9 +1235,19 @@ function displaySectionLabel(label = '') {
   return String(label || '').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function isRedundantIdentitySection(label = '', value = '', record = {}, schema = '') {
+  const normalized = normalizeSectionName(label);
+  const schemaName = normalizeSectionName(String(schema || '').replace(/^tiinex\./, '').replace(/\.v\d+$/, ''));
+  if (!normalized || !schemaName || normalized !== schemaName) return false;
+  const text = String(value || '').toLowerCase();
+  const title = String(record.title || '').toLowerCase().trim();
+  const summary = String(record.summary || '').toLowerCase().trim();
+  return Boolean((title && text.includes(title)) || (summary && text.includes(summary)));
+}
+
 function trimReadValue(value = '', options = {}) {
   const clean = String(value || '').trim();
-  const limit = options.compact ? 520 : 1600;
+  const limit = options.lineClamp ? 300 : (options.compact ? 520 : 1600);
   return clean.length > limit ? `${clean.slice(0, limit).trimEnd()}\n…` : clean;
 }
 

@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v188",
+  "version": "0.2.10-v189",
   "private": true,
-  "description": "Tiinex Site v188: Lineage viewer parity pass with compact peer cards and centered home logo.",
+  "description": "Tiinex Site v189: compact Lineage viewer repair with peer-card defaults and CSS-only logo centering.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

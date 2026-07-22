@@ -1,30 +1,47 @@
-# Tiinex Site v188
+# Tiinex Site v189
 
-v188 is a focused Lineage viewer parity checkpoint. It builds on v187 but tightens the default Lineage reading surface toward the PoC: compact peer artifact cards first, expansion only on request, diagnostics out of the normal viewer, and the home/logo command re-centered without touching the image file.
+v189 is a focused Lineage viewer readability repair on top of v188. It keeps the v182-v187 resolver, transport and source-boundary work, but tightens the Lineage surface toward the PoC: compact peer cards by default, no path/debug/header bulk in the selected viewer, icon-first secondary actions, and a smaller curated expanded read view.
 
-## v188 batch
+## v189 batch
 
-- Lineage cards now start collapsed by default. The default card shows status/schema/source, title, summary, path and actions; it no longer dumps schema-owned sections immediately.
-- Expanded Lineage cards show a limited, curated schema-owned read excerpt. Full record metadata remains in Open details and exact source remains in Show markdown.
-- The selected Lineage status banner only appears for mismatch/missing cases. Successful `root reached` paths are expressed through the card chain instead of repeated report blocks.
-- The workspace diagnostics overview is no longer rendered as a default footer under selected Lineage. Users can still enter Audit details explicitly from the mode controls outside the viewer path.
-- Current, parent and root cards keep the same physical/action model while reducing diagnostic labels such as `current anchor` in the card chrome.
-- Lineage viewer CSS now owns the card stack directly and suppresses decorative/pseudo overlays inside card content.
-- The home/logo button is re-centered with CSS only; the PNG asset is unchanged.
-- The top toolbar remains content-fit and tighter around the controls.
+- Hides the selected Lineage header chrome from the visual viewer while keeping the region accessible.
+- Keeps Lineage cards collapsed by default: badges, title, summary, and compact actions first.
+- Removes the default pathline and expand hint from collapsed Lineage cards.
+- Limits expanded read view to two short schema-owned sections; full depth remains in Open details / Show markdown.
+- Converts secondary Lineage card actions to compact icon buttons, while Continue and Preserve remain visible action text.
+- Keeps each node as a peer artifact card with Anchor, details, markdown, and source/continuation actions when available.
+- Adds defensive icon sizing and overlay suppression inside Lineage cards so decorative or icon rendering cannot cover text.
+- Applies another CSS-only optical adjustment to the top-dock logo/home command.
 
-## Source/material boundaries
+## Still intentionally out of scope
 
-Source, transport, cache and material provenance behavior remains from v187. v188 intentionally avoids new transport or materialization work so the Lineage viewer contract can be tested cleanly.
+- Partial record promotion during GitHub import.
+- A real browser issue snapshot reader.
+- Automatic binary asset fetching.
+- Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
+- Changing image assets; the logo adjustment is CSS-only.
 
-Known limits remain: no partial import promotion, no real browser issue snapshot reader, and no automatic binary asset fetching.
 
 ## Supported local start
 
-Use the React dev server:
+Use the dev server for local browser validation:
 
-```txt
+```bash
 npm run dev
 ```
 
-The old static runtime is archived under `.old/` for behavioral reference only.
+Open the printed localhost URL and test against source zips/workspaces.
+
+## Validation
+
+Run:
+
+```bash
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+npm run metrics
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx
+```
+
+`npm run build:public` still requires installed Vite/React dependencies.
