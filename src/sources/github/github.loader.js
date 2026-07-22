@@ -80,8 +80,14 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
   const errors = [];
   const transportEvents = [];
   let requests = 0;
-  for (const ref of Array.isArray(fileRefs) ? fileRefs : []) {
+  const refs = Array.isArray(fileRefs) ? fileRefs : [];
+  const total = refs.length;
+  for (let index = 0; index < refs.length; index += 1) {
+    const ref = refs[index];
     let rawUrl;
+    if (typeof options.onProgress === 'function' && (index === 0 || index % 10 === 0 || index === total - 1)) {
+      options.onProgress({ phase: 'raw-file-load', loaded: index, total, percent: total ? Math.min(88, 40 + Math.round((index / total) * 48)) : 40, label: `Loading GitHub Markdown ${Math.min(index + 1, total)}/${total}` });
+    }
     try {
       rawUrl = normalizeGithubRefToRaw(source, ref);
     } catch (e) {
@@ -112,6 +118,9 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
       const message = String(e && e.message ? e.message : e);
       errors.push({ ref, error: message });
       transportEvents.push({ ref, url: rawUrl || '', code: 'github.raw.fetch.exception', severity: 'error', message });
+    }
+    if (typeof options.onProgress === 'function' && ((index + 1) % 10 === 0 || index === total - 1)) {
+      options.onProgress({ phase: 'raw-file-load', loaded: index + 1, total, percent: total ? Math.min(92, 40 + Math.round(((index + 1) / total) * 50)) : 90, label: `Loaded GitHub Markdown ${index + 1}/${total}` });
     }
   }
   return { records, errors, okCount: records.length, failCount: errors.length, diagnostics: { requests, transportEvents } };

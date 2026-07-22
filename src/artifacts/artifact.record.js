@@ -1,6 +1,7 @@
 import { parseArtifactMarkdown } from './artifact.parse.js';
 import { schemaBadgeClass, schemaKey } from '../schemas/root.classify.js';
 import { createRootFallbackModel } from '../schemas/root.fallback.js';
+import { inferRecordMaterialRole } from '../workspaces/workspace.materialRole.js';
 
 export function createRecordFromMarkdown(markdown = '', meta = {}) {
   const parsed = parseArtifactMarkdown(markdown || '');
@@ -34,7 +35,19 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     repairsDeclared: Boolean(envelope.repairsDeclared),
     rootReadable: fallbackModel.rootReadable,
     rootDisclosure: fallbackModel.disclosure,
-    rootFallback: fallbackModel
+    rootFallback: fallbackModel,
+    materialRole: inferRecordMaterialRole({
+      path: meta.path || meta.name || '',
+      kind: resolvedKind,
+      schemaId: schemaId || '',
+      envelopeSchemaId: envelope.envelopeSchema?.id || '',
+      hasContinuityContext: parsed.hasContinuityContext,
+      hasIntegrity: parsed.hasIntegrity,
+      parentSchemaId: parent.schema?.id || '',
+      trace: parent.trace || '',
+      origin: parent.origin || envelope.origin || '',
+      markdown
+    })
   };
 }
 

@@ -180,14 +180,14 @@
 
   function compactRecordForCache(record = {}) {
     const source = Object.assign({}, record.source || {});
+    const markdown = truncateForCache(record.markdown || '', SESSION_CACHE_LIMITS.maxRecordMarkdownChars);
     if (isSourceBackedForCache(record) && !isLocalForCache(record)) {
       return Object.assign({}, record, {
         source,
-        markdown: '',
-        cacheState: 'source-backed-metadata-only-session-cache'
+        markdown: markdown.value,
+        cacheState: markdown.omitted ? 'source-backed-markdown-truncated-for-session-cache' : (record.markdown ? 'source-backed-session-cache-complete' : (record.cacheState || 'source-backed-metadata-only-session-cache'))
       });
     }
-    const markdown = truncateForCache(record.markdown || '', SESSION_CACHE_LIMITS.maxRecordMarkdownChars);
     return Object.assign({}, record, {
       source,
       markdown: markdown.value,

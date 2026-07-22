@@ -25,7 +25,9 @@ if (appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/a
 if (!appAndWorkspace.includes('tx-audit-badge')) failures.push('cards and tree rows must expose old-like per-artifact audit/status badges');
 if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact lineage focus must keep selectedRecordId state');
 if (!appAndWorkspace.includes('function focusRecordLineage')) failures.push('Lineage focus must be separate from Open/detail reading');
-if (!appAndWorkspace.includes('RecordActionKind.lineage')) failures.push('Record actions must include a dedicated Lineage focus action');
+if (!appAndWorkspace.includes('tx-clickable-record-card')) failures.push('record card itself must be the Lineage focus target, not a crowded Lineage button');
+if (appAndWorkspace.includes("label: 'Lineage'")) failures.push('cards must not reintroduce a visible Lineage action label');
+if (!appAndWorkspace.includes('Show markdown')) failures.push('cards must expose old-like Show markdown dialog action');
 if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte ok without byte/digest verification');
 if (!appAndWorkspace.includes('schema ok')) failures.push('audit status badge should use schema/readability wording instead of byte integrity wording');
 if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evidence operation must not be presented as old Reference parity');
@@ -40,8 +42,9 @@ has('src/app/TiinexApp.jsx', 'schemaRegistry.modules.length', 'help surface shou
 has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
-has('src/schemas/workspace/workspace.add.views.jsx', "useState(continuation ? 'repo' : 'register')", 'GitHub repo discovery must be an explicit operation, not default network/API work');
-has('src/schemas/workspace/workspace.add.views.jsx', 'OperationCard id="repo"', 'GitHub repo discovery must be a visible source operation surface');
+has('src/schemas/workspace/workspace.add.views.jsx', 'tx-github-discovery-card', 'GitHub repo discovery must be a visible checkbox surface, not a hidden operation mode');
+has('src/schemas/workspace/workspace.add.views.jsx', 'Register only', 'GitHub source Add must preserve explicit register-only/no-loading action');
+has('src/schemas/workspace/workspace.add.views.jsx', 'Discover repo Markdown', 'GitHub source Add must expose a clear repo discovery submit action');
 has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema module must be in registry');
 has('src/styles/app.css', '.tx-button .tx-icon', 'button icon spacing must be centralized');
 has('src/styles/app.css', 'clamp(', 'responsive sizing must use clamp patterns');

@@ -9,6 +9,8 @@ import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
+import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
+import { inferRecordMaterialRole, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
   AssetDetailDialog,
@@ -38,7 +40,7 @@ function defaultState() {
   return runtime().lifecycle?.makeEmptyAppState?.() || {
     version: 1,
     activeWorkspaceId: '',
-    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false }, expandedTreeFolders: [] },
+    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' }, expandedTreeFolders: [] },
     workspaces: [],
     audit: null
   };
@@ -102,15 +104,7 @@ function summarizeGithubMaterialization(sourceLabel, out = {}) {
 }
 
 function isSupportingMarkdownForDisplay(record = {}) {
-  const kind = String(record.kind || '').toLowerCase();
-  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
-  const markdown = String(record.markdown || '');
-  if (kind.includes('supporting')) return true;
-  if (schema.includes('tiinex.markdown.supporting')) return true;
-  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return false;
-  if (/^\s*#\s*Continuity Context\b/im.test(markdown)) return false;
-  if (/^\s*Current Schema\s*:/im.test(markdown) || /^\s*Envelope Schema\s*:/im.test(markdown)) return false;
-  return Boolean(markdown.trim()) && !schema;
+  return isSupportingRecord(record);
 }
 
 function displaySchemaValue(record = {}) {
@@ -118,35 +112,41 @@ function displaySchemaValue(record = {}) {
 }
 
 function displayArtifactClass(record = {}) {
-  if (isSupportingMarkdownForDisplay(record)) return 'supporting';
-  if (record.source?.adapterId && record.source.adapterId !== 'local') return 'source-backed';
-  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId || record.schemaId || record.currentSchemaId) return 'leaf';
-  return 'local';
+  return inferRecordMaterialRole(record);
 }
 
 function buildDisplayOptionCounts(workspace = {}) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
+  const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
+  const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
   const schemaCounts = new Map();
   const artifactCounts = new Map();
-  let supportingMarkdown = 0;
+  const sourceCounts = new Map();
   for (const record of records) {
-    if (isSupportingMarkdownForDisplay(record)) supportingMarkdown += 1;
     const schema = displaySchemaValue(record);
     schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
     const artifact = displayArtifactClass(record);
     artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
+    const source = sourceBoundaryClass(record);
+    sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
   }
+  const mismatchItems = (audit.items || []).filter((item) => {
+    const status = String(item.status || '').toLowerCase();
+    return status && !['readable', 'supporting-material', 'pending-unavailable', 'degraded'].includes(status);
+  });
   return {
     records: records.length,
-    leaves: Math.max(0, records.length - supportingMarkdown),
-    supportingMarkdown,
-    mismatches: records.filter((record) => String(record.status || '').toLowerCase().includes('mismatch')).length,
+    leaves: artifactCounts.get(MaterialRole.leaf) || 0,
+    supportingMarkdown: (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0),
+    mismatches: mismatchItems.length,
     assets: workspace.assets?.length || 0,
     workspaceCandidates: workspace.workspaceMergeCandidates?.length || 0,
     schemaChoices: Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0])),
-    artifactChoices: ['leaf', 'source-backed', 'local', 'supporting'].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)])
+    artifactChoices: [MaterialRole.leaf, MaterialRole.schemaDefinition, MaterialRole.supporting, MaterialRole.unknown].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]),
+    sourceChoices: ['source-backed', 'local', 'unknown'].filter((key) => sourceCounts.has(key)).map((key) => [key, sourceCounts.get(key)])
   };
 }
+
 
 function summarizeGithubAdapterResult(out = {}) {
   const warnings = Array.isArray(out.warnings) ? out.warnings : [];
@@ -343,11 +343,29 @@ export function TiinexApp() {
     }
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
-    const operationLabel = input.operation === 'repo' ? 'repo discovery' : input.operation === 'explicit' ? 'explicit file loading' : input.operation === 'issues' ? 'issue snapshot loading' : 'boundary registration';
+    const selectedOperations = [
+      input.repoDiscovery ? 'repo files discovery' : '',
+      fileRefs.length ? 'explicit file loading' : '',
+      input.issueDiscovery || input.issueUrls ? 'issue snapshot loading' : ''
+    ].filter(Boolean);
+    const operationLabel = selectedOperations.length ? selectedOperations.join(' + ') : 'boundary registration';
     let finalState = result.state;
     let materializationSourceId = result.source.id;
     let materializationSourceLabel = result.source.label;
-    let noticeMessage = `${result.source.label} source registered. No loading is running; use Continue on the source to choose explicit files, repo discovery, or issue snapshots.`;
+    let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
+    const publishGithubProgress = (progress = {}) => {
+      const progressed = setWorkspaceDiscoveryProgress(finalState, active?.id, Object.assign({
+        sourceId: materializationSourceId || result.source.id,
+        phase: 'source-materialization',
+        label: `${materializationSourceLabel} source materialization running`,
+        active: true,
+        quantified: progress.percent != null
+      }, progress));
+      if (progressed?.ok) {
+        finalState = progressed.state;
+        commit(finalState, 'replace');
+      }
+    };
 
     if (!wantsMaterialization) {
       finalState = appendImportSummary(runtime().lifecycle, finalState, {
@@ -366,8 +384,9 @@ export function TiinexApp() {
         sourceId: result.source.id,
         phase: input.repoDiscovery ? 'repo-discovery' : input.issueDiscovery ? 'issue-snapshots' : 'source-materialization',
         label: `${result.source.label} accepted · ${operationLabel} via direct public GitHub transport`,
-        percent: 22,
-        active: true
+        active: true,
+        quantified: false,
+        discoveryState: 'loading'
       }).state || finalState;
       setDialog(null);
       setNotice(`${result.source.label} source registered; loading started.`);
@@ -384,7 +403,7 @@ export function TiinexApp() {
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy });
+        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, onProgress: publishGithubProgress });
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
@@ -405,6 +424,16 @@ export function TiinexApp() {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
+        const sourceState = Number(out.okCount || 0) > 0
+          ? (Number(out.failCount || 0) > 0 ? 'partial' : 'loaded')
+          : (Number(out.failCount || 0) > 0 || (out.errors || []).length ? 'failed' : 'unavailable');
+        const updatedSource = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
+          id: materializationSourceId,
+          label: materializationSourceLabel,
+          count: Number(out.okCount || 0),
+          discoveryState: sourceState
+        }));
+        if (updatedSource?.ok) finalState = updatedSource.state;
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
         noticeMessage = summarizeGithubMaterialization(materializationSourceLabel, out);
       } catch (e) {
@@ -598,7 +627,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v178-source-display-parity-repair" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v180-card-source-material-role-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}

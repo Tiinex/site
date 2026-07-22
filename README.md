@@ -1,8 +1,8 @@
-# Tiinex Site v178
+# Tiinex Site v180
 
-v178 is a source/display parity repair checkpoint for the React/Vite refactor. It keeps v176/v177 semantic corrections while making Display options and GitHub source operations closer to the observed PoC mental model.
+v180 is a card/source/material-role parity repair checkpoint for the React/Vite refactor. It keeps v176-v178 presentation corrections while making GitHub source work harder to confuse with either idle registration or active materialization.
 
-## v178 batch
+## v180 batch
 
 - Display options now separates ordering, membership, and semantic filters:
   - `Leaves only`
@@ -11,13 +11,13 @@ v178 is a source/display parity repair checkpoint for the React/Vite refactor. I
   - artifact/source class filter
   - supporting docs, workspace candidates, and assets.
 - Supporting-doc counts are category-specific instead of showing the workspace total.
-- GitHub Add now presents explicit operation choices instead of explanatory cards:
-  - register boundary only
-  - explicit files
-  - repo files discovery
-  - issue snapshots.
-- The submit button and receipt text now describe the selected operation, so “registered but not loading” is not confused with “loading now”.
-- A deferred source remains a source control point: `Continue` opens the GitHub form prefilled with that source context.
+- GitHub Add now separates source boundary, discovery surfaces, explicit paths, and issue targets:
+  - repo files discovery is a visible checkbox surface, checked by default for the primary load action;
+  - issue snapshot discovery is a separate checkbox surface;
+  - explicit Markdown paths/URLs can be added without changing modes;
+  - `Register only` is a separate no-loading action.
+- Materialization progress now reports concrete phases such as resolving the ref, finding Markdown refs, loading `N/M` files, and promoting records.
+- A deferred source remains a source control point: `Discover` opens the GitHub form prefilled with that source context.
 - Source pills expose transport mode and idle/loading state without claiming mirror/proxy behavior that is not active.
 - Dialog layout avoids horizontal clipping/scroll at split-screen desktop widths.
 

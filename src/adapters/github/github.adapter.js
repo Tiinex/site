@@ -135,6 +135,11 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
   return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown };
 }
 
+
+function reportProgress(options = {}, progress = {}) {
+  if (typeof options.onProgress === 'function') options.onProgress(progress);
+}
+
 function uniqueRefs(items = []) {
   const seen = new Set();
   const out = [];
@@ -170,10 +175,12 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       }
     } else {
       try {
+        reportProgress(options, { phase: 'repo-discovery', percent: 18, label: 'Resolving GitHub ref and scanning repo tree' });
         const discovered = await discoverGithubMarkdownRefs(source, options);
         refs = refs.concat(discovered.refs);
         resolvedRef = discovered.ref || resolvedRef;
         diagnostics.discoveredFileRefs = discovered.refs.length;
+        reportProgress(options, { phase: 'repo-discovery', percent: 34, total: discovered.refs.length, label: `Found ${discovered.refs.length} Markdown file${discovered.refs.length === 1 ? '' : 's'} under source roots` });
         diagnostics.treeUrl = discovered.treeUrl;
         diagnostics.resolvedBy = discovered.resolvedBy;
         warnings.push(...(discovered.warnings || []));
@@ -189,6 +196,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
+    reportProgress(options, { phase: 'issue-snapshots', percent: refs.length ? 32 : 24, label: 'Checking explicit GitHub issue/discussion snapshot targets' });
     const parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
     diagnostics.issueSnapshotTargets = parsedIssueTargets.counts.targets;
     if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ ref: entry.ref }, entry)));
@@ -204,6 +212,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
   const unique = uniqueRefs(refs);
+  if (unique.length) reportProgress(options, { phase: 'raw-file-load', percent: 38, loaded: 0, total: unique.length, label: `Starting GitHub Markdown load 0/${unique.length}` });
   const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: unique.length }, policyInput) : null;
   let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };
   if (authorization && !authorization.allowed) {
@@ -215,6 +224,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   } else {
     result = unique.length ? await loadGithubFilesForSource(sourceForLoad, unique, options) : result;
   }
+  if (unique.length || issueSnapshotResult.records?.length) reportProgress(options, { phase: 'source-promote', percent: 94, loaded: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0), total: unique.length + (issueSnapshotResult.counts?.targets || 0), label: `Promoting ${(result.okCount || 0) + (issueSnapshotResult.records?.length || 0)} source-backed records` });
   diagnostics.requests = Number(result.diagnostics?.requests || 0);
   diagnostics.transportEvents = diagnostics.transportEvents.concat(result.diagnostics?.transportEvents || []);
   const records = result.records.concat(issueSnapshotResult.records || []);

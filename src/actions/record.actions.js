@@ -4,6 +4,7 @@ export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
 export const RecordActionKind = Object.freeze({
   open: 'record.open',
   lineage: 'record.lineage',
+  markdown: 'record.markdown',
   continue: 'record.continue',
   reference: 'record.reference',
   source: 'record.source',
@@ -16,15 +17,15 @@ export function presentRecordActions(record = {}) {
   const actions = [
     {
       id: RecordActionKind.open,
-      label: 'Open',
+      label: 'Open details',
       icon: 'open',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID
     },
     {
-      id: RecordActionKind.lineage,
-      label: 'Lineage',
-      icon: 'lineage',
+      id: RecordActionKind.markdown,
+      label: 'Show markdown',
+      icon: 'open',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID
     },
@@ -78,7 +79,7 @@ export function sourceHrefForRecord(record = {}) {
 }
 
 export function actionIsRenderable(action = {}) {
-  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.href));
+  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.href));
 }
 
 export function createRecordActionResult(record = {}, actionId = '') {

@@ -56,8 +56,8 @@ if (persistence.readHashState(env.location).activeWorkspaceId !== 'local-demo') 
 const restored = persistence.readInitialState({ storage: env.localStorage, location: env.location });
 if (restored.workspaces[0].name !== 'Demo') throw new Error('explicit hash should restore state');
 if (restored.workspaces[0].records[0].markdown !== '# Topic') throw new Error('hash reload should hydrate local record markdown from session cache');
-if (restored.workspaces[0].records[1].markdown !== '') throw new Error('hash reload should keep source-backed record markdown metadata-only');
-if (restored.workspaces[0].records[1].cacheState !== 'source-backed-metadata-only-session-cache') throw new Error('source-backed record must disclose metadata-only cache state');
+if (restored.workspaces[0].records[1].markdown !== '# Remote should not be cache authority') throw new Error('same-session hash reload should keep loaded source-backed markdown for audit continuity');
+if (restored.workspaces[0].records[1].cacheState !== 'source-backed-session-cache-complete') throw new Error('loaded source-backed record should disclose same-session cache state');
 if (restored.workspaces[0].assets[0].content !== '<svg/>') throw new Error('hash reload should hydrate local assets from session cache');
 if (restored.workspaces[0].assets[1].content !== '') throw new Error('hash reload should keep source-backed asset content metadata-only');
 if (restored.workspaces[0].workspaceMergeCandidates[0].markdown !== '# Demo workspace') throw new Error('hash reload should hydrate workspace candidates from session cache');

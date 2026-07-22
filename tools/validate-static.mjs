@@ -35,7 +35,7 @@ const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/sc
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v178-source-display-parity-repair')) failures.push('index.html must disclose v178 React runtime');
+if (!index.includes('react-v180-card-source-material-role-parity')) failures.push('index.html must disclose v180 React runtime');
 if ((reactAppAndWorkspace + '\n' + read('src/actions/record.actions.js') + '\n' + read('src/artifacts/artifact.record.js')).includes('byte ok')) failures.push('runtime must not claim byte ok without byte/digest verification');
 
 const pkg = JSON.parse(read('package.json'));

@@ -37,7 +37,7 @@ try {
   if (!jsFiles.length) fail('No bundled JS assets emitted');
   const runtime = jsFiles.map(read).join('\n');
   for (const needle of [
-    'react-v178-source-display-parity-repair', 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
+    'react-v180-card-source-material-role-parity', 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
     'no source files or GitHub provenance inferred', 'workspace-source-strip', 'tx-react-runtime', 'FontAwesomeIcon'
   ]) if (!runtime.includes(needle)) fail(`Public React runtime missing ${needle}`);
   if (runtime.includes('Create your first workspace') || runtime.includes('data-verse="map"')) fail('Public runtime contains deferred/onboarding UI');

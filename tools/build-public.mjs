@@ -33,10 +33,10 @@ writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v176-semantic-action-label-truth',
+  source: 'v180-card-source-material-role-parity',
   publicRuntime: 'vite-react-bundle',
   entry: 'src/main.jsx',
   legacyReference: '.old is optional source-only behavior reference, not public runtime or build input',
-  releaseCacheKey: `v176-${Date.now()}`
+  releaseCacheKey: `v180-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built Vite React public shell to ${out}`);

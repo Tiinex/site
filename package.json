@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v178",
+  "version": "0.2.10-v180",
   "private": true,
-  "description": "Tiinex Site v178: source/display parity repair with PoC-like display filters, explicit GitHub source operations, source continuation, transport receipts, and selected-first lineage.",
+  "description": "Tiinex Site v180: card/source/material-role parity repair with PoC-like GitHub discovery surfaces, explicit register-only boundary, granular source progress, and clearer source continuation.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

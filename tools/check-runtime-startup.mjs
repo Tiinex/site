@@ -25,7 +25,7 @@ try {
   if (!html.includes('type="module"')) failures.push('React startup did not produce module entry');
   for (const needle of [
     'Every handoff starts somewhere',
-    'react-v178-source-display-parity-repair',
+    'react-v180-card-source-material-role-parity',
     'tx-centered-dock-core',
     'tx-empty-stage',
     'UC-001-empty-create-local-workspace',

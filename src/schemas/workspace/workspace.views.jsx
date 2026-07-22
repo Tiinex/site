@@ -13,6 +13,7 @@ import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../wo
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
+import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   leavesFirst: true,
@@ -22,7 +23,8 @@ const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   showWorkspaceCandidates: true,
   showAssets: false,
   schemaFilter: 'all',
-  artifactFilter: 'all'
+  artifactFilter: 'all',
+  sourceFilter: 'all'
 });
 
 export function normalizeWorkspaceDisplayOptions(input = {}) {
@@ -35,7 +37,8 @@ export function normalizeWorkspaceDisplayOptions(input = {}) {
     showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
     showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets,
     schemaFilter: normalizeDisplayFilterValue(source.schemaFilter),
-    artifactFilter: normalizeDisplayFilterValue(source.artifactFilter)
+    artifactFilter: normalizeDisplayFilterValue(source.artifactFilter),
+    sourceFilter: normalizeDisplayFilterValue(source.sourceFilter)
   };
 }
 
@@ -45,16 +48,13 @@ function normalizeDisplayFilterValue(value) {
 }
 
 function isSupportingMarkdownRecord(record = {}) {
-  const kind = String(record.kind || '').toLowerCase();
-  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
-  const markdown = String(record.markdown || '');
-  if (kind.includes('supporting')) return true;
-  if (schema.includes('tiinex.markdown.supporting')) return true;
-  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return false;
-  if (/^\s*#\s*Continuity Context\b/im.test(markdown)) return false;
-  if (/^\s*Current Schema\s*:/im.test(markdown) || /^\s*Envelope Schema\s*:/im.test(markdown)) return false;
-  return Boolean(markdown.trim()) && !schema;
+  return isSupportingRecord(record);
 }
+
+function recordSourceClass(record = {}) {
+  return sourceBoundaryClass(record);
+}
+
 
 function auditIndexForWorkspace(workspace = {}, records = []) {
   const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
@@ -87,11 +87,9 @@ function recordSchemaValue(record = {}) {
 }
 
 function recordArtifactClass(record = {}) {
-  if (isSupportingMarkdownRecord(record)) return 'supporting';
-  if (record.source?.adapterId && record.source.adapterId !== 'local') return 'source-backed';
-  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId || record.schemaId || record.currentSchemaId) return 'leaf';
-  return 'local';
+  return inferRecordMaterialRole(record);
 }
+
 
 function displayRecordIncluded(record = {}, options = {}, auditById = new Map()) {
   const supporting = isSupportingMarkdownRecord(record);
@@ -101,24 +99,31 @@ function displayRecordIncluded(record = {}, options = {}, auditById = new Map())
   if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return false;
   const artifactFilter = normalizeDisplayFilterValue(options.artifactFilter);
   if (artifactFilter !== 'all' && recordArtifactClass(record) !== artifactFilter) return false;
+  const sourceFilter = normalizeDisplayFilterValue(options.sourceFilter);
+  if (sourceFilter !== 'all' && recordSourceClass(record) !== sourceFilter) return false;
   return true;
 }
 
 function displayOptionChoices(records = [], auditById = new Map()) {
   const schemaCounts = new Map();
   const artifactCounts = new Map();
+  const sourceCounts = new Map();
   for (const record of Array.isArray(records) ? records : []) {
     const schema = recordSchemaValue(record);
     schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
     const artifact = recordArtifactClass(record);
     artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
+    const sourceClass = recordSourceClass(record);
+    sourceCounts.set(sourceClass, (sourceCounts.get(sourceClass) || 0) + 1);
   }
   const schemas = Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const artifacts = ['leaf', 'source-backed', 'local', 'supporting'].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]);
-  const supportingCount = artifactCounts.get('supporting') || 0;
+  const artifacts = [MaterialRole.leaf, MaterialRole.schemaDefinition, MaterialRole.supporting, MaterialRole.unknown].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]);
+  const sources = ['source-backed', 'local', 'unknown'].filter((key) => sourceCounts.has(key)).map((key) => [key, sourceCounts.get(key)]);
+  const supportingCount = (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0);
   const mismatchCount = (Array.isArray(records) ? records : []).filter((record) => auditIsMismatch(record, auditById.get(record.id))).length;
-  return { schemas, artifacts, supportingCount, mismatchCount, leafCount: Math.max(0, (records || []).length - supportingCount) };
+  return { schemas, artifacts, sources, supportingCount, mismatchCount, leafCount: artifactCounts.get(MaterialRole.leaf) || 0 };
 }
+
 
 function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -190,7 +195,11 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
 
 
 function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
-  const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
+  const sources = (Array.isArray(workspace.sources) ? workspace.sources : []).filter((source) => {
+    const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
+    const isLocal = kind.includes('local');
+    return !(isLocal && Number(source.count || 0) <= 0);
+  });
   if (!sources.length) return null;
   return (
     <div className="tx-source-strip workspace-source-strip tx-compact-source-strip" aria-label="Workspace sources">
@@ -208,13 +217,12 @@ function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
               {transport ? <em className="tx-source-transport" title={source.transportLabel || transport}>{transport}</em> : null}
               {source.discoveryState ? <em className={`tx-source-state tx-source-state-${source.discoveryState}`}>{source.discoveryState}</em> : null}
               {idle ? <em className="tx-source-motion-state" title="No source materialization is currently running.">idle</em> : null}
-              {closeable ? <button type="button" className="tx-source-load" aria-label={`Continue loading ${source.label || 'source'}`} title="Continue this source: choose explicit files, repo discovery, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Continue</span></button> : null}
+              {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
           );
         })}
       </div>
-      {boundary ? <small className="tx-source-boundary tx-compact-source-boundary">{boundary}</small> : null}
     </div>
   );
 }
@@ -260,7 +268,7 @@ function ProgressStrip({ workspace }) {
   return (
     <div className="tx-progress-strip tx-portal-resolution-progress" role="status" aria-live="polite" data-phase={progress.phase || 'resolving'}>
       <span>{progress.label || 'Preparing source snapshot'}</span>
-      <div className="tx-progress-bar" aria-label="Source progress"><i style={{ width: `${Math.max(0, Math.min(100, Number(progress.percent || 0)))}%` }} /></div>
+      {progress.quantified !== false && progress.percent != null ? <div className="tx-progress-bar" aria-label="Source progress"><i style={{ width: `${Math.max(0, Math.min(100, Number(progress.percent || 0)))}%` }} /></div> : <small className="tx-progress-phase">{progress.phase || 'working'}</small>}
     </div>
   );
 }
@@ -280,7 +288,7 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
-  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0);
+  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0) + (displayOptions?.sourceFilter !== 'all' ? 1 : 0);
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
@@ -770,18 +778,28 @@ function recordSourceBadge(record = {}) {
 
 function actionClassName(action = {}) {
   const id = action.id;
-  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.lineage;
-  const side = id === RecordActionKind.continue || id === RecordActionKind.reference ? 'tx-action-right' : id === RecordActionKind.open ? 'tx-action-left' : id === RecordActionKind.lineage ? 'tx-action-middle' : 'tx-action-middle';
+  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference;
+  const side = id === RecordActionKind.continue || id === RecordActionKind.reference ? 'tx-action-right' : 'tx-action-left';
   return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
 }
 
+function actionLabel(action = {}) {
+  if (action.id === RecordActionKind.open) return 'Open details';
+  if (action.id === RecordActionKind.markdown) return 'Show markdown';
+  return action.label;
+}
+
 function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction }) {
-  const actions = presentRecordActions(record).filter((action) => action.enabled !== false);
+  const actions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.lineage);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
   const sourceBadge = recordSourceBadge(record);
+  const focusLineage = () => onFocusRecordLineage?.(record.id);
+  const onKey = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusLineage(); }
+  };
   return (
-    <article className="tx-artifact-card tx-record-card tx-old-like-record-card">
+    <article className="tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card" role="button" tabIndex="0" aria-label={`Open lineage for ${record.title || 'artifact'}`} onClick={focusLineage} onKeyDown={onKey}>
       <div className="tx-card-badges tx-legacy-card-badges">
         <AuditStatusBadge record={record} item={auditItem} />
         <Badge>{schemaBadge}</Badge>
@@ -791,21 +809,21 @@ function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onS
       <h3>{record.title || 'Untitled'}</h3>
       <p>{record.summary || 'No summary available yet.'}</p>
       {record.path ? <div className="tx-card-pathline" title={record.path}><Icon name="folderOpen" />{compactPath(record.path)}</div> : null}
-      <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions">
+      <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions" onClick={(event) => event.stopPropagation()}>
         {actions.map((action) => action.href ? (
-          <a key={action.id} className={actionClassName(action)} href={action.href} target="_blank" rel="noopener noreferrer" title={action.label} aria-label={action.label}><Icon name={action.icon} /><strong>{action.label}</strong></a>
+          <a key={action.id} className={actionClassName(action)} href={action.href} target="_blank" rel="noopener noreferrer" title={actionLabel(action)} aria-label={actionLabel(action)}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></a>
         ) : (
-          <button key={action.id} type="button" className={actionClassName(action)} title={action.label} aria-label={action.label} onClick={() => {
+          <button key={action.id} type="button" className={actionClassName(action)} title={actionLabel(action)} aria-label={actionLabel(action)} onClick={() => {
             if (action.id === RecordActionKind.open) return onOpenRecord?.(record.id);
-            if (action.id === RecordActionKind.lineage) return onFocusRecordLineage?.(record.id);
             if (action.id === RecordActionKind.share) return onShareRecord?.(record);
             return onRecordAction?.(record, action);
-          }}><Icon name={action.icon} /><strong>{action.label}</strong></button>
+          }}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></button>
         ))}
       </footer>
     </article>
   );
 }
+
 
 
 export function AssetDetailDialog({ asset, onDismiss }) {
@@ -869,11 +887,32 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
 }
 
 
+export function RecordMarkdownDialog({ record, onDismiss }) {
+  return (
+    <Modal title={`Markdown · ${record?.title || 'Artifact'}`} onDismiss={onDismiss} className="tx-dialog-record-markdown">
+      <div className="tx-record-detail">
+        <div className="tx-card-badges">
+          <Badge>{record?.kind || 'artifact'}</Badge>
+          <Badge>{record?.path || 'no path'}</Badge>
+        </div>
+        {record?.markdown ? <pre className="tx-record-markdown-preview tx-full-markdown-preview">{String(record.markdown)}</pre> : <p className="tx-muted">Markdown is not available in this route/session shell. Source boundary and path are preserved.</p>}
+        <div className="tx-dialog-actions">
+          <Button variant="ghost" onClick={onDismiss}>Close</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+
 
 export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, onShare, onCreateTransition }) {
   const actionId = action?.id || action;
   if (actionId === RecordActionKind.continue) {
     return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
+  }
+  if (actionId === RecordActionKind.markdown) {
+    return <RecordMarkdownDialog record={record} onDismiss={onDismiss} />;
   }
   if (actionId === RecordActionKind.reference) {
     const draft = createReferenceDraft(record);
@@ -1014,6 +1053,7 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
   const [draft, setDraft] = useState(normalizeWorkspaceDisplayOptions(options));
   const schemaChoices = Array.isArray(counts.schemaChoices) ? counts.schemaChoices : [];
   const artifactChoices = Array.isArray(counts.artifactChoices) ? counts.artifactChoices : [];
+  const sourceChoices = Array.isArray(counts.sourceChoices) ? counts.sourceChoices : [];
   function setFlag(key, value) {
     setDraft((current) => Object.assign({}, current, { [key]: Boolean(value) }));
   }
@@ -1037,10 +1077,17 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
             </select>
           </label>
           <label className="tx-select-field">
-            <span>Artifact</span>
+            <span>Artifact role</span>
             <select value={draft.artifactFilter} onChange={(event) => setValue('artifactFilter', event.target.value)}>
-              <option value="all">All artifacts</option>
+              <option value="all">All roles</option>
               {artifactChoices.map(([value, count]) => <option key={value} value={value}>{artifactFilterLabel(value)} · {count}</option>)}
+            </select>
+          </label>
+          <label className="tx-select-field">
+            <span>Source boundary</span>
+            <select value={draft.sourceFilter} onChange={(event) => setValue('sourceFilter', event.target.value)}>
+              <option value="all">All boundaries</option>
+              {sourceChoices.map(([value, count]) => <option key={value} value={value}>{sourceFilterLabel(value)} · {count}</option>)}
             </select>
           </label>
         </div>
@@ -1086,11 +1133,13 @@ function compactSchemaOption(value = '') {
 }
 
 function artifactFilterLabel(value = '') {
+  return materialRoleLabel(value);
+}
+
+function sourceFilterLabel(value = '') {
   if (value === 'source-backed') return 'Source-backed';
-  if (value === 'leaf') return 'Leaves';
-  if (value === 'supporting') return 'Supporting docs';
   if (value === 'local') return 'Local/session';
-  return value || 'Artifact';
+  return value || 'Source boundary';
 }
 
 

@@ -54,13 +54,16 @@ const discovered = await discoverGithubMarkdownRefs(source, { fetchImpl });
 assert.deepEqual(discovered.refs, ['.topics/a.md', '.topics/nested/b.trace.md'], 'repo discovery should return only markdown under roots');
 assert.equal(discovered.ref, 'main', 'discovery should return resolved ref');
 
-const materialized = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl });
+const progressEvents = [];
+const materialized = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl, onProgress: (event) => progressEvents.push(event) });
 assert.equal(materialized.okCount, 2, 'repo discovery should load discovered markdown files');
 assert.equal(materialized.failCount, 0, 'repo discovery should not fail for mapped files');
 assert.equal(materialized.records.length, 2, 'records should be materialized');
 assert(materialized.records.every((record) => !record.source), 'adapter must not assign lifecycle source provenance');
 assert.equal(materialized.diagnostics.resolvedRef, 'main', 'adapter result should expose resolved ref');
 assert.equal(materialized.diagnostics.requests, 2, 'raw materialization should count fetch requests');
+assert(progressEvents.some((event) => event.phase === 'repo-discovery' && /Found 2 Markdown/.test(event.label || '')), 'repo discovery should emit a visible found-count progress event');
+assert(progressEvents.some((event) => event.phase === 'raw-file-load' && event.total === 2), 'raw loading should emit concrete N/M progress');
 
 const limitedFetch = makeFetch({
   [repoApi]: { json: { default_branch: 'main' } },
