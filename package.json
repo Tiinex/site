@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v190",
+  "version": "0.2.11-v191",
   "private": true,
-  "description": "Tiinex Site v190: schema-companion Lineage viewer closure with canonical schema snapshots.",
+  "description": "Tiinex Site v191: schema-binding resync and Lineage viewer focus/readability closure.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

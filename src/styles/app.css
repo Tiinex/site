@@ -6628,3 +6628,65 @@ pre { white-space: pre-wrap; overflow:auto; }
   padding: .075rem .13rem;
   gap: .22rem;
 }
+
+/* v191: Lineage viewer focus closure and schema-binding resync. The readable card copy is no longer a focusable button, so browser focus rings/icons cannot draw over artifact text. */
+.tx-lineage-viewer-card .tx-lineage-card-read-target {
+  display: block;
+  padding: .32rem 1.04rem .78rem;
+  border-radius: 0;
+  overflow: visible;
+  cursor: default;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tx-lineage-viewer-card .tx-lineage-card-read-target:focus,
+.tx-lineage-viewer-card .tx-lineage-card-read-target:focus-visible,
+.tx-lineage-viewer-card .tx-lineage-card-read-target:active {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.tx-lineage-viewer-card .tx-lineage-card-copy {
+  padding-inline-start: .58rem;
+  border-inline-start: 2px solid rgba(101,242,231,.18);
+  gap: .26rem;
+}
+.tx-lineage-viewer-card.tx-lineage-current-anchor .tx-lineage-card-copy {
+  border-inline-start-color: rgba(101,242,231,.34);
+}
+.tx-lineage-viewer-card .tx-lineage-card-copy h3 {
+  font-size: clamp(1.02rem, 1.05vw, 1.13rem);
+  line-height: 1.2;
+  letter-spacing: -.01em;
+}
+.tx-lineage-viewer-card .tx-lineage-card-copy p {
+  max-width: 58rem;
+  color: rgba(247,248,251,.72);
+  line-height: 1.38;
+}
+.tx-lineage-viewer-card .tx-lineage-card-expanded-read {
+  margin: .05rem 1.04rem .48rem;
+}
+.tx-lineage-viewer-card-actions .tx-button:focus-visible,
+.tx-lineage-viewer-card-actions .tx-lineage-extra-action:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(101,242,231,.34), 0 0 0 2px rgba(101,242,231,.12);
+}
+.tx-lineage-viewer-card-actions .tx-lineage-icon-action[aria-expanded="true"] {
+  border-color: rgba(101,242,231,.46);
+  background: rgba(101,242,231,.10);
+  color: #eafff7;
+}
+/* v191: restore the larger, centered glyph treatment without changing the home button box. */
+.tx-react-runtime .tx-logo-command img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command img {
+  width: 138%;
+  height: 138%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  object-position: center center;
+  transform: translate(.5px, 0) scale(1);
+  transform-origin: 50% 50%;
+}

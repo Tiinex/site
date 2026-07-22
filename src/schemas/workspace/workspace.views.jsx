@@ -748,12 +748,12 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
         </div>
         <span className="tx-lineage-node-role" title={`Lineage role: ${role}`}>{role}</span>
       </header>
-      <button type="button" className="tx-lineage-card-read-target" onClick={onToggle} aria-expanded={expanded} title={expanded ? 'Collapse read view' : 'Expand read view'}>
+      <div className="tx-lineage-card-read-target">
         <span className="tx-lineage-card-copy">
           <h3>{title}</h3>
           {record.summary || item.summary ? <p>{record.summary || item.summary}</p> : null}
         </span>
-      </button>
+      </div>
       {expanded ? (
         <div className="tx-lineage-card-expanded-read">
           <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp />
@@ -761,6 +761,15 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
         </div>
       ) : null}
       <footer className="tx-lineage-viewer-card-actions" onClick={(event) => event.stopPropagation()}>
+        {viewerActionButton({
+          key: 'preview',
+          icon: expanded ? 'close' : 'open',
+          label: expanded ? 'Collapse preview' : 'Preview',
+          title: expanded ? 'Collapse compact read preview' : 'Show compact read preview',
+          compact: true,
+          expanded,
+          onClick: onToggle
+        })}
         {viewerActionButton({
           key: 'anchor',
           icon: 'lineage',
@@ -778,9 +787,10 @@ function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first
   );
 }
 
-function viewerActionButton({ key, icon, label, title, compact = false, disabled = false, onClick }) {
+function viewerActionButton({ key, icon, label, title, compact = false, disabled = false, expanded = undefined, onClick }) {
+  const extraProps = expanded === undefined ? {} : { 'aria-expanded': expanded };
   return (
-    <button key={key} type="button" disabled={disabled} className={`tx-button tx-button-ghost ${compact ? 'tx-lineage-icon-action' : ''}`} onClick={onClick} title={title || label} aria-label={label}>
+    <button key={key} type="button" disabled={disabled} className={`tx-button tx-button-ghost ${compact ? 'tx-lineage-icon-action' : ''}`} onClick={onClick} title={title || label} aria-label={label} {...extraProps}>
       <Icon name={icon} /> <span className="tx-action-label">{label}</span>
     </button>
   );

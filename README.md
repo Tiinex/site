@@ -1,22 +1,16 @@
-# Tiinex Site v190
+# Tiinex Site v191
 
-v190 is a schema-companion Lineage viewer closure on top of v189. It keeps the compact peer-card Lineage direction, but removes the largest remaining hardcoded read-view drift: schema-specific read sections and Lineage actions are now resolved through schema companions rather than being owned directly by the generic workspace view.
+v191 is a focused repair on top of v190 after Q's canonical schema snapshot updates. It keeps the schema-companion Lineage viewer model, restores schema-binding validation after the snapshot content changed, and removes the remaining focus/read-target owner that could draw a large blue focus/ellipse over Lineage card text.
 
-It also canonicalizes embedded schema snapshot filenames so Tiinex/docs-backed schemas keep the exact upstream artifact names from `.topics/.schemas/README.md`.
+## v191 batch
 
-## v190 batch
-
-- Adds `src/schemas/companion.js` as the schema-owned projection/transition boundary for runtime viewer surfaces.
-- Moves schema read-section selection out of `workspace.views.jsx` and into schema companions.
-- Lets schema companions declare Lineage viewer actions for their own artifacts.
-- Keeps the generic Lineage viewer responsible only for card stack, anchoring, dialogs, markdown display, and dispatch.
-- Adds a schema-companion guard test for Evidence read projection and Lineage actions.
-- Canonicalizes embedded schema Markdown snapshot filenames, for example `tiinex.root.v1.schema.md` instead of `root.schema.md`.
-- Keeps old short snapshot names as explicit `snapshotAliases` while migration is in flight.
-- Tightens validation so schema bindings must point their `snapshot` at the canonical schema filename.
-- Splits expanded Lineage read content out of the focusable card button, removing the oversized focus/ellipse overlay over readable text.
-- Adds a schema badge link to the canonical schema snapshot when the binding provides a permalink.
-- Keeps the logo/home adjustment CSS-only.
+- Recomputes schema snapshot checksums after the repaired canonical `.schema.md` files landed on `refactor`.
+- Removes stale short-name `snapshotAliases` that pointed at deleted pre-canonical schema files.
+- Keeps canonical snapshot filenames as the binding authority, matching the current Tiinex/docs naming convention.
+- Moves the Lineage card title/summary out of a focusable read-toggle button and makes compact preview an explicit card action.
+- Adds a tighter Lineage copy indent so title and summary read more like peer artifact cards.
+- Keeps expanded read preview companion-owned and bounded; full depth remains in Open details / Show markdown.
+- Applies a final CSS-only larger centered logo treatment without changing image assets.
 
 ## Still intentionally out of scope
 
@@ -24,7 +18,8 @@ It also canonicalizes embedded schema snapshot filenames so Tiinex/docs-backed s
 - A real browser issue snapshot reader.
 - Automatic binary asset fetching.
 - Full PoC mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
-- Changing image assets; the logo adjustment is CSS-only.
+- Changing image assets; logo adjustments remain CSS-only.
+- Portable tooling paths reserved by the other LLM: `src/tooling/portable/**`, `tools/tiinex-portable.mjs`, and `docs/architecture/portable-tooling-entrypoints.md`.
 
 ## Supported local start
 

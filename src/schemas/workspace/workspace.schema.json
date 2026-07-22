@@ -15,12 +15,9 @@
   "originTrustRole": "viewer-extension",
   "checksum": {
     "algorithm": "sha256",
-    "value": "bffd0e7ec7d8bedd49da7efa9c80c525b76adc2120c092c791ab4acf73848247"
+    "value": "27d73b65f745335da79a877d3678af5497b29bed4bace218a244deeb5647c4dc"
   },
   "capabilityContract": "tiinex.schema.module.v1",
   "snapshotCompleteness": "viewer-local-workspace-schema-snapshot",
-  "bindingVersion": "tiinex.web.schema-binding.v1",
-  "snapshotAliases": [
-    "./workspace.schema.md"
-  ]
+  "bindingVersion": "tiinex.web.schema-binding.v1"
 }

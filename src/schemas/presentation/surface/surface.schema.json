@@ -13,12 +13,9 @@
   "sourceBlobSha": "22636384bd70620edf488ef919719a3c5f395978",
   "checksum": {
     "algorithm": "sha256",
-    "value": "f17e11f9e1ded8a35165045c51b3eda46f0cc52355706dfa4e741b5cf8ba0aa6"
+    "value": "37c2469e9f3d08f8d2934d47de2e1f3601203dda4868402380fc787775bea4f2"
   },
   "capabilityContract": "tiinex.schema.module.v1",
   "snapshotCompleteness": "grounded-contract-excerpt-snapshot",
-  "bindingVersion": "tiinex.web.schema-binding.v1",
-  "snapshotAliases": [
-    "./surface.schema.md"
-  ]
+  "bindingVersion": "tiinex.web.schema-binding.v1"
 }
