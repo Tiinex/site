@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { loadNodePortableInput } from './node.input.js';
@@ -42,7 +42,21 @@ try {
 
   const operationOutput = [];
   assert.equal(await runPortableCli(['operations', '--compact'], { log(value) { operationOutput.push(value); }, error() {} }), 0);
-  assert.equal(JSON.parse(operationOutput[0]).operations.some((operation) => operation.name === 'make-writer-brief'), true);
+  const operations = JSON.parse(operationOutput[0]).operations;
+  assert.equal(operations.some((operation) => operation.name === 'make-writer-brief'), true);
+  assert.equal(operations.some((operation) => operation.name === 'schema-guide'), true);
+  assert.equal(operations.some((operation) => operation.name === 'search-lineage'), true);
+
+  const searchOutput = [];
+  assert.equal(await runPortableCli(['search-lineage', nested, '--query', 'portable local'], { log(value) { searchOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(searchOutput[0]).matches.some((match) => match.path === 'artifact.md'), true);
+
+  const schemaDir = path.join(root, 'schemas');
+  await mkdir(schemaDir, { recursive: true });
+  await writeFile(path.join(schemaDir, 'tiinex.topic.v1.schema.md'), await readFile(new URL('../../../schemas/core/topic/tiinex.topic.v1.schema.md', import.meta.url), 'utf8'), 'utf8');
+  const guideOutput = [];
+  assert.equal(await runPortableCli(['schema-guide', schemaDir, '--schema', 'tiinex.topic.v1', '--task', 'create'], { log(value) { guideOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(guideOutput[0]).guide.schema, 'tiinex.llm.schema-guide.v1');
 } finally {
   await rm(root, { recursive: true, force: true });
 }

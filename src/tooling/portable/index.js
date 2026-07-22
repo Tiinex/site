@@ -5,3 +5,8 @@ export * from './operation.catalog.js';
 export * from './input/portable.input.js';
 export * from './session/portable.session.js';
 export * from './adapters/llm/llm.entrypoint.js';
+export * from './schema/schema.contract.js';
+export * from './schema/schema.guide.js';
+export * from './schema/llm.companion.js';
+export * from './lineage/lineage.search.js';
+export * from './draft/draft.operations.js';

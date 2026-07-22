@@ -9,6 +9,9 @@ import { schemaRegistry } from '../../schemas/registry.js';
 import { findSchemaMaterial, normalizePortableInput, suppliedSchemaParentId } from './input/portable.input.js';
 import { dedupePortableFindings, normalizePortableFinding, portableFinding, summarizePortableFindings } from './findings.js';
 import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
+import { searchPortableLineage as searchPortableLineageIndex } from './lineage/lineage.search.js';
+import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
+import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
 
 export const PORTABLE_RESULT_SCHEMA_ID = 'tiinex.portable.operation.result.v1';
 export const PORTABLE_SCHEMA_CHAIN_SCHEMA_ID = 'tiinex.portable.schema-chain.v1';
@@ -231,6 +234,60 @@ export function makePortableWriterBrief(input = {}, options = {}) {
     qualification,
     instructions: writerInstructions({ mode, schemaId, schemaMaterial, qualification }),
     findings
+  });
+}
+
+export function compilePortableSchemaGuide(input = {}, options = {}) {
+  const result = buildPortableSchemaGuide(input, options);
+  return operationResult('schema-guide', { guide: result.guide, findings: result.findings });
+}
+
+export function readPortableSchemaSection(input = {}, options = {}) {
+  const result = readPortableSchemaGuideSections(input, options);
+  return operationResult('read-schema-section', {
+    schemaId: result.schemaId,
+    selectors: result.selectors,
+    matches: result.matches,
+    truncated: result.truncated,
+    authority: result.authority || '',
+    path: result.path || '',
+    findings: result.findings || []
+  });
+}
+
+export function planPortableArtifactCreation(input = {}, options = {}) {
+  const result = planPortableArtifact(input, options);
+  return operationResult('plan-artifact', { plan: result.plan, guide: result.guide, findings: result.findings });
+}
+
+export function validatePortableArtifactDraft(input = {}, options = {}) {
+  const validation = validatePortableDraft(input, options);
+  return operationResult('validate-draft', { validation, findings: validation.findings || [] });
+}
+
+export function explainPortableArtifactFindings(input = {}, options = {}) {
+  const explanation = explainPortableFindings(input, options);
+  const findings = Array.isArray(input?.findings) ? input.findings : input?.validation?.findings || input?.audit?.findings || [];
+  return operationResult('explain-findings', { explanation, findings });
+}
+
+export function planPortableArtifactRepairs(input = {}, options = {}) {
+  const repairPlan = buildPortableRepairPlan(input, options);
+  const findings = Array.isArray(input?.findings) ? input.findings : input?.validation?.findings || input?.audit?.findings || [];
+  return operationResult('repair-plan', { repairPlan, findings });
+}
+
+export function searchPortableLineage(input = {}, options = {}) {
+  const search = searchPortableLineageIndex(input, options);
+  return operationResult('search-lineage', {
+    boundary: search.boundary,
+    query: search.query,
+    filters: search.filters,
+    scope: search.scope,
+    matches: search.matches,
+    page: search.page,
+    facets: search.facets,
+    findings: search.findings || []
   });
 }
 

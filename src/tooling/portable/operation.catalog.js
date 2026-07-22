@@ -1,11 +1,18 @@
 import {
   auditPortableMaterial,
+  compilePortableSchemaGuide,
+  explainPortableArtifactFindings,
   describePortableSchemaChain,
   inspectPortableCreationContract,
   inspectPortableMaterial,
+  planPortableArtifactCreation,
+  planPortableArtifactRepairs,
+  readPortableSchemaSection,
   makePortableWriterBrief,
   resolvePortableCapabilities,
-  resolvePortableLineage
+  searchPortableLineage,
+  resolvePortableLineage,
+  validatePortableArtifactDraft
 } from './engine.facade.js';
 import { openPortableSession, restorePortableSession, serializePortableSession } from './session/portable.session.js';
 import { summarizePortableFindings } from './findings.js';
@@ -61,6 +68,55 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'planning-only',
     inputSchema: 'tiinex.portable.writer-brief.request.v1',
     handler: makePortableWriterBrief
+  }),
+  'schema-guide': operation({
+    name: 'schema-guide',
+    description: 'Compile a compact task-specific LLM guide from readable schema contracts, runtime capabilities, and optional schema companion hints.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.schema-guide.request.v1',
+    handler: compilePortableSchemaGuide
+  }),
+  'read-schema-section': operation({
+    name: 'read-schema-section',
+    description: 'Retrieve bounded sections from supplied readable schema Markdown for progressive disclosure.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.schema-section.request.v1',
+    handler: readPortableSchemaSection
+  }),
+  'plan-artifact': operation({
+    name: 'plan-artifact',
+    description: 'Build an LLM-oriented artifact plan with missing inputs, required structure, validation steps, and retrieval hints.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.artifact-plan.request.v1',
+    handler: planPortableArtifactCreation
+  }),
+  'validate-draft': operation({
+    name: 'validate-draft',
+    description: 'Validate a local draft with the existing audit engine plus explicit contract-driven structural checks when readable schema material is supplied.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.draft-validation.request.v1',
+    handler: validatePortableArtifactDraft
+  }),
+  'explain-findings': operation({
+    name: 'explain-findings',
+    description: 'Translate findings into compact ownership, blocking, and repair guidance without rewriting the artifact.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.finding-explanation.request.v1',
+    handler: explainPortableArtifactFindings
+  }),
+  'repair-plan': operation({
+    name: 'repair-plan',
+    description: 'Group findings into a minimal ordered repair plan that preserves unknown content and source/continuity boundaries.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.repair-plan.request.v1',
+    handler: planPortableArtifactRepairs
+  }),
+  'search-lineage': operation({
+    name: 'search-lineage',
+    description: 'Search and filter loaded lineage by text, schema, source mode, relation role, integrity, continuity, qualification, findings, path, and traversal scope.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.lineage-search.request.v1',
+    handler: searchPortableLineage
   }),
   'serialize-session': operation({
     name: 'serialize-session',

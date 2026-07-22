@@ -1,11 +1,18 @@
 import {
   auditPortableMaterial,
+  compilePortableSchemaGuide,
+  explainPortableArtifactFindings,
   describePortableSchemaChain,
   inspectPortableCreationContract,
   inspectPortableMaterial,
+  planPortableArtifactCreation,
+  planPortableArtifactRepairs,
+  readPortableSchemaSection,
   makePortableWriterBrief,
   resolvePortableCapabilities,
-  resolvePortableLineage
+  searchPortableLineage,
+  resolvePortableLineage,
+  validatePortableArtifactDraft
 } from '../engine.facade.js';
 
 export const PORTABLE_SESSION_SCHEMA_ID = 'tiinex.portable.session.v1';
@@ -21,6 +28,13 @@ export function openPortableSession(input = {}) {
     describeSchemaChain: (request = {}, options = {}) => describePortableSchemaChain({ ...state.materials, ...request }, options),
     inspectCreationContract: (request = {}, options = {}) => inspectPortableCreationContract(request, options),
     makeWriterBrief: (request = {}, options = {}) => makePortableWriterBrief({ ...state.materials, ...request }, options),
+    schemaGuide: (request = {}, options = {}) => compilePortableSchemaGuide({ ...state.materials, ...request }, options),
+    readSchemaSection: (request = {}, options = {}) => readPortableSchemaSection({ ...state.materials, ...request }, options),
+    planArtifact: (request = {}, options = {}) => planPortableArtifactCreation({ ...state.materials, ...request }, options),
+    validateDraft: (request = {}, options = {}) => validatePortableArtifactDraft({ ...state.materials, ...request }, options),
+    explainFindings: (request = {}, options = {}) => explainPortableArtifactFindings(request, options),
+    repairPlan: (request = {}, options = {}) => planPortableArtifactRepairs(request, options),
+    searchLineage: (request = {}, options = {}) => searchPortableLineage({ ...state.materials, ...request }, options),
     snapshot: () => serializePortableSession(state),
     withFocus: (currentFocus = '') => openPortableSession({ ...state, currentFocus }),
     withDurableFinding: (finding = {}) => openPortableSession({ ...state, durableFindings: [...state.durableFindings, finding] }),
