@@ -9,6 +9,7 @@ import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
+import { hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { inferRecordMaterialRole, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
@@ -344,6 +345,7 @@ export function TiinexApp() {
     const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
     const ref = String(input.ref || '').trim();
     const label = input.label || repository;
+    const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, {
       kind: input.sourceKind || input.kind || 'github-tree',
       label,
@@ -354,15 +356,19 @@ export function TiinexApp() {
       repoDiscovery: Boolean(input.repoDiscovery),
       issueDiscovery: Boolean(input.issueDiscovery),
       issueUrls: input.issueUrls || '',
-      transportLabel: 'cache → mirror → proxy → direct'
+      transportLabel: 'cache → mirror → proxy → direct',
+      requestedSurfaces: {
+        repoFiles: { requested: Boolean(input.repoDiscovery) },
+        explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
+        issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
+      }
     });
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
       setGithubRequestPending(false);
       return;
     }
-    const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-    const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
+        const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
     const selectedOperations = [
       input.repoDiscovery ? 'repo files discovery' : '',
       fileRefs.length ? 'explicit file loading' : '',
@@ -432,7 +438,15 @@ export function TiinexApp() {
             ref: resolvedRef,
             rootPath: result.source.rootPath || rootPath,
             label: result.source.label || label,
-            discoveryState: 'deferred'
+            discoveryState: 'deferred',
+            repoDiscovery: Boolean(input.repoDiscovery),
+            issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
+            issueUrls: input.issueUrls || '',
+            requestedSurfaces: {
+              repoFiles: { requested: Boolean(input.repoDiscovery) },
+              explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
+              issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
+            }
           }));
           if (pinned?.ok) {
             finalState = pinned.state;
@@ -451,7 +465,16 @@ export function TiinexApp() {
           id: materializationSourceId,
           label: materializationSourceLabel,
           count: Number(out.okCount || 0),
-          discoveryState: sourceState
+          discoveryState: sourceState,
+          repoDiscovery: Boolean(input.repoDiscovery),
+          issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
+          issueUrls: input.issueUrls || '',
+          requestedSurfaces: {
+            repoFiles: { requested: Boolean(input.repoDiscovery) },
+            explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
+            issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
+          },
+          surfaces: out.diagnostics?.surfaces || {}
         }));
         if (updatedSource?.ok) finalState = updatedSource.state;
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
@@ -631,9 +654,9 @@ export function TiinexApp() {
     commit(defaultState(), 'push');
   }
 
-  const activeRecord = activeRecordId && active?.records ? active.records.find((record) => record.id === activeRecordId) : null;
+  const activeRecord = activeRecordId && active?.records ? hydrateUiRecord(active.records.find((record) => record.id === activeRecordId)) : null;
   const activeAsset = activeAssetId && active?.assets ? active.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
-  const actionRecord = recordAction?.recordId && active?.records ? active.records.find((record) => record.id === recordAction.recordId) : null;
+  const actionRecord = recordAction?.recordId && active?.records ? hydrateUiRecord(active.records.find((record) => record.id === recordAction.recordId)) : null;
 
   const shellClasses = [
     'tx-react-runtime',
@@ -647,7 +670,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v181-card-lineage-navigation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v186-lineage-viewer-continuity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -716,6 +739,12 @@ export function TiinexApp() {
       {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={dismissDialog} /> : null}
     </main>
   );
+}
+
+
+function hydrateUiRecord(record) {
+  if (!record) return null;
+  return hydrateGithubRecordFromSourceCache(record, { storage: typeof window !== 'undefined' ? window.localStorage : null });
 }
 
 function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPreviousWorkspace, onNextWorkspace, onCreate, onHome, onShare, onHelp, onMultiverse }) {

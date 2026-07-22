@@ -73,9 +73,12 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const [repository, setRepository] = useState(continuation?.repo || continuation?.config?.repo || '');
   const [ref, setRef] = useState(continuation?.ref || continuation?.config?.ref || '');
   const [rootPath, setRootPath] = useState(continuation?.rootPath || continuation?.config?.rootPath || '.topics');
-  const [repoDiscovery, setRepoDiscovery] = useState(true);
-  const [issueDiscovery, setIssueDiscovery] = useState(false);
-  const [issueUrls, setIssueUrls] = useState('');
+  const rememberedSurfaces = continuation?.surfaces || continuation?.requestedSurfaces || {};
+  const rememberedIssue = continuation?.surfaces?.issueSnapshots || continuation?.requestedSurfaces?.issueSnapshots || {};
+  const rememberedRepo = continuation?.surfaces?.repoFiles || continuation?.requestedSurfaces?.repoFiles || {};
+  const [repoDiscovery, setRepoDiscovery] = useState(continuation ? Boolean(rememberedRepo.requested && rememberedRepo.loaded !== rememberedRepo.discovered) : true);
+  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? Boolean(continuation.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable) : false);
+  const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '');
   const [fileRefs, setFileRefs] = useState('');
   const [error, setError] = useState('');
 
@@ -134,7 +137,7 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
       {continuation ? (
         <div className="tx-source-continuation-banner" role="status">
           <Icon name="source" />
-          <span><strong>Continue {sourceLabel}</strong><small>{continuation.count || 0} loaded · {continuation.discoveryState || 'deferred'} · choose what this existing source should read next.</small></span>
+          <span><strong>Continue {sourceLabel}</strong><small>{continuation.count || 0} loaded · {sourceContinuationSummary(continuation)}</small></span>
         </div>
       ) : null}
       <section className="tx-github-boundary-panel" aria-label="GitHub source boundary">
@@ -186,6 +189,18 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   );
 }
 
+
+
+function sourceContinuationSummary(source = {}) {
+  const surfaces = source.surfaces || source.requestedSurfaces || {};
+  const repo = surfaces.repoFiles || {};
+  const issues = surfaces.issueSnapshots || {};
+  const parts = [];
+  if (repo.requested) parts.push(Number(repo.loaded || 0) ? 'repo files loaded' : 'repo files requested');
+  if (issues.requested) parts.push(Number(issues.loaded || 0) ? 'issues loaded' : issues.deferred || issues.unavailable ? 'issue snapshots deferred' : 'issue snapshots requested');
+  if (!parts.length) parts.push(source.discoveryState || 'deferred');
+  return `${parts.join(' · ')} · continue the existing source plan.`;
+}
 
 function ExplicitUrlsForm({ onBack, onSubmit }) {
   const [urls, setUrls] = useState('');

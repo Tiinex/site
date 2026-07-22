@@ -609,16 +609,18 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           <strong><Icon name="lineage" /> {lineage.title}</strong>
           <small>Loaded-only Parent Trace/Origin resolution · no network guesses</small>
         </div>
-        <div className="tx-lineage-stats" aria-label="Lineage stats">
-          <span><strong>{lineage.stats.visibleNodes}</strong><small>nodes</small></span>
-          <span><strong>{lineage.stats.visibleEdges}</strong><small>edges</small></span>
-          <span><strong>{lineage.stats.missingEdges || 0}</strong><small>missing</small></span>
-          <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
-        </div>
+        {!selected ? (
+          <div className="tx-lineage-stats" aria-label="Lineage stats">
+            <span><strong>{lineage.stats.visibleNodes}</strong><small>nodes</small></span>
+            <span><strong>{lineage.stats.visibleEdges}</strong><small>edges</small></span>
+            <span><strong>{lineage.stats.missingEdges || 0}</strong><small>missing</small></span>
+            <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
+          </div>
+        ) : null}
       </header>
       {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onOpenAudit={onOpenAudit} onFocusRecordLineage={onFocusRecordLineage} /> : null}
       <details className="tx-lineage-workspace-overview" open={!selected} aria-label="Workspace lineage overview">
-        <summary>Workspace lineage overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
+        <summary>Diagnostics overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
         {lineage.findings.length ? (
           <div className="tx-lineage-findings" aria-label="Workspace lineage findings"><strong>Workspace findings</strong>
             {lineage.findings.slice(0, 5).map((finding, index) => (
@@ -656,47 +658,115 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 
 
 function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onOpenAudit, onFocusRecordLineage }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expandedIds, setExpandedIds] = useState(() => new Set([node.id]));
   const traversal = lineage.selectedTraversal || null;
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
-  const record = node.record || {};
-  const sourceText = node.sourceLabel || record.source?.label || (node.sourceBacked ? 'source-backed' : 'local/session');
-  const markdownAction = { id: RecordActionKind.markdown, label: 'Show markdown', icon: 'open' };
+  const pathNodes = lineageViewerNodes(node, traversal);
   const secondaryFindings = selectedSecondaryFindings(rawFindings, traversal, selectedLineage);
-  const toggleExpanded = () => setExpanded((value) => !value);
-  const onKey = (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleExpanded(); } };
+  const toggleCard = (id) => setExpandedIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const markdownAction = { id: RecordActionKind.markdown, label: 'Show markdown', icon: 'open' };
   return (
-    <section className={`tx-lineage-selected-summary tx-selected-lineage-card tx-lineage-path-card-stack ${expanded ? 'tx-selected-lineage-expanded' : ''}`} aria-label="Selected artifact lineage">
-      <article className="tx-lineage-path-card tx-lineage-path-card-selected">
-        <button type="button" className="tx-lineage-selected-primary" aria-expanded={expanded} onClick={toggleExpanded} onKeyDown={onKey}>
-          <div className="tx-lineage-card-topline">
-            <span className="tx-lineage-node-role">selected</span>
-            <div className="tx-card-badges tx-legacy-card-badges">
-              <Badge className={`tx-selected-status-badge tx-selected-status-${selectedLineage.tone || 'open'}`}>{selectedLineage.label}</Badge>
-              {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
-              <AuditStatusBadge record={record} item={auditItem} />
-              <Badge>{recordSchemaBadge(record)}</Badge>
-              <Badge>{sourceText}</Badge>
-            </div>
-          </div>
-          <h3>{node.title}</h3>
-          <p>{record.summary || selectedLineage.message}</p>
-          {node.path ? <div className="tx-card-pathline" title={node.path}><Icon name="folderOpen" />{compactPath(node.path)}</div> : null}
-          <div className="tx-lineage-selected-message">{selectedLineage.message}</div>
-          {secondaryFindings.length ? <small className="tx-lineage-secondary-note">{secondaryFindings.length} secondary recovery/audit note{secondaryFindings.length === 1 ? '' : 's'} available in Audit details.</small> : null}
-          <small className="tx-lineage-expand-hint">{expanded ? 'Hide selected read view' : 'Expand selected read view'}</small>
-        </button>
-        {expanded ? <LineageInlineRecordDetails record={record} node={node} findings={rawFindings} /> : null}
-        <div className="tx-lineage-selected-actions" onClick={(event) => event.stopPropagation()}>
-          <button type="button" onClick={() => onOpenRecord?.(node.id)}><Icon name="open" /> Open details</button>
-          <button type="button" onClick={() => onRecordAction?.(record, markdownAction)}><Icon name="open" /> Show markdown</button>
-          <button type="button" onClick={onOpenAudit}><Icon name="audit" /> Audit details</button>
+    <section className="tx-lineage-viewer tx-lineage-selected-summary tx-lineage-path-card-stack" aria-label="Lineage artifact viewer">
+      <div className="tx-lineage-viewer-intent">
+        <strong>{selectedLineage.label || 'Selected lineage'}</strong>
+        <small>{selectedLineage.message}</small>
+      </div>
+      <ol className="tx-lineage-viewer-stack" aria-label="Selected artifact and ancestor chain">
+        {pathNodes.map((item, index) => {
+          const record = item.record || (item.id === node.id ? node.record : {}) || {};
+          return (
+            <li key={item.id || index}>
+              <LineageViewerCard
+                item={Object.assign({}, item, { record })}
+                selectedId={node.id}
+                expanded={expandedIds.has(item.id)}
+                first={index === 0}
+                terminal={index === pathNodes.length - 1}
+                auditItem={item.id === node.id ? auditItem : null}
+                onToggle={() => toggleCard(item.id)}
+                onOpenRecord={onOpenRecord}
+                onRecordAction={onRecordAction}
+                onFocusRecordLineage={onFocusRecordLineage}
+                markdownAction={markdownAction}
+              />
+            </li>
+          );
+        })}
+      </ol>
+      <LineagePathResult traversal={traversal} status={selectedLineage} />
+      <details className="tx-lineage-diagnostics-details">
+        <summary>Audit and workspace diagnostics</summary>
+        <div className="tx-lineage-diagnostics-grid">
+          <span>{lineage.stats.visibleNodes} workspace nodes</span>
+          <span>{lineage.stats.visibleEdges} workspace edges</span>
+          <span>{lineage.stats.missingEdges || 0} workspace missing</span>
+          <span>{lineage.stats.visibleFindings} workspace findings</span>
+          {secondaryFindings.length ? <span>{secondaryFindings.length} selected audit note{secondaryFindings.length === 1 ? '' : 's'}</span> : null}
         </div>
-      </article>
-      {traversal ? <LineageSelectedTraversal traversal={traversal} selectedId={node.id} onFocusRecordLineage={onFocusRecordLineage} /> : null}
+        {secondaryFindings.length ? <div className="tx-lineage-findings">{secondaryFindings.slice(0, 6).map((finding, index) => <span key={`${finding.code}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`}>{finding.code}</span>)}</div> : null}
+        <button type="button" className="tx-button tx-button-ghost" onClick={onOpenAudit}><Icon name="audit" /> Audit details</button>
+      </details>
     </section>
   );
+}
+
+function lineageViewerNodes(selectedNode = {}, traversal = null) {
+  const nodes = Array.isArray(traversal?.nodes) && traversal.nodes.length ? traversal.nodes : [selectedNode];
+  const seen = new Set();
+  return nodes.filter((item) => {
+    const id = String(item?.id || '').trim();
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function LineageViewerCard({ item = {}, selectedId = '', expanded = false, first = false, terminal = false, auditItem = null, onToggle, onOpenRecord, onRecordAction, onFocusRecordLineage, markdownAction }) {
+  const record = item.record || {};
+  const isAnchor = item.id === selectedId;
+  const role = isAnchor ? 'reference point' : item.root ? 'root' : item.role || 'ancestor';
+  const title = item.title || record.title || item.id;
+  const sourceText = item.sourceLabel || record.source?.label || (item.sourceBacked ? 'source-backed' : 'local/session');
+  return (
+    <article className={`tx-lineage-viewer-card tx-lineage-path-card ${isAnchor ? 'tx-lineage-current-anchor' : ''} ${terminal ? 'tx-lineage-terminal-card' : ''}`} aria-label={`${role}: ${title}`}>
+      <header className="tx-lineage-viewer-card-header">
+        <span className="tx-lineage-node-role">{role}</span>
+        <div className="tx-card-badges tx-legacy-card-badges">
+          {isAnchor ? <Badge className="tx-selected-status-badge tx-selected-status-ok">current anchor</Badge> : null}
+          {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
+          {isAnchor ? <AuditStatusBadge record={record} item={auditItem} /> : null}
+          <Badge>{recordSchemaBadge(record || item)}</Badge>
+          <Badge>{sourceText}</Badge>
+        </div>
+      </header>
+      <button type="button" className="tx-lineage-card-read-target" onClick={onToggle} aria-expanded={expanded}>
+        <h3>{title}</h3>
+        {record.summary || item.summary ? <p>{record.summary || item.summary}</p> : null}
+        <SchemaReadView record={record} compact={!expanded} />
+        {item.path || record.path ? <div className="tx-card-pathline" title={item.path || record.path}><Icon name="folderOpen" />{compactPath(item.path || record.path)}</div> : null}
+        <small className="tx-lineage-expand-hint">{expanded ? 'Collapse read view' : 'Expand read view'}</small>
+      </button>
+      <footer className="tx-lineage-viewer-card-actions" onClick={(event) => event.stopPropagation()}>
+        <button type="button" disabled={isAnchor} className="tx-button tx-button-ghost" onClick={() => onFocusRecordLineage?.(item.id)} title={isAnchor ? 'This card is the current lineage reference point' : 'Move lineage reference point to this artifact'}><Icon name="lineage" /> {isAnchor ? 'Anchored' : 'Anchor here'}</button>
+        <button type="button" className="tx-button tx-button-ghost" onClick={() => onOpenRecord?.(item.id)}><Icon name="open" /> Open details</button>
+        <button type="button" className="tx-button tx-button-ghost" onClick={() => onRecordAction?.(record, markdownAction)}><Icon name="open" /> Show markdown</button>
+      </footer>
+    </article>
+  );
+}
+
+function LineagePathResult({ traversal = null, status = {} }) {
+  if (!traversal) return null;
+  const stats = traversal.stats || {};
+  const missing = Array.isArray(traversal.missingEdges) ? traversal.missingEdges : [];
+  if (traversal.rootReached) return <div className="tx-lineage-terminal-status tx-ok"><Icon name="check" /> Lineage root reached</div>;
+  if (missing.length) return <div className="tx-lineage-terminal-status tx-mismatch"><Icon name="warning" /> Missing parent · {stats.missingEdges || missing.length}</div>;
+  return <div className="tx-lineage-terminal-status"><Icon name="lineage" /> {status.label || 'Lineage path loaded'}</div>;
 }
 
 function LineageSelectedTraversal({ traversal = {}, selectedId = '', onFocusRecordLineage }) {

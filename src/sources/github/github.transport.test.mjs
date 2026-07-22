@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildGithubTransportPlan, createGithubTransportFetch } from './github.transport.js';
+import { buildGithubTransportPlan, createGithubTransportFetch, hydrateGithubRecordFromSourceCache } from './github.transport.js';
 
 function makeResponse(body, options = {}) {
   const text = typeof body === 'string' ? body : JSON.stringify(body || {});
@@ -63,5 +63,17 @@ const proxyRes = await proxyRuntime.fetch('https://raw.githubusercontent.com/own
 assert.equal(await proxyRes.text(), '# direct fallback');
 assert(proxyEvents.some((event) => event.code === 'github.transport.proxy.configured-unavailable'), 'configured git proxy without raw reader must be explicit, not silently claimed');
 assert(proxyEvents.some((event) => event.code === 'github.transport.direct.ok'), 'direct fallback should remain explicit');
+
+
+
+const hydrated = hydrateGithubRecordFromSourceCache({
+  id: 'source:gh:.topics/a.md',
+  title: 'A',
+  path: '.topics/a.md',
+  sourceMode: 'source-backed',
+  source: { id: 'gh', adapterId: 'github', repo: 'owner/repo', ref: 'main', rootPath: '.topics' }
+}, { sourceCache: cache });
+assert.equal(hydrated.markdown, '# cached document', 'source-backed record shells should hydrate readable Markdown from the source text cache');
+assert.equal(hydrated.materialAvailability, 'available', 'cache-hydrated source record should become readable in detail/markdown views');
 
 console.log('github transport ladder: ok');

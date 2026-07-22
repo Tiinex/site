@@ -6045,3 +6045,135 @@ pre { white-space: pre-wrap; overflow:auto; }
     justify-content: flex-start;
   }
 }
+
+/* v186: lineage mode is a viewer with equal artifact cards; diagnostics move behind intentful controls. */
+.tx-lineage-header:has(+ .tx-lineage-viewer) {
+  background: rgba(15, 23, 42, 0.24);
+}
+.tx-lineage-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: .82rem;
+  min-width: 0;
+}
+.tx-lineage-viewer-intent {
+  display: grid;
+  gap: .18rem;
+  padding: .62rem .72rem;
+  border: 1px solid rgba(128,255,214,.2);
+  border-radius: .9rem;
+  background: rgba(128,255,214,.045);
+}
+.tx-lineage-viewer-intent strong {
+  color: #eafff7;
+  font-size: .9rem;
+}
+.tx-lineage-viewer-intent small {
+  color: rgba(226,232,240,.66);
+}
+.tx-lineage-viewer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: .74rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.tx-lineage-viewer-card {
+  display: grid;
+  gap: .66rem;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(31,28,43,.72), rgba(13,16,25,.92));
+  padding: .78rem .86rem;
+  box-sizing: border-box;
+}
+.tx-lineage-viewer-card.tx-lineage-current-anchor {
+  border-color: rgba(101,242,231,.32);
+  box-shadow: 0 0 0 1px rgba(101,242,231,.08) inset;
+}
+.tx-lineage-viewer-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .7rem;
+  min-width: 0;
+}
+.tx-lineage-viewer-card-header .tx-card-badges {
+  justify-content: flex-end;
+  min-width: 0;
+}
+.tx-lineage-card-read-target {
+  display: grid;
+  gap: .56rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tx-lineage-card-read-target:focus-visible {
+  outline: 2px solid rgba(101,242,231,.44);
+  outline-offset: 3px;
+  border-radius: .8rem;
+}
+.tx-lineage-card-read-target h3 {
+  margin: 0;
+  color: #fff7ff;
+  font-size: 1rem;
+}
+.tx-lineage-card-read-target p {
+  margin: 0;
+  color: rgba(247,248,251,.7);
+  line-height: 1.36;
+}
+.tx-lineage-viewer-card-actions {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: .58rem;
+}
+.tx-lineage-viewer-card-actions .tx-button[disabled] {
+  opacity: .66;
+  cursor: default;
+}
+.tx-lineage-diagnostics-details {
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: .9rem;
+  background: rgba(255,255,255,.025);
+  padding: .62rem .72rem;
+}
+.tx-lineage-diagnostics-details > summary {
+  cursor: pointer;
+  color: rgba(214,204,229,.72);
+  font-weight: 800;
+}
+.tx-lineage-diagnostics-grid {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin: .65rem 0;
+}
+.tx-lineage-diagnostics-grid span {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  padding: .28rem .5rem;
+  color: rgba(226,232,240,.68);
+  font-size: .76rem;
+}
+.tx-lineage-terminal-status.tx-mismatch {
+  border-color: rgba(255,107,138,.5);
+  color: #ffd8df;
+  background: rgba(255,107,138,.12);
+}
+@media (max-width: 760px) {
+  .tx-lineage-viewer-card-header { flex-direction: column; }
+  .tx-lineage-viewer-card-header .tx-card-badges { justify-content: flex-start; }
+}

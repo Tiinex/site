@@ -1,6 +1,6 @@
-# Tiinex Site v185 Validation Notes
+# Tiinex Site v186 Validation Notes
 
-v185 follows the v184 usage-video review and Q's transport feedback: current tests had mostly exercised direct GitHub raw/API transport, while the PoC uses an ordered source access model: cache first, then mirror, then proxy, and direct as last fallback when configured/available.
+v186 follows the v185 usage-video review and Q's lineage-mode feedback: selected Lineage should feel like a viewer made of equal artifact cards, not a debugger report where only the originally selected card is fully interactive. It also closes the observed continuity symptom where a loaded/source-backed Tree leaf could open a Detail dialog without Markdown body when the same source text was already available in the source cache.
 
 ## Validation run in workspace
 
@@ -9,7 +9,7 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/sources/github/github.loader.js src/sources/github/github.transport.js src/adapters/github/github.adapter.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/workspaces/workspace.lifecycle.js src/sources/github/github.transport.js
 ```
 
 All completed successfully in the workspace.
@@ -18,28 +18,28 @@ All completed successfully in the workspace.
 
 ```txt
 node src/sources/github/github.transport.test.mjs
-node src/adapters/github/github.adapter.test.mjs
+node src/workspaces/workspace.lifecycle.test.mjs
 ```
 
-These cover:
+These now cover:
 
-- configured transport order: cache → mirror → proxy → direct;
-- cache hit before direct fallback;
-- configured mirror hit before direct fallback;
-- configured proxy without a browser raw reader is explicit skipped/unavailable state, not a silent proxy claim;
-- GitHub adapter still materializes repo Markdown and reports per-surface diagnostics.
+- source-backed route/tree/detail shells can hydrate readable Markdown from the source text cache;
+- cache-hydrated source material discloses `materialAvailability: available` for read/detail views;
+- configured sources preserve requested/deferred discovery surfaces for continuation;
+- existing transport ladder checks from v185 still cover cache → mirror → proxy → direct order.
 
 ## Browser test focus
 
-1. Add GitHub source from empty workspace. The dialog/receipt should describe cache → mirror → proxy → direct, not direct-only.
-2. Load Tiinex/docs twice in the same browser/session. The second run should show cache-hit diagnostics and feel less direct/network dominated.
-3. With configured mirror/proxy unavailable, the receipt should make skipped/unavailable tiers explicit and then fall back to direct.
-4. Issue snapshots should remain a visible deferred/unavailable surface, not collapse into only a generic warning count.
-5. Lineage from v184 should remain stable: selected/root/ancestor card stack without overlap.
+1. Open a multi-node Lineage path. Each node should be a separate artifact card with comparable rendering and actions.
+2. Use `Anchor here` on an ancestor/root card. It should move the Lineage reference point to that card.
+3. `Open details` and `Show markdown` should work from ancestor/root cards, not only from the original selected card.
+4. Workspace diagnostics should stay behind the diagnostics/details surface, not dominate the viewer.
+5. Open a source-backed Tree leaf after GitHub import. If the source text was cached during import, Detail/Markdown should be readable instead of saying the embedded body is missing.
+6. Reopen Discover on a source where issue snapshots were requested but deferred. The continuation dialog should remember the deferred issue surface rather than defaulting only to repo files.
 
 ## Known limits
 
 - Full `npm run test` was not run here because the Vite/React build-smoke path requires installed dependencies.
-- v185 does not implement partial record promotion during import; material may still become visible atomically after the materialization result is formed.
-- v185 does not implement a real issue snapshot browser reader.
-- v185 does not implement binary asset fetching.
+- v186 does not implement partial record promotion during import.
+- v186 does not implement a real issue snapshot browser reader.
+- v186 does not implement binary asset fetching.

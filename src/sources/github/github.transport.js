@@ -107,6 +107,51 @@ export function createGithubTransportFetch(source = {}, options = {}) {
   return Object.freeze({ fetch: transportFetch, plan, events });
 }
 
+
+export function githubRawUrlForSourcePath(source = {}, path = '') {
+  const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
+  const ref = String(source.ref || source.config?.ref || '').trim();
+  const cleanPath = String(path || '').trim().replace(/^\/+/, '').replace(/\\/g, '/').replace(/\/{2,}/g, '/');
+  if (!repo || !ref || !cleanPath) return '';
+  const [owner, name] = repo.split('/');
+  return `https://raw.githubusercontent.com/${owner}/${name}/${ref}/${cleanPath}`;
+}
+
+export function readGithubCachedTextForSourcePath(source = {}, path = '', options = {}) {
+  const url = githubRawUrlForSourcePath(source, path);
+  if (!url) return null;
+  const key = cacheKeyFor(url, 'raw-markdown');
+  const memory = options.sourceCache || moduleMemoryCache;
+  const storage = options.storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  const mem = readObject(memory, key);
+  if (mem?.body != null) return { body: String(mem.body || ''), contentType: mem.contentType || '', url, key, cache: 'memory' };
+  try {
+    const raw = storage?.getItem?.(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.body != null) {
+      writeObject(memory, key, parsed);
+      return { body: String(parsed.body || ''), contentType: parsed.contentType || '', url, key, cache: 'localStorage' };
+    }
+  } catch (_) {}
+  return null;
+}
+
+export function hydrateGithubRecordFromSourceCache(record = {}, options = {}) {
+  if (String(record.markdown || '').trim()) return record;
+  const source = record.source || {};
+  const adapter = String(source.adapterId || record.sourceMode || '').toLowerCase();
+  if (!adapter.includes('github') && !String(record.sourceMode || '').toLowerCase().includes('source-backed')) return record;
+  const cached = readGithubCachedTextForSourcePath(source, record.path || record.name || '', options);
+  if (!cached?.body) return record;
+  return Object.assign({}, record, {
+    markdown: cached.body,
+    materialAvailability: 'available',
+    materialUnavailable: false,
+    cacheState: `source-text-cache-hydrated:${cached.cache || 'cache'}`
+  });
+}
+
 function normalizeOrder(input = DEFAULT_ORDER) {
   const values = (Array.isArray(input) ? input : String(input || '').split(/[>,\s]+/))
     .map((item) => String(item || '').trim().toLowerCase())
