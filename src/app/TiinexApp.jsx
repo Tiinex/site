@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { schemaRegistry } from '../schemas/registry.js';
 import { Button } from '../ui/primitives/Button.jsx';
 import { Badge } from '../ui/primitives/Badge.jsx';
@@ -41,7 +41,7 @@ function defaultState() {
   return runtime().lifecycle?.makeEmptyAppState?.() || {
     version: 1,
     activeWorkspaceId: '',
-    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' }, expandedTreeFolders: [] },
+    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' }, expandedTreeFolders: [] },
     workspaces: [],
     audit: null
   };
@@ -200,6 +200,7 @@ export function TiinexApp() {
   const [recordAction, setRecordAction] = useState(null);
   const [githubRequestPending, setGithubRequestPending] = useState(false);
   const [sourceContinuationId, setSourceContinuationId] = useState('');
+  const viewScrollRef = useRef({});
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const viewportWidth = useViewportWidth();
@@ -234,9 +235,43 @@ export function TiinexApp() {
   }, [notice]);
 
   function commit(nextState, mode = 'push') {
-    setState(nextState);
-    if (nextState?.workspaces?.length) runtime().persistence?.writeState?.(nextState, { mode });
+    const withScroll = preserveCapturedViewScroll(nextState);
+    setState(withScroll);
+    if (withScroll?.workspaces?.length) runtime().persistence?.writeState?.(withScroll, { mode });
     else runtime().persistence?.clearState?.({ mode });
+  }
+
+  function viewScrollKeyFor(sourceState = state, viewOverride = null) {
+    const view = viewOverride || sourceState?.view || {};
+    const workspaceId = sourceState?.activeWorkspaceId || active?.id || 'workspace';
+    const verse = view.workspaceVerse || 'feed';
+    const query = view.query || '';
+    const selected = verse === 'lineage' ? (view.selectedRecordId || '') : '';
+    const display = view.displayOptions ? JSON.stringify(view.displayOptions) : '';
+    return `${workspaceId}:${verse}:${query}:${selected}:${display}`;
+  }
+
+  function preserveCapturedViewScroll(nextState = state) {
+    const key = viewScrollKeyFor(state);
+    const top = viewScrollRef.current[key];
+    if (!Number.isFinite(Number(top))) return nextState;
+    const next = structuredClone(nextState);
+    const scrollPositions = Object.assign({}, next.view?.scrollPositions || {});
+    scrollPositions[key] = Math.max(0, Math.round(Number(top)));
+    next.view = Object.assign({}, next.view || {}, { scrollPositions });
+    return next;
+  }
+
+  function noteViewScroll(verse, top) {
+    const view = Object.assign({}, state.view || {}, { workspaceVerse: verse || state.view?.workspaceVerse || 'feed' });
+    viewScrollRef.current[viewScrollKeyFor(state, view)] = Math.max(0, Math.round(Number(top || 0)));
+  }
+
+  function currentStageScrollTop() {
+    const key = viewScrollKeyFor(state);
+    const fromRef = viewScrollRef.current[key];
+    if (Number.isFinite(Number(fromRef))) return Number(fromRef);
+    return Number(state.view?.scrollPositions?.[key] || 0);
   }
 
   function openCreate() {
@@ -536,7 +571,7 @@ export function TiinexApp() {
     setActiveRecordId('');
     if (!id) return;
     const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'lineage', selectedRecordId: id });
+    next.view = Object.assign({}, next.view || {}, { workspaceVerse: 'lineage', selectedRecordId: id, expandedLineageRecordIds: [] });
     commit(next, 'push');
   }
 
@@ -632,10 +667,28 @@ export function TiinexApp() {
   }
 
   function setVerse(verse) {
+    const currentVerse = state.view?.workspaceVerse || 'feed';
+    if ((verse === 'feed' || verse === 'tree') && currentVerse === 'lineage' && Array.isArray(state.view?.expandedLineageRecordIds) && state.view.expandedLineageRecordIds.length) {
+      const collapsed = structuredClone(state);
+      collapsed.view = Object.assign({}, collapsed.view || {}, { expandedLineageRecordIds: [] });
+      commit(collapsed, 'replace');
+      return;
+    }
     const next = runtime().lifecycle?.setWorkspaceVerse?.(state, verse) || state;
     if (verse === 'feed' || verse === 'tree') {
-      next.view = Object.assign({}, next.view || {}, { selectedRecordId: '' });
+      next.view = Object.assign({}, next.view || {}, { selectedRecordId: '', expandedLineageRecordIds: [] });
     }
+    commit(next, 'push');
+  }
+
+  function toggleLineageCard(recordId) {
+    const id = String(recordId || '').trim();
+    if (!id) return;
+    const next = structuredClone(state);
+    const current = new Set(Array.isArray(next.view?.expandedLineageRecordIds) ? next.view.expandedLineageRecordIds : []);
+    if (current.has(id)) current.delete(id);
+    else current.add(id);
+    next.view = Object.assign({}, next.view || {}, { expandedLineageRecordIds: Array.from(current) });
     commit(next, 'push');
   }
 
@@ -727,6 +780,10 @@ export function TiinexApp() {
           onRecordAction={openRecordAction}
           onToggleTreeFolder={toggleTreeFolder}
           onSourceTransportRefresh={refreshSourceTransport}
+          onViewScroll={noteViewScroll}
+          stageScrollTop={currentStageScrollTop()}
+          expandedLineageRecordIds={state.view?.expandedLineageRecordIds || []}
+          onToggleLineageCard={toggleLineageCard}
         />
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />

@@ -1,26 +1,26 @@
-# Tiinex Site v194
+# Tiinex Site v195
 
-v194 is a focused source-plan reconciliation pass on top of v193 plus the additive portable-tooling slice. It does not change portable-tooling ownership paths and does not reopen Feed ranking, partial promotion, issue-reader implementation, mirror/proxy parity, or Lineage polish.
+v195 is a display/tree/view-state parity pass on top of v194. It keeps the v194 source-plan reconciliation and the portable-tooling slice intact, but moves the next user-observed issues to their actual owners: leaf/material-role truth, Display options defaults, Lineage card interaction semantics, and view scroll continuity.
 
-## v194 batch
+## v195 batch
 
-- Normalizes GitHub source plans into explicit surfaces: boundary, repo files, explicit files, and issue snapshots.
-- Keeps per-surface result state: requested, attempted, discovered/targets, loaded, failed, deferred, skipped, and unavailable.
-- Preserves per-record material attribution for GitHub-loaded Markdown: source target, surface, target kind, and transport tier.
-- Prevents issue/discussion targets from being counted as repo-file results when the issue reader is deferred.
-- Makes invalid explicit issue URLs stay owned by the explicit-files surface instead of becoming repo-file material.
-- Adds transport outcome diagnostics separate from the configured transport plan: attempted tiers and winning tiers are separate claims.
-- Persists source plan, record attribution, and transport outcome on the configured source after materialization.
-- Surfaces compact per-surface receipt details in the workspace material summary when a source result is degraded or warning-bearing.
+- Changes the default Discovery presentation to `Leaves only` on, matching the PoC-style leaf workspace default.
+- Removes the visible `Leaves first` option from Display options; it remains only as an internal/migration field.
+- Narrows material-role inference so schema/source/adapter/support surfaces are not promoted to work leaves merely because they carry a schema id or continuity envelope.
+- Adds a focused material-role guard for trace leaves, schema snapshots, adapter/source support material, and plain supporting Markdown.
+- Keeps Discovery and Lineage on the same RecordCard surface, but changes Lineage card click to expand/collapse the card read preview.
+- Keeps anchor/reference-point movement as an explicit Lineage action instead of overloading the whole card click.
+- Stores and restores view scroll positions across Discovery → Lineage → Back / browser Back-Forward.
+- Keeps portable-tooling paths untouched.
 
 ## Still intentionally out of scope
 
-- Feed ranking/product sorting decisions.
+- Feed ranking/product sorting decisions beyond removing the confusing default role-first toggle.
 - Partial record promotion during GitHub import.
 - A real browser issue snapshot reader.
 - Automatic binary asset fetching.
 - Full PoC mirror/proxy snapshot parity beyond current diagnostics and available browser readers.
-- Lineage-card UX polish.
+- General Lineage redesign; the current unified RecordCard chain is preserved.
 - Portable-tooling changes.
 
 ## Supported local start
@@ -42,7 +42,7 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/schemas/companion.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js
 ```
 
 `npm run build:public` still requires installed Vite/React dependencies.

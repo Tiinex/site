@@ -25,7 +25,7 @@ export function inferRecordMaterialRole(record = {}) {
 
   if (isWorkspaceCandidatePath(path) || kind.includes('workspace')) return MaterialRole.workspaceCandidate;
   if (isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
-  if (kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
+  if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
   if (hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
   if (markdown.trim()) return MaterialRole.supporting;
   if (sourceBoundaryClass(record) === 'source-backed' && (schema || record.hasContinuityContext || record.hasIntegrity)) return MaterialRole.leaf;
@@ -67,11 +67,96 @@ function normalizeMaterialRole(value = '') {
 }
 
 function hasDeclaredTiinexLeaf(record = {}, markdown = '') {
-  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return true;
-  if (record.schemaId || record.currentSchemaId || record.envelopeSchemaId) return true;
-  if (/^\s*#\s*Continuity Context\b/im.test(markdown)) return true;
-  if (/^\s*Current Schema\s*:/im.test(markdown) || /^\s*Envelope Schema\s*:/im.test(markdown)) return true;
+  const path = String(record.path || record.name || '').toLowerCase();
+  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
+  if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema)) return false;
+  if (path.endsWith('.trace.md')) return true;
+  if (record.trace || record.parentSchemaId) return true;
+  if (record.hasContinuityContext || record.hasIntegrity || /^\s*#\s*Continuity Context\b/im.test(markdown)) {
+    return !isKnownSupportSchema(schema);
+  }
+  if (schema && !isKnownSupportSchema(schema) && isKnownWorkSchema(schema)) return true;
   return false;
+}
+
+function isKnownSupportSchema(schema = '') {
+  const value = String(schema || '').toLowerCase();
+  if (!value) return false;
+  return value === 'tiinex.root.v1'
+    || value.startsWith('tiinex.source.')
+    || value.startsWith('tiinex.access.')
+    || value.startsWith('tiinex.origin.')
+    || value.startsWith('tiinex.digital.origin.')
+    || value.startsWith('tiinex.natural.origin.')
+    || value.startsWith('tiinex.tool.')
+    || value.startsWith('tiinex.interface.')
+    || value.startsWith('tiinex.adapter.')
+    || value.startsWith('tiinex.digital.adapter.')
+    || value.startsWith('tiinex.schema.')
+    || value.startsWith('tiinex.presentation.surface.')
+    || value.startsWith('tiinex.validation.method.');
+}
+
+function isKnownWorkSchema(schema = '') {
+  const value = String(schema || '').toLowerCase();
+  if (!value) return false;
+  return value.startsWith('tiinex.topic.')
+    || value.startsWith('tiinex.task.')
+    || value.startsWith('tiinex.preservation.')
+    || value.startsWith('tiinex.evidence.')
+    || value.startsWith('tiinex.feedback.')
+    || value.startsWith('tiinex.decision.')
+    || value.startsWith('tiinex.pointer.')
+    || value.startsWith('tiinex.signal.')
+    || value.startsWith('tiinex.interpretation.')
+    || value.startsWith('tiinex.lineage.')
+    || value.startsWith('tiinex.party.')
+    || value.startsWith('tiinex.event.')
+    || value.startsWith('tiinex.project.')
+    || value.startsWith('tiinex.milestone.')
+    || value.startsWith('tiinex.schedule.')
+    || value.startsWith('tiinex.invitation.')
+    || value.startsWith('tiinex.availability.')
+    || value.startsWith('tiinex.discovery.')
+    || value.startsWith('tiinex.resource.')
+    || value.startsWith('tiinex.instrument.')
+    || value.startsWith('tiinex.transition.')
+    || value.startsWith('tiinex.relation.')
+    || value.startsWith('tiinex.validation.finding.')
+    || value.startsWith('tiinex.validation.report.')
+    || value.startsWith('tiinex.runtime.')
+    || value.startsWith('tiinex.ai.runtime.')
+    || value.startsWith('tiinex.machine.runtime.')
+    || value.startsWith('tiinex.reduction.')
+    || value.startsWith('tiinex.redaction.')
+    || value.startsWith('tiinex.privacy.')
+    || value.startsWith('tiinex.attestation.')
+    || value.startsWith('tiinex.external.')
+    || value.startsWith('tiinex.traversal.')
+    || value.startsWith('tiinex.quantum.')
+    || value.startsWith('tiinex.portal.')
+    || value.startsWith('tiinex.interaction.')
+    || value.startsWith('tiinex.question.')
+    || value.startsWith('tiinex.condition.')
+    || value.startsWith('tiinex.claim.')
+    || value.startsWith('tiinex.derivation.')
+    || value.startsWith('tiinex.annotation.')
+    || value.startsWith('tiinex.artifact.annotation.');
+}
+
+function isKnownSupportSurfacePath(path = '') {
+  const value = String(path || '').toLowerCase();
+  return value.includes('/.schemas/')
+    || value.includes('/schemas/')
+    || value.includes('/schema/')
+    || value.includes('/.adapters/')
+    || value.includes('/adapters/')
+    || value.includes('/.tools/')
+    || value.includes('/tools/')
+    || value.includes('/.interfaces/')
+    || value.includes('/interfaces/')
+    || value.endsWith('/readme.md')
+    || value.endsWith('readme.md');
 }
 
 function isSchemaDefinitionPath(path = '') {

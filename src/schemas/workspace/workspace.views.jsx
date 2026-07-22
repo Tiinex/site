@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { TextField } from '../../ui/primitives/Field.jsx';
@@ -17,8 +17,8 @@ import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceB
 import { schemaReadPresentation } from '../companion.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
-  leavesFirst: true,
-  leavesOnly: false,
+  leavesFirst: false,
+  leavesOnly: true,
   mismatchesOnly: false,
   showSupportingMarkdown: false,
   showWorkspaceCandidates: true,
@@ -31,8 +31,8 @@ const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
 export function normalizeWorkspaceDisplayOptions(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
   return {
-    leavesFirst: source.leavesFirst !== false ? DEFAULT_DISPLAY_OPTIONS.leavesFirst : false,
-    leavesOnly: source.leavesOnly === true,
+    leavesFirst: source.leavesFirst === true,
+    leavesOnly: source.leavesOnly !== false,
     mismatchesOnly: source.mismatchesOnly === true,
     showSupportingMarkdown: source.showSupportingMarkdown === true ? true : DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown,
     showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
@@ -131,7 +131,15 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], onToggleLineageCard }) {
+  const stageRef = useRef(null);
+  const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const top = Number(stageScrollTop || 0);
+    stage.scrollTop = Number.isFinite(top) && top > 0 ? top : 0;
+  }, [restoreKey, stageScrollTop]);
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
@@ -175,11 +183,11 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <WorkspaceMaterialSummary summary={materialSummary} />
       <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} />
       <ProgressStrip workspace={workspace} />
-      <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
+      <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenAudit={() => onVerse('audit')} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenAudit={() => onVerse('audit')} expandedRecordIds={expandedLineageRecordIds} onToggleLineageCard={onToggleLineageCard} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -680,7 +688,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           </div>
         ) : null}
       </header>
-      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onOpenAudit={onOpenAudit} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} /> : null}
+      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onOpenAudit={onOpenAudit} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} /> : null}
       {!selected ? (
         <details className="tx-lineage-workspace-overview" open aria-label="Workspace lineage overview">
           <summary>Diagnostics overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
@@ -721,7 +729,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onShareRecord, onOpenAudit, onFocusRecordLineage, auditById = new Map() }) {
+function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onShareRecord, onOpenAudit, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard }) {
   const traversal = lineage.selectedTraversal || null;
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
@@ -740,6 +748,9 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
               <RecordCard
                 record={record}
                 auditItem={audit}
+                context="lineage"
+                expanded={expandedRecordIds.includes(record.id)}
+                onToggleExpanded={onToggleLineageCard}
                 onOpenRecord={onOpenRecord}
                 onFocusRecordLineage={onFocusRecordLineage}
                 onShareRecord={onShareRecord}
@@ -958,20 +969,28 @@ function actionClassName(action = {}) {
 function actionLabel(action = {}) {
   if (action.id === RecordActionKind.open) return 'Open details';
   if (action.id === RecordActionKind.markdown) return 'Show markdown';
+  if (action.id === RecordActionKind.lineage) return 'Anchor';
   return action.label;
 }
 
-function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction }) {
-  const actions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.lineage && action.id !== RecordActionKind.reference);
+function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
+  const lineageContext = context === 'lineage';
+  const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference);
+  const actions = lineageContext
+    ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
+    : baseActions.filter((action) => action.id !== RecordActionKind.lineage);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
   const sourceBadge = recordSourceBadge(record);
-  const focusLineage = () => onFocusRecordLineage?.(record.id);
+  const primaryClick = () => {
+    if (lineageContext) return onToggleExpanded?.(record.id);
+    return onFocusRecordLineage?.(record.id);
+  };
   const onKey = (event) => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focusLineage(); }
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); primaryClick(); }
   };
   return (
-    <article className="tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card" role="button" tabIndex="0" aria-label={`Focus lineage for ${record.title || 'artifact'}`} onClick={focusLineage} onKeyDown={onKey}>
+    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey}>
       <div className="tx-card-badges tx-legacy-card-badges">
         <AuditStatusBadge record={record} item={auditItem} />
         {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
@@ -982,12 +1001,18 @@ function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onS
       <h3>{record.title || 'Untitled'}</h3>
       <p>{record.summary || 'No summary available yet.'}</p>
       {record.path ? <div className="tx-card-pathline" title={record.path}><Icon name="folderOpen" />{compactPath(record.path)}</div> : null}
+      {lineageContext && expanded ? (
+        <div className="tx-record-card-read-preview" onClick={(event) => event.stopPropagation()}>
+          <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp />
+        </div>
+      ) : null}
       <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions" onClick={(event) => event.stopPropagation()}>
         {actions.map((action) => action.href ? (
           <a key={action.id} className={actionClassName(action)} href={action.href} target="_blank" rel="noopener noreferrer" title={actionLabel(action)} aria-label={actionLabel(action)}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></a>
         ) : (
           <button key={action.id} type="button" className={actionClassName(action)} title={actionLabel(action)} aria-label={actionLabel(action)} onClick={() => {
             if (action.id === RecordActionKind.open) return onOpenRecord?.(record.id);
+            if (action.id === RecordActionKind.lineage) return onFocusRecordLineage?.(record.id);
             if (action.id === RecordActionKind.share) return onShareRecord?.(record);
             return onRecordAction?.(record, action);
           }}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></button>
@@ -1296,16 +1321,12 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
           </label>
         </div>
         <label className="tx-display-option-row tx-display-option-primary">
-          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} likely Tiinex/work leaf{Number(counts.leaves || 0) === 1 ? '' : 's'} · hides supporting Markdown</small></span>
+          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} Tiinex/work leaf{Number(counts.leaves || 0) === 1 ? '' : 's'} · hides supporting Markdown</small></span>
           <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">
           <span><strong>Mismatches only</strong><small>{Number(counts.mismatches || 0)} record{Number(counts.mismatches || 0) === 1 ? '' : 's'} currently carry mismatch-level audit status</small></span>
           <input id="displayMismatchesOnly" type="checkbox" checked={draft.mismatchesOnly} onChange={(event) => setFlag('mismatchesOnly', event.target.checked)} />
-        </label>
-        <label className="tx-display-option-row">
-          <span><strong>Leaves first</strong><small>Sort Tiinex/work artifacts before schema/support docs when those docs are visible</small></span>
-          <input id="displayLeavesFirst" type="checkbox" checked={draft.leavesFirst} onChange={(event) => setFlag('leavesFirst', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">
           <span><strong>Supporting docs</strong><small>{Number(counts.supportingMarkdown || 0)} supporting doc{Number(counts.supportingMarkdown || 0) === 1 ? '' : 's'} · preserved but hidden by default</small></span>

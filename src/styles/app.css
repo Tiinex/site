@@ -6783,3 +6783,27 @@ pre { white-space: pre-wrap; overflow:auto; }
   color: var(--muted);
   font-size: 0.68rem;
 }
+
+/* v195: Lineage reuses Discovery cards, with card click owning local read expansion. */
+.tx-lineage-as-record-card.tx-record-card-expanded {
+  border-color: rgba(101, 242, 231, .34);
+  background: linear-gradient(180deg, rgba(101,242,231,.055), rgba(255,255,255,.03));
+}
+.tx-lineage-as-record-card .tx-record-card-read-preview {
+  margin: .42rem 0 .12rem;
+  padding: .62rem .68rem;
+  border: 1px solid rgba(101, 242, 231, .18);
+  border-radius: .78rem;
+  background: rgba(15, 23, 42, .32);
+}
+.tx-lineage-as-record-card .tx-record-card-read-preview .tx-schema-read-section {
+  margin: .36rem 0;
+}
+.tx-lineage-as-record-card .tx-record-card-read-preview .tx-schema-read-section pre {
+  max-height: 9.6rem;
+  overflow: hidden;
+}
+.tx-lineage-as-record-card .tx-legacy-action[id],
+.tx-lineage-as-record-card .tx-legacy-action {
+  position: relative;
+}
