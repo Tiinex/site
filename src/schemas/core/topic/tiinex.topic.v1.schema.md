@@ -183,3 +183,15 @@ Rules
 - `Design Direction` should state where the topic should move next.
 - `Next Artifacts` should leave room for concrete follow-up artifacts.
 - Tools should preserve the same generated body shape even when they use a maintained built-in template.
+
+---
+
+# Continuity Integrity
+
+- sha256-base64url-c14n-v1
+  - Towards: [tiinex.root.v1.schema.md](https://github.com/Tiinex/site/blob/cce27295e9c0d052feae6e2b0c3594100d9e515d/src/schemas/tiinex.root.v1.schema.md)
+  - Value: BFWYft1v0Ue0gUoO236DGScvnixS7_MIEwO6mhJhkNw
+
+- sha256-base64url-c14n-v2
+  - Towards: self
+  - Value: NmV6eEdNerwAnNR2Sk_9PaIJn1v7bVTDFGgGTVg8tIs
