@@ -85,21 +85,26 @@ function GitHubSourceForm({ onBack, onSubmit, busy = false }) {
 
   return (
     <form className="tx-add-source-form tx-github-source-form" onSubmit={submit}>
+      <div className="tx-github-intake-surfaces" aria-label="GitHub intake surfaces">
+        <div><strong>Register boundary</strong><small>No network work unless explicit paths or discovery are selected.</small></div>
+        <div><strong>Explicit files</strong><small>Load chosen Markdown paths now and report loaded/skipped counts.</small></div>
+        <div><strong>Repo discovery</strong><small>Optional bounded discovery; may be rate-limited.</small></div>
+      </div>
       <div className="tx-github-source-field-grid">
         <TextField id="source-repo" label="Repo URL or owner/name" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
         <TextField id="source-ref" label="Ref optional" value={ref} onChange={setRef} placeholder="default branch" />
       </div>
       <label className="tx-textarea-field">
-        <span>Markdown file paths / URLs <small>optional</small></span>
+        <span>Explicit Markdown paths / URLs <small>optional</small></span>
         <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
-        <small className="tx-field-hint">Explicit file paths or raw/blob URLs to load immediately. Leave empty to only register the source unless discovery is enabled below.</small>
+        <small className="tx-field-hint">The workspace will show an accepted/loading receipt while these files or discovery targets materialize.</small>
       </label>
       <label className="tx-textarea-field">
         <span>Root paths</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />
       </label>
       <div className="tx-github-source-surface-grid">
-        <label className="tx-display-option-row"><span><strong>Discover repo Markdown now</strong><small>Uses the public GitHub API and may be rate-limited; optional</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
+        <label className="tx-display-option-row"><span><strong>Discover repo Markdown now</strong><small>Uses bounded public GitHub API reads; progress/receipt is shown in the workspace</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
       </div>
       <details className="tx-github-advanced-issues" open={Boolean(issueUrls)}>
         <summary>Issue / Discussion URLs <em>optional</em></summary>

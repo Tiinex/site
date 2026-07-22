@@ -7,6 +7,7 @@ import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
+import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
@@ -37,7 +38,7 @@ function defaultState() {
   return runtime().lifecycle?.makeEmptyAppState?.() || {
     version: 1,
     activeWorkspaceId: '',
-    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } },
+    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false }, expandedTreeFolders: [] },
     workspaces: [],
     audit: null
   };
@@ -282,10 +283,21 @@ export function TiinexApp() {
       return;
     }
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
     let finalState = result.state;
     let noticeMessage = `${result.source.label} source registered.`;
 
-    if (fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls) {
+    if (wantsMaterialization) {
+      finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
+        sourceId: result.source.id,
+        phase: input.repoDiscovery ? 'repo-discovery' : 'source-materialization',
+        label: `${result.source.label} accepted · loading ${fileRefs.length || 'repository Markdown'} target${fileRefs.length === 1 ? '' : 's'}`,
+        percent: 22,
+        active: true
+      }).state || finalState;
+      setDialog(null);
+      setNotice(`${result.source.label} source registered; loading started.`);
+      commit(finalState, 'push');
       try {
         const transportPolicy = buildSourceTransportPolicy({
           mode: 'bounded-online',
@@ -319,8 +331,16 @@ export function TiinexApp() {
         noticeMessage = summarizeGithubMaterialization(result.source.label, out);
       } catch (e) {
         console.error(e);
+        finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
+          sourceId: result.source.id,
+          phase: 'failed',
+          label: `${result.source.label} materialization failed`,
+          percent: 100,
+          active: false
+        }).state || finalState;
         noticeMessage = `${result.source.label} source registered; source materialization failed.`;
       }
+      finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, result.source.id).state || finalState;
     }
 
     setDialog(null);
@@ -459,6 +479,17 @@ export function TiinexApp() {
     commit(next, 'replace');
   }
 
+  function toggleTreeFolder(folderPath, open) {
+    const path = String(folderPath || '').trim();
+    if (!path) return;
+    const next = structuredClone(state);
+    const existing = new Set(Array.isArray(next.view?.expandedTreeFolders) ? next.view.expandedTreeFolders : []);
+    if (open) existing.add(path);
+    else existing.delete(path);
+    next.view = Object.assign({}, next.view || {}, { expandedTreeFolders: Array.from(existing).sort() });
+    commit(next, 'replace');
+  }
+
   function copyShareUrl() {
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
@@ -489,7 +520,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v176-semantic-action-label-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v177-discovery-presentation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -521,6 +552,7 @@ export function TiinexApp() {
           onMergeWorkspaceCandidate={mergeWorkspaceCandidate}
           onShareRecord={shareRecord}
           onRecordAction={openRecordAction}
+          onToggleTreeFolder={toggleTreeFolder}
         />
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />

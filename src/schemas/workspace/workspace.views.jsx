@@ -15,7 +15,8 @@ import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
-  showSupportingMarkdown: true,
+  leavesFirst: true,
+  showSupportingMarkdown: false,
   showWorkspaceCandidates: true,
   showAssets: false
 });
@@ -23,7 +24,8 @@ const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
 export function normalizeWorkspaceDisplayOptions(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
   return {
-    showSupportingMarkdown: source.showSupportingMarkdown !== false ? DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown : false,
+    leavesFirst: source.leavesFirst !== false ? DEFAULT_DISPLAY_OPTIONS.leavesFirst : false,
+    showSupportingMarkdown: source.showSupportingMarkdown === true ? true : DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown,
     showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
     showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets
   };
@@ -68,7 +70,7 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
@@ -80,9 +82,9 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
   const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
-  const records = allRecords
+  const records = prioritizeDiscoveryRecords(allRecords
     .filter((record) => displayOptions.showSupportingMarkdown || !isSupportingMarkdownRecord(record))
-    .filter((record) => recordMatchesQuery(record, query));
+    .filter((record) => recordMatchesQuery(record, query)), displayOptions);
   const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, query)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
@@ -106,14 +108,14 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
           <Button icon="close" variant="ghost" shape="round" aria-label="Close workspace" title="Close workspace" onClick={onClose} />
         </div>
       </header>
-      <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} />
+      <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <WorkspaceMaterialSummary summary={materialSummary} />
       <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} />
       <ProgressStrip workspace={workspace} />
       <section className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed">
         {verse === 'tree'
-          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
             ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAudit={() => onVerse('audit')} />
           : verse === 'audit'
@@ -131,7 +133,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
 }
 
 
-function SourceStrip({ workspace, boundary, onCloseSource }) {
+function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   if (!sources.length) return null;
   return (
@@ -145,6 +147,8 @@ function SourceStrip({ workspace, boundary, onCloseSource }) {
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
               <strong>{source.label || source.id || 'Source'}</strong>
               <small>{source.count || 0}</small>
+              {source.discoveryState ? <em className={`tx-source-state tx-source-state-${source.discoveryState}`}>{source.discoveryState}</em> : null}
+              {closeable ? <button type="button" className="tx-source-load" aria-label={`Load files for ${source.label || 'source'}`} title="Add explicit files or discovery for this source" onClick={() => onOpenAddDialog?.()}><Icon name="add" /><span>Load</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
           );
@@ -247,7 +251,7 @@ function EmptyWorkspaceState({ filtered, hasMaterial, query }) {
   );
 }
 
-function WorkspaceTreeState({ workspace, query = '', records, assets = [], workspaceCandidates = [], auditById = new Map(), onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+function WorkspaceTreeState({ workspace, query = '', records, assets = [], workspaceCandidates = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   query = String(query || '').trim();
   const tree = buildWorkspacePathTree({
     records,
@@ -256,6 +260,7 @@ function WorkspaceTreeState({ workspace, query = '', records, assets = [], works
     rootLabel: `Root · ${workspace.title || workspace.name || 'workspace'}`,
     query
   });
+  const expandedSet = new Set(Array.isArray(expandedFolders) ? expandedFolders : []);
   return (
     <div className="tx-workspace-tree-state tx-path-tree-state" role="tree" aria-label="Workspace path tree">
       <div className="tx-tree-root tx-path-tree-root">
@@ -263,7 +268,7 @@ function WorkspaceTreeState({ workspace, query = '', records, assets = [], works
         <TreeCountBadges counts={tree.counts} />
       </div>
       {tree.folders.map((folder) => (
-        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} expandedSet={expandedSet} onToggleFolder={onToggleTreeFolder} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
       ))}
       {tree.items.map((item) => (
         <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
@@ -273,17 +278,17 @@ function WorkspaceTreeState({ workspace, query = '', records, assets = [], works
   );
 }
 
-function TreeFolder({ folder, query, auditById = new Map(), onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
-  const open = Boolean(query);
+function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, auditById = new Map(), onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+  const open = Boolean(query) || expandedSet.has(folder.path || folder.name || '');
   return (
-    <details className="tx-tree-folder" open={open} role="group">
+    <details className="tx-tree-folder" open={open} role="group" data-tree-folder-path={folder.path || folder.name || ''} onToggle={(event) => { if (event.currentTarget === event.target && !query) onToggleFolder?.(folder.path || folder.name || '', event.currentTarget.open); }}>
       <summary className="tx-tree-folder-summary" role="treeitem" aria-label={`Folder ${folder.name}`}>
         <span className="tx-tree-folder-name"><Icon name="folderOpen" /> {folder.name}</span>
         <TreeCountBadges counts={folder.counts} />
       </summary>
       <div className="tx-tree-folder-children">
         {folder.folders.map((child) => (
-          <TreeFolder key={child.path || child.name} folder={child} query={query} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          <TreeFolder key={child.path || child.name} folder={child} query={query} expandedSet={expandedSet} onToggleFolder={onToggleFolder} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
         ))}
         {folder.items.map((item) => (
           <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
@@ -510,35 +515,38 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
         </div>
       </header>
       {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onOpenAudit={onOpenAudit} /> : null}
-      {lineage.findings.length ? (
-        <div className="tx-lineage-findings" aria-label="Workspace lineage findings"><strong>Workspace overview</strong>
-          {lineage.findings.slice(0, 5).map((finding, index) => (
-            <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>
-              <Icon name={(finding.severity === 'warning' || finding.severity === 'error') ? 'warning' : 'check'} /> {finding.code}
-            </span>
+      <details className="tx-lineage-workspace-overview" open={!selected} aria-label="Workspace lineage overview">
+        <summary>Workspace lineage overview · {lineage.stats.visibleNodes} nodes · {lineage.stats.missingEdges || 0} missing · {lineage.stats.visibleFindings} findings</summary>
+        {lineage.findings.length ? (
+          <div className="tx-lineage-findings" aria-label="Workspace lineage findings"><strong>Workspace findings</strong>
+            {lineage.findings.slice(0, 5).map((finding, index) => (
+              <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>
+                <Icon name={(finding.severity === 'warning' || finding.severity === 'error') ? 'warning' : 'check'} /> {finding.code}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {lineage.edges.length ? (
+          <div className="tx-lineage-edge-list" role="list" aria-label="Resolved lineage edges">
+            {lineage.edges.map((edge) => (
+              <LineageEdgeRow key={edge.id} edge={edge} onFocusRecordLineage={onFocusRecordLineage} />
+            ))}
+          </div>
+        ) : null}
+        <div className="tx-lineage-node-list" role="list" aria-label="Loaded lineage nodes">
+          {lineage.nodes.map((node) => (
+            <button key={node.id} type="button" className="tx-lineage-node" onClick={() => onFocusRecordLineage?.(node.id)} title={node.path || ''}>
+              <span className="tx-lineage-node-main"><Icon name={node.hasContinuityContext ? 'lineage' : 'open'} /> <strong>{node.title}</strong></span>
+              <span className="tx-lineage-node-meta">
+                {node.schemaId ? <Badge>{node.schemaId}</Badge> : <Badge>markdown</Badge>}
+                <Badge>{node.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
+                {node.trace ? <small>Trace: {compactPath(node.trace)}</small> : null}
+                {node.origin ? <small>Origin: {compactPath(node.origin)}</small> : null}
+              </span>
+            </button>
           ))}
         </div>
-      ) : null}
-      {lineage.edges.length ? (
-        <div className="tx-lineage-edge-list" role="list" aria-label="Resolved lineage edges">
-          {lineage.edges.map((edge) => (
-            <LineageEdgeRow key={edge.id} edge={edge} onFocusRecordLineage={onFocusRecordLineage} />
-          ))}
-        </div>
-      ) : null}
-      <div className="tx-lineage-node-list" role="list" aria-label="Loaded lineage nodes">
-        {lineage.nodes.map((node) => (
-          <button key={node.id} type="button" className="tx-lineage-node" onClick={() => onFocusRecordLineage?.(node.id)} title={node.path || ''}>
-            <span className="tx-lineage-node-main"><Icon name={node.hasContinuityContext ? 'lineage' : 'open'} /> <strong>{node.title}</strong></span>
-            <span className="tx-lineage-node-meta">
-              {node.schemaId ? <Badge>{node.schemaId}</Badge> : <Badge>markdown</Badge>}
-              <Badge>{node.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
-              {node.trace ? <small>Trace: {compactPath(node.trace)}</small> : null}
-              {node.origin ? <small>Origin: {compactPath(node.origin)}</small> : null}
-            </span>
-          </button>
-        ))}
-      </div>
+      </details>
       {lineage.empty ? <p className="tx-tree-empty">No loaded lineage nodes match this view.</p> : null}
     </section>
   );
@@ -604,6 +612,30 @@ function LineageEdgeRow({ edge, onFocusRecordLineage }) {
       <Badge>{edge.status}</Badge>
     </div>
   );
+}
+
+
+function discoveryRank(record = {}) {
+  if (isSupportingMarkdownRecord(record)) return 40;
+  const schema = String(record.schemaId || record.currentSchemaId || '').toLowerCase();
+  const kind = String(record.kind || '').toLowerCase();
+  if (schema.includes('topic') || schema.includes('decision') || schema.includes('evidence')) return 0;
+  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return 4;
+  if (kind.includes('topic') || kind.includes('decision') || kind.includes('evidence')) return 6;
+  if (record.source?.adapterId && record.source.adapterId !== 'local') return 10;
+  return 20;
+}
+
+function prioritizeDiscoveryRecords(records = [], options = {}) {
+  const list = Array.isArray(records) ? records.slice() : [];
+  if (options?.leavesFirst === false) return list;
+  return list.sort((a, b) => {
+    const delta = discoveryRank(a) - discoveryRank(b);
+    if (delta) return delta;
+    const dateDelta = String(b.currentCreatedAt || b.createdAt || '').localeCompare(String(a.currentCreatedAt || a.createdAt || ''));
+    if (dateDelta) return dateDelta;
+    return String(a.title || a.path || '').localeCompare(String(b.title || b.path || ''), undefined, { numeric: true, sensitivity: 'base' });
+  });
 }
 
 function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
@@ -918,11 +950,15 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
     onSubmit?.(normalizeWorkspaceDisplayOptions(draft));
   }
   return (
-    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displaySupportingMarkdown" className="tx-dialog-display-options">
+    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displayLeavesFirst" className="tx-dialog-display-options">
       <form className="tx-form tx-display-options-form" onSubmit={submit} data-form="display-options-form">
         <p className="tx-muted">Presentation only. Source, audit, lineage, and export truth stay intact even when material is hidden from Feed/Tree.</p>
         <label className="tx-display-option-row">
-          <span><strong>Supporting Markdown</strong><small>{Number(counts.records || 0)} loaded record{Number(counts.records || 0) === 1 ? '' : 's'} · plain docs stay distinct from Tiinex leaves</small></span>
+          <span><strong>Leaves first</strong><small>Prioritize Tiinex/work artifacts before schema/support docs in Discovery</small></span>
+          <input id="displayLeavesFirst" type="checkbox" checked={draft.leavesFirst} onChange={(event) => setFlag('leavesFirst', event.target.checked)} />
+        </label>
+        <label className="tx-display-option-row">
+          <span><strong>Supporting docs</strong><small>{Number(counts.records || 0)} loaded record{Number(counts.records || 0) === 1 ? '' : 's'} · plain docs stay distinct from Tiinex leaves</small></span>
           <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">

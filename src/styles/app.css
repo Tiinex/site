@@ -5145,3 +5145,108 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-dialog-display-options {
   width: min(100%, 32rem);
 }
+
+/* v177: discovery presentation parity.  Keep state truthful while making Discovery useful first. */
+.tx-react-runtime .tx-logo-command img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command img {
+  transform: translate(-1px, 0.5px) scale(1.01);
+  transform-origin: 50% 50%;
+}
+.tx-github-intake-surfaces {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .55rem;
+  margin-bottom: .72rem;
+}
+.tx-github-intake-surfaces div {
+  border: 1px solid rgba(189,115,255,.2);
+  border-radius: .85rem;
+  padding: .58rem .62rem;
+  background: rgba(255,255,255,.035);
+}
+.tx-github-intake-surfaces strong,
+.tx-github-intake-surfaces small {
+  display: block;
+}
+.tx-github-intake-surfaces small {
+  color: rgba(247,248,251,.58);
+  line-height: 1.28;
+  margin-top: .2rem;
+}
+.tx-source-pill .tx-source-state {
+  font-style: normal;
+  font-size: .66rem;
+  padding: .12rem .36rem;
+  border-radius: 999px;
+  color: rgba(247,248,251,.68);
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.tx-source-pill .tx-source-state-loaded {
+  color: #cfffed;
+  border-color: rgba(128,255,214,.28);
+  background: rgba(128,255,214,.08);
+}
+.tx-source-load {
+  display: inline-flex;
+  align-items: center;
+  gap: .22rem;
+  border: 1px solid rgba(115,189,255,.28);
+  background: rgba(30,87,177,.10);
+  color: #d7e8ff;
+  border-radius: 999px;
+  padding: .17rem .42rem;
+  font: inherit;
+  font-size: .68rem;
+  cursor: pointer;
+}
+.tx-source-load:hover,
+.tx-source-load:focus-visible {
+  border-color: rgba(115,189,255,.48);
+  outline: none;
+}
+.tx-lineage-workspace-overview {
+  margin-top: .7rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: .9rem;
+  background: rgba(255,255,255,.025);
+  overflow: hidden;
+}
+.tx-lineage-workspace-overview > summary {
+  cursor: pointer;
+  padding: .58rem .72rem;
+  color: rgba(247,248,251,.72);
+  font-weight: 750;
+}
+.tx-lineage-workspace-overview[open] > summary {
+  border-bottom: 1px solid rgba(255,255,255,.075);
+}
+.tx-workspace-lineage-state > .tx-lineage-header .tx-lineage-stats {
+  opacity: .76;
+}
+.tx-workspace-lineage-state:has(.tx-lineage-selected-summary) > .tx-lineage-header .tx-lineage-stats {
+  opacity: .42;
+}
+.tx-old-like-record-card .tx-legacy-card-badges .tx-badge:first-child {
+  flex: 0 0 auto;
+}
+.tx-old-like-record-card .tx-legacy-card-badges .tx-badge:nth-child(n+3) {
+  opacity: .78;
+}
+.tx-display-options-form .tx-display-option-row:first-of-type {
+  border-color: rgba(128,255,214,.24);
+  background: rgba(128,255,214,.045);
+}
+.tx-tree-folder[open] > .tx-tree-folder-summary {
+  border-color: rgba(189,115,255,.28);
+}
+.tx-tree-record-row .tx-tree-row-badges .tx-badge:nth-child(n+2) {
+  opacity: .72;
+}
+.tx-tree-record-row {
+  min-height: 2.25rem;
+}
+@media (max-width: 760px) {
+  .tx-github-intake-surfaces { grid-template-columns: 1fr; }
+}

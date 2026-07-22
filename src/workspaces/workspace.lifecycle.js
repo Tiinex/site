@@ -384,6 +384,7 @@
     return { ok: true, source, workspace, state: next };
   }
 
+
   function closeWorkspaceSource(state, workspaceId, sourceId) {
     const next = cloneState(state);
     const targetId = workspaceId || next.activeWorkspaceId;

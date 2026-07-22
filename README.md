@@ -1,40 +1,33 @@
-# Tiinex Site v176
+# Tiinex Site v177
 
-v176 is a semantic presentation checkpoint for the React/Vite refactor. It keeps the v175 old-like card/tree presentation but tightens labels and actions so the UI does not claim stronger evidence than the runtime has.
+v177 is a discovery presentation checkpoint for the React/Vite refactor. It keeps v176 semantic action/label truth while making the main Discovery loop more useful before the next manual test pass.
 
-## v176 batch
+## v177 batch
 
-- `Open` opens the artifact detail/read view again.
-- `Lineage` is a separate artifact action that focuses the selected record in Lineage mode.
-- `byte ok` was removed from presentation and material shaping; readable records now say `schema ok` because no byte/digest verification is performed there.
-- The previous `Reference` action is user-facing as `Preserve evidence` until the old cross-artifact Reference relation is explicitly rebuilt.
-- Selected Lineage status is separated from workspace-wide lineage findings.
-- Parity ledger can classify suspected wrong ports instead of redefining parity around the current implementation.
+- Discovery now prioritizes Tiinex/work leaves before support/schema Markdown.
+- Supporting docs are hidden from Feed/Tree by default but preserved in state, audit, route, and export boundaries.
+- Display options now exposes `Leaves first`, supporting docs, workspace candidates, and assets as presentation-only controls.
+- Tree folder expansion is persisted in route/view state instead of being a transient DOM/search effect.
+- GitHub materialization now has an observable accepted/loading receipt before records appear in bulk.
+- Source pills expose the finite discovery state and provide a small `Load` continuation control for deferred sources.
+- Lineage is selected-first: the chosen artifact summary is shown before workspace-wide diagnostics, which are collapsed when a selection exists.
+- The logo artwork is optically re-centered without changing the button size or touching image files.
 
-## Validation
-
-Run:
-
-```bash
-npm run validate
-npm run ui:shape
-npm run usecase:uc001
-```
-
-Full public runtime validation additionally requires installed Vite/React dependencies:
-
-```bash
-npm install --no-audit --no-fund
-npm run test
-```
 
 ## Supported local start
 
-Use the Vite runtime:
+Use `npm run dev` after installing dependencies. Opening source `index.html` directly from the filesystem is not a supported runtime because the React/Vite entry needs module bundling.
+
+## Validation
+
+This source zip is intended for source-clean replacement. The supported local loop remains:
 
 ```bash
 npm install --no-audit --no-fund
-npm run dev
+npm run validate
+npm run ui:shape
+npm run usecase:uc001
+npm run metrics
 ```
 
-Opening source `index.html` directly as a file is not a supported runtime loop because the React entry uses JSX/Vite bundling.
+`npm run test` additionally runs Vite build/runtime checks and therefore requires installed React/Vite dependencies.

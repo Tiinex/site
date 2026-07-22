@@ -12,7 +12,7 @@ export const PoCParityStatus = Object.freeze({
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v176',
+  checkpoint: 'v177',
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({
@@ -196,6 +196,16 @@ export const pocParityLedger = Object.freeze({
       automatedChecks: ['src/surfaces/registry.test.mjs', 'src/conformance/conformance.run.test.mjs'],
       manualChecks: ['browser review of Feed/Tree/Lineage/Audit surface affordances'],
       failureResult: 'surface remains scaffold/partial with finding; no false parity claim'
+    }),
+    scenario({
+      id: 'discovery-presentation-parity',
+      status: PoCParityStatus.partial,
+      legacyBehavior: 'Discovery should prioritize valuable Tiinex leaves before support/schema material, keep Tree expansion stable, show GitHub materialization as an observable transition, and keep selected Lineage separate from workspace-wide diagnostics.',
+      semanticOwner: 'workspace presentation read model + source/material boundary + selected lineage scope',
+      runtimeOwner: 'src/schemas/workspace/workspace.views + src/workspaces/workspace.discoveryProgress + src/app/TiinexApp',
+      automatedChecks: ['tools/check-ui-shape.mjs', 'tools/check-uc001.mjs'],
+      manualChecks: ['Feed shows leaves/work artifacts first', 'Tree branches persist across view changes', 'GitHub import shows accepted/loading/done receipt', 'Selected Lineage appears before collapsed workspace overview'],
+      failureResult: 'supporting docs remain preserved but do not dominate Discovery; workspace diagnostics stay secondary to selected artifact status'
     }),
     scenario({
       id: 'semantic-action-label-truth',

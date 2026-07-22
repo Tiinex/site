@@ -1,22 +1,30 @@
-# Tiinex Site v176 Validation Notes
+# Tiinex Site v177 Validation Notes
 
-v176 continues closure repair after v175 presentation work by tightening semantic labels and action boundaries.
+v177 is a large presentation-read-model batch after the semantic action/label truth work.
 
-Validated in this checkpoint:
+Validated in the working tree:
 
 ```bash
 npm run validate
 npm run ui:shape
 npm run usecase:uc001
+npm run metrics
 ```
 
-Semantic presentation guards now assert:
+Also checked:
 
-- `Open` is artifact/detail reading, not a hidden Lineage transition;
-- selected Lineage focus uses a separate `Lineage` artifact action;
-- `byte ok` is absent because the runtime has not performed byte/digest verification;
-- Evidence preservation is named as preservation, not old Reference parity;
-- selected lineage status is separated from workspace overview findings;
-- parity ledger can mark suspected wrong-ports explicitly.
+```bash
+node --check src/workspaces/workspace.discoveryProgress.js
+```
 
-`npm run test` includes public build/runtime checks and requires installed Vite/React dependencies.
+Full `npm run test` was not completed in this sandbox because the runtime/build smoke requires installed Vite/React dependencies. Run it locally/CI after `npm install`.
+
+Manual browser focus for Q:
+
+1. Feed should show valuable Tiinex/work leaves before support/schema docs.
+2. Display options can turn supporting docs/assets back on.
+3. Tree branches should remember expansion across Feed/Tree switches and refreshable route state.
+4. GitHub explicit paths/discovery should show an accepted/loading receipt before the import result lands.
+5. Source pill should remain a boundary/control point with visible state and a Load action.
+6. Lineage should show selected artifact status first, with workspace diagnostics collapsed/secondary.
+7. Logo should look optically centered while the dock/button size stays compact.

@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v176",
+  "version": "0.2.10-v177",
   "private": true,
-  "description": "Tiinex Site v176: semantic action/label truth, Open/detail separation, Lineage focus action, evidence preservation naming, and selected lineage scope disclosure.",
+  "description": "Tiinex Site v177: discovery presentation parity, leaves-first feed/read model, stable tree expansion, GitHub materialization receipts, source boundary controls, and selected-first lineage.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
