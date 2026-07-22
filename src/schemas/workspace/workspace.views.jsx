@@ -49,7 +49,7 @@ function auditIndexForWorkspace(workspace = {}, records = []) {
 function auditBadgeForRecord(record = {}, auditItem = null) {
   const item = auditItem || null;
   const status = String(item?.status || '').toLowerCase();
-  if (status === 'readable') return { label: item?.fallbackUsed ? 'open' : 'byte ok', tone: item?.fallbackUsed ? 'open' : 'ok', title: item?.fallbackUsed ? 'Readable through root fallback; review schema confidence.' : 'Loaded leaf passed available audit checks.' };
+  if (status === 'readable') return { label: item?.fallbackUsed ? 'open' : 'schema ok', tone: item?.fallbackUsed ? 'open' : 'ok', title: item?.fallbackUsed ? 'Readable through root fallback; review schema confidence.' : 'Loaded leaf passed schema/audit checks; byte-level integrity is not claimed.' };
   if (status === 'supporting-material') return { label: 'doc', tone: 'open', title: 'Plain Markdown supporting material; not an invalid Tiinex leaf.' };
   if (status === 'pending-unavailable') return { label: 'open', tone: 'pending', title: 'Material is not loaded in this route/session; audit is pending.' };
   if (status === 'degraded') return { label: 'open', tone: 'pending', title: 'Readable with warnings or fallback; review lineage/source confidence.' };
@@ -68,7 +68,7 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction }) {
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
@@ -115,13 +115,13 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onOpenAudit={() => onVerse('audit')} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAudit={() => onVerse('audit')} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
             ? <>
                 {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
-                {records.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} onOpenRecord={onOpenRecord} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
+                {records.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
                 {assets.map((asset) => <AssetCard key={asset.id || asset.path} asset={asset} onOpenAsset={onOpenAsset} />)}
               </>
             : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} />}
@@ -203,8 +203,11 @@ function WorkspaceDropHint({ workspace, hasMaterial }) {
 function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, onQuery, onOpenDisplayOptions }) {
   const verse = state.view?.workspaceVerse || 'feed';
   const discoveryVerse = verse === 'feed' || verse === 'tree';
-  const modeLabel = verse === 'lineage' ? 'LINEAGE MODE' : verse === 'audit' ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
+  const lineageVerse = verse === 'lineage';
+  const auditVerse = verse === 'audit';
+  const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
   const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0);
+  const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
       <strong className="tx-mode-name">{modeLabel}</strong>
@@ -214,13 +217,14 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
           <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
         </div>
       ) : (
-        <button type="button" className="tx-mode-return" onClick={() => onVerse('feed')}>Discovery mode</button>
+        <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
-      {verse === 'lineage' && selectedRecord ? <span className="tx-selected-lineage-chip" title={selectedRecord.path || selectedRecord.title}>Selected · {compactPath(selectedRecord.title || selectedRecord.path || 'artifact')}</span> : null}
-      <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button>
+      {lineageVerse && selectedRecord ? <span className="tx-selected-lineage-chip" title={selectedRecord.path || selectedRecord.title}>Selected · {compactPath(selectedRecord.title || selectedRecord.path || 'artifact')}</span> : null}
+      {lineageVerse && selectedRecord ? <button type="button" className="tx-mode-link tx-audit-details-trigger" onClick={() => onVerse('audit')}>Audit</button> : null}
+      {discoveryVerse ? <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button> : null}
       <label className="tx-search-field tx-search-field-icon">
         <Icon name="search" />
-        <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={verse === 'lineage' ? 'Search lineage title/body/schema…' : 'Search title/body/schema…'} />
+        <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search lineage title/body/schema…' : 'Search title/body/schema…'} />
       </label>
     </div>
   );
@@ -487,7 +491,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onOpenAudit }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAudit }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query });
   const selected = selectedRecordId ? lineage.nodes.find((node) => node.id === selectedRecordId) : null;
   const selectedAudit = selected ? auditById.get(selected.id) : null;
@@ -505,9 +509,9 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
           <span><strong>{lineage.stats.visibleFindings}</strong><small>findings</small></span>
         </div>
       </header>
-      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} onOpenAudit={onOpenAudit} /> : null}
+      {selected ? <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onOpenAudit={onOpenAudit} /> : null}
       {lineage.findings.length ? (
-        <div className="tx-lineage-findings" aria-label="Lineage findings">
+        <div className="tx-lineage-findings" aria-label="Workspace lineage findings"><strong>Workspace overview</strong>
           {lineage.findings.slice(0, 5).map((finding, index) => (
             <span key={`${finding.code}-${finding.nodeId}-${index}`} className={`tx-lineage-finding tx-${finding.severity || 'info'}`} title={finding.message}>
               <Icon name={(finding.severity === 'warning' || finding.severity === 'error') ? 'warning' : 'check'} /> {finding.code}
@@ -518,13 +522,13 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
       {lineage.edges.length ? (
         <div className="tx-lineage-edge-list" role="list" aria-label="Resolved lineage edges">
           {lineage.edges.map((edge) => (
-            <LineageEdgeRow key={edge.id} edge={edge} onOpenRecord={onOpenRecord} />
+            <LineageEdgeRow key={edge.id} edge={edge} onFocusRecordLineage={onFocusRecordLineage} />
           ))}
         </div>
       ) : null}
       <div className="tx-lineage-node-list" role="list" aria-label="Loaded lineage nodes">
         {lineage.nodes.map((node) => (
-          <button key={node.id} type="button" className="tx-lineage-node" onClick={() => onOpenRecord?.(node.id)} title={node.path || ''}>
+          <button key={node.id} type="button" className="tx-lineage-node" onClick={() => onFocusRecordLineage?.(node.id)} title={node.path || ''}>
             <span className="tx-lineage-node-main"><Icon name={node.hasContinuityContext ? 'lineage' : 'open'} /> <strong>{node.title}</strong></span>
             <span className="tx-lineage-node-meta">
               {node.schemaId ? <Badge>{node.schemaId}</Badge> : <Badge>markdown</Badge>}
@@ -541,8 +545,9 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
-function LineageSelectedSummary({ node, auditItem, onOpenAudit }) {
+function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onOpenAudit }) {
   const badge = auditBadgeForRecord(node.record, auditItem);
+  const selectedLineage = selectedLineageStatus(node, lineage);
   const findings = auditItem?.findings || [];
   return (
     <section className={`tx-lineage-selected-summary tx-audit-badge-${badge.tone}`} aria-label="Selected artifact lineage status">
@@ -551,28 +556,48 @@ function LineageSelectedSummary({ node, auditItem, onOpenAudit }) {
         <small>{node.path ? compactPath(node.path) : 'Loaded lineage focus'}</small>
       </div>
       <span className="tx-lineage-selected-badges">
+        <Badge>{selectedLineage.label}</Badge>
         <AuditStatusBadge record={node.record} item={auditItem} />
         <Badge>{node.schemaId || 'markdown'}</Badge>
         <Badge>{node.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
       </span>
-      <p>{findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : badge.title}</p>
-      <button type="button" onClick={onOpenAudit}>Audit details</button>
+      <p>{findings.length ? findings.slice(0, 2).map((finding) => finding.code).join(' · ') : selectedLineage.message}</p>
+      <div className="tx-lineage-selected-actions">
+        <button type="button" onClick={() => onOpenRecord?.(node.id)}>Open detail</button>
+        <button type="button" onClick={onOpenAudit}>Audit details</button>
+      </div>
     </section>
   );
 }
 
-function LineageEdgeRow({ edge, onOpenRecord }) {
+function selectedLineageStatus(node = {}, lineage = {}) {
+  const id = String(node.id || '');
+  const selectedFindings = (lineage.findings || []).filter((finding) => finding.nodeId === id);
+  const selectedEdges = (lineage.edges || []).filter((edge) => edge.from === id || edge.to === id);
+  if (selectedFindings.some((finding) => finding.code === 'lineage.parent.missing' || finding.code === 'lineage.target.ambiguous')) {
+    return { label: 'selected mismatch', message: 'Selected artifact has unresolved or ambiguous declared lineage. Workspace findings below may include unrelated records.' };
+  }
+  if (selectedFindings.some((finding) => finding.code === 'lineage.root')) {
+    return { label: 'root reached', message: 'Selected artifact is a loaded lineage root. Workspace findings below may include unrelated records.' };
+  }
+  if (selectedEdges.length) {
+    return { label: 'selected lineage', message: 'Selected artifact has loaded lineage context. Workspace overview below remains separate.' };
+  }
+  return { label: 'selected open', message: 'Selected artifact has no resolved lineage finding in the loaded workspace.' };
+}
+
+function LineageEdgeRow({ edge, onFocusRecordLineage }) {
   const missing = edge.status === 'missing';
   return (
     <div className={`tx-lineage-edge-row ${missing ? 'tx-lineage-edge-missing' : ''}`} role="listitem">
-      <button type="button" disabled={missing || !edge.from} onClick={() => onOpenRecord?.(edge.from)}>
+      <button type="button" disabled={missing || !edge.from} onClick={() => onFocusRecordLineage?.(edge.from)}>
         <span>{edge.fromTitle}</span>
         {edge.fromPath ? <small>{compactPath(edge.fromPath)}</small> : null}
       </button>
       <span className="tx-lineage-edge-connector" title={`${edge.kind} · ${edge.method || edge.status}`}>
         <Icon name={missing ? 'warning' : 'lineage'} /> {edge.kind}
       </span>
-      <button type="button" onClick={() => onOpenRecord?.(edge.to)}>
+      <button type="button" onClick={() => onFocusRecordLineage?.(edge.to)}>
         <span>{edge.toTitle}</span>
         {edge.toPath ? <small>{compactPath(edge.toPath)}</small> : null}
       </button>
@@ -618,28 +643,62 @@ function AssetCard({ asset, onOpenAsset }) {
   );
 }
 
-function RecordCard({ record, auditItem, onOpenRecord, onShareRecord, onRecordAction }) {
+function compactRecordDate(record = {}) {
+  const raw = record.currentCreatedAt || record.createdAt || record.date || '';
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  const match = text.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : text.slice(0, 10);
+}
+
+function recordSchemaBadge(record = {}) {
+  const schema = record.schemaId || record.currentSchemaId || record.kind || '';
+  const text = String(schema || '').trim();
+  if (!text) return 'artifact';
+  return text.replace(/^tiinex\./, '').replace(/\.v\d+$/, '');
+}
+
+function recordSourceBadge(record = {}) {
+  const source = record.source || {};
+  if (source.label) return source.label;
+  if (source.repo) return source.repo;
+  if (source.adapterId && source.adapterId !== 'local') return source.adapterId;
+  return 'Local';
+}
+
+function actionClassName(action = {}) {
+  const id = action.id;
+  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.lineage;
+  const side = id === RecordActionKind.continue || id === RecordActionKind.reference ? 'tx-action-right' : id === RecordActionKind.open ? 'tx-action-left' : id === RecordActionKind.lineage ? 'tx-action-middle' : 'tx-action-middle';
+  return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
+}
+
+function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction }) {
   const actions = presentRecordActions(record).filter((action) => action.enabled !== false);
+  const dateBadge = compactRecordDate(record);
+  const schemaBadge = recordSchemaBadge(record);
+  const sourceBadge = recordSourceBadge(record);
   return (
-    <article className="tx-artifact-card tx-record-card">
-      <div className="tx-card-badges">
+    <article className="tx-artifact-card tx-record-card tx-old-like-record-card">
+      <div className="tx-card-badges tx-legacy-card-badges">
         <AuditStatusBadge record={record} item={auditItem} />
-        <Badge>{record.source?.adapterId && record.source.adapterId !== 'local' ? 'source-backed' : 'local/session'}</Badge>
-        <Badge>{record.kind || 'artifact'}</Badge>
-        {record.source?.adapterId && record.source.adapterId !== 'local' ? <Badge>{record.source.adapterId}</Badge> : null}
+        <Badge>{schemaBadge}</Badge>
+        {dateBadge ? <Badge>{dateBadge}</Badge> : null}
+        <Badge>{sourceBadge}</Badge>
       </div>
       <h3>{record.title || 'Untitled'}</h3>
+      <p>{record.summary || 'No summary available yet.'}</p>
       {record.path ? <div className="tx-card-pathline" title={record.path}><Icon name="folderOpen" />{compactPath(record.path)}</div> : null}
-      <p>{record.summary || 'Local session material.'}</p>
-      <footer className="tx-artifact-actions">
+      <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions">
         {actions.map((action) => action.href ? (
-          <a key={action.id} className="tx-button tx-button-ghost" href={action.href} target="_blank" rel="noopener noreferrer"><Icon name={action.icon} /><span>{action.label}</span></a>
+          <a key={action.id} className={actionClassName(action)} href={action.href} target="_blank" rel="noopener noreferrer" title={action.label} aria-label={action.label}><Icon name={action.icon} /><strong>{action.label}</strong></a>
         ) : (
-          <Button key={action.id} icon={action.icon} variant="ghost" onClick={() => {
+          <button key={action.id} type="button" className={actionClassName(action)} title={action.label} aria-label={action.label} onClick={() => {
             if (action.id === RecordActionKind.open) return onOpenRecord?.(record.id);
+            if (action.id === RecordActionKind.lineage) return onFocusRecordLineage?.(record.id);
             if (action.id === RecordActionKind.share) return onShareRecord?.(record);
             return onRecordAction?.(record, action);
-          }}>{action.label}</Button>
+          }}><Icon name={action.icon} /><strong>{action.label}</strong></button>
         ))}
       </footer>
     </article>
@@ -718,22 +777,22 @@ export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, 
     const draft = createReferenceDraft(record);
     const result = createRecordActionResult(record, actionId);
     return (
-      <Modal title="Create reference leaf" onDismiss={onDismiss}>
+      <Modal title="Preserve evidence leaf" onDismiss={onDismiss}>
         <div className="tx-record-action-result">
           <div className="tx-card-badges">
             <Badge>{draft.schema}</Badge>
             <Badge>{draft.kind}</Badge>
             <Badge>{draft.transition.parentBoundary}</Badge>
           </div>
-          <p className="tx-muted">Creates a browser-local evidence/reference draft. The parent boundary is preserved; no source provenance is inferred.</p>
+          <p className="tx-muted">Creates a browser-local Evidence draft from the selected record. This is not the old cross-artifact Reference relation; no source provenance is inferred.</p>
           <TransitionValidationNotice validation={draft.validation} />
           <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
           <div className="tx-dialog-actions">
             <Button variant="ghost" onClick={onDismiss}>Close</Button>
             <Button variant="ghost" icon="shareNodes" onClick={() => onShare?.(record)}>Share parent session</Button>
-            <Button variant="primary" icon="reference" onClick={() => onCreateTransition?.(record, draft)}>Create reference</Button>
+            <Button variant="primary" icon="reference" onClick={() => onCreateTransition?.(record, draft)}>Create evidence</Button>
           </div>
-          {result ? <p className="tx-muted tx-action-caption">Reference capsule remains available for handoff copy: {result.intent}.</p> : null}
+          {result ? <p className="tx-muted tx-action-caption">Evidence preservation capsule remains available for handoff copy: {result.intent}.</p> : null}
         </div>
       </Modal>
     );

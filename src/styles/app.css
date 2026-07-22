@@ -5036,3 +5036,112 @@ pre { white-space: pre-wrap; overflow:auto; }
   .tx-lineage-selected-summary button { justify-self: start; }
   .tx-selected-lineage-chip { max-width: 100%; }
 }
+
+/* v175: old-like presentation closure after side-by-side review.
+   Keep the dock button size, but let the transparent logo artwork fill it more. */
+.tx-react-runtime .tx-logo-command img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command img {
+  width: 138%;
+  height: 138%;
+  max-width: none;
+  max-height: none;
+}
+
+.tx-mode-strip.tx-column-toolbar {
+  grid-template-columns: auto auto auto minmax(160px, 1fr);
+}
+.tx-mode-strip.tx-column-toolbar .tx-audit-details-trigger {
+  border-color: rgba(189,115,255,.36);
+  color: rgba(237,217,255,.92);
+  background: rgba(189,115,255,.09);
+}
+
+.tx-old-like-record-card {
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(255,255,255,.105);
+  background: linear-gradient(180deg, rgba(18,21,31,.96), rgba(13,15,24,.97));
+  gap: 0;
+}
+.tx-old-like-record-card .tx-legacy-card-badges {
+  justify-content: flex-start;
+  max-width: none;
+  padding: .72rem .82rem .16rem;
+  gap: .35rem;
+}
+.tx-old-like-record-card h3 {
+  margin: .24rem .86rem .22rem;
+  font-size: clamp(1.02rem, 1.34vw, 1.2rem);
+  letter-spacing: -.015em;
+}
+.tx-old-like-record-card p {
+  margin: 0 .86rem .44rem;
+  color: rgba(247,248,251,.72);
+  font-size: .88rem;
+  line-height: 1.34;
+}
+.tx-old-like-record-card .tx-card-pathline {
+  margin: 0 .86rem .7rem;
+  max-width: calc(100% - 1.72rem);
+  color: rgba(189,115,255,.82);
+}
+.tx-old-like-record-card .tx-legacy-action-row {
+  display: flex;
+  align-items: center;
+  gap: .42rem;
+  flex-wrap: wrap;
+  padding: .56rem .74rem;
+  border-top: 1px solid rgba(255,255,255,.075);
+  background: rgba(255,255,255,.022);
+}
+.tx-old-like-record-card .tx-legacy-action {
+  min-width: 2.14rem;
+  height: 2.06rem;
+  padding: 0 .58rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .34rem;
+  border-radius: 999px;
+}
+.tx-old-like-record-card .tx-legacy-action:not(.tx-labeled-action) {
+  width: 2.14rem;
+  padding-inline: 0;
+}
+.tx-old-like-record-card .tx-legacy-action:not(.tx-labeled-action) strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.tx-old-like-record-card .tx-labeled-action {
+  min-width: 6.1rem;
+  border-color: rgba(75,145,255,.44);
+  background: rgba(30,87,177,.14);
+  color: #cfe4ff;
+}
+.tx-old-like-record-card .tx-action-right + .tx-action-right {
+  margin-left: .05rem;
+}
+.tx-old-like-record-card .tx-card-badges .tx-badge {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-display-options-form {
+  min-width: min(29rem, 84vw);
+}
+.tx-display-options-form .tx-display-option-row {
+  padding: .58rem .68rem;
+}
+.tx-dialog-record-detail,
+.tx-add-flow-modal {
+  width: min(100%, 40rem);
+}
+.tx-dialog-display-options {
+  width: min(100%, 32rem);
+}

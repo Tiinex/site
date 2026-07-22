@@ -1,14 +1,15 @@
-# Tiinex Site v174
+# Tiinex Site v176
 
-v174 is a presentation-closure checkpoint for the React/Vite refactor. It keeps the v172 audit support-material truth and restores old-like presentation controls: Discovery mode is Feed/Tree, Lineage is an explicit mode, Audit is reachable as details from the visible trust signal, and assets are hidden from Feed/Tree by default through Display options.
+v176 is a semantic presentation checkpoint for the React/Vite refactor. It keeps the v175 old-like card/tree presentation but tightens labels and actions so the UI does not claim stronger evidence than the runtime has.
 
-## v174 batch
+## v176 batch
 
-- Lineage is no longer presented as a tab beside Feed/Tree.
-- Audit status is surfaced immediately as a compact Lineage trust strip with ok/mismatch/pending/open signals.
-- Display options are workspace-owned presentation controls, not source truth controls.
-- Assets are hidden by default in Feed/Tree and remain recoverable/auditable/exportable.
-- Supporting Markdown and workspace candidates can be toggled without changing material truth.
+- `Open` opens the artifact detail/read view again.
+- `Lineage` is a separate artifact action that focuses the selected record in Lineage mode.
+- `byte ok` was removed from presentation and material shaping; readable records now say `schema ok` because no byte/digest verification is performed there.
+- The previous `Reference` action is user-facing as `Preserve evidence` until the old cross-artifact Reference relation is explicitly rebuilt.
+- Selected Lineage status is separated from workspace-wide lineage findings.
+- Parity ledger can classify suspected wrong ports instead of redefining parity around the current implementation.
 
 ## Validation
 

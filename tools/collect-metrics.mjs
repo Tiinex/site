@@ -15,7 +15,7 @@ console.log(JSON.stringify({
   activeFiles:files.length,
   legacyArchived: existsSync(join(root,'.old')) && statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v174-lineage-presentation-parity'),
+  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v176-semantic-action-label-truth'),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,

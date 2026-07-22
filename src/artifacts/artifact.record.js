@@ -19,7 +19,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     envelopeSchemaId: envelope.envelopeSchema?.id || '',
     schemaKey: schemaKey(schemaId),
     schemaBadgeClass: schemaBadgeClass(schemaId),
-    status: parsed.hasIntegrity ? 'byte ok' : 'local',
+    status: parsed.hasIntegrity ? 'schema ok' : 'local',
     currentCreatedAt: current.createdAt || '',
     path: meta.path || meta.name || '',
     markdown,

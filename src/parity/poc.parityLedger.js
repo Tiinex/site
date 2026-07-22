@@ -5,12 +5,14 @@ export const PoCParityStatus = Object.freeze({
   partial: 'partial',
   scaffold: 'scaffold',
   missing: 'missing',
-  intentionallyChanged: 'intentionally-changed'
+  intentionallyChanged: 'intentionally-changed',
+  wrongPortSuspected: 'wrong-port-suspected',
+  unknownPendingEvidence: 'unknown-pending-evidence'
 });
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v174',
+  checkpoint: 'v176',
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({
@@ -56,12 +58,12 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'continue-reference-conformance',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Continue/Reference create local drafts that preserve parent boundary and can be validated as Tiinex leaves.',
+      legacyBehavior: 'Continue creates local drafts; old Reference appears to be a cross-artifact relation and is not yet restored. Current Preserve evidence creates a local Evidence draft from the selected record.',
       semanticOwner: 'transition + schema creation contracts',
       runtimeOwner: 'src/transitions/record.transitions',
       automatedChecks: ['src/transitions/record.transitions.test.mjs'],
-      manualChecks: ['create continuation/reference, open generated markdown'],
-      failureResult: 'draft remains local/provisional and reports missing validation if schema body contract is unavailable'
+      manualChecks: ['create continuation/preserve-evidence, open generated markdown', 'compare old Reference relation before claiming parity'],
+      failureResult: 'draft remains local/provisional and old Reference parity stays unclaimed until subject/object/anchor semantics are restored'
     }),
     scenario({
       id: 'github-source-discovery',
@@ -194,6 +196,16 @@ export const pocParityLedger = Object.freeze({
       automatedChecks: ['src/surfaces/registry.test.mjs', 'src/conformance/conformance.run.test.mjs'],
       manualChecks: ['browser review of Feed/Tree/Lineage/Audit surface affordances'],
       failureResult: 'surface remains scaffold/partial with finding; no false parity claim'
+    }),
+    scenario({
+      id: 'semantic-action-label-truth',
+      status: PoCParityStatus.partial,
+      legacyBehavior: 'Artifact labels and actions should not claim stronger evidence or different relations than the runtime can prove; Open/read, Lineage focus, byte/digest status, and Reference/Preserve relations remain distinct.',
+      semanticOwner: 'record actions + audit labels + lineage selected scope + parity ledger classifications',
+      runtimeOwner: 'src/actions/record.actions + workspace views + audit view + parity ledger',
+      automatedChecks: ['src/actions/record.actions.test.mjs', 'tools/check-ui-shape.mjs', 'tools/validate-static.mjs'],
+      manualChecks: ['Open reads artifact detail', 'Lineage focuses selected artifact', 'no byte ok label without digest evidence', 'Preserve evidence is not mistaken for old Reference'],
+      failureResult: 'status remains partial/wrong-port-suspected; UI uses evidence-honest wording rather than relabeling current behavior as PoC parity'
     }),
     scenario({
       id: 'conformance-fixture-spine',

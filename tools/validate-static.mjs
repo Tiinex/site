@@ -35,7 +35,8 @@ const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/sc
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v174-lineage-presentation-parity')) failures.push('index.html must disclose v174 React runtime');
+if (!index.includes('react-v176-semantic-action-label-truth')) failures.push('index.html must disclose v176 React runtime');
+if ((reactAppAndWorkspace + '\n' + read('src/actions/record.actions.js') + '\n' + read('src/artifacts/artifact.record.js')).includes('byte ok')) failures.push('runtime must not claim byte ok without byte/digest verification');
 
 const pkg = JSON.parse(read('package.json'));
 for (const dep of ['react', 'react-dom', 'vite', '@vitejs/plugin-react', '@fortawesome/react-fontawesome', '@fortawesome/free-solid-svg-icons']) {

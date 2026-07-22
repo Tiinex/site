@@ -23,7 +23,12 @@ if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty wo
 if (!appAndWorkspace.includes('tx-mode-strip tx-column-toolbar')) failures.push('mode/search toolbar must remain a primary landmark');
 if (appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/audit trust must not be a persistent always-visible row');
 if (!appAndWorkspace.includes('tx-audit-badge')) failures.push('cards and tree rows must expose old-like per-artifact audit/status badges');
-if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact selection must own transition from Discovery to Lineage mode');
+if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact lineage focus must keep selectedRecordId state');
+if (!appAndWorkspace.includes('function focusRecordLineage')) failures.push('Lineage focus must be separate from Open/detail reading');
+if (!appAndWorkspace.includes('RecordActionKind.lineage')) failures.push('Record actions must include a dedicated Lineage focus action');
+if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte ok without byte/digest verification');
+if (!appAndWorkspace.includes('schema ok')) failures.push('audit status badge should use schema/readability wording instead of byte integrity wording');
+if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evidence operation must not be presented as old Reference parity');
 if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage mode must show selected artifact trust/audit status after artifact selection');
 if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');
 if (appAndWorkspace.includes('aria-label="Workspace verse"')) failures.push('Lineage must not be presented as a workspace verse tab');
@@ -61,7 +66,7 @@ has('src/styles/app.css', '/* v119.3 dock ergonomics:', 'dock recognition ergono
 has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must wrap visible controls instead of stretching toward the column');
 has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
 has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
-has('src/styles/app.css', 'width: 106%;', 'logo image itself must be larger without increasing the button size');
+has('src/styles/app.css', 'width: 138%;', 'logo image itself must be larger without increasing the button size');
 
 has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');
 has('src/styles/app.css', '.tx-empty-stage-mode .tx-empty-stage {', 'empty start must override card-frame stage CSS');

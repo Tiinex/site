@@ -3,6 +3,7 @@ export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
 
 export const RecordActionKind = Object.freeze({
   open: 'record.open',
+  lineage: 'record.lineage',
   continue: 'record.continue',
   reference: 'record.reference',
   source: 'record.source',
@@ -21,6 +22,13 @@ export function presentRecordActions(record = {}) {
       contract: RECORD_ACTIONS_CONTRACT_ID
     },
     {
+      id: RecordActionKind.lineage,
+      label: 'Lineage',
+      icon: 'lineage',
+      enabled: true,
+      contract: RECORD_ACTIONS_CONTRACT_ID
+    },
+    {
       id: RecordActionKind.continue,
       label: 'Continue',
       icon: 'continue',
@@ -30,7 +38,7 @@ export function presentRecordActions(record = {}) {
     },
     {
       id: RecordActionKind.reference,
-      label: 'Reference',
+      label: 'Preserve evidence',
       icon: 'reference',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
@@ -70,13 +78,13 @@ export function sourceHrefForRecord(record = {}) {
 }
 
 export function actionIsRenderable(action = {}) {
-  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.href));
+  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.href));
 }
 
 export function createRecordActionResult(record = {}, actionId = '') {
   const action = String(actionId || '').trim();
   if (action === RecordActionKind.continue) return createContinueResult(record);
-  if (action === RecordActionKind.reference) return createReferenceResult(record);
+  if (action === RecordActionKind.reference) return createEvidencePreservationResult(record);
   return null;
 }
 
@@ -91,14 +99,14 @@ function createContinueResult(record = {}) {
   });
 }
 
-function createReferenceResult(record = {}) {
+function createEvidencePreservationResult(record = {}) {
   return Object.freeze({
     schema: RECORD_ACTION_RESULT_SCHEMA_ID,
     actionId: RecordActionKind.reference,
-    title: `Reference ${record.title || 'artifact'}`,
-    intent: 'reference-artifact',
+    title: `Preserve evidence from ${record.title || 'artifact'}`,
+    intent: 'preserve-evidence-from-selected-record',
     sourceBoundary: boundaryForRecord(record),
-    text: referenceCapsule(record)
+    text: evidencePreservationCapsule(record)
   });
 }
 
@@ -109,14 +117,16 @@ function boundaryForRecord(record = {}) {
   return 'explicit record boundary';
 }
 
-function referenceCapsule(record = {}) {
+function evidencePreservationCapsule(record = {}) {
   const lines = [
-    '# Tiinex Reference',
+    '# Tiinex Evidence Preservation',
     '',
     `Title: ${record.title || 'Untitled artifact'}`,
     `Record ID: ${record.id || 'unassigned'}`,
     `Kind: ${record.kind || 'artifact'}`,
-    `Boundary: ${boundaryForRecord(record)}`
+    `Boundary: ${boundaryForRecord(record)}`,
+    '',
+    'Semantics: preserves the selected record as bounded evidence. This is not the PoC cross-artifact Reference relation.'
   ];
   if (record.path) lines.push(`Path: ${record.path}`);
   if (record.source?.label) lines.push(`Source: ${record.source.label}`);

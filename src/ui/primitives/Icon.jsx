@@ -45,6 +45,7 @@ const ICONS = {
   help: faQuestion,
   faQuoteRight,
   home: faHouse,
+  lineage: faCodeBranch,
   local: faFolder,
   manualFiles: faFileLines,
   multiverse: faCompass,

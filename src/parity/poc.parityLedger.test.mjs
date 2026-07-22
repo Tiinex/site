@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { pocParityLedger, POC_PARITY_LEDGER_SCHEMA_ID, PoCParityStatus, summarizePoCParity } from './poc.parityLedger.js';
 
 assert.equal(pocParityLedger.schema, POC_PARITY_LEDGER_SCHEMA_ID, 'ledger must declare schema');
-assert.equal(pocParityLedger.checkpoint, 'v174', 'ledger checkpoint should match package checkpoint');
+assert.equal(pocParityLedger.checkpoint, 'v176', 'ledger checkpoint should match package checkpoint');
 assert(pocParityLedger.scenarios.length >= 6, 'ledger must cover multiple PoC loops');
 for (const scenario of pocParityLedger.scenarios) {
   assert(scenario.id, 'scenario requires id');
@@ -70,8 +70,16 @@ const conformance = pocParityLedger.scenarios.find((item) => item.id === 'confor
 assert.equal(conformance.status, PoCParityStatus.partial, 'conformance fixture spine is a guardrail, not a user-visible parity claim');
 assert(conformance.automatedChecks.includes('src/conformance/conformance.run.test.mjs'), 'conformance scenario must name fixture test');
 
+const semanticActionTruth = pocParityLedger.scenarios.find((item) => item.id === 'semantic-action-label-truth');
+assert.equal(semanticActionTruth.status, PoCParityStatus.partial, 'semantic action label truth remains partial until browser review confirms labels/actions');
+assert(semanticActionTruth.automatedChecks.includes('src/actions/record.actions.test.mjs'), 'semantic action label scenario must name action contract tests');
+
+const continueReference = pocParityLedger.scenarios.find((item) => item.id === 'continue-reference-conformance');
+assert(continueReference.legacyBehavior.includes('old Reference'), 'ledger must not silently redefine old Reference into preserve evidence');
+assert(continueReference.manualChecks.some((item) => item.includes('old Reference relation')), 'old Reference relation needs explicit manual parity evidence');
+
 const summary = summarizePoCParity();
-assert.equal(summary.checkpoint, 'v174', 'summary checkpoint matches ledger');
+assert.equal(summary.checkpoint, 'v176', 'summary checkpoint matches ledger');
 assert(summary.notParity.includes('declared-lineage-tree'), 'summary should expose remaining non-parity loops');
 
 console.log('✓ PoC parity ledger tests passed');

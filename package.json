@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v174",
+  "version": "0.2.10-v176",
   "private": true,
-  "description": "Tiinex Site v174: presentation parity for lineage mode entry, per-card audit badges, dialog sizing, and larger logo image.",
+  "description": "Tiinex Site v176: semantic action/label truth, Open/detail separation, Lineage focus action, evidence preservation naming, and selected lineage scope disclosure.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

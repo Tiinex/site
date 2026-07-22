@@ -333,6 +333,13 @@ export function TiinexApp() {
     const id = String(recordId || '');
     setRecordAction(null);
     setActiveAssetId('');
+    setActiveRecordId(id);
+  }
+
+  function focusRecordLineage(recordId) {
+    const id = String(recordId || '');
+    setRecordAction(null);
+    setActiveAssetId('');
     setActiveRecordId('');
     if (!id) return;
     const next = structuredClone(state);
@@ -482,7 +489,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v174-lineage-presentation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v176-semantic-action-label-truth" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -508,6 +515,7 @@ export function TiinexApp() {
           onCloseSource={closeSource}
           onDropFiles={addLocalFiles}
           onOpenRecord={openRecord}
+          onFocusRecordLineage={focusRecordLineage}
           onOpenAsset={openAsset}
           onOpenWorkspaceCandidate={openWorkspaceCandidate}
           onMergeWorkspaceCandidate={mergeWorkspaceCandidate}

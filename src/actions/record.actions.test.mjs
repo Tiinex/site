@@ -14,15 +14,18 @@ const localActions = presentRecordActions(localRecord);
 assert(localActions.every((action) => action.contract === RECORD_ACTIONS_CONTRACT_ID), 'actions must carry contract id');
 assert(localActions.some((action) => action.id === RecordActionKind.open), 'local record must expose open action');
 assert(localActions.some((action) => action.id === RecordActionKind.share), 'local record must expose share action');
+assert(localActions.some((action) => action.id === RecordActionKind.lineage && action.label === 'Lineage'), 'local record must expose separate lineage action');
 assert(localActions.some((action) => action.id === RecordActionKind.continue), 'local record must expose continue action when material exists');
-assert(localActions.some((action) => action.id === RecordActionKind.reference), 'local record must expose reference action');
+assert(localActions.some((action) => action.id === RecordActionKind.reference && action.label === 'Preserve evidence'), 'local record must expose evidence preservation action without claiming PoC Reference parity');
 assert(!localActions.some((action) => action.id === RecordActionKind.source), 'local record must not expose source action');
 assert(!sourceHrefForRecord(localRecord), 'local record must not create external source href');
 const localContinue = createRecordActionResult(localRecord, RecordActionKind.continue);
 assert(localContinue.schema === RECORD_ACTION_RESULT_SCHEMA_ID, 'continue must return concrete action result');
 assert(localContinue.text.includes('Boundary: browser-local session material'), 'continue result must preserve local boundary');
 const localReference = createRecordActionResult(localRecord, RecordActionKind.reference);
-assert(localReference.text.includes('Record ID: local-1'), 'reference result must contain stable record id');
+assert.equal(localReference.intent, 'preserve-evidence-from-selected-record', 'reference-labeled implementation must disclose evidence preservation semantics');
+assert(localReference.text.includes('Record ID: local-1'), 'evidence preservation result must contain stable record id');
+assert(localReference.text.includes('not the PoC cross-artifact Reference relation'), 'evidence preservation must not claim old Reference semantics');
 
 
 const unpinnedGithubRecord = {
@@ -46,6 +49,6 @@ const githubActions = presentRecordActions(githubRecord);
 assert(githubActions.some((action) => action.id === RecordActionKind.source && action.href === href), 'github record must expose source action with href');
 assert(githubActions.every(actionIsRenderable), 'all presented actions must be renderable, not decorative no-ops');
 const githubReference = createRecordActionResult(githubRecord, RecordActionKind.reference);
-assert(githubReference.text.includes('source-backed github material'), 'github reference result must preserve source-backed boundary');
+assert(githubReference.text.includes('source-backed github material'), 'github evidence preservation result must preserve source-backed boundary');
 
 console.log('✓ record action tests passed');
