@@ -101,6 +101,53 @@ function summarizeGithubMaterialization(sourceLabel, out = {}) {
   return `${sourceLabel} source registered; no source files loaded.`;
 }
 
+function isSupportingMarkdownForDisplay(record = {}) {
+  const kind = String(record.kind || '').toLowerCase();
+  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
+  const markdown = String(record.markdown || '');
+  if (kind.includes('supporting')) return true;
+  if (schema.includes('tiinex.markdown.supporting')) return true;
+  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId) return false;
+  if (/^\s*#\s*Continuity Context\b/im.test(markdown)) return false;
+  if (/^\s*Current Schema\s*:/im.test(markdown) || /^\s*Envelope Schema\s*:/im.test(markdown)) return false;
+  return Boolean(markdown.trim()) && !schema;
+}
+
+function displaySchemaValue(record = {}) {
+  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || record.kind || 'artifact').trim() || 'artifact';
+}
+
+function displayArtifactClass(record = {}) {
+  if (isSupportingMarkdownForDisplay(record)) return 'supporting';
+  if (record.source?.adapterId && record.source.adapterId !== 'local') return 'source-backed';
+  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId || record.schemaId || record.currentSchemaId) return 'leaf';
+  return 'local';
+}
+
+function buildDisplayOptionCounts(workspace = {}) {
+  const records = Array.isArray(workspace.records) ? workspace.records : [];
+  const schemaCounts = new Map();
+  const artifactCounts = new Map();
+  let supportingMarkdown = 0;
+  for (const record of records) {
+    if (isSupportingMarkdownForDisplay(record)) supportingMarkdown += 1;
+    const schema = displaySchemaValue(record);
+    schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
+    const artifact = displayArtifactClass(record);
+    artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
+  }
+  return {
+    records: records.length,
+    leaves: Math.max(0, records.length - supportingMarkdown),
+    supportingMarkdown,
+    mismatches: records.filter((record) => String(record.status || '').toLowerCase().includes('mismatch')).length,
+    assets: workspace.assets?.length || 0,
+    workspaceCandidates: workspace.workspaceMergeCandidates?.length || 0,
+    schemaChoices: Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0])),
+    artifactChoices: ['leaf', 'source-backed', 'local', 'supporting'].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)])
+  };
+}
+
 function summarizeGithubAdapterResult(out = {}) {
   const warnings = Array.isArray(out.warnings) ? out.warnings : [];
   const errors = Array.isArray(out.errors) ? out.errors : [];
@@ -131,6 +178,7 @@ export function TiinexApp() {
   const [activeAssetId, setActiveAssetId] = useState('');
   const [recordAction, setRecordAction] = useState(null);
   const [githubRequestPending, setGithubRequestPending] = useState(false);
+  const [sourceContinuationId, setSourceContinuationId] = useState('');
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const viewportWidth = useViewportWidth();
@@ -166,7 +214,18 @@ export function TiinexApp() {
 
   function openCreate() {
     setCreateError('');
+    setSourceContinuationId('');
     setDialog('create-workspace');
+  }
+
+  function openAddToWorkspace(sourceId = '') {
+    setSourceContinuationId(String(sourceId || ''));
+    setDialog('add-to-workspace');
+  }
+
+  function dismissDialog() {
+    setDialog(null);
+    setSourceContinuationId('');
   }
 
   function createWorkspace(name) {
@@ -275,7 +334,7 @@ export function TiinexApp() {
       repoDiscovery: Boolean(input.repoDiscovery),
       issueDiscovery: Boolean(input.issueDiscovery),
       issueUrls: input.issueUrls || '',
-      transportLabel: 'public GitHub API/raw'
+      transportLabel: 'direct public GitHub API/raw'
     });
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
@@ -284,14 +343,29 @@ export function TiinexApp() {
     }
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
+    const operationLabel = input.operation === 'repo' ? 'repo discovery' : input.operation === 'explicit' ? 'explicit file loading' : input.operation === 'issues' ? 'issue snapshot loading' : 'boundary registration';
     let finalState = result.state;
-    let noticeMessage = `${result.source.label} source registered.`;
+    let materializationSourceId = result.source.id;
+    let materializationSourceLabel = result.source.label;
+    let noticeMessage = `${result.source.label} source registered. No loading is running; use Continue on the source to choose explicit files, repo discovery, or issue snapshots.`;
+
+    if (!wantsMaterialization) {
+      finalState = appendImportSummary(runtime().lifecycle, finalState, {
+        schema: 'tiinex.workspace.import.result.v1',
+        ok: true,
+        message: `${result.source.label}: source boundary registered · no materialization requested.`,
+        counts: { records: 0, assets: 0, workspaceEntries: 0, warnings: 0, errors: 0, previewOmitted: 0 },
+        warnings: [],
+        errors: [],
+        diagnostics: { adapterId: 'github', sourceId: result.source.id, operation: 'register-boundary-only', transport: 'none' }
+      }, {});
+    }
 
     if (wantsMaterialization) {
       finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
         sourceId: result.source.id,
-        phase: input.repoDiscovery ? 'repo-discovery' : 'source-materialization',
-        label: `${result.source.label} accepted · loading ${fileRefs.length || 'repository Markdown'} target${fileRefs.length === 1 ? '' : 's'}`,
+        phase: input.repoDiscovery ? 'repo-discovery' : input.issueDiscovery ? 'issue-snapshots' : 'source-materialization',
+        label: `${result.source.label} accepted · ${operationLabel} via direct public GitHub transport`,
         percent: 22,
         active: true
       }).state || finalState;
@@ -321,26 +395,30 @@ export function TiinexApp() {
             label: result.source.label || label,
             discoveryState: 'deferred'
           }));
-          if (pinned?.ok) finalState = pinned.state;
+          if (pinned?.ok) {
+            finalState = pinned.state;
+            materializationSourceId = pinned.source.id;
+            materializationSourceLabel = pinned.source.label || materializationSourceLabel;
+          }
         }
         if (out.okCount > 0) {
-          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, result.source.id, out.records || []);
+          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
-        noticeMessage = summarizeGithubMaterialization(result.source.label, out);
+        noticeMessage = summarizeGithubMaterialization(materializationSourceLabel, out);
       } catch (e) {
         console.error(e);
         finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
           sourceId: result.source.id,
           phase: 'failed',
-          label: `${result.source.label} materialization failed`,
+          label: `${materializationSourceLabel} materialization failed`,
           percent: 100,
           active: false
         }).state || finalState;
-        noticeMessage = `${result.source.label} source registered; source materialization failed.`;
+        noticeMessage = `${materializationSourceLabel} source registered; source materialization failed.`;
       }
-      finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, result.source.id).state || finalState;
+      finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, '').state || finalState;
     }
 
     setDialog(null);
@@ -520,7 +598,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v177-discovery-presentation-parity" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime="react-v178-source-display-parity-repair" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -542,7 +620,7 @@ export function TiinexApp() {
           onVerse={setVerse}
           onQuery={setQuery}
           onOpenDisplayOptions={() => setDialog('display-options')}
-          onOpenAddDialog={() => setDialog('add-to-workspace')}
+          onOpenAddDialog={openAddToWorkspace}
           onCloseSource={closeSource}
           onDropFiles={addLocalFiles}
           onOpenRecord={openRecord}
@@ -561,31 +639,32 @@ export function TiinexApp() {
       {notice ? <div className="tx-toast" role="status">{notice}</div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
 
-      {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={() => setDialog(null)} /> : null}
-      {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={() => setDialog(null)} onConfirm={() => closeWorkspace(active.id)} /> : null}
+      {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
+      {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
       {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
       {dialog === 'display-options' && active ? (
         <DisplayOptionsDialog
           options={state.view?.displayOptions}
-          counts={{ records: active.records?.length || 0, assets: active.assets?.length || 0, workspaceCandidates: active.workspaceMergeCandidates?.length || 0 }}
+          counts={buildDisplayOptionCounts(active)}
           onSubmit={setDisplayOptions}
-          onDismiss={() => setDialog(null)}
+          onDismiss={dismissDialog}
         />
       ) : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog
           workspace={active}
           workspaceConfig={workspaceConfig}
-          onDismiss={() => setDialog(null)}
+          sourceContinuation={active.sources?.find((source) => source.id === sourceContinuationId) || null}
+          onDismiss={dismissDialog}
           onAddFiles={addLocalFiles}
           onAddGitHubSource={addGitHubSource}
           onAddUrls={addExplicitUrls}
           githubBusy={githubRequestPending}
         />
       ) : null}
-      {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={() => setDialog(null)} /> : null}
+      {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={dismissDialog} /> : null}
     </main>
   );
 }

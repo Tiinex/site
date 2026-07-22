@@ -40,7 +40,8 @@ has('src/app/TiinexApp.jsx', 'schemaRegistry.modules.length', 'help surface shou
 has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
-has('src/schemas/workspace/workspace.add.views.jsx', 'const [repoDiscovery, setRepoDiscovery] = useState(false);', 'GitHub repo discovery must be explicit opt-in, not default network/API work');
+has('src/schemas/workspace/workspace.add.views.jsx', "useState(continuation ? 'repo' : 'register')", 'GitHub repo discovery must be an explicit operation, not default network/API work');
+has('src/schemas/workspace/workspace.add.views.jsx', 'OperationCard id="repo"', 'GitHub repo discovery must be a visible source operation surface');
 has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema module must be in registry');
 has('src/styles/app.css', '.tx-button .tx-icon', 'button icon spacing must be centralized');
 has('src/styles/app.css', 'clamp(', 'responsive sizing must use clamp patterns');

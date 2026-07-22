@@ -5250,3 +5250,169 @@ pre { white-space: pre-wrap; overflow:auto; }
 @media (max-width: 760px) {
   .tx-github-intake-surfaces { grid-template-columns: 1fr; }
 }
+
+/* v178: source/display parity repair after v177 video review.
+   Keep Discovery presentation truthful while restoring PoC-like operation choices. */
+.tx-dialog-display-options {
+  width: min(100%, 38rem);
+}
+.tx-dialog-display-options .tx-dialog-body,
+.tx-add-flow-modal .tx-dialog-body {
+  overflow-x: hidden;
+}
+.tx-display-options-parity-form {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.tx-display-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .62rem;
+}
+.tx-select-field {
+  display: grid;
+  gap: .28rem;
+  min-width: 0;
+}
+.tx-select-field span {
+  font-size: .72rem;
+  color: rgba(247,248,251,.68);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 800;
+}
+.tx-select-field select {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: .74rem;
+  background: rgba(0,0,0,.24);
+  color: rgba(247,248,251,.88);
+  padding: .55rem .64rem;
+}
+.tx-display-options-form .tx-display-option-primary {
+  border-color: rgba(128,255,214,.3);
+  background: rgba(128,255,214,.055);
+}
+.tx-display-deferred-controls {
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: .8rem;
+  padding: .5rem .62rem;
+  color: rgba(247,248,251,.62);
+}
+.tx-display-deferred-controls summary {
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 760;
+}
+.tx-display-deferred-controls p {
+  margin: .35rem 0 0;
+  font-size: .76rem;
+  line-height: 1.32;
+}
+.tx-github-operation-surfaces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .5rem;
+  margin-bottom: .64rem;
+}
+.tx-github-operation-card {
+  display: grid;
+  gap: .18rem;
+  min-width: 0;
+  text-align: left;
+  border: 1px solid rgba(189,115,255,.18);
+  border-radius: .84rem;
+  padding: .58rem .62rem;
+  background: rgba(255,255,255,.03);
+  color: rgba(247,248,251,.78);
+  cursor: pointer;
+}
+.tx-github-operation-card strong,
+.tx-github-operation-card small {
+  display: block;
+}
+.tx-github-operation-card strong {
+  font-size: .78rem;
+  color: rgba(247,248,251,.88);
+}
+.tx-github-operation-card small {
+  font-size: .68rem;
+  line-height: 1.26;
+  color: rgba(247,248,251,.54);
+}
+.tx-github-operation-card.is-active {
+  border-color: rgba(101,242,231,.45);
+  background: linear-gradient(180deg, rgba(101,242,231,.10), rgba(189,115,255,.065));
+  box-shadow: 0 0 0 1px rgba(101,242,231,.08) inset;
+}
+.tx-github-operation-receipt,
+.tx-source-continuation-banner,
+.tx-transport-contract-panel {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: .18rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: .86rem;
+  background: rgba(0,0,0,.17);
+  padding: .58rem .68rem;
+  margin-bottom: .66rem;
+}
+.tx-source-continuation-banner {
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  border-color: rgba(115,189,255,.28);
+  background: rgba(30,87,177,.10);
+}
+.tx-github-operation-receipt strong,
+.tx-source-continuation-banner strong,
+.tx-transport-contract-panel strong {
+  color: rgba(247,248,251,.88);
+}
+.tx-github-operation-receipt small,
+.tx-source-continuation-banner small,
+.tx-transport-contract-panel small {
+  color: rgba(247,248,251,.58);
+  line-height: 1.3;
+}
+.tx-transport-contract-panel {
+  grid-template-columns: repeat(2, minmax(0,1fr));
+}
+.tx-form-error {
+  margin: .2rem 0 0;
+  color: #ffd7df;
+  border: 1px solid rgba(255,107,138,.34);
+  background: rgba(255,107,138,.09);
+  border-radius: .75rem;
+  padding: .45rem .6rem;
+}
+.tx-source-pill .tx-source-transport,
+.tx-source-pill .tx-source-motion-state {
+  font-style: normal;
+  font-size: .66rem;
+  padding: .12rem .36rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.045);
+  color: rgba(247,248,251,.62);
+}
+.tx-source-pill .tx-source-transport {
+  color: #d7e8ff;
+  border-color: rgba(115,189,255,.24);
+  background: rgba(30,87,177,.08);
+}
+.tx-source-pill .tx-source-motion-state {
+  color: rgba(247,248,251,.54);
+}
+.tx-source-load span {
+  max-width: 5.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 880px) {
+  .tx-github-operation-surfaces,
+  .tx-transport-contract-panel,
+  .tx-display-filter-grid { grid-template-columns: 1fr; }
+}

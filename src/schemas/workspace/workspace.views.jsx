@@ -16,19 +16,32 @@ import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.rec
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   leavesFirst: true,
+  leavesOnly: false,
+  mismatchesOnly: false,
   showSupportingMarkdown: false,
   showWorkspaceCandidates: true,
-  showAssets: false
+  showAssets: false,
+  schemaFilter: 'all',
+  artifactFilter: 'all'
 });
 
 export function normalizeWorkspaceDisplayOptions(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
   return {
     leavesFirst: source.leavesFirst !== false ? DEFAULT_DISPLAY_OPTIONS.leavesFirst : false,
+    leavesOnly: source.leavesOnly === true,
+    mismatchesOnly: source.mismatchesOnly === true,
     showSupportingMarkdown: source.showSupportingMarkdown === true ? true : DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown,
     showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
-    showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets
+    showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets,
+    schemaFilter: normalizeDisplayFilterValue(source.schemaFilter),
+    artifactFilter: normalizeDisplayFilterValue(source.artifactFilter)
   };
+}
+
+function normalizeDisplayFilterValue(value) {
+  const text = String(value || 'all').trim();
+  return text || 'all';
 }
 
 function isSupportingMarkdownRecord(record = {}) {
@@ -65,6 +78,48 @@ function AuditStatusBadge({ record, item }) {
   return <Badge className={`tx-audit-badge tx-audit-badge-${badge.tone}`} title={badge.title}>{badge.label}</Badge>;
 }
 
+function auditIsMismatch(record = {}, auditItem = null) {
+  return auditBadgeForRecord(record, auditItem).tone === 'mismatch';
+}
+
+function recordSchemaValue(record = {}) {
+  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || record.kind || 'artifact').trim() || 'artifact';
+}
+
+function recordArtifactClass(record = {}) {
+  if (isSupportingMarkdownRecord(record)) return 'supporting';
+  if (record.source?.adapterId && record.source.adapterId !== 'local') return 'source-backed';
+  if (record.hasContinuityContext || record.hasIntegrity || record.trace || record.origin || record.parentSchemaId || record.schemaId || record.currentSchemaId) return 'leaf';
+  return 'local';
+}
+
+function displayRecordIncluded(record = {}, options = {}, auditById = new Map()) {
+  const supporting = isSupportingMarkdownRecord(record);
+  if ((options.leavesOnly || !options.showSupportingMarkdown) && supporting) return false;
+  if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return false;
+  const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
+  if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return false;
+  const artifactFilter = normalizeDisplayFilterValue(options.artifactFilter);
+  if (artifactFilter !== 'all' && recordArtifactClass(record) !== artifactFilter) return false;
+  return true;
+}
+
+function displayOptionChoices(records = [], auditById = new Map()) {
+  const schemaCounts = new Map();
+  const artifactCounts = new Map();
+  for (const record of Array.isArray(records) ? records : []) {
+    const schema = recordSchemaValue(record);
+    schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
+    const artifact = recordArtifactClass(record);
+    artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
+  }
+  const schemas = Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const artifacts = ['leaf', 'source-backed', 'local', 'supporting'].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]);
+  const supportingCount = artifactCounts.get('supporting') || 0;
+  const mismatchCount = (Array.isArray(records) ? records : []).filter((record) => auditIsMismatch(record, auditById.get(record.id))).length;
+  return { schemas, artifacts, supportingCount, mismatchCount, leafCount: Math.max(0, (records || []).length - supportingCount) };
+}
+
 function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
   return records.find((record) => record.id === selectedRecordId) || null;
@@ -82,8 +137,9 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
   const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
+  const displayChoices = displayOptionChoices(allRecords, auditById);
   const records = prioritizeDiscoveryRecords(allRecords
-    .filter((record) => displayOptions.showSupportingMarkdown || !isSupportingMarkdownRecord(record))
+    .filter((record) => displayRecordIncluded(record, displayOptions, auditById))
     .filter((record) => recordMatchesQuery(record, query)), displayOptions);
   const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, query)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
@@ -142,13 +198,17 @@ function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
         {sources.map((source) => {
           const closeable = Boolean(source.closeable);
           const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
+          const transport = sourceTransportMode(source);
+          const idle = source.discoveryState === 'deferred' || source.discoveryState === 'not-started';
           return (
             <span key={source.id || source.label} className={`tx-source-pill ${closeable ? 'tx-source-pill-closeable' : ''} ${kind.includes('github') ? 'source-github' : 'source-local'}`} title={source.boundary || boundary || ''}>
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
               <strong>{source.label || source.id || 'Source'}</strong>
               <small>{source.count || 0}</small>
+              {transport ? <em className="tx-source-transport" title={source.transportLabel || transport}>{transport}</em> : null}
               {source.discoveryState ? <em className={`tx-source-state tx-source-state-${source.discoveryState}`}>{source.discoveryState}</em> : null}
-              {closeable ? <button type="button" className="tx-source-load" aria-label={`Load files for ${source.label || 'source'}`} title="Add explicit files or discovery for this source" onClick={() => onOpenAddDialog?.()}><Icon name="add" /><span>Load</span></button> : null}
+              {idle ? <em className="tx-source-motion-state" title="No source materialization is currently running.">idle</em> : null}
+              {closeable ? <button type="button" className="tx-source-load" aria-label={`Continue loading ${source.label || 'source'}`} title="Continue this source: choose explicit files, repo discovery, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Continue</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
           );
@@ -157,6 +217,16 @@ function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog }) {
       {boundary ? <small className="tx-source-boundary tx-compact-source-boundary">{boundary}</small> : null}
     </div>
   );
+}
+
+function sourceTransportMode(source = {}) {
+  const label = String(source.transportLabel || source.transport || '').toLowerCase();
+  if (label.includes('cache')) return 'cache';
+  if (label.includes('mirror')) return 'mirror';
+  if (label.includes('proxy')) return 'proxy';
+  if (label.includes('direct') || label.includes('raw') || label.includes('api')) return 'direct';
+  if (source.adapterId === 'github') return 'direct';
+  return '';
 }
 
 function WorkspaceMaterialSummary({ summary }) {
@@ -210,7 +280,7 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
-  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0);
+  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0);
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
@@ -942,23 +1012,52 @@ export function CreateWorkspaceDialog({ error, onSubmit, onDismiss }) {
 
 export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss }) {
   const [draft, setDraft] = useState(normalizeWorkspaceDisplayOptions(options));
+  const schemaChoices = Array.isArray(counts.schemaChoices) ? counts.schemaChoices : [];
+  const artifactChoices = Array.isArray(counts.artifactChoices) ? counts.artifactChoices : [];
   function setFlag(key, value) {
     setDraft((current) => Object.assign({}, current, { [key]: Boolean(value) }));
+  }
+  function setValue(key, value) {
+    setDraft((current) => Object.assign({}, current, { [key]: String(value || 'all') || 'all' }));
   }
   function submit(event) {
     event.preventDefault();
     onSubmit?.(normalizeWorkspaceDisplayOptions(draft));
   }
   return (
-    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displayLeavesFirst" className="tx-dialog-display-options">
-      <form className="tx-form tx-display-options-form" onSubmit={submit} data-form="display-options-form">
-        <p className="tx-muted">Presentation only. Source, audit, lineage, and export truth stay intact even when material is hidden from Feed/Tree.</p>
+    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displayLeavesOnly" className="tx-dialog-display-options">
+      <form className="tx-form tx-display-options-form tx-display-options-parity-form" onSubmit={submit} data-form="display-options-form">
+        <p className="tx-muted">Presentation only. Source, audit, lineage, and export truth stay intact even when material is filtered from Feed/Tree.</p>
+        <div className="tx-display-filter-grid" aria-label="Artifact filters">
+          <label className="tx-select-field">
+            <span>Schema</span>
+            <select value={draft.schemaFilter} onChange={(event) => setValue('schemaFilter', event.target.value)}>
+              <option value="all">All schemas</option>
+              {schemaChoices.map(([value, count]) => <option key={value} value={value}>{compactSchemaOption(value)} · {count}</option>)}
+            </select>
+          </label>
+          <label className="tx-select-field">
+            <span>Artifact</span>
+            <select value={draft.artifactFilter} onChange={(event) => setValue('artifactFilter', event.target.value)}>
+              <option value="all">All artifacts</option>
+              {artifactChoices.map(([value, count]) => <option key={value} value={value}>{artifactFilterLabel(value)} · {count}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="tx-display-option-row tx-display-option-primary">
+          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} likely Tiinex/work leaf{Number(counts.leaves || 0) === 1 ? '' : 's'} · hides supporting Markdown</small></span>
+          <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
+        </label>
         <label className="tx-display-option-row">
-          <span><strong>Leaves first</strong><small>Prioritize Tiinex/work artifacts before schema/support docs in Discovery</small></span>
+          <span><strong>Mismatches only</strong><small>{Number(counts.mismatches || 0)} record{Number(counts.mismatches || 0) === 1 ? '' : 's'} currently carry mismatch-level audit status</small></span>
+          <input id="displayMismatchesOnly" type="checkbox" checked={draft.mismatchesOnly} onChange={(event) => setFlag('mismatchesOnly', event.target.checked)} />
+        </label>
+        <label className="tx-display-option-row">
+          <span><strong>Leaves first</strong><small>Sort Tiinex/work artifacts before schema/support docs when those docs are visible</small></span>
           <input id="displayLeavesFirst" type="checkbox" checked={draft.leavesFirst} onChange={(event) => setFlag('leavesFirst', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">
-          <span><strong>Supporting docs</strong><small>{Number(counts.records || 0)} loaded record{Number(counts.records || 0) === 1 ? '' : 's'} · plain docs stay distinct from Tiinex leaves</small></span>
+          <span><strong>Supporting docs</strong><small>{Number(counts.supportingMarkdown || 0)} supporting doc{Number(counts.supportingMarkdown || 0) === 1 ? '' : 's'} · preserved but hidden by default</small></span>
           <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">
@@ -966,9 +1065,13 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
           <input type="checkbox" checked={draft.showWorkspaceCandidates} onChange={(event) => setFlag('showWorkspaceCandidates', event.target.checked)} />
         </label>
         <label className="tx-display-option-row">
-          <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default like supporting files, never fake leaves</small></span>
+          <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default, never fake leaves</small></span>
           <input type="checkbox" checked={draft.showAssets} onChange={(event) => setFlag('showAssets', event.target.checked)} />
         </label>
+        <details className="tx-display-deferred-controls">
+          <summary>Deferred PoC controls</summary>
+          <p>Time Portal and link-behavior controls remain deferred until their runtime owners are restored. They are not hidden parity claims.</p>
+        </details>
         <div className="tx-dialog-actions">
           <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
           <Button type="submit" variant="primary" icon="check">Apply</Button>
@@ -977,6 +1080,19 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
     </Modal>
   );
 }
+
+function compactSchemaOption(value = '') {
+  return String(value || 'artifact').replace(/^tiinex\./, '').replace(/\.v\d+$/, '');
+}
+
+function artifactFilterLabel(value = '') {
+  if (value === 'source-backed') return 'Source-backed';
+  if (value === 'leaf') return 'Leaves';
+  if (value === 'supporting') return 'Supporting docs';
+  if (value === 'local') return 'Local/session';
+  return value || 'Artifact';
+}
+
 
 export function CloseWorkspaceDialog({ workspace, onDismiss, onConfirm }) {
   return (

@@ -1,6 +1,6 @@
-# Tiinex Site v177 Validation Notes
+# Tiinex Site v178 Validation Notes
 
-v177 is a large presentation-read-model batch after the semantic action/label truth work.
+v178 is a source/display parity repair batch after the v177 usage video and LLM review.
 
 Validated in the working tree:
 
@@ -9,22 +9,17 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx
 ```
 
-Also checked:
-
-```bash
-node --check src/workspaces/workspace.discoveryProgress.js
-```
-
-Full `npm run test` was not completed in this sandbox because the runtime/build smoke requires installed Vite/React dependencies. Run it locally/CI after `npm install`.
+Full `npm run test` was not completed in this sandbox because dependency installation timed out before Vite/React build/runtime smoke could run. Run it locally/CI after `npm install`.
 
 Manual browser focus for Q:
 
-1. Feed should show valuable Tiinex/work leaves before support/schema docs.
-2. Display options can turn supporting docs/assets back on.
-3. Tree branches should remember expansion across Feed/Tree switches and refreshable route state.
-4. GitHub explicit paths/discovery should show an accepted/loading receipt before the import result lands.
-5. Source pill should remain a boundary/control point with visible state and a Load action.
-6. Lineage should show selected artifact status first, with workspace diagnostics collapsed/secondary.
-7. Logo should look optically centered while the dock/button size stays compact.
+1. Display options should no longer clip left-side labels or require horizontal scrolling on half-width desktop.
+2. `Leaves only` should filter, while `Leaves first` should only sort when supporting docs are visible.
+3. Supporting docs should show a category count, not total loaded records.
+4. GitHub Add cards should act as operation choices, not static explanations.
+5. Register-only source should end with a clear “no loading is running” receipt.
+6. Source `Continue` should reopen GitHub source work with repo/ref/root context prefilled.
+7. Explicit files/repo discovery should still show loading receipt and loaded/skipped/failed summary.

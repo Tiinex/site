@@ -15,7 +15,7 @@ console.log(JSON.stringify({
   activeFiles:files.length,
   legacyArchived: existsSync(join(root,'.old')) && statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v177-discovery-presentation-parity'),
+  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v178-source-display-parity-repair'),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,

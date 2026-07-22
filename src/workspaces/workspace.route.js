@@ -9,7 +9,7 @@
     return {
       v: STATE_VERSION,
       activeWorkspaceId: state.activeWorkspaceId || '',
-      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } }, state.view || {}),
+      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, state.view || {}),
       workspaces: Array.isArray(state.workspaces) ? state.workspaces.map(compactWorkspace) : []
     };
   }
@@ -141,7 +141,7 @@
     const empty = lifecycle?.makeEmptyAppState?.() || { version: 1, activeWorkspaceId: '', view: {}, workspaces: [], audit: null };
     if (!routeState || !routeHasWorkspaces(routeState)) return empty;
     const next = lifecycle?.cloneState?.(Object.assign({}, empty, routeState)) || JSON.parse(JSON.stringify(Object.assign({}, empty, routeState)));
-    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } }, next.view || {});
+    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, next.view || {});
     next.workspaces = Array.isArray(next.workspaces) ? next.workspaces.map(normalizeRouteWorkspaceShell) : [];
     next.activeWorkspaceId = next.workspaces.some((workspace) => workspace.id === next.activeWorkspaceId)
       ? next.activeWorkspaceId

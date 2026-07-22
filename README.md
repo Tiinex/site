@@ -1,18 +1,25 @@
-# Tiinex Site v177
+# Tiinex Site v178
 
-v177 is a discovery presentation checkpoint for the React/Vite refactor. It keeps v176 semantic action/label truth while making the main Discovery loop more useful before the next manual test pass.
+v178 is a source/display parity repair checkpoint for the React/Vite refactor. It keeps v176/v177 semantic corrections while making Display options and GitHub source operations closer to the observed PoC mental model.
 
-## v177 batch
+## v178 batch
 
-- Discovery now prioritizes Tiinex/work leaves before support/schema Markdown.
-- Supporting docs are hidden from Feed/Tree by default but preserved in state, audit, route, and export boundaries.
-- Display options now exposes `Leaves first`, supporting docs, workspace candidates, and assets as presentation-only controls.
-- Tree folder expansion is persisted in route/view state instead of being a transient DOM/search effect.
-- GitHub materialization now has an observable accepted/loading receipt before records appear in bulk.
-- Source pills expose the finite discovery state and provide a small `Load` continuation control for deferred sources.
-- Lineage is selected-first: the chosen artifact summary is shown before workspace-wide diagnostics, which are collapsed when a selection exists.
-- The logo artwork is optically re-centered without changing the button size or touching image files.
-
+- Display options now separates ordering, membership, and semantic filters:
+  - `Leaves only`
+  - `Mismatches only`
+  - schema filter
+  - artifact/source class filter
+  - supporting docs, workspace candidates, and assets.
+- Supporting-doc counts are category-specific instead of showing the workspace total.
+- GitHub Add now presents explicit operation choices instead of explanatory cards:
+  - register boundary only
+  - explicit files
+  - repo files discovery
+  - issue snapshots.
+- The submit button and receipt text now describe the selected operation, so “registered but not loading” is not confused with “loading now”.
+- A deferred source remains a source control point: `Continue` opens the GitHub form prefilled with that source context.
+- Source pills expose transport mode and idle/loading state without claiming mirror/proxy behavior that is not active.
+- Dialog layout avoids horizontal clipping/scroll at split-screen desktop widths.
 
 ## Supported local start
 

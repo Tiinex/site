@@ -12,7 +12,7 @@ export const PoCParityStatus = Object.freeze({
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v177',
+  checkpoint: 'v178',
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({
@@ -200,12 +200,12 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'discovery-presentation-parity',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Discovery should prioritize valuable Tiinex leaves before support/schema material, keep Tree expansion stable, show GitHub materialization as an observable transition, and keep selected Lineage separate from workspace-wide diagnostics.',
-      semanticOwner: 'workspace presentation read model + source/material boundary + selected lineage scope',
-      runtimeOwner: 'src/schemas/workspace/workspace.views + src/workspaces/workspace.discoveryProgress + src/app/TiinexApp',
+      legacyBehavior: 'Discovery should prioritize valuable Tiinex leaves, distinguish Display option ordering from filtering, keep Tree expansion stable, show source registration/materialization as distinct observable transitions, and keep selected Lineage separate from workspace-wide diagnostics.',
+      semanticOwner: 'workspace presentation read model + Display options contract + source/material boundary + selected lineage scope',
+      runtimeOwner: 'src/schemas/workspace/workspace.views + workspace.add.views + src/workspaces/workspace.discoveryProgress + src/app/TiinexApp',
       automatedChecks: ['tools/check-ui-shape.mjs', 'tools/check-uc001.mjs'],
-      manualChecks: ['Feed shows leaves/work artifacts first', 'Tree branches persist across view changes', 'GitHub import shows accepted/loading/done receipt', 'Selected Lineage appears before collapsed workspace overview'],
-      failureResult: 'supporting docs remain preserved but do not dominate Discovery; workspace diagnostics stay secondary to selected artifact status'
+      manualChecks: ['Feed shows leaves/work artifacts first', 'Display options has Leaves only, Mismatches only, schema/artifact filters without clipping', 'Tree branches persist across view changes', 'GitHub register-only clearly says no loading is running', 'GitHub import shows accepted/loading/done receipt', 'Source Continue opens prefilled source context', 'Selected Lineage appears before collapsed workspace overview'],
+      failureResult: 'supporting docs remain preserved but do not dominate Discovery; source registration and source materialization are not confused; workspace diagnostics stay secondary to selected artifact status'
     }),
     scenario({
       id: 'semantic-action-label-truth',

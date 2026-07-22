@@ -118,7 +118,7 @@
       schema: SESSION_CACHE_SCHEMA_ID,
       version: source.version || 1,
       activeWorkspaceId: source.activeWorkspaceId || '',
-      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: false } }, source.view || {}),
+      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: true, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, source.view || {}),
       audit: source.audit || null,
       workspaces: Array.isArray(source.workspaces) ? source.workspaces.map(compactWorkspaceForCache) : []
     };

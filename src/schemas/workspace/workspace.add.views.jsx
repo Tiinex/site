@@ -6,8 +6,8 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { TiinexAdapterRegistry } from '../../adapters/registry.js';
 import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.adapter.js';
 
-export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, githubBusy = false }) {
-  const [mode, setMode] = useState('');
+export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinuation = null, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, githubBusy = false }) {
+  const [mode, setMode] = useState(sourceContinuation ? 'git' : '');
   const [stagedFiles, setStagedFiles] = useState([]);
   const title = `Add to ${workspace.title || workspace.name || 'workspace'}`;
   const modalClass = mode ? 'tx-add-flow-modal tx-add-mode-modal' : 'tx-add-flow-modal';
@@ -18,7 +18,7 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, onDismiss, on
         <AddChoiceGrid onMode={setMode} onAddFiles={onAddFiles} title={title} />
       ) : null}
       {mode === 'git' ? (
-        <GitHubSourceForm onBack={() => setMode('')} onSubmit={onAddGitHubSource} busy={githubBusy} />
+        <GitHubSourceForm sourceContinuation={sourceContinuation} onBack={() => sourceContinuation ? onDismiss?.() : setMode('')} onSubmit={onAddGitHubSource} busy={githubBusy} />
       ) : null}
       {mode === 'urls' ? (
         <ExplicitUrlsForm onBack={() => setMode('')} onSubmit={onAddUrls} />
@@ -68,55 +68,128 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
   );
 }
 
-function GitHubSourceForm({ onBack, onSubmit, busy = false }) {
-  const [repository, setRepository] = useState('');
-  const [ref, setRef] = useState('');
-  const [rootPath, setRootPath] = useState('.topics');
-  const [repoDiscovery, setRepoDiscovery] = useState(false);
+function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = false }) {
+  const continuation = sourceContinuation || null;
+  const [repository, setRepository] = useState(continuation?.repo || continuation?.config?.repo || '');
+  const [ref, setRef] = useState(continuation?.ref || continuation?.config?.ref || '');
+  const [rootPath, setRootPath] = useState(continuation?.rootPath || continuation?.config?.rootPath || '.topics');
+  const [operation, setOperation] = useState(continuation ? 'repo' : 'register');
   const [issueUrls, setIssueUrls] = useState('');
   const [fileRefs, setFileRefs] = useState('');
+  const [error, setError] = useState('');
 
   function submit(event) {
     event.preventDefault();
     if (busy) return;
-    onSubmit({ repository, ref, rootPath, repoDiscovery, issueDiscovery: Boolean(issueUrls.trim()), issueUrls, label: repository, fileRefs });
+    setError('');
+    const cleanRepo = String(repository || '').trim();
+    const explicitRefs = String(fileRefs || '').trim();
+    const explicitIssues = String(issueUrls || '').trim();
+    if (!cleanRepo) {
+      setError('Repo URL or owner/name is required.');
+      return;
+    }
+    if (operation === 'explicit' && !explicitRefs) {
+      setError('Add at least one Markdown path or raw/blob URL for explicit files.');
+      return;
+    }
+    if (operation === 'issues' && !explicitIssues) {
+      setError('Add at least one GitHub issue or discussion URL.');
+      return;
+    }
+    onSubmit({
+      repository,
+      ref,
+      rootPath,
+      operation,
+      repoDiscovery: operation === 'repo',
+      issueDiscovery: operation === 'issues',
+      issueUrls: operation === 'issues' ? issueUrls : '',
+      label: repository,
+      fileRefs: operation === 'explicit' ? fileRefs : '',
+      sourceId: continuation?.id || ''
+    });
   }
 
+  const submitLabel = operation === 'register'
+    ? 'Register source boundary'
+    : operation === 'explicit'
+      ? 'Load explicit files'
+      : operation === 'issues'
+        ? 'Load issue snapshots'
+        : 'Discover repo Markdown';
+  const sourceLabel = continuation?.label || repository || 'GitHub source';
 
   return (
-    <form className="tx-add-source-form tx-github-source-form" onSubmit={submit}>
-      <div className="tx-github-intake-surfaces" aria-label="GitHub intake surfaces">
-        <div><strong>Register boundary</strong><small>No network work unless explicit paths or discovery are selected.</small></div>
-        <div><strong>Explicit files</strong><small>Load chosen Markdown paths now and report loaded/skipped counts.</small></div>
-        <div><strong>Repo discovery</strong><small>Optional bounded discovery; may be rate-limited.</small></div>
+    <form className="tx-add-source-form tx-github-source-form" onSubmit={submit} data-operation={operation}>
+      {continuation ? (
+        <div className="tx-source-continuation-banner" role="status">
+          <Icon name="source" />
+          <span><strong>Continue {sourceLabel}</strong><small>{continuation.count || 0} loaded · {continuation.discoveryState || 'deferred'} · no work runs until you choose a source operation.</small></span>
+        </div>
+      ) : null}
+      <div className="tx-github-operation-surfaces" aria-label="GitHub source operations">
+        <OperationCard id="register" active={operation === 'register'} onSelect={setOperation} title="Register boundary" detail="Add source identity only. No requests, no loading." />
+        <OperationCard id="explicit" active={operation === 'explicit'} onSelect={setOperation} title="Explicit files" detail="Load listed Markdown paths or raw/blob URLs now." />
+        <OperationCard id="repo" active={operation === 'repo'} onSelect={setOperation} title="Repo files discovery" detail="Discover bounded Markdown under the root paths." />
+        <OperationCard id="issues" active={operation === 'issues'} onSelect={setOperation} title="Issue snapshots" detail="Parse explicit issue/discussion targets when available." />
+      </div>
+      <div className="tx-github-operation-receipt" role="status">
+        <strong>{operationSummary(operation)}</strong>
+        <small>{operationDetail(operation)}</small>
       </div>
       <div className="tx-github-source-field-grid">
         <TextField id="source-repo" label="Repo URL or owner/name" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
         <TextField id="source-ref" label="Ref optional" value={ref} onChange={setRef} placeholder="default branch" />
       </div>
       <label className="tx-textarea-field">
-        <span>Explicit Markdown paths / URLs <small>optional</small></span>
-        <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
-        <small className="tx-field-hint">The workspace will show an accepted/loading receipt while these files or discovery targets materialize.</small>
+        <span>Explicit Markdown paths / URLs <small>{operation === 'explicit' ? 'required for this operation' : 'optional'}</small></span>
+        <textarea value={fileRefs} onFocus={() => setOperation('explicit')} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
       </label>
       <label className="tx-textarea-field">
         <span>Root paths</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />
       </label>
-      <div className="tx-github-source-surface-grid">
-        <label className="tx-display-option-row"><span><strong>Discover repo Markdown now</strong><small>Uses bounded public GitHub API reads; progress/receipt is shown in the workspace</small></span><input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} /></label>
+      <label className="tx-textarea-field">
+        <span>Issue / Discussion URLs <small>{operation === 'issues' ? 'required for this operation' : 'optional'}</small></span>
+        <textarea value={issueUrls} onFocus={() => setOperation('issues')} onChange={(event) => setIssueUrls(event.target.value)} placeholder="https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
+      </label>
+      <div className="tx-transport-contract-panel" aria-label="Transport contract">
+        <span><strong>Transport</strong><small>direct public GitHub API/raw · no hidden mirror/proxy claim</small></span>
+        <span><strong>Result</strong><small>{operation === 'register' ? 'source boundary only' : 'accepted/loading receipt, then loaded/skipped/failed summary'}</small></span>
       </div>
-      <details className="tx-github-advanced-issues" open={Boolean(issueUrls)}>
-        <summary>Issue / Discussion URLs <em>optional</em></summary>
-        <textarea value={issueUrls} onChange={(event) => setIssueUrls(event.target.value)} placeholder="Optional explicit GitHub issue or discussion targets. Issue snapshot reader lands behind the same adapter contract.&#10;https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
-      </details>
+      {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
-        <Button type="submit" variant="primary" icon="github" disabled={busy}>{busy ? 'Adding GitHub source…' : 'Add GitHub source'}</Button>
+        <Button type="submit" variant="primary" icon="github" disabled={busy}>{busy ? 'GitHub operation running…' : submitLabel}</Button>
       </div>
     </form>
   );
 }
+
+function OperationCard({ id, title, detail, active, onSelect }) {
+  return (
+    <button type="button" className={`tx-github-operation-card ${active ? 'is-active' : ''}`} aria-pressed={active} onClick={() => onSelect(id)}>
+      <strong>{title}</strong>
+      <small>{detail}</small>
+    </button>
+  );
+}
+
+function operationSummary(operation) {
+  if (operation === 'explicit') return 'Operation selected: load explicit files';
+  if (operation === 'repo') return 'Operation selected: repo files discovery';
+  if (operation === 'issues') return 'Operation selected: issue snapshots';
+  return 'Operation selected: register boundary only';
+}
+
+function operationDetail(operation) {
+  if (operation === 'explicit') return 'The source is registered and listed file targets are materialized immediately.';
+  if (operation === 'repo') return 'The source is registered, then bounded repo Markdown discovery starts with visible progress.';
+  if (operation === 'issues') return 'The source is registered, then explicit issue/discussion targets are handled by the source reader.';
+  return 'No source material is read and no loading is running after submit.';
+}
+
 
 function ExplicitUrlsForm({ onBack, onSubmit }) {
   const [urls, setUrls] = useState('');
