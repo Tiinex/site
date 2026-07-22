@@ -1,6 +1,6 @@
-# Tiinex Site v187 Validation Notes
+# Tiinex Site v188 Validation Notes
 
-v187 follows the v186 usage-video review and Q's feedback that Lineage mode was closer, but still felt too much like a debugger and that Tree artifact clicks should behave like artifact/card clicks by entering Lineage for that artifact.
+v188 follows Q's review that Lineage mode was closer but still too noisy: the blue/decorative visual treatment, always-expanded read content, repeated root/debug claims, and audit/diagnostics footer made the viewer feel less like the PoC.
 
 ## Validation run in workspace
 
@@ -9,39 +9,27 @@ npm run validate
 npm run ui:shape
 npm run usecase:uc001
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/workspace/workspace.add.views.jsx src/sources/github/github.transport.js src/adapters/github/github.adapter.js
+npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx
 ```
 
 All completed successfully in the workspace.
 
-## Added/updated guards
-
-Existing guards that were exercised:
-
-```txt
-node src/sources/github/github.transport.test.mjs
-node src/adapters/github/github.adapter.test.mjs
-node src/workspaces/workspace.lifecycle.test.mjs
-node src/workspaces/workspace.pathTree.test.mjs
-node src/workspaces/workspace.lineageView.test.mjs
-```
-
-The changed behavior is also covered by UI-shape/source-static checks for the same code paths.
+`npm run build:public` was attempted, but this sandbox does not have installed Vite/node_modules, so the build script exits before a Vite binary is available.
 
 ## Browser test focus
 
-1. In Tree verse, click a Tiinex artifact row. It should enter Lineage for that artifact, not open Detail.
-2. In Lineage, each card should be a comparable artifact card with audit/lifecycle/schema/source evidence and comparable actions.
-3. The audit/workspace diagnostics footer should not appear as part of the default selected Lineage viewer.
-4. `root reached` should be readable once as the path status, not repeated as a debugging report.
-5. Import notice should dismiss or expire instead of covering Lineage for the whole session.
-6. Click the source transport chip after a GitHub load; it should clear same-source text cache and reopen source controls for an explicit retry.
-7. Transport chip title should distinguish plan from observed delivery tiers.
+1. Open Lineage from Feed and Tree. The default view should be compact peer artifact cards, not an expanded read/debug report.
+2. Confirm the large blue/decorative ellipse no longer appears inside or over the Lineage card content from the app CSS.
+3. Click Expand read view on a Lineage card. It should reveal a limited schema-owned excerpt, not all details/provenance/markdown.
+4. Open details should remain the full artifact/details dialog. Show markdown should remain the exact Markdown dialog.
+5. The selected Lineage diagnostics footer should not appear under the viewer path by default.
+6. The home/logo command should look optically centered in the toolbar.
+7. The toolbar should remain content-fit and tight around visible controls.
 
 ## Known limits
 
 - Full `npm run test` was not run here because the Vite/React build-smoke path requires installed dependencies.
-- Mirror/proxy repository snapshot execution is still limited by available browser/configured readers; unavailable tiers are now explicit rather than silently skipped.
-- v187 does not implement partial record promotion during import.
-- v187 does not implement a real issue snapshot browser reader.
-- v187 does not implement binary asset fetching.
+- Transport/source behavior is intentionally unchanged from v187 in this pass.
+- v188 does not implement partial record promotion during import.
+- v188 does not implement a real issue snapshot browser reader.
+- v188 does not implement binary asset fetching.

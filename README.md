@@ -1,23 +1,23 @@
-# Tiinex Site v187
+# Tiinex Site v188
 
-v187 is a lineage-viewer parity and transport-clarity checkpoint for the React/Vite refactor. It builds on v186's equal Lineage cards and removes the remaining debugger-like defaults from normal Lineage reading.
+v188 is a focused Lineage viewer parity checkpoint. It builds on v187 but tightens the default Lineage reading surface toward the PoC: compact peer artifact cards first, expansion only on request, diagnostics out of the normal viewer, and the home/logo command re-centered without touching the image file.
 
-## v187 batch
+## v188 batch
 
-- Tree artifact rows now enter Lineage for that artifact, matching Feed/card behavior; Details remains a separate explicit action from cards/dialogs.
-- Lineage mode defaults to a cleaner artifact viewer: no selected audit footer and no repeated root terminal claim when the compact path status already says `root reached`.
-- Every Lineage card receives comparable lifecycle, audit, schema, source, anchor, details, markdown, Continue, Preserve evidence, and Source actions when the record supports them.
-- Current/parent/root labels are less diagnostic than the earlier `reference point / ancestor` wording.
-- Source transport display separates the configured plan from observed delivery counts; the compact pill can show cache, mirror, proxy, direct, or mixed observed tiers.
-- Clicking the transport chip clears same-source text cache and opens source controls so a user can explicitly retry the source path instead of silently staying on stale cache/direct behavior.
-- Cache → mirror → proxy → direct remains the transport plan; mirror/proxy tiers now produce explicit unavailable/skipped events when no browser reader/configuration can service them.
-- Import notices are dismissible and auto-expire; durable import information remains in workspace/source summaries instead of acting like a permanent console overlay.
+- Lineage cards now start collapsed by default. The default card shows status/schema/source, title, summary, path and actions; it no longer dumps schema-owned sections immediately.
+- Expanded Lineage cards show a limited, curated schema-owned read excerpt. Full record metadata remains in Open details and exact source remains in Show markdown.
+- The selected Lineage status banner only appears for mismatch/missing cases. Successful `root reached` paths are expressed through the card chain instead of repeated report blocks.
+- The workspace diagnostics overview is no longer rendered as a default footer under selected Lineage. Users can still enter Audit details explicitly from the mode controls outside the viewer path.
+- Current, parent and root cards keep the same physical/action model while reducing diagnostic labels such as `current anchor` in the card chrome.
+- Lineage viewer CSS now owns the card stack directly and suppresses decorative/pseudo overlays inside card content.
+- The home/logo button is re-centered with CSS only; the PNG asset is unchanged.
+- The top toolbar remains content-fit and tighter around the controls.
 
 ## Source/material boundaries
 
-The source cache remains a same-browser material-continuity mechanism for already source-backed records. Clearing a source cache through the transport chip does not change provenance, infer GitHub for local material, or mutate the source repository.
+Source, transport, cache and material provenance behavior remains from v187. v188 intentionally avoids new transport or materialization work so the Lineage viewer contract can be tested cleanly.
 
-v187 still does not implement partial import promotion, a real browser issue snapshot reader, or automatic binary asset fetching.
+Known limits remain: no partial import promotion, no real browser issue snapshot reader, and no automatic binary asset fetching.
 
 ## Supported local start
 

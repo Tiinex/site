@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.10-v187",
+  "version": "0.2.10-v188",
   "private": true,
-  "description": "Tiinex Site v187: Lineage viewer de-debug, Tree-to-Lineage navigation, and transport outcome clarity.",
+  "description": "Tiinex Site v188: Lineage viewer parity pass with compact peer cards and centered home logo.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
