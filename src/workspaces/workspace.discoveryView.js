@@ -1,4 +1,6 @@
-import { buildDiscoveryMaterialIndex, inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, sourceBoundaryClass, MaterialRole } from './workspace.materialRole.js';
+import { resolveLineage } from '../lineage/lineage.resolve.js';
+import { LineageEdgeKind, LineageResolutionStatus } from '../lineage/lineage.model.js';
+import { inferRecordMaterialRole, isDiscoveryWorkLeafEligible, isSupportingRecord, sourceBoundaryClass, MaterialRole } from './workspace.materialRole.js';
 import { sortWorkspaceFeedRecords } from './workspace.feedSort.js';
 
 export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
@@ -14,10 +16,9 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
 
   const visibleRecords = sortWorkspaceFeedRecords(records.filter((record) => {
     const inclusion = discoveryRecordMembership(record, displayOptions, auditById, materialIndex, query);
-    const id = String(record.id || record.path || '').trim();
-    if (id) {
-      membershipById.set(id, inclusion);
-      if (!inclusion.visible) hiddenReasonsById.set(id, inclusion.reason);
+    for (const key of recordKeys(record)) {
+      membershipById.set(key, inclusion);
+      if (!inclusion.visible) hiddenReasonsById.set(key, inclusion.reason);
     }
     return inclusion.visible;
   }));
@@ -52,7 +53,8 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const role = inferRecordMaterialRole(record);
   const supporting = isSupportingRecord(record);
   const discoveryLeaf = isDiscoveryLeafRecord(record, materialIndex);
-  if (options.leavesOnly && !discoveryLeaf) return hidden('hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
+  const parentReason = discoveryParentReason(record, materialIndex);
+  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || 'hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
   if (!options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
@@ -97,6 +99,82 @@ export function buildDiscoveryDisplayOptionCounts(workspace = {}, options = {}) 
   });
 }
 
+export function buildDiscoveryMaterialIndex(records = []) {
+  const source = Array.isArray(records) ? records : [];
+  const lineageParentKeys = new Set();
+  const lineageChildKeys = new Set();
+  const pathParentKeys = new Set();
+  const pathChildKeys = new Set();
+  const parentReasonsByKey = new Map();
+  let resolved = null;
+  try {
+    resolved = resolveLineage(source, { depth: 'discovery-membership' });
+  } catch {
+    resolved = null;
+  }
+  for (const edge of Array.isArray(resolved?.edges) ? resolved.edges : []) {
+    if (edge.kind !== LineageEdgeKind.parent) continue;
+    if (!edge.from || !edge.to) continue;
+    if (edge.status === LineageResolutionStatus.missing) continue;
+    const parent = source.find((record) => recordKeyMatches(record, edge.from));
+    const child = source.find((record) => recordKeyMatches(record, edge.to));
+    for (const key of parent ? recordKeys(parent) : [String(edge.from)]) {
+      lineageParentKeys.add(key);
+      parentReasonsByKey.set(key, 'hidden-loaded-parent');
+    }
+    for (const key of child ? recordKeys(child) : [String(edge.to)]) lineageChildKeys.add(key);
+  }
+
+  for (const { parent, children, reason } of discoverPathParentEntries(source)) {
+    for (const key of recordKeys(parent)) {
+      pathParentKeys.add(key);
+      if (!parentReasonsByKey.has(key)) parentReasonsByKey.set(key, reason);
+    }
+    for (const child of children) {
+      for (const key of recordKeys(child)) pathChildKeys.add(key);
+    }
+  }
+
+  const parentKeys = unionSets(lineageParentKeys, pathParentKeys);
+  const childKeys = unionSets(lineageChildKeys, pathChildKeys);
+  return Object.freeze({
+    parentKeys,
+    childKeys,
+    parentIds: parentKeys,
+    childIds: childKeys,
+    lineageParentKeys,
+    lineageChildKeys,
+    pathParentKeys,
+    pathChildKeys,
+    parentReasonsByKey,
+    hasLineage: Boolean(resolved),
+    parentCount: parentKeys.size,
+    childCount: childKeys.size,
+    lineageParentCount: lineageParentKeys.size,
+    pathParentCount: pathParentKeys.size
+  });
+}
+
+export function isDiscoveryLeafRecord(record = {}, materialIndex = null) {
+  if (!isDiscoveryWorkLeafEligible(record)) return false;
+  if (!materialIndex?.parentKeys) return true;
+  return !recordKeys(record).some((key) => materialIndex.parentKeys.has(key));
+}
+
+export function discoveryParentReason(record = {}, materialIndex = null) {
+  if (!isDiscoveryWorkLeafEligible(record)) {
+    const role = inferRecordMaterialRole(record);
+    if (role === MaterialRole.schemaDefinition) return 'hidden-schema-definition';
+    if (role === MaterialRole.supporting || role === MaterialRole.unknown) return 'hidden-supporting';
+    return 'hidden-not-work-leaf';
+  }
+  for (const key of recordKeys(record)) {
+    const reason = materialIndex?.parentReasonsByKey?.get(key);
+    if (reason) return reason;
+  }
+  return '';
+}
+
 function hidden(reason, role, discoveryLeaf, supporting) {
   return Object.freeze({ visible: false, reason, role, discoveryLeaf, supporting });
 }
@@ -127,6 +205,52 @@ function discoveryOptionChoices(records = [], auditById = new Map(), materialInd
     mismatchCount,
     leafCount: items.filter((record) => isDiscoveryLeafRecord(record, materialIndex)).length
   });
+}
+
+function discoverPathParentEntries(records = []) {
+  const candidates = (Array.isArray(records) ? records : []).filter((record) => isDiscoveryWorkLeafEligible(record));
+  const entries = [];
+  for (const parent of candidates) {
+    const parentPath = normalizeDiscoveryPath(parent.path || parent.sourcePath || '');
+    const parentDir = dirname(parentPath);
+    const parentName = basename(parentPath).toLowerCase();
+    if (!parentPath || !parentDir) continue;
+    const isFolderRootTrace = parentName === '001.trace.md';
+    const children = candidates.filter((child) => {
+      if (sameRecord(parent, child)) return false;
+      const childPath = normalizeDiscoveryPath(child.path || child.sourcePath || '');
+      if (!childPath) return false;
+      const childDir = dirname(childPath);
+      if (!childDir) return false;
+      if (childDir.startsWith(`${parentDir}/`)) return true;
+      return isFolderRootTrace && childDir === parentDir;
+    });
+    if (children.length) entries.push({ parent, children, reason: 'hidden-path-parent' });
+  }
+  return entries;
+}
+
+function sameRecord(a = {}, b = {}) {
+  return recordKeys(a).some((key) => recordKeys(b).includes(key));
+}
+
+function recordKeyMatches(record = {}, key = '') {
+  const target = String(key || '').trim();
+  return Boolean(target && recordKeys(record).includes(target));
+}
+
+function recordKeys(record = {}) {
+  const keys = [record.id, record.path, record.sourcePath, record.source?.path]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+  const canonical = keys.map((value) => normalizeDiscoveryPath(value)).filter(Boolean);
+  return Array.from(new Set(keys.concat(canonical)));
+}
+
+function unionSets(...sets) {
+  const out = new Set();
+  for (const set of sets) for (const value of set || []) out.add(value);
+  return out;
 }
 
 function normalizeDiscoveryDisplayOptions(input = {}) {
@@ -173,4 +297,33 @@ function workspaceCandidateMatchesQuery(candidate = {}, query = '') {
   const q = String(query || '').trim().toLowerCase();
   if (!q) return true;
   return [candidate.title, candidate.path, candidate.sourceMode, candidate.schema].some((value) => String(value || '').toLowerCase().includes(q));
+}
+
+function normalizeDiscoveryPath(value = '') {
+  let raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    raw = url.pathname.replace(/^\/+/g, '');
+  } catch {
+    // not a URL
+  }
+  const out = [];
+  for (const part of raw.replace(/\\/g, '/').replace(/[#?].*$/, '').split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') out.pop();
+    else out.push(part);
+  }
+  return out.join('/');
+}
+
+function dirname(path = '') {
+  const parts = normalizeDiscoveryPath(path).split('/').filter(Boolean);
+  parts.pop();
+  return parts.join('/');
+}
+
+function basename(path = '') {
+  const parts = normalizeDiscoveryPath(path).split('/').filter(Boolean);
+  return parts[parts.length - 1] || '';
 }

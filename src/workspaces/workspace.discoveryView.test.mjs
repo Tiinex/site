@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
-import { buildWorkspaceDiscoveryView } from './workspace.discoveryView.js';
+import { buildWorkspaceDiscoveryView, buildDiscoveryMaterialIndex, isDiscoveryLeafRecord } from './workspace.discoveryView.js';
 import { buildWorkspacePathTree } from './workspace.pathTree.js';
 import { buildWorkspaceLineageView } from './workspace.lineageView.js';
 
@@ -9,15 +9,15 @@ function artifactMarkdown({ title, summary, schema = 'tiinex.topic.v1', parentTr
   return `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n${parentBlock}- Current\n  - Current Schema: [${schema}](${schema}.schema.md)\n  - Created At: 2026-07-23T00:00:00.000Z\n  - Summary: ${summary}\n\n---\n\n# ${title}\n\n## Summary\n\n${summary}\n\n# Continuity Integrity\n\n- Method: pending\n  - Value: pending\n`;
 }
 
-function sourceBackedRecord(markdown, path) {
+function sourceBackedRecord(markdown, path, extra = {}) {
   return Object.assign(createRecordFromMarkdown(markdown, {
     path,
     sourceMode: 'source-backed'
   }), {
-    id: path,
+    id: extra.id || path,
     sourceMode: 'source-backed',
     source: { id: 'github:Tiinex/docs@master:.topics', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics', label: 'Tiinex/docs' }
-  });
+  }, extra);
 }
 
 const educationalRoot = sourceBackedRecord(artifactMarkdown({
@@ -37,6 +37,18 @@ const terminalSlide = sourceBackedRecord(artifactMarkdown({
   parentTrace: '../001.trace.md'
 }), '.topics/educational/slides/expert-first/001.trace.md');
 
+const socialsRoot = sourceBackedRecord(artifactMarkdown({
+  title: 'Socials Branch',
+  summary: 'Socials folder root.'
+}), '.topics/socials/discord/tiinex/001.trace.md');
+
+const socialsTask = sourceBackedRecord(artifactMarkdown({
+  title: 'Echo Cloud Handoff',
+  summary: 'Task under socials root.',
+  schema: 'tiinex.task.v1',
+  parentTrace: './001.trace.md'
+}), '.topics/socials/discord/tiinex/001-I-echo-cloud-handoff.trace.md');
+
 const metadataOnlyAdapter = {
   id: '.topics/.adapters/github/discussion.adapter.md',
   title: 'GitHub Discussion Discovery Adapter',
@@ -51,23 +63,62 @@ const metadataOnlyAdapter = {
   cacheState: 'source-backed-metadata-only-session-cache'
 };
 
-const records = [educationalRoot, slidesBranch, terminalSlide, metadataOnlyAdapter];
+const routeShell = {
+  id: 'route-shell',
+  title: 'Route Shell',
+  path: '.topics/route/001.trace.md',
+  schemaId: 'tiinex.topic.v1',
+  sourceMode: 'source-backed',
+  source: { id: 'github:Tiinex/docs@master:.topics', adapterId: 'github', rootPath: '.topics', label: 'Tiinex/docs' },
+  hasContinuityContext: true,
+  cacheState: 'route-shell-material-unavailable',
+  materialAvailability: 'material-unavailable'
+};
+
+
+const pathOnlyParent = sourceBackedRecord(artifactMarkdown({
+  title: 'Path Only Root',
+  summary: 'Branch root whose child lacks a declared trace.'
+}), '.topics/path-only/001.trace.md');
+
+const pathOnlyChild = sourceBackedRecord(artifactMarkdown({
+  title: 'Path Only Child',
+  summary: 'Terminal child under path-only branch.'
+}), '.topics/path-only/child/001.trace.md');
+
+const records = [educationalRoot, slidesBranch, terminalSlide, socialsRoot, socialsTask, pathOnlyParent, pathOnlyChild, metadataOnlyAdapter, routeShell];
 const workspace = { id: 'workspace:discovery-test', title: 'Discovery test', records, assets: [], workspaceMergeCandidates: [] };
 const view = buildWorkspaceDiscoveryView(workspace, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: false, showAssets: false },
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
   query: ''
 });
 
-assert.deepEqual(view.records.map((record) => record.path), ['.topics/educational/slides/expert-first/001.trace.md'], 'Leaves only shows only terminal work leaves in Discovery Feed');
-assert.equal(view.hiddenReasonsById.get(educationalRoot.id), 'hidden-not-terminal-work-leaf', 'Educational Root is hidden as a loaded parent');
-assert.equal(view.hiddenReasonsById.get(slidesBranch.id), 'hidden-not-terminal-work-leaf', 'Slides Branch is hidden as a loaded parent');
-assert.equal(view.hiddenReasonsById.get(metadataOnlyAdapter.id), 'hidden-not-terminal-work-leaf', 'metadata-only adapter support is hidden from Leaves only');
+assert.deepEqual(view.records.map((record) => record.path).sort(), [
+  '.topics/educational/slides/expert-first/001.trace.md',
+  '.topics/path-only/child/001.trace.md',
+  '.topics/socials/discord/tiinex/001-I-echo-cloud-handoff.trace.md'
+], 'Leaves only shows terminal work leaves only, even when Supporting docs is checked');
+assert.equal(view.hiddenReasonsById.get(educationalRoot.id), 'hidden-loaded-parent', 'Educational Root is hidden as a resolved loaded parent');
+assert.equal(view.hiddenReasonsById.get(pathOnlyParent.id), 'hidden-path-parent', 'Path-only branch root is hidden by path-parent fallback even without a declared trace edge');
+assert.equal(view.hiddenReasonsById.get(slidesBranch.id), 'hidden-loaded-parent', 'Slides Branch is hidden as a resolved loaded parent');
+assert.equal(view.hiddenReasonsById.get(socialsRoot.id), 'hidden-loaded-parent', 'Folder 001.trace.md parent is hidden when a sibling child declares it');
+assert.equal(view.hiddenReasonsById.get(metadataOnlyAdapter.id), 'hidden-supporting', 'metadata-only adapter support is hidden from Leaves only');
+assert.equal(view.hiddenReasonsById.get(routeShell.id), 'hidden-supporting', 'route-only unavailable shell is hidden from Leaves only');
+
+const index = buildDiscoveryMaterialIndex(records);
+assert.equal(isDiscoveryLeafRecord(educationalRoot, index), false, 'path branch roots are not Discovery leaves');
+assert.equal(isDiscoveryLeafRecord(socialsRoot, index), false, 'same-folder 001.trace.md roots are not Discovery leaves when they have child work records');
+assert.equal(isDiscoveryLeafRecord(socialsTask, index), true, 'terminal same-folder child remains a Discovery leaf');
 
 const tree = buildWorkspacePathTree({ records: view.records, assets: view.assets, workspaceCandidates: view.workspaceCandidates, rootLabel: 'Visible tree' });
 const treeJson = JSON.stringify(tree);
 assert.equal(treeJson.includes('Educational Root'), false, 'Tree read-model uses same Discovery membership and hides parent root records');
 assert.equal(treeJson.includes('Slides Branch'), false, 'Tree read-model uses same Discovery membership and hides branch parent records');
+assert.equal(treeJson.includes('Socials Branch'), false, 'Tree read-model uses same Discovery membership and hides same-folder 001.trace.md parents');
+assert.equal(treeJson.includes('Path Only Root'), false, 'Tree read-model hides path-only branch parents');
+assert.equal(treeJson.includes('Path Only Child'), true, 'Tree still includes path-only terminal child');
 assert.equal(treeJson.includes('Expert First Diagrams'), true, 'Tree still includes terminal work leaf');
+assert.equal(treeJson.includes('Echo Cloud Handoff'), true, 'Tree still includes terminal sibling work leaf');
 assert.equal(treeJson.includes('GitHub Discussion Discovery Adapter'), false, 'Tree hides support records under Leaves only');
 
 const lineage = buildWorkspaceLineageView(workspace, { records, selectedRecordId: terminalSlide.id });

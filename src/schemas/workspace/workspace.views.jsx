@@ -14,7 +14,7 @@ import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageVie
 import { buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
-import { inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
+import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceBoundaryClass } from '../../workspaces/workspace.materialRole.js';
 import { schemaReadPresentation } from '../companion.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
@@ -194,9 +194,9 @@ function recordArtifactClass(record = {}) {
 }
 
 
-function displayRecordIncluded(record = {}, options = {}, auditById = new Map(), materialIndex = null) {
+function displayRecordIncluded(record = {}, options = {}, auditById = new Map()) {
   const supporting = isSupportingMarkdownRecord(record);
-  if (options.leavesOnly && !isDiscoveryLeafRecord(record, materialIndex)) return false;
+  if (options.leavesOnly && recordArtifactClass(record) !== 'leaf') return false;
   if (!options.showSupportingMarkdown && supporting) return false;
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return false;
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
@@ -208,26 +208,6 @@ function displayRecordIncluded(record = {}, options = {}, auditById = new Map(),
   return true;
 }
 
-function displayOptionChoices(records = [], auditById = new Map(), materialIndex = null) {
-  const schemaCounts = new Map();
-  const artifactCounts = new Map();
-  const sourceCounts = new Map();
-  for (const record of Array.isArray(records) ? records : []) {
-    const schema = recordSchemaValue(record);
-    schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
-    const artifact = recordArtifactClass(record);
-    artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
-    const sourceClass = recordSourceClass(record);
-    sourceCounts.set(sourceClass, (sourceCounts.get(sourceClass) || 0) + 1);
-  }
-  const schemas = Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const artifacts = [MaterialRole.leaf, MaterialRole.schemaDefinition, MaterialRole.supporting, MaterialRole.unknown].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]);
-  const sources = ['source-backed', 'local', 'unknown'].filter((key) => sourceCounts.has(key)).map((key) => [key, sourceCounts.get(key)]);
-  const supportingCount = (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0);
-  const terminalLeafCount = (Array.isArray(records) ? records : []).filter((record) => isDiscoveryLeafRecord(record, materialIndex)).length;
-  const mismatchCount = (Array.isArray(records) ? records : []).filter((record) => auditIsMismatch(record, auditById.get(record.id))).length;
-  return { schemas, artifacts, sources, supportingCount, mismatchCount, leafCount: terminalLeafCount };
-}
 
 
 function selectedRecordFrom(workspace = {}, selectedRecordId = '') {

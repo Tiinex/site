@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v217';
-export const TIINEX_SITE_VERSION = '0.2.37-v217';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v217';
-export const TIINEX_RUNTIME_ID = 'react-v217-trace-discovery-read-model';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v217-trace-discovery-read-model';
+export const TIINEX_SITE_CHECKPOINT = 'v218';
+export const TIINEX_SITE_VERSION = '0.2.38-v218';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v218';
+export const TIINEX_RUNTIME_ID = 'react-v218-discovery-path-parent-read-model';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v218-discovery-path-parent-read-model';
 
 
 export function tiinexBuildIdentity() {

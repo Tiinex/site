@@ -1,6 +1,3 @@
-import { resolveLineage } from '../lineage/lineage.resolve.js';
-import { LineageEdgeKind, LineageResolutionStatus } from '../lineage/lineage.model.js';
-
 export const MaterialRole = Object.freeze({
   leaf: 'leaf',
   schemaDefinition: 'schema-definition',
@@ -44,39 +41,6 @@ export function inferRecordMaterialRole(record = {}) {
 }
 
 
-export function buildDiscoveryMaterialIndex(records = []) {
-  const source = Array.isArray(records) ? records : [];
-  const parentIds = new Set();
-  const childIds = new Set();
-  let resolved = null;
-  try {
-    resolved = resolveLineage(source, { depth: 'discovery-membership' });
-  } catch {
-    resolved = null;
-  }
-  for (const edge of Array.isArray(resolved?.edges) ? resolved.edges : []) {
-    if (edge.kind !== LineageEdgeKind.parent) continue;
-    if (!edge.from || !edge.to) continue;
-    if (edge.status === LineageResolutionStatus.missing) continue;
-    parentIds.add(String(edge.from));
-    childIds.add(String(edge.to));
-  }
-  return Object.freeze({
-    parentIds,
-    childIds,
-    hasLineage: Boolean(resolved),
-    parentCount: parentIds.size,
-    childCount: childIds.size
-  });
-}
-
-export function isDiscoveryLeafRecord(record = {}, materialIndex = null) {
-  if (!isDiscoveryWorkLeafEligible(record)) return false;
-  const id = String(record.id || record.path || '').trim();
-  if (!id || !materialIndex?.parentIds) return true;
-  return !materialIndex.parentIds.has(id);
-}
-
 export function isWorkLeafRecord(record = {}) {
   return isDiscoveryWorkLeafEligible(record);
 }
@@ -87,6 +51,7 @@ export function isDiscoveryWorkLeafEligible(record = {}) {
   if (isRouteOnlyMaterialUnavailableShell(record)) return false;
   return true;
 }
+
 
 export function isSupportingRecord(record = {}) {
   const role = inferRecordMaterialRole(record);

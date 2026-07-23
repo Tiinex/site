@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.37-v217",
+  "version": "0.2.38-v218",
   "private": true,
-  "description": "Tiinex Site v217: Trace target truth and Discovery read-model consolidation.",
+  "description": "Tiinex Site v218: Discovery path-parent read-model cleanup.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

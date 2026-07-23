@@ -1,31 +1,37 @@
-# Tiinex Site v217
+# Tiinex Site v218
 
-v217 is a Discovery debt-cleanup checkpoint on top of v216. It fixes Parent Trace target truth, guards self-parent edges, stabilizes metadata-only support/source-shell roles, and introduces a single Discovery read-model owner for Feed/Tree membership.
+Checkpoint: `v218`
+Version: `0.2.38-v218`
+Runtime: `react-v218-discovery-path-parent-read-model`
 
-## v217 batch
+## Scope
 
-- Parent `Trace` Markdown links now use the link `href` as the resolution target while preserving the label separately for presentation.
-- Self-parent resolution is rejected as a lineage finding and is not used to build terminal Discovery membership.
-- Metadata-only source-backed support material such as adapters/interfaces/tools/origins stays supporting instead of becoming leaves during session/cache restore.
-- `src/workspaces/workspace.discoveryView.js` owns Discovery membership, hidden reasons, Feed records, Display counts, and the record set given to Tree.
-- The integration fixture covers `Educational Root` → branch → terminal child, metadata-only adapter support, Feed/Tree parity, and Lineage independence.
+Discovery read-model debt cleanup after the v216/v217 Leaves only regressions.
 
-## Out of scope
+The main change is that Discovery terminal membership is no longer based only on resolved Parent Trace edges. It also recognizes branch-root/path-parent records:
 
-- No transition/artifact creation work.
-- No recursive adapter traversal.
-- No issue discovery.
-- No source transport behavior changes.
-- No new schema-specific companions.
+- `001.trace.md` records with work children in the same folder are parents.
+- work records with descendants under their folder are parents.
+- Feed and Tree both receive the same filtered Discovery read-model.
+- Lineage remains independent and still shows parent/root chains.
+
+## Non-goals
+
+- No transition/artifact-creation behavior changed.
+- No recursive adapter traversal added.
+- No issue discovery/source transport change.
+- No new schema companions added.
 
 
 ## Supported local start
-
-Use the Vite development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Direct `file://` startup from source `index.html` is not supported by the React/Vite runtime.
+The supported local loop is Vite via `npm run dev`; source `index.html` is not a standalone file:// runtime.
+
+## Validation
+
+See `VALIDATION_NOTES.md`.

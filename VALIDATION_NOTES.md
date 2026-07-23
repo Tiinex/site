@@ -1,21 +1,23 @@
-# Validation Notes v217
+# Validation Notes v218
 
-v217 is a focused Discovery read-model debt cleanup.
+## Root-cause hypothesis
+
+v217 moved Discovery membership into a read-model and fixed Parent Trace href parsing, but terminal membership still only considered resolved lineage edges. Real Tiinex/docs branch roots can also be parents by path convention, especially folder `001.trace.md` roots and records with descendants under their directory.
+
+That allowed visible parent records in Discovery Leaves only when edge resolution was missing, stale, or represented only by path structure.
 
 ## Changes
 
-- Checkpoint/version moved from `0.2.36-v216` to `0.2.37-v217`.
-- Runtime identity moved to `react-v217-trace-discovery-read-model`.
-- Parser contract changed for Parent `Trace`: Markdown link `href` is the resolution target; label is preserved separately as `traceLabel`.
-- Lineage resolver now rejects self-parent edges.
-- Source-backed metadata-only support records keep supporting/schema-definition material roles.
-- Discovery membership is centralized in `src/workspaces/workspace.discoveryView.js`.
+- Moved Discovery graph membership out of `workspace.materialRole.js` into `workspace.discoveryView.js` so material classification no longer imports lineage resolution.
+- Added path-parent membership to the Discovery material index.
+- Added same-folder `001.trace.md` branch-root detection for sibling work records.
+- Preserved the v217 Trace target truth and self-parent protections.
+- Removed stale/dead Discovery option helper logic from `workspace.views.jsx`.
+- Added integration coverage for path-only branch roots, same-folder branch roots, terminal work leaves, metadata-only support records, route shells, Feed/Tree membership parity, and Lineage independence.
 
-## Validation run
+## Commands run
 
-Run from source-clean zip:
-
-```bash
+```sh
 npm run validate
 npm run ui:shape
 npm run portable:smoke
@@ -26,13 +28,6 @@ npm run typecheck
 npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
 ```
 
-## Manual browser status
+## Manual status
 
-Manual browser validation remains deferred to the end of the Root milestone unless Q asks for a targeted check. The main targeted scenario for this checkpoint is:
-
-- Discovery mode + Leaves only on.
-- `Educational Root` and branch parents are hidden when they have loaded children.
-- Terminal work children remain visible.
-- Metadata-only adapter/interface/tool support records are hidden.
-- Tree and Feed use the same membership decision.
-- Lineage still shows the full parent/root chain.
+No manual browser-runtime validation was run in this environment. The intended manual check is Discovery + Leaves only on the same source/session restore flow that previously showed Educational/Socials/Memes parents.
