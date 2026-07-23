@@ -11,13 +11,13 @@ assert.equal(inferRecordMaterialRole({
   path: '.topics/.schemas/core/topic/tiinex.topic.v1.schema.md',
   schemaId: 'tiinex.topic.v1',
   hasContinuityContext: true
-}), MaterialRole.leaf);
+}), MaterialRole.schemaDefinition);
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/.schemas/tiinex.root.v1.schema.md',
   schemaId: 'tiinex.root.v1',
   hasContinuityContext: true
-}), MaterialRole.leaf);
+}), MaterialRole.schemaDefinition);
 
 assert.equal(inferRecordMaterialRole({
   path: 'src/schemas/core/topic/tiinex.topic.v1.schema.md',
@@ -33,7 +33,7 @@ assert.equal(inferRecordMaterialRole({
   source: { adapterId: 'github' },
   hasContinuityContext: true,
   cacheState: 'source-backed-metadata-only-session-cache'
-}), MaterialRole.leaf);
+}), MaterialRole.schemaDefinition);
 
 assert.equal(isSupportingRecord({
   path: '.topics/.schemas/resource/contribution/tiinex.resource.contribution.v1.schema.md',
@@ -42,7 +42,7 @@ assert.equal(isSupportingRecord({
   source: { adapterId: 'github' },
   hasContinuityContext: true,
   cacheState: 'source-backed-metadata-only-session-cache'
-}), false);
+}), true);
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/ideas/example/001.trace.md',
@@ -67,13 +67,13 @@ assert.equal(inferRecordMaterialRole({
   schemaId: 'tiinex.resource.contribution.v1',
   markdown: '# Resource Contribution\n\n- Continuity Context: present',
   hasContinuityContext: true
-}), MaterialRole.leaf);
+}), MaterialRole.schemaDefinition);
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/.schemas/annotation/adapter/tiinex.adapter.annotation.v1.schema.md',
   schemaId: 'tiinex.adapter.annotation.v1',
   hasContinuityContext: true
-}), MaterialRole.leaf);
+}), MaterialRole.schemaDefinition);
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/annotations/adapter/001.trace.md',
@@ -104,6 +104,21 @@ assert.equal(isSupportingRecord({
   schemaId: 'tiinex.source.v1',
   hasContinuityContext: true
 }), true);
+
+
+const metadataOnlyAdapter = {
+  id: 'adapter:github-discussion',
+  path: '.topics/.adapters/github/discussion.adapter.md',
+  schemaId: 'tiinex.adapter.v1',
+  sourceMode: 'source-backed',
+  source: { adapterId: 'github', rootPath: '.topics' },
+  hasContinuityContext: true,
+  hasIntegrity: true,
+  trace: 'some-parent',
+  cacheState: 'source-backed-metadata-only-session-cache'
+};
+assert.equal(inferRecordMaterialRole(metadataOnlyAdapter), MaterialRole.supporting);
+assert.equal(isSupportingRecord(metadataOnlyAdapter), true);
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/notes/plain.md',
@@ -166,7 +181,7 @@ const schemaTypeDefinition = {
   hasContinuityContext: true,
   cacheState: 'source-backed-metadata-only-session-cache'
 };
-assert.equal(inferRecordMaterialRole(schemaTypeDefinition), MaterialRole.leaf);
+assert.equal(inferRecordMaterialRole(schemaTypeDefinition), MaterialRole.schemaDefinition);
 assert.equal(isWorkLeafRecord(schemaTypeDefinition), false);
 assert.equal(isDiscoveryLeafRecord(schemaTypeDefinition, buildDiscoveryMaterialIndex([schemaTypeDefinition])), false);
 

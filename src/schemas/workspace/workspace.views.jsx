@@ -9,12 +9,12 @@ import { createRecordActionResult, presentRecordActions, RecordActionKind } from
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
-import { sortWorkspaceFeedRecords } from '../../workspaces/workspace.feedSort.js';
 import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
+import { buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
-import { buildDiscoveryMaterialIndex, inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
+import { inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
 import { schemaReadPresentation } from '../companion.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
@@ -269,13 +269,18 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const auditById = auditIndexForWorkspace(workspace, allRecords);
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-  const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, discoveryQuery)) : [];
-  const discoveryMaterialIndex = buildDiscoveryMaterialIndex(allRecords);
-  const displayChoices = displayOptionChoices(allRecords, auditById, discoveryMaterialIndex);
-  const records = sortWorkspaceFeedRecords(allRecords
-    .filter((record) => displayRecordIncluded(record, displayOptions, auditById, discoveryMaterialIndex))
-    .filter((record) => recordMatchesQuery(record, discoveryQuery)));
-  const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, discoveryQuery)) : [];
+  const discoveryView = buildWorkspaceDiscoveryView(workspace, {
+    records: allRecords,
+    assets: allAssets,
+    workspaceCandidates: allWorkspaceCandidates,
+    displayOptions,
+    query: discoveryQuery,
+    auditById
+  });
+  const workspaceCandidates = discoveryView.workspaceCandidates;
+  const displayChoices = discoveryView.choices;
+  const records = discoveryView.records;
+  const assets = discoveryView.assets;
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
   const presentation = verse === 'tree'

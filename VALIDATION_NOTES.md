@@ -1,21 +1,19 @@
-# Validation Notes v216
+# Validation Notes v217
 
-v216 is a focused Root-milestone Discovery membership repair.
+v217 is a focused Discovery read-model debt cleanup.
 
-## Scope
+## Changes
 
-- Checkpoint/version moved from `0.2.35-v215` to `0.2.36-v216`.
-- Runtime identity moved to `react-v216-discovery-work-leaf-membership`.
-- Discovery `Leaves only` now requires both:
-  - work-leaf eligibility, and
-  - terminal loaded-lineage membership.
-- Schema/type-definition artifacts, including canonical `.schema.md` records, are no longer Discovery leaves even when they are terminal schema nodes.
-- Source-backed metadata-only `.trace.md` work leaves can still remain visible after refresh/session restore.
-- Lineage scope remains independent from Discovery membership controls.
+- Checkpoint/version moved from `0.2.36-v216` to `0.2.37-v217`.
+- Runtime identity moved to `react-v217-trace-discovery-read-model`.
+- Parser contract changed for Parent `Trace`: Markdown link `href` is the resolution target; label is preserved separately as `traceLabel`.
+- Lineage resolver now rejects self-parent edges.
+- Source-backed metadata-only support records keep supporting/schema-definition material roles.
+- Discovery membership is centralized in `src/workspaces/workspace.discoveryView.js`.
 
-## Validation performed
+## Validation run
 
-Planned source-clean checks:
+Run from source-clean zip:
 
 ```bash
 npm run validate
@@ -28,6 +26,13 @@ npm run typecheck
 npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
 ```
 
-## Manual validation deferred
+## Manual browser status
 
-Manual browser checks are still deferred until the Root milestone test pass, except for user-supplied regression videos/screenshots that guide hotfixes.
+Manual browser validation remains deferred to the end of the Root milestone unless Q asks for a targeted check. The main targeted scenario for this checkpoint is:
+
+- Discovery mode + Leaves only on.
+- `Educational Root` and branch parents are hidden when they have loaded children.
+- Terminal work children remain visible.
+- Metadata-only adapter/interface/tool support records are hidden.
+- Tree and Feed use the same membership decision.
+- Lineage still shows the full parent/root chain.

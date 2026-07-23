@@ -30,7 +30,8 @@ export function parseContinuityEnvelope(envelopeText = '') {
     parent: {
       schema: extractSchemaField(parentBlock, 'Parent Schema'),
       createdAt: extractListField(parentBlock, 'Created At'),
-      trace: extractListField(parentBlock, 'Trace'),
+      trace: extractListField(parentBlock, 'Trace', { preferLinkTarget: true }),
+      traceLabel: extractListField(parentBlock, 'Trace'),
       origin: extractListField(parentBlock, 'Origin', { preferLinkTarget: true }),
       boundary: extractListField(parentBlock, 'Boundary')
     },

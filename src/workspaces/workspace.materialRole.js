@@ -30,11 +30,12 @@ export function inferRecordMaterialRole(record = {}) {
   if (isWorkspaceCandidatePath(path) || kind.includes('workspace')) return MaterialRole.workspaceCandidate;
   if (sourceBoundaryClass(record) === 'source-backed' && !hasBody) {
     if (isRouteOnlyMaterialUnavailableShell(record)) return MaterialRole.unknown;
+    if (isCanonicalSchemaArtifactPath(path) || isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
+    if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
     if (hasSourceBackedLeafEvidence(record, path, schema)) return MaterialRole.leaf;
     return MaterialRole.unknown;
   }
-  if (isCanonicalSchemaArtifactPath(path) && hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
-  if (isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
+  if (isCanonicalSchemaArtifactPath(path) || isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
   if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
   if (hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
   if (markdown.trim()) return MaterialRole.supporting;

@@ -31,6 +31,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     parentSchemaId: parent.schema?.id || '',
     parentCreatedAt: parent.createdAt || '',
     trace: parent.trace || '',
+    traceLabel: parent.traceLabel || '',
     origin: parent.origin || envelope.origin || '',
     boundary: parent.boundary || envelope.boundary || '',
     repairsDeclared: Boolean(envelope.repairsDeclared),

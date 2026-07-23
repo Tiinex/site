@@ -14,6 +14,7 @@ export function normalizeArtifact(parsedArtifact, schemaResolution, validation =
     createdAt: parsedArtifact.envelope.current.createdAt || 'unknown',
     parentSchemaId: parsedArtifact.envelope.parent.schema.id || null,
     trace: parsedArtifact.envelope.parent.trace || '',
+    traceLabel: parsedArtifact.envelope.parent.traceLabel || '',
     origin: parsedArtifact.envelope.parent.origin || parsedArtifact.envelope.origin || '',
     boundary: parsedArtifact.envelope.parent.boundary || parsedArtifact.envelope.boundary || '',
     schemaKey: schemaKey(currentSchemaId),

@@ -19,6 +19,26 @@ export function resolveLineage(artifacts = [], options = {}) {
     const parentMatch = traceTarget ? resolveTarget(traceTarget.value, index, node) : null;
     const originMatch = originTarget ? resolveTarget(originTarget.value, index, node) : null;
 
+    if (parentMatch?.selfReference) {
+      findings.push(createLineageFinding('lineage.parent.selfReference', 'Declared Parent Trace resolves to the declaring artifact itself; no parent edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value }));
+      if (originMatch?.ambiguous) {
+        findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Origin matches multiple loaded targets; no recovery edge was created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      } else if (originMatch?.blocked) {
+        findings.push(createLineageFinding(originMatch.code || 'lineage.target.outOfBoundary', originMatch.message || 'Declared Origin resolves outside this source boundary; no edge was created.', 'warning', { nodeId: node.id, target: originTarget.value }));
+      } else if (originTarget && originMatch && originMatch.id !== node.id) {
+        edges.push(createLineageEdge(originMatch.id, node.id, LineageEdgeKind.origin, {
+          target: originTarget.value,
+          method: originMatch.method,
+          label: 'origin recovery hint',
+          status: LineageResolutionStatus.degraded
+        }));
+        findings.push(createLineageFinding('lineage.parent.selfReferenceOriginFallback', 'Parent Trace resolved to self; Origin resolved as recovery context only.', 'info', { nodeId: node.id, target: originTarget.value }));
+      } else if (originTarget && !originMatch) {
+        findings.push(createLineageFinding('lineage.origin.unresolved', 'Origin is declared but not present in the loaded material.', 'info', { nodeId: node.id, target: originTarget.value }));
+      }
+      continue;
+    }
+
     if (parentMatch?.blocked) {
       findings.push(createLineageFinding(parentMatch.code || 'lineage.target.outOfBoundary', parentMatch.message || 'Declared lineage target resolves outside this source boundary; no edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value }));
       if (originMatch?.ambiguous) {
@@ -167,9 +187,8 @@ function resolveTarget(target, index, declaringNode = null) {
     ['id', index.byId.get(token)]
   ];
   for (const [method, nodes] of directTokenCandidates) {
-    const unique = uniqueNodes(nodes || []);
-    if (unique.length === 1) return Object.assign({ method }, unique[0]);
-    if (unique.length > 1) return { ambiguous: true, method, candidates: unique };
+    const resolved = resolveCandidateNodes(nodes || [], method, declaringNode);
+    if (resolved) return resolved;
   }
 
   const path = canonicalPath(raw);
@@ -182,22 +201,22 @@ function resolveTarget(target, index, declaringNode = null) {
   if ((simpleRelative || dotRelative) && relative) {
     if (relative.blocked) return relative;
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
-    if (contextual.length === 1) return Object.assign({ method: relative.method }, contextual[0]);
-    if (contextual.length > 1) return { ambiguous: true, method: relative.method, candidates: contextual };
+    const resolved = resolveCandidateNodes(contextual, relative.method, declaringNode);
+    if (resolved) return resolved;
     // A simple filename or dot-relative Trace is contextual; do not guess by global basename.
     return null;
   }
 
   const pathConstraint = urlSourceKey ? sourceConstraintFromTarget(urlSourceKey) : declaringConstraint;
   const exact = exactPathMatches(path, index, pathConstraint, Boolean(pathConstraint.hasConstraint));
-  if (exact.length === 1) return Object.assign({ method: 'path' }, exact[0]);
-  if (exact.length > 1) return { ambiguous: true, method: 'path', candidates: exact };
+  const resolvedExact = resolveCandidateNodes(exact, 'path', declaringNode);
+  if (resolvedExact) return resolvedExact;
 
   if (dotRelative && relative) {
     if (relative.blocked) return relative;
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
-    if (contextual.length === 1) return Object.assign({ method: relative.method }, contextual[0]);
-    if (contextual.length > 1) return { ambiguous: true, method: relative.method, candidates: contextual };
+    const resolved = resolveCandidateNodes(contextual, relative.method, declaringNode);
+    if (resolved) return resolved;
     return null;
   }
 
@@ -207,13 +226,31 @@ function resolveTarget(target, index, declaringNode = null) {
     ['source-path-suffix', findPathSuffixMatches(path, index.bySourcePath, suffixConstraint, Boolean(urlSourceKey))]
   ];
   for (const [method, nodes] of suffixCandidates) {
-    const unique = uniqueNodes(nodes || []);
-    if (unique.length === 1) return Object.assign({ method }, unique[0]);
-    if (unique.length > 1) return { ambiguous: true, method, candidates: unique };
+    const resolved = resolveCandidateNodes(nodes || [], method, declaringNode);
+    if (resolved) return resolved;
   }
   return null;
 }
 
+
+function resolveCandidateNodes(nodes = [], method = 'unknown', declaringNode = null) {
+  const unique = uniqueNodes(nodes || []);
+  if (!unique.length) return null;
+  const withoutSelf = unique.filter((candidate) => !sameLineageNode(candidate, declaringNode));
+  if (!withoutSelf.length) return { selfReference: true, method, candidates: unique };
+  if (withoutSelf.length === 1) return Object.assign({ method }, withoutSelf[0]);
+  return { ambiguous: true, method, candidates: withoutSelf };
+}
+
+function sameLineageNode(candidate = {}, declaringNode = null) {
+  if (!candidate || !declaringNode) return false;
+  const candidateId = String(candidate.id || '').trim();
+  const declaringId = String(declaringNode.id || '').trim();
+  if (candidateId && declaringId && candidateId === declaringId) return true;
+  const candidatePath = canonicalPath(candidate.path || candidate.record?.path || '');
+  const declaringPath = canonicalPath(declaringNode.path || declaringNode.record?.path || '');
+  return Boolean(candidatePath && declaringPath && candidatePath === declaringPath);
+}
 function exactPathMatches(path, index, constraint = {}, strictSource = false) {
   const source = [];
   source.push(...(index.byPath.get(canonicalPath(path)) || []));

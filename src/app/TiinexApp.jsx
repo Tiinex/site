@@ -12,7 +12,7 @@ import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { clearGithubSourceTextCacheForSource, hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
-import { buildDiscoveryMaterialIndex, inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
+import { buildDiscoveryDisplayOptionCounts } from '../workspaces/workspace.discoveryView.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
   AssetDetailDialog,
@@ -125,49 +125,11 @@ function githubSurfaceSummary(out = {}) {
 }
 
 
-function isSupportingMarkdownForDisplay(record = {}) {
-  return isSupportingRecord(record);
-}
-
-function displaySchemaValue(record = {}) {
-  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || record.kind || 'artifact').trim() || 'artifact';
-}
-
-function displayArtifactClass(record = {}) {
-  return inferRecordMaterialRole(record);
-}
-
 function buildDisplayOptionCounts(workspace = {}) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
   const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
   const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
-  const materialIndex = buildDiscoveryMaterialIndex(records);
-  const schemaCounts = new Map();
-  const artifactCounts = new Map();
-  const sourceCounts = new Map();
-  for (const record of records) {
-    const schema = displaySchemaValue(record);
-    schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
-    const artifact = displayArtifactClass(record);
-    artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
-    const source = sourceBoundaryClass(record);
-    sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
-  }
-  const mismatchItems = (audit.items || []).filter((item) => {
-    const status = String(item.status || '').toLowerCase();
-    return status && !['readable', 'supporting-material', 'pending-unavailable', 'degraded'].includes(status);
-  });
-  return {
-    records: records.length,
-    leaves: records.filter((record) => isDiscoveryLeafRecord(record, materialIndex)).length,
-    supportingMarkdown: (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0),
-    mismatches: mismatchItems.length,
-    assets: workspace.assets?.length || 0,
-    workspaceCandidates: workspace.workspaceMergeCandidates?.length || 0,
-    schemaChoices: Array.from(schemaCounts.entries()).sort((a, b) => a[0].localeCompare(b[0])),
-    artifactChoices: [MaterialRole.leaf, MaterialRole.schemaDefinition, MaterialRole.supporting, MaterialRole.unknown].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]),
-    sourceChoices: ['source-backed', 'local', 'unknown'].filter((key) => sourceCounts.has(key)).map((key) => [key, sourceCounts.get(key)])
-  };
+  return buildDiscoveryDisplayOptionCounts(workspace, { records, auditById });
 }
 
 

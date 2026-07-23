@@ -131,4 +131,19 @@ const sourceAwareChild = leaf({ id: 'source-aware-child', title: 'Source A Child
 const sourceAware = resolveLineage([samePathA, samePathB, sourceAwareChild]);
 assert(sourceAware.edges.some((edge) => edge.from === 'a' && edge.to === 'source-aware-child'), 'GitHub origin URL should disambiguate same path by repo when possible');
 assert(!sourceAware.findings.some((finding) => finding.nodeId === 'source-aware-child' && finding.code === 'lineage.target.ambiguous'), 'source-aware target must not be marked ambiguous');
+
+
+const educationalRoot = leaf({ id: 'educational-root', title: 'Educational Root', path: '.topics/educational/001.trace.md', source: sourceA });
+const slidesChildWithLinkTrace = leaf({ id: 'slides-child-link', title: 'Slides Child Link', path: '.topics/educational/slides/001.trace.md', trace: '[001.trace.md](../001.trace.md)', source: sourceA });
+const linkedTrace = resolveLineage([educationalRoot, slidesChildWithLinkTrace]);
+assert.equal(slidesChildWithLinkTrace.trace, '../001.trace.md', 'record shaping should use Parent Trace href, not the visible label');
+assert.equal(slidesChildWithLinkTrace.traceLabel, '001.trace.md', 'record shaping should preserve Parent Trace label separately');
+assert(linkedTrace.edges.some((edge) => edge.from === 'educational-root' && edge.to === 'slides-child-link' && edge.method === 'relative-path'), 'Parent Trace href should resolve to the real parent path');
+assert(!linkedTrace.edges.some((edge) => edge.from === 'slides-child-link' && edge.to === 'slides-child-link'), 'Parent Trace label must not create a self-edge');
+
+const explicitSelf = leaf({ id: 'explicit-self', title: 'Explicit Self', path: '.topics/self/001.trace.md', trace: 'record:explicit-self', source: sourceA });
+const selfResolved = resolveLineage([explicitSelf]);
+assert(selfResolved.findings.some((finding) => finding.code === 'lineage.parent.selfReference' && finding.nodeId === 'explicit-self'), 'self Parent Trace should become a finding');
+assert(!selfResolved.edges.some((edge) => edge.kind === 'parent' && edge.from === 'explicit-self' && edge.to === 'explicit-self'), 'self Parent Trace must not create a parent edge');
+
 console.log('✓ lineage.resolve tests passed');

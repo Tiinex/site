@@ -83,9 +83,32 @@ assert.equal(schemaArtifact.envelope.current.schema.id, 'tiinex.schema.module.v1
 
 const child = parseArtifactMarkdown(CHILD_WITH_PARENT);
 assert.equal(child.envelope.parent.schema.id, 'tiinex.topic.v1', 'valid Parent Schema parses');
-assert.equal(child.envelope.parent.trace, 'parent', 'valid Parent Trace parses');
+assert.equal(child.envelope.parent.trace, 'parent.trace.md', 'valid Parent Trace uses markdown link target for resolution');
+assert.equal(child.envelope.parent.traceLabel, 'parent', 'valid Parent Trace preserves markdown link label for presentation');
 assert.equal(child.envelope.parent.origin, 'https://github.com/Tiinex/docs/blob/abc/parent.trace.md', 'valid Parent Origin parses');
 assert.equal(child.envelope.parent.createdAt, '2026-07-22T00:00:00.000Z', 'valid Parent Created At parses');
 assert.equal(child.envelope.current.createdAt, '2026-07-23T00:02:00.000Z', 'valid Current Created At stays separate');
+
+
+
+const CHILD_WITH_RELATIVE_PARENT_LINK = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Parent
+  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Trace: [001.trace.md](../001.trace.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Created At: 2026-07-23T00:03:00.000Z
+  - Summary: Child with relative parent href.
+
+---
+
+# Child With Relative Parent
+`;
+
+const relativeChild = parseArtifactMarkdown(CHILD_WITH_RELATIVE_PARENT_LINK);
+assert.equal(relativeChild.envelope.parent.trace, '../001.trace.md', 'Parent Trace link href is the resolution target');
+assert.equal(relativeChild.envelope.parent.traceLabel, '001.trace.md', 'Parent Trace label remains available for display');
 
 console.log('✓ artifact parser Parent-block regression guards passed');
