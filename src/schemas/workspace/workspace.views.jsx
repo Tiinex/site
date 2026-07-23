@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { TextField } from '../../ui/primitives/Field.jsx';
@@ -236,37 +236,37 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const lineageVerse = verse === 'lineage';
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
   const selectedRecordId = String(state.view?.selectedRecordId || '');
-  const lineageTraversalPreview = lineageVerse && selectedRecordId
+  const lineageTraversalPreview = useMemo(() => (lineageVerse && selectedRecordId
     ? buildWorkspaceLineageView(workspace, { records: allRecords, query: '', selectedRecordId }).selectedTraversal
-    : null;
+    : null), [lineageVerse, selectedRecordId, workspace, allRecords]);
   const lineageAlreadyReady = lineageControlsReadyForTraversal(lineageTraversalPreview);
   const lineageLoadReady = Boolean(lineageVerse && selectedRecordId && (lineageAlreadyReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || ''))));
   const discoveryQuery = state.view?.query || '';
   const lineageQuery = lineageLoadReady ? (state.view?.lineageQuery || '') : '';
   const query = lineageVerse ? lineageQuery : discoveryQuery;
-  const displayOptions = normalizeWorkspaceDisplayOptions(state.view?.displayOptions);
+  const displayOptions = useMemo(() => normalizeWorkspaceDisplayOptions(state.view?.displayOptions), [state.view?.displayOptions]);
   const selectedRecord = selectedRecordFrom(workspace, selectedRecordId);
-  const auditById = auditIndexForWorkspace(workspace, allRecords);
-  const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
-  const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-  const discoveryView = buildWorkspaceDiscoveryView(workspace, {
+  const auditById = useMemo(() => auditIndexForWorkspace(workspace, allRecords), [workspace, allRecords]);
+  const allAssets = useMemo(() => (Array.isArray(workspace.assets) ? workspace.assets : []), [workspace.assets]);
+  const allWorkspaceCandidates = useMemo(() => (Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : []), [workspace.workspaceMergeCandidates]);
+  const discoveryView = useMemo(() => buildWorkspaceDiscoveryView(workspace, {
     records: allRecords,
     assets: allAssets,
     workspaceCandidates: allWorkspaceCandidates,
     displayOptions,
     query: discoveryQuery,
     auditById
-  });
+  }), [workspace, allRecords, allAssets, allWorkspaceCandidates, displayOptions, discoveryQuery, auditById]);
   const workspaceCandidates = discoveryView.workspaceCandidates;
   const displayChoices = discoveryView.choices;
   const records = discoveryView.records;
   const assets = discoveryView.assets;
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
-  const presentation = verse === 'tree'
+  const presentation = useMemo(() => (verse === 'tree'
     ? presentWorkspaceTree(workspace, { verse, query: discoveryQuery })
-    : presentWorkspaceFeed(workspace, { verse, query: discoveryQuery });
-  const materialSummary = summarizeWorkspaceMaterial(workspace);
+    : presentWorkspaceFeed(workspace, { verse, query: discoveryQuery })), [workspace, verse, discoveryQuery]);
+  const materialSummary = useMemo(() => summarizeWorkspaceMaterial(workspace), [workspace]);
   return (
     <section className="tx-workspace-window tx-column-window tx-uc001-created-workspace tx-schema-workspace-surface tx-compact-column-window" aria-label="Tiinex workspace window" data-schema-id="tiinex.workspace.v1" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer) onDropFiles?.(event.dataTransfer, { sourceMode: 'workspace-drop', fromDataTransfer: true }); }}>
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">

@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.38-v218",
+  "version": "0.2.39-v219",
   "private": true,
-  "description": "Tiinex Site v218: Discovery path-parent read-model cleanup.",
+  "description": "Tiinex Site v219: Discovery render performance stabilization.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v218';
-export const TIINEX_SITE_VERSION = '0.2.38-v218';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v218';
-export const TIINEX_RUNTIME_ID = 'react-v218-discovery-path-parent-read-model';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v218-discovery-path-parent-read-model';
+export const TIINEX_SITE_CHECKPOINT = 'v219';
+export const TIINEX_SITE_VERSION = '0.2.39-v219';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v219';
+export const TIINEX_RUNTIME_ID = 'react-v219-discovery-render-stabilization';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v219-discovery-render-stabilization';
 
 
 export function tiinexBuildIdentity() {

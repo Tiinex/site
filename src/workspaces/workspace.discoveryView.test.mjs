@@ -124,4 +124,25 @@ assert.equal(treeJson.includes('GitHub Discussion Discovery Adapter'), false, 'T
 const lineage = buildWorkspaceLineageView(workspace, { records, selectedRecordId: terminalSlide.id });
 assert.deepEqual((lineage.selectedTraversal?.nodes || []).map((node) => node.id), [terminalSlide.id, slidesBranch.id, educationalRoot.id], 'Lineage still traverses parent/root chain independent of Discovery membership');
 
+
+const syntheticRecords = Array.from({ length: 325 }, (_, index) => ({
+  id: `synthetic-${index}`,
+  title: `Synthetic ${index}`,
+  path: `.topics/perf/group-${Math.floor(index / 10)}/child-${index % 10}/001.trace.md`,
+  sourcePath: `.topics/perf/group-${Math.floor(index / 10)}/child-${index % 10}/001.trace.md`,
+  schemaId: 'tiinex.topic.v1',
+  kind: 'tiinex.topic.v1',
+  sourceMode: 'source-backed',
+  source: { id: 'github:Tiinex/docs@master:.topics', adapterId: 'github', rootPath: '.topics', label: 'Tiinex/docs' },
+  hasContinuityContext: true,
+  hasIntegrity: true
+}));
+const startedAt = Date.now();
+buildWorkspaceDiscoveryView({ id: 'workspace:perf', records: syntheticRecords }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: false, showAssets: false },
+  query: ''
+});
+const elapsed = Date.now() - startedAt;
+assert.ok(elapsed < 1000, `Discovery membership for 325 records should stay render-safe; took ${elapsed}ms`);
+
 console.log('✓ workspace.discoveryView integration tests passed');

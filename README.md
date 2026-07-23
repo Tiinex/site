@@ -1,27 +1,25 @@
-# Tiinex Site v218
+# Tiinex Site v219
 
-Checkpoint: `v218`
-Version: `0.2.38-v218`
-Runtime: `react-v218-discovery-path-parent-read-model`
+Checkpoint: `v219`
+Version: `0.2.39-v219`
+Runtime: `react-v219-discovery-render-stabilization`
 
-## Scope
+## Focus
 
-Discovery read-model debt cleanup after the v216/v217 Leaves only regressions.
+Discovery render performance stabilization after v218 moved parent detection into the Discovery read-model.
 
-The main change is that Discovery terminal membership is no longer based only on resolved Parent Trace edges. It also recognizes branch-root/path-parent records:
+## Changes
 
-- `001.trace.md` records with work children in the same folder are parents.
-- work records with descendants under their folder are parents.
-- Feed and Tree both receive the same filtered Discovery read-model.
-- Lineage remains independent and still shows parent/root chains.
+- Replaced the v218 O(n²) path-parent scan with an indexed directory membership pass.
+- Preserved the Discovery ownership split: material role stays separate from graph/display membership.
+- Preserved Trace target truth, self-parent protection, and path/folder parent fallback semantics.
+- Added a performance regression guard for 325 source-backed Discovery records.
+- Memoized the expensive WorkspaceColumnSurface read-models so scroll/view-state updates do not rebuild Discovery/Audit/Lineage projections unnecessarily.
+- Changed scroll persistence to shallow-clone view state instead of structured-cloning the whole workspace.
 
-## Non-goals
+## Boundaries
 
-- No transition/artifact-creation behavior changed.
-- No recursive adapter traversal added.
-- No issue discovery/source transport change.
-- No new schema companions added.
-
+No transitions, artifact creation, source transport, recursive adapter traversal, or issue discovery changes.
 
 ## Supported local start
 
@@ -30,8 +28,4 @@ npm install
 npm run dev
 ```
 
-The supported local loop is Vite via `npm run dev`; source `index.html` is not a standalone file:// runtime.
-
-## Validation
-
-See `VALIDATION_NOTES.md`.
+For CI-like checks use `npm run validate` and `npm run typecheck`.

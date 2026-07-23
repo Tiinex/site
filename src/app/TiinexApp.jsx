@@ -237,13 +237,13 @@ export function TiinexApp() {
     const key = viewScrollKeyFor(sourceState);
     const top = viewScrollRef.current[key];
     if (!Number.isFinite(Number(top))) return nextState;
-    const next = structuredClone(nextState);
-    const scrollPositions = Object.assign({}, next.view?.scrollPositions || {});
+    const scrollPositions = Object.assign({}, nextState.view?.scrollPositions || {});
     const roundedTop = Math.max(0, Math.round(Number(top)));
     if (Number(scrollPositions[key] || 0) === roundedTop) return nextState;
     scrollPositions[key] = roundedTop;
-    next.view = Object.assign({}, next.view || {}, { scrollPositions });
-    return next;
+    return Object.assign({}, nextState, {
+      view: Object.assign({}, nextState.view || {}, { scrollPositions })
+    });
   }
 
   function persistCapturedViewScroll(mode = 'replace') {

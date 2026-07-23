@@ -16,7 +16,7 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
 
   const visibleRecords = sortWorkspaceFeedRecords(records.filter((record) => {
     const inclusion = discoveryRecordMembership(record, displayOptions, auditById, materialIndex, query);
-    for (const key of recordKeys(record)) {
+    for (const key of descriptorFor(record, materialIndex)?.keys || recordKeys(record)) {
       membershipById.set(key, inclusion);
       if (!inclusion.visible) hiddenReasonsById.set(key, inclusion.reason);
     }
@@ -50,8 +50,9 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
 }
 
 export function discoveryRecordMembership(record = {}, options = {}, auditById = new Map(), materialIndex = null, query = '') {
-  const role = inferRecordMaterialRole(record);
-  const supporting = isSupportingRecord(record);
+  const descriptor = descriptorFor(record, materialIndex);
+  const role = descriptor?.role || inferRecordMaterialRole(record);
+  const supporting = descriptor ? descriptor.supporting : isSupportingRecord(record);
   const discoveryLeaf = isDiscoveryLeafRecord(record, materialIndex);
   const parentReason = discoveryParentReason(record, materialIndex);
   if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || 'hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
@@ -62,7 +63,8 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const artifactFilter = normalizeDisplayFilterValue(options.artifactFilter);
   if (artifactFilter !== 'all' && role !== artifactFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const sourceFilter = normalizeDisplayFilterValue(options.sourceFilter);
-  if (sourceFilter !== 'all' && sourceBoundaryClass(record) !== sourceFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
+  const sourceClass = descriptor?.sourceClass || sourceBoundaryClass(record);
+  if (sourceFilter !== 'all' && sourceClass !== sourceFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   if (!recordMatchesQuery(record, query)) return hidden('hidden-query', role, discoveryLeaf, supporting);
   return Object.freeze({ visible: true, reason: 'visible', role, discoveryLeaf, supporting });
 }
@@ -101,6 +103,7 @@ export function buildDiscoveryDisplayOptionCounts(workspace = {}, options = {}) 
 
 export function buildDiscoveryMaterialIndex(records = []) {
   const source = Array.isArray(records) ? records : [];
+  const recordIndex = buildDiscoveryRecordIndex(source);
   const lineageParentKeys = new Set();
   const lineageChildKeys = new Set();
   const pathParentKeys = new Set();
@@ -116,24 +119,16 @@ export function buildDiscoveryMaterialIndex(records = []) {
     if (edge.kind !== LineageEdgeKind.parent) continue;
     if (!edge.from || !edge.to) continue;
     if (edge.status === LineageResolutionStatus.missing) continue;
-    const parent = source.find((record) => recordKeyMatches(record, edge.from));
-    const child = source.find((record) => recordKeyMatches(record, edge.to));
-    for (const key of parent ? recordKeys(parent) : [String(edge.from)]) {
+    const parent = recordIndex.byKey.get(keyLookup(edge.from));
+    const child = recordIndex.byKey.get(keyLookup(edge.to));
+    for (const key of parent ? parent.keys : [String(edge.from)]) {
       lineageParentKeys.add(key);
       parentReasonsByKey.set(key, 'hidden-loaded-parent');
     }
-    for (const key of child ? recordKeys(child) : [String(edge.to)]) lineageChildKeys.add(key);
+    for (const key of child ? child.keys : [String(edge.to)]) lineageChildKeys.add(key);
   }
 
-  for (const { parent, children, reason } of discoverPathParentEntries(source)) {
-    for (const key of recordKeys(parent)) {
-      pathParentKeys.add(key);
-      if (!parentReasonsByKey.has(key)) parentReasonsByKey.set(key, reason);
-    }
-    for (const child of children) {
-      for (const key of recordKeys(child)) pathChildKeys.add(key);
-    }
-  }
+  addPathParentMembership(recordIndex, pathParentKeys, pathChildKeys, parentReasonsByKey);
 
   const parentKeys = unionSets(lineageParentKeys, pathParentKeys);
   const childKeys = unionSets(lineageChildKeys, pathChildKeys);
@@ -147,6 +142,9 @@ export function buildDiscoveryMaterialIndex(records = []) {
     pathParentKeys,
     pathChildKeys,
     parentReasonsByKey,
+    descriptors: recordIndex.descriptors,
+    descriptorsByRecord: recordIndex.byRecord,
+    descriptorsByKey: recordIndex.byKey,
     hasLineage: Boolean(resolved),
     parentCount: parentKeys.size,
     childCount: childKeys.size,
@@ -156,19 +154,24 @@ export function buildDiscoveryMaterialIndex(records = []) {
 }
 
 export function isDiscoveryLeafRecord(record = {}, materialIndex = null) {
-  if (!isDiscoveryWorkLeafEligible(record)) return false;
+  const descriptor = descriptorFor(record, materialIndex);
+  const workEligible = descriptor ? descriptor.workEligible : isDiscoveryWorkLeafEligible(record);
+  if (!workEligible) return false;
+  const keys = descriptor?.keys || recordKeys(record);
   if (!materialIndex?.parentKeys) return true;
-  return !recordKeys(record).some((key) => materialIndex.parentKeys.has(key));
+  return !keys.some((key) => materialIndex.parentKeys.has(key));
 }
 
 export function discoveryParentReason(record = {}, materialIndex = null) {
-  if (!isDiscoveryWorkLeafEligible(record)) {
-    const role = inferRecordMaterialRole(record);
+  const descriptor = descriptorFor(record, materialIndex);
+  const workEligible = descriptor ? descriptor.workEligible : isDiscoveryWorkLeafEligible(record);
+  if (!workEligible) {
+    const role = descriptor?.role || inferRecordMaterialRole(record);
     if (role === MaterialRole.schemaDefinition) return 'hidden-schema-definition';
     if (role === MaterialRole.supporting || role === MaterialRole.unknown) return 'hidden-supporting';
     return 'hidden-not-work-leaf';
   }
-  for (const key of recordKeys(record)) {
+  for (const key of descriptor?.keys || recordKeys(record)) {
     const reason = materialIndex?.parentReasonsByKey?.get(key);
     if (reason) return reason;
   }
@@ -185,11 +188,12 @@ function discoveryOptionChoices(records = [], auditById = new Map(), materialInd
   const sourceCounts = new Map();
   const items = Array.isArray(records) ? records : [];
   for (const record of items) {
-    const schema = recordSchemaValue(record);
+    const descriptor = descriptorFor(record, materialIndex);
+    const schema = descriptor?.schema || recordSchemaValue(record);
     schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
-    const artifact = inferRecordMaterialRole(record);
+    const artifact = descriptor?.role || inferRecordMaterialRole(record);
     artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
-    const sourceClass = sourceBoundaryClass(record);
+    const sourceClass = descriptor?.sourceClass || sourceBoundaryClass(record);
     sourceCounts.set(sourceClass, (sourceCounts.get(sourceClass) || 0) + 1);
   }
   const mismatchCount = items.filter((record) => auditIsMismatch(record, auditById.get(record.id))).length;
@@ -207,36 +211,91 @@ function discoveryOptionChoices(records = [], auditById = new Map(), materialInd
   });
 }
 
-function discoverPathParentEntries(records = []) {
-  const candidates = (Array.isArray(records) ? records : []).filter((record) => isDiscoveryWorkLeafEligible(record));
-  const entries = [];
-  for (const parent of candidates) {
-    const parentPath = normalizeDiscoveryPath(parent.path || parent.sourcePath || '');
-    const parentDir = dirname(parentPath);
-    const parentName = basename(parentPath).toLowerCase();
-    if (!parentPath || !parentDir) continue;
-    const isFolderRootTrace = parentName === '001.trace.md';
-    const children = candidates.filter((child) => {
-      if (sameRecord(parent, child)) return false;
-      const childPath = normalizeDiscoveryPath(child.path || child.sourcePath || '');
-      if (!childPath) return false;
-      const childDir = dirname(childPath);
-      if (!childDir) return false;
-      if (childDir.startsWith(`${parentDir}/`)) return true;
-      return isFolderRootTrace && childDir === parentDir;
+function buildDiscoveryRecordIndex(records = []) {
+  const descriptors = [];
+  const byRecord = new Map();
+  const byKey = new Map();
+  const workCandidates = [];
+  const candidatesByDir = new Map();
+  const folderRootTracesByDir = new Map();
+
+  for (const record of Array.isArray(records) ? records : []) {
+    const role = inferRecordMaterialRole(record);
+    const supporting = role === MaterialRole.supporting || role === MaterialRole.schemaDefinition || role === MaterialRole.unknown;
+    const sourceClass = sourceBoundaryClass(record);
+    const path = normalizeDiscoveryPath(record.path || record.sourcePath || record.source?.path || '');
+    const dir = dirname(path);
+    const name = basename(path).toLowerCase();
+    const keys = recordKeys(record);
+    const descriptor = Object.freeze({
+      record,
+      role,
+      supporting,
+      sourceClass,
+      schema: recordSchemaValue(record),
+      path,
+      dir,
+      name,
+      keys,
+      keySet: new Set(keys),
+      workEligible: role === MaterialRole.leaf && isDiscoveryWorkLeafEligible(record)
     });
-    if (children.length) entries.push({ parent, children, reason: 'hidden-path-parent' });
+    descriptors.push(descriptor);
+    byRecord.set(record, descriptor);
+    for (const key of keys) if (!byKey.has(keyLookup(key))) byKey.set(keyLookup(key), descriptor);
+    if (descriptor.workEligible && descriptor.path && descriptor.dir) {
+      workCandidates.push(descriptor);
+      pushMapList(candidatesByDir, descriptor.dir, descriptor);
+      if (descriptor.name === '001.trace.md') pushMapList(folderRootTracesByDir, descriptor.dir, descriptor);
+    }
   }
-  return entries;
+
+  return Object.freeze({ descriptors, byRecord, byKey, workCandidates, candidatesByDir, folderRootTracesByDir });
 }
 
-function sameRecord(a = {}, b = {}) {
-  return recordKeys(a).some((key) => recordKeys(b).includes(key));
+function addPathParentMembership(recordIndex, pathParentKeys, pathChildKeys, parentReasonsByKey) {
+  const candidates = Array.isArray(recordIndex?.workCandidates) ? recordIndex.workCandidates : [];
+  const byDir = recordIndex?.candidatesByDir instanceof Map ? recordIndex.candidatesByDir : new Map();
+  const rootsByDir = recordIndex?.folderRootTracesByDir instanceof Map ? recordIndex.folderRootTracesByDir : new Map();
+  for (const child of candidates) {
+    for (const ancestorDir of ancestorDirs(child.dir)) {
+      const parents = byDir.get(ancestorDir) || [];
+      for (const parent of parents) addPathParent(parent, child, pathParentKeys, pathChildKeys, parentReasonsByKey, 'hidden-path-parent');
+    }
+    for (const parent of rootsByDir.get(child.dir) || []) {
+      addPathParent(parent, child, pathParentKeys, pathChildKeys, parentReasonsByKey, 'hidden-path-parent');
+    }
+  }
 }
 
-function recordKeyMatches(record = {}, key = '') {
-  const target = String(key || '').trim();
-  return Boolean(target && recordKeys(record).includes(target));
+function addPathParent(parent, child, pathParentKeys, pathChildKeys, parentReasonsByKey, reason) {
+  if (!parent || !child || sameDescriptor(parent, child)) return;
+  for (const key of parent.keys) {
+    pathParentKeys.add(key);
+    if (!parentReasonsByKey.has(key)) parentReasonsByKey.set(key, reason);
+  }
+  for (const key of child.keys) pathChildKeys.add(key);
+}
+
+function descriptorFor(record = {}, materialIndex = null) {
+  if (materialIndex?.descriptorsByRecord instanceof Map) {
+    const byRecord = materialIndex.descriptorsByRecord.get(record);
+    if (byRecord) return byRecord;
+  }
+  if (materialIndex?.descriptorsByKey instanceof Map) {
+    for (const key of recordKeys(record)) {
+      const byKey = materialIndex.descriptorsByKey.get(keyLookup(key));
+      if (byKey) return byKey;
+    }
+  }
+  return null;
+}
+
+function sameDescriptor(a = {}, b = {}) {
+  if (a.record && b.record && a.record === b.record) return true;
+  const aKeys = a.keySet || new Set(a.keys || []);
+  for (const key of b.keys || []) if (aKeys.has(key)) return true;
+  return false;
 }
 
 function recordKeys(record = {}) {
@@ -247,9 +306,27 @@ function recordKeys(record = {}) {
   return Array.from(new Set(keys.concat(canonical)));
 }
 
+function keyLookup(value = '') {
+  const raw = String(value || '').trim();
+  return normalizeDiscoveryPath(raw) || raw;
+}
+
 function unionSets(...sets) {
   const out = new Set();
   for (const set of sets) for (const value of set || []) out.add(value);
+  return out;
+}
+
+function pushMapList(map, key, value) {
+  const existing = map.get(key);
+  if (existing) existing.push(value);
+  else map.set(key, [value]);
+}
+
+function ancestorDirs(dir = '') {
+  const parts = normalizeDiscoveryPath(dir).split('/').filter(Boolean);
+  const out = [];
+  for (let i = 1; i < parts.length; i += 1) out.push(parts.slice(0, i).join('/'));
   return out;
 }
 
@@ -304,7 +381,7 @@ function normalizeDiscoveryPath(value = '') {
   if (!raw) return '';
   try {
     const url = new URL(raw);
-    raw = url.pathname.replace(/^\/+/g, '');
+    raw = url.pathname.replace(/^\/+/, '');
   } catch {
     // not a URL
   }
