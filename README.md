@@ -1,27 +1,41 @@
-# Tiinex Site v212
+# Tiinex Site v215
 
-v212 is a Root-milestone action availability pass on top of v211. It keeps Root validation truth and gates user-visible create-like record actions behind schema/transition capability instead of presenting generic Continue/Reference affordances for every readable card.
+v215 is a Root-milestone Discovery terminal-leaf membership repair on top of v214. It preserves the v214 source-backed metadata cache restore, but fixes the next drift: `Leaves only` now hides loaded lineage parents in Discovery instead of treating every work/schema artifact as a visible terminal leaf.
 
-## v212 batch
+## v215 batch
 
-- Record cards keep inspect/read actions: Open details, Show markdown, Source, Share, and Lineage anchoring where relevant.
-- Continue and Reference/Preserve are no longer shown as generic actions unless a schema companion exposes a concrete transition capability.
-- Root fallback, unknown child schemas, and generic source-backed records no longer look create-capable just because they are readable.
-- Existing transition draft helpers remain available behind explicit code paths; this batch does not implement artifact creation or transition execution.
-- Schema module `viewActions` declarations no longer list broad Continue/Reference actions by default.
-- No recursive adapter traversal, issue discovery, source transport change, transition artifact creation, or new schema-specific companions are introduced in this batch.
-
-## Validation
-
-See `VALIDATION_NOTES.md`. Manual milestone browser testing is intentionally deferred until the Root milestone closes.
+- Discovery `Leaves only` now means terminal loaded lineage leaves: material-role leaf records that are not loaded parents of another record.
+- Source-backed metadata-only cache records may still be visible leaves when terminal, so refresh/session restore does not empty Discovery.
+- Loaded parents are hidden by `Leaves only`, including source-backed metadata-only parents and canonical schema parent nodes.
+- Route-only material-unavailable shells remain hidden.
+- Lineage display scope remains unchanged: Leaves-only and Discovery-only membership controls do not affect Lineage.
+- No transition/artifact creation, source transport, issue discovery, recursive adapter traversal, or new schema-specific companion work is included.
 
 ## Supported local start
-
-Use the Vite development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Source `index.html` is not a double-click runtime; JSX is compiled by Vite.
+The supported local loop is Vite via `npm run dev`; source `index.html` is not a standalone file:// runtime.
+
+## Validation
+
+Use the normal checkpoint gate:
+
+```bash
+npm run validate
+npm run ui:shape
+npm run portable:smoke
+npm run usecase:uc001
+npm run storage:scan
+npm run metrics
+npm run typecheck
+```
+
+For Windows lock portability smoke:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
+```

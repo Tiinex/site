@@ -53,6 +53,8 @@ if (!appAndWorkspace.includes('scopeTransitions')) failures.push('Lineage status
 if (!appAndWorkspace.includes("commit(next, 'replace');") || !appAndWorkspace.includes('function toggleLineageCard')) failures.push('Lineage card expand/collapse must use replace-state, not push-history');
 if (!appAndWorkspace.includes('scrollPersistTimerRef') || !appAndWorkspace.includes("persistCapturedViewScroll('replace')")) failures.push('scroll state must persist by replace-state without growing browser history');
 if (!appAndWorkspace.includes('tx-display-options-icon-trigger')) failures.push('Display options should be icon-forward, not a long text pill in the mode toolbar');
+if (!appAndWorkspace.includes('lineageDisplayOptions')) failures.push('Lineage display filtering must ignore Discovery-only membership controls such as Leaves only');
+if (!appAndWorkspace.includes('body-missing source shells')) failures.push('Leaves-only copy must disclose that body-missing source shells are hidden from Discovery leaves');
 const lineageStateSignature = appAndWorkspace.match(/function WorkspaceLineageState\(\{([^}]*)\}\)/s)?.[1] || '';
 if (!lineageStateSignature.includes('expandedRecordIds = []') || !lineageStateSignature.includes('onToggleLineageCard')) failures.push('Lineage card expansion props must be owned by WorkspaceLineageState; missing props can blank the app at runtime');
 if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');

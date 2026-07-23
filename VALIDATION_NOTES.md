@@ -1,23 +1,19 @@
-# Validation Notes v212
+# Validation Notes v215
 
-v212 is a Root action availability and create-like action gating pass.
+v215 is a focused Root-milestone Discovery membership repair.
 
-## Identity
+## Scope
 
-- Checkpoint/version moved from `0.2.31-v211` to `0.2.32-v212`.
-- Runtime identity moved to `react-v212-root-action-gating`.
+- Checkpoint/version moved from `0.2.34-v214` to `0.2.35-v215`.
+- Runtime identity moved to `react-v215-discovery-terminal-leaf-membership`.
+- `workspace.materialRole` now exposes a Discovery material index that resolves loaded parent edges and distinguishes terminal display leaves from loaded parents.
+- Discovery `Leaves only` uses terminal leaf membership.
+- Display option counts now report terminal leaves.
+- Lineage scope remains independent from Discovery membership controls.
 
-## What changed
+## Validation performed
 
-- User-visible record actions now distinguish inspect/read actions from create-like actions.
-- Continue and Reference/Preserve are hidden unless the resolved schema companion advertises an implemented transition capability.
-- Root fallback and unknown child schema records remain readable but do not expose fake creation/transitions.
-- Schema companion lineage action tests now assert that Continue/Reference stay unavailable until declared by transition capability.
-- Existing draft/transition helper functions are retained for future transition milestone work; this batch only gates presentation and availability.
-
-## Validation run
-
-Expected source-clean checks for this checkpoint:
+Planned source-clean checks:
 
 ```bash
 npm run validate
@@ -30,4 +26,6 @@ npm run typecheck
 npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
 ```
 
-Manual browser testing remains deferred until the Root milestone closes.
+## Manual validation deferred
+
+Manual browser checks are still deferred until the Root milestone test pass, except for user-supplied regression videos/screenshots that guide hotfixes.

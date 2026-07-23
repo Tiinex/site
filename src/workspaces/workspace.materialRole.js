@@ -1,3 +1,6 @@
+import { resolveLineage } from '../lineage/lineage.resolve.js';
+import { LineageEdgeKind, LineageResolutionStatus } from '../lineage/lineage.model.js';
+
 export const MaterialRole = Object.freeze({
   leaf: 'leaf',
   schemaDefinition: 'schema-definition',
@@ -22,8 +25,14 @@ export function inferRecordMaterialRole(record = {}) {
   const kind = String(record.kind || '').toLowerCase();
   const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
   const markdown = String(record.markdown || '');
+  const hasBody = markdown.trim().length > 0 || String(record.body || record.raw || '').trim().length > 0;
 
   if (isWorkspaceCandidatePath(path) || kind.includes('workspace')) return MaterialRole.workspaceCandidate;
+  if (sourceBoundaryClass(record) === 'source-backed' && !hasBody) {
+    if (isRouteOnlyMaterialUnavailableShell(record)) return MaterialRole.unknown;
+    if (hasSourceBackedLeafEvidence(record, path, schema)) return MaterialRole.leaf;
+    return MaterialRole.unknown;
+  }
   if (isCanonicalSchemaArtifactPath(path) && hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
   if (isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
   if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
@@ -31,6 +40,40 @@ export function inferRecordMaterialRole(record = {}) {
   if (markdown.trim()) return MaterialRole.supporting;
   if (sourceBoundaryClass(record) === 'source-backed' && (schema || record.hasContinuityContext || record.hasIntegrity)) return MaterialRole.leaf;
   return MaterialRole.unknown;
+}
+
+
+export function buildDiscoveryMaterialIndex(records = []) {
+  const source = Array.isArray(records) ? records : [];
+  const parentIds = new Set();
+  const childIds = new Set();
+  let resolved = null;
+  try {
+    resolved = resolveLineage(source, { depth: 'discovery-membership' });
+  } catch {
+    resolved = null;
+  }
+  for (const edge of Array.isArray(resolved?.edges) ? resolved.edges : []) {
+    if (edge.kind !== LineageEdgeKind.parent) continue;
+    if (!edge.from || !edge.to) continue;
+    if (edge.status === LineageResolutionStatus.missing) continue;
+    parentIds.add(String(edge.from));
+    childIds.add(String(edge.to));
+  }
+  return Object.freeze({
+    parentIds,
+    childIds,
+    hasLineage: Boolean(resolved),
+    parentCount: parentIds.size,
+    childCount: childIds.size
+  });
+}
+
+export function isDiscoveryLeafRecord(record = {}, materialIndex = null) {
+  if (inferRecordMaterialRole(record) !== MaterialRole.leaf) return false;
+  const id = String(record.id || record.path || '').trim();
+  if (!id || !materialIndex?.parentIds) return true;
+  return !materialIndex.parentIds.has(id);
 }
 
 export function isWorkLeafRecord(record = {}) {
@@ -65,6 +108,25 @@ function normalizeMaterialRole(value = '') {
   if (role === MaterialRole.asset) return MaterialRole.asset;
   if (role === MaterialRole.unknown) return MaterialRole.unknown;
   return '';
+}
+
+function isRouteOnlyMaterialUnavailableShell(record = {}) {
+  const cacheState = String(record.cacheState || '').toLowerCase();
+  const availability = typeof record.materialAvailability === 'string'
+    ? record.materialAvailability
+    : record.materialAvailability?.status;
+  const materialAvailability = String(availability || '').toLowerCase();
+  return cacheState === 'route-shell-material-unavailable'
+    || materialAvailability === 'material-unavailable'
+    || materialAvailability === 'route-shell-material-unavailable';
+}
+
+function hasSourceBackedLeafEvidence(record = {}, path = '', schema = '') {
+  if (path.endsWith('.trace.md')) return true;
+  if (isCanonicalSchemaArtifactPath(path) && (schema || record.hasContinuityContext || record.hasIntegrity || record.title || record.summary)) return true;
+  if (schema && isKnownWorkSchema(schema)) return true;
+  if (record.trace || record.parentSchemaId || record.hasContinuityContext || record.hasIntegrity) return true;
+  return false;
 }
 
 function hasDeclaredTiinexLeaf(record = {}, markdown = '') {

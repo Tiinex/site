@@ -14,7 +14,7 @@ import { shouldShowWorkspaceSummary, summarizeWorkspaceMaterial } from '../../wo
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
-import { inferRecordMaterialRole, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
+import { buildDiscoveryMaterialIndex, inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, materialRoleLabel, sourceBoundaryClass, MaterialRole } from '../../workspaces/workspace.materialRole.js';
 import { schemaReadPresentation } from '../companion.js';
 
 const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
@@ -47,6 +47,31 @@ export function normalizeWorkspaceDisplayOptions(input = {}) {
 function normalizeDisplayFilterValue(value) {
   const text = String(value || 'all').trim();
   return text || 'all';
+}
+
+function lineageDisplayOptions(input = {}) {
+  const normalized = normalizeWorkspaceDisplayOptions(input);
+  return Object.assign({}, normalized, {
+    leavesOnly: false,
+    showSupportingMarkdown: true,
+    showWorkspaceCandidates: true,
+    showAssets: true
+  });
+}
+
+function displayOptionsHiddenCount(options = {}, scope = 'discovery') {
+  const normalized = normalizeWorkspaceDisplayOptions(options);
+  const scoped = String(scope || 'discovery') === 'lineage';
+  const common = (normalized.mismatchesOnly ? 1 : 0)
+    + (normalized.schemaFilter !== 'all' ? 1 : 0)
+    + (normalized.artifactFilter !== 'all' ? 1 : 0)
+    + (normalized.sourceFilter !== 'all' ? 1 : 0);
+  if (scoped) return common;
+  return common
+    + (normalized.showAssets === false ? 1 : 0)
+    + (normalized.showWorkspaceCandidates === false ? 1 : 0)
+    + (normalized.showSupportingMarkdown === false ? 1 : 0)
+    + (normalized.leavesOnly ? 1 : 0);
 }
 
 function isSupportingMarkdownRecord(record = {}) {
@@ -169,9 +194,10 @@ function recordArtifactClass(record = {}) {
 }
 
 
-function displayRecordIncluded(record = {}, options = {}, auditById = new Map()) {
+function displayRecordIncluded(record = {}, options = {}, auditById = new Map(), materialIndex = null) {
   const supporting = isSupportingMarkdownRecord(record);
-  if ((options.leavesOnly || !options.showSupportingMarkdown) && supporting) return false;
+  if (options.leavesOnly && !isDiscoveryLeafRecord(record, materialIndex)) return false;
+  if (!options.showSupportingMarkdown && supporting) return false;
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return false;
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
   if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return false;
@@ -182,7 +208,7 @@ function displayRecordIncluded(record = {}, options = {}, auditById = new Map())
   return true;
 }
 
-function displayOptionChoices(records = [], auditById = new Map()) {
+function displayOptionChoices(records = [], auditById = new Map(), materialIndex = null) {
   const schemaCounts = new Map();
   const artifactCounts = new Map();
   const sourceCounts = new Map();
@@ -198,8 +224,9 @@ function displayOptionChoices(records = [], auditById = new Map()) {
   const artifacts = [MaterialRole.leaf, MaterialRole.schemaDefinition, MaterialRole.supporting, MaterialRole.unknown].filter((key) => artifactCounts.has(key)).map((key) => [key, artifactCounts.get(key)]);
   const sources = ['source-backed', 'local', 'unknown'].filter((key) => sourceCounts.has(key)).map((key) => [key, sourceCounts.get(key)]);
   const supportingCount = (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0);
+  const terminalLeafCount = (Array.isArray(records) ? records : []).filter((record) => isDiscoveryLeafRecord(record, materialIndex)).length;
   const mismatchCount = (Array.isArray(records) ? records : []).filter((record) => auditIsMismatch(record, auditById.get(record.id))).length;
-  return { schemas, artifacts, sources, supportingCount, mismatchCount, leafCount: artifactCounts.get(MaterialRole.leaf) || 0 };
+  return { schemas, artifacts, sources, supportingCount, mismatchCount, leafCount: terminalLeafCount };
 }
 
 
@@ -243,9 +270,10 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
   const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, discoveryQuery)) : [];
-  const displayChoices = displayOptionChoices(allRecords, auditById);
+  const discoveryMaterialIndex = buildDiscoveryMaterialIndex(allRecords);
+  const displayChoices = displayOptionChoices(allRecords, auditById, discoveryMaterialIndex);
   const records = sortWorkspaceFeedRecords(allRecords
-    .filter((record) => displayRecordIncluded(record, displayOptions, auditById))
+    .filter((record) => displayRecordIncluded(record, displayOptions, auditById, discoveryMaterialIndex))
     .filter((record) => recordMatchesQuery(record, discoveryQuery)));
   const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, discoveryQuery)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
@@ -476,7 +504,7 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoad
   const selectedRecordId = String(state.view?.selectedRecordId || '');
   const lineageLoaded = Boolean(lineageVerse && selectedRecord && (lineageReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId)));
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
-  const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0) + (displayOptions?.sourceFilter !== 'all' ? 1 : 0);
+  const hiddenPresentationCount = displayOptionsHiddenCount(displayOptions, lineageVerse ? 'lineage' : 'discovery');
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
   const canDisplayOptions = discoveryVerse || lineageLoaded;
   const canSearch = !lineageVerse || lineageLoaded;
@@ -917,7 +945,7 @@ function LineageSelectedSummary({ node, auditItem, lineage, query = '', displayO
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
   const pathNodes = lineageViewerNodes(node, traversal);
-  const normalizedOptions = displayOptions ? normalizeWorkspaceDisplayOptions(displayOptions) : { leavesFirst: false, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: true, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' };
+  const normalizedOptions = lineageDisplayOptions(displayOptions);
   const normalizedQuery = String(query || '').trim().toLowerCase();
   const visiblePathNodes = pathNodes
     .map((item, index) => ({ item, originalIndex: index }))
@@ -1622,11 +1650,12 @@ export function CreateWorkspaceDialog({ error, onSubmit, onDismiss }) {
   );
 }
 
-export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss }) {
+export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery', onSubmit, onDismiss }) {
   const [draft, setDraft] = useState(normalizeWorkspaceDisplayOptions(options));
   const schemaChoices = Array.isArray(counts.schemaChoices) ? counts.schemaChoices : [];
   const artifactChoices = Array.isArray(counts.artifactChoices) ? counts.artifactChoices : [];
   const sourceChoices = Array.isArray(counts.sourceChoices) ? counts.sourceChoices : [];
+  const lineageScope = String(scope || 'discovery') === 'lineage';
   function setFlag(key, value) {
     setDraft((current) => Object.assign({}, current, { [key]: Boolean(value) }));
   }
@@ -1638,13 +1667,13 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
     onSubmit?.(normalizeWorkspaceDisplayOptions(draft));
   }
   return (
-    <Modal title="Display options" onDismiss={onDismiss} initialFocus="displayLeavesOnly" className="tx-dialog-display-options">
+    <Modal title="Display options" onDismiss={onDismiss} initialFocus={lineageScope ? 'displaySchemaFilter' : 'displayLeavesOnly'} className="tx-dialog-display-options">
       <form className="tx-form tx-display-options-form tx-display-options-parity-form" onSubmit={submit} data-form="display-options-form">
-        <p className="tx-muted">Presentation only. Source, audit, lineage, and export truth stay intact even when material is filtered from Feed/Tree.</p>
+        <p className="tx-muted">{lineageScope ? 'Lineage filters apply to the loaded lineage only. Leaves-only and material membership controls are Discovery-only.' : 'Presentation only. Source, audit, lineage, and export truth stay intact even when material is filtered from Feed/Tree.'}</p>
         <div className="tx-display-filter-grid" aria-label="Artifact filters">
           <label className="tx-select-field">
             <span>Schema</span>
-            <select value={draft.schemaFilter} onChange={(event) => setValue('schemaFilter', event.target.value)}>
+            <select id="displaySchemaFilter" value={draft.schemaFilter} onChange={(event) => setValue('schemaFilter', event.target.value)}>
               <option value="all">All schemas</option>
               {schemaChoices.map(([value, count]) => <option key={value} value={value}>{compactSchemaOption(value)} · {count}</option>)}
             </select>
@@ -1664,26 +1693,32 @@ export function DisplayOptionsDialog({ options, counts = {}, onSubmit, onDismiss
             </select>
           </label>
         </div>
-        <label className="tx-display-option-row tx-display-option-primary">
-          <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} Tiinex artifact {Number(counts.leaves || 0) === 1 ? 'leaf' : 'leaves'} · includes canonical docs schema artifacts; hides support files</small></span>
-          <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
-        </label>
+        {!lineageScope ? (
+          <label className="tx-display-option-row tx-display-option-primary">
+            <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} terminal Tiinex artifact {Number(counts.leaves || 0) === 1 ? 'leaf' : 'leaves'} · hides loaded parents, support files, and body-missing source shells</small></span>
+            <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
+          </label>
+        ) : null}
         <label className="tx-display-option-row">
           <span><strong>Mismatches only</strong><small>{Number(counts.mismatches || 0)} record{Number(counts.mismatches || 0) === 1 ? '' : 's'} currently carry mismatch-level audit status</small></span>
           <input id="displayMismatchesOnly" type="checkbox" checked={draft.mismatchesOnly} onChange={(event) => setFlag('mismatchesOnly', event.target.checked)} />
         </label>
-        <label className="tx-display-option-row">
-          <span><strong>Supporting docs</strong><small>{Number(counts.supportingMarkdown || 0)} supporting doc{Number(counts.supportingMarkdown || 0) === 1 ? '' : 's'} · preserved but hidden by default</small></span>
-          <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
-        </label>
-        <label className="tx-display-option-row">
-          <span><strong>Workspace candidates</strong><small>{Number(counts.workspaceCandidates || 0)} candidate{Number(counts.workspaceCandidates || 0) === 1 ? '' : 's'} · open/merge stays explicit</small></span>
-          <input type="checkbox" checked={draft.showWorkspaceCandidates} onChange={(event) => setFlag('showWorkspaceCandidates', event.target.checked)} />
-        </label>
-        <label className="tx-display-option-row">
-          <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default, never fake leaves</small></span>
-          <input type="checkbox" checked={draft.showAssets} onChange={(event) => setFlag('showAssets', event.target.checked)} />
-        </label>
+        {!lineageScope ? (
+          <>
+            <label className="tx-display-option-row">
+              <span><strong>Supporting docs</strong><small>{Number(counts.supportingMarkdown || 0)} supporting doc{Number(counts.supportingMarkdown || 0) === 1 ? '' : 's'} · preserved but hidden by default</small></span>
+              <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
+            </label>
+            <label className="tx-display-option-row">
+              <span><strong>Workspace candidates</strong><small>{Number(counts.workspaceCandidates || 0)} candidate{Number(counts.workspaceCandidates || 0) === 1 ? '' : 's'} · open/merge stays explicit</small></span>
+              <input type="checkbox" checked={draft.showWorkspaceCandidates} onChange={(event) => setFlag('showWorkspaceCandidates', event.target.checked)} />
+            </label>
+            <label className="tx-display-option-row">
+              <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default, never fake leaves</small></span>
+              <input type="checkbox" checked={draft.showAssets} onChange={(event) => setFlag('showAssets', event.target.checked)} />
+            </label>
+          </>
+        ) : null}
         <details className="tx-display-deferred-controls">
           <summary>Deferred PoC controls</summary>
           <p>Time Portal and link-behavior controls remain deferred until their runtime owners are restored. They are not hidden parity claims.</p>

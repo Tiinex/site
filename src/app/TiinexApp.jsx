@@ -12,7 +12,7 @@ import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { clearGithubSourceTextCacheForSource, hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
-import { inferRecordMaterialRole, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
+import { buildDiscoveryMaterialIndex, inferRecordMaterialRole, isDiscoveryLeafRecord, isSupportingRecord, sourceBoundaryClass, MaterialRole } from '../workspaces/workspace.materialRole.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
   AssetDetailDialog,
@@ -141,6 +141,7 @@ function buildDisplayOptionCounts(workspace = {}) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
   const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
   const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
+  const materialIndex = buildDiscoveryMaterialIndex(records);
   const schemaCounts = new Map();
   const artifactCounts = new Map();
   const sourceCounts = new Map();
@@ -158,7 +159,7 @@ function buildDisplayOptionCounts(workspace = {}) {
   });
   return {
     records: records.length,
-    leaves: artifactCounts.get(MaterialRole.leaf) || 0,
+    leaves: records.filter((record) => isDiscoveryLeafRecord(record, materialIndex)).length,
     supportingMarkdown: (artifactCounts.get(MaterialRole.supporting) || 0) + (artifactCounts.get(MaterialRole.schemaDefinition) || 0) + (artifactCounts.get(MaterialRole.unknown) || 0),
     mismatches: mismatchItems.length,
     assets: workspace.assets?.length || 0,
@@ -965,6 +966,7 @@ export function TiinexApp() {
         <DisplayOptionsDialog
           options={state.view?.displayOptions}
           counts={buildDisplayOptionCounts(active)}
+          scope={state.view?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'}
           onSubmit={setDisplayOptions}
           onDismiss={dismissDialog}
         />

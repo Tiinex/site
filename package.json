@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.32-v212",
+  "version": "0.2.35-v215",
   "private": true,
-  "description": "Tiinex Site v212: Root action availability gating.",
+  "description": "Tiinex Site v215: Discovery terminal-leaf membership repair.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
