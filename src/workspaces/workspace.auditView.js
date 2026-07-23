@@ -1,6 +1,7 @@
 import { runAudit } from '../audit/audit.run.js';
 import { auditReport } from '../audit/audit.report.js';
 import { resolveAuditLineage } from '../audit/lineage/auditLineage.resolve.js';
+import { schemaReadPresentation } from '../schemas/companion.js';
 
 export const WORKSPACE_AUDIT_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedAuditView.v1';
 
@@ -49,6 +50,7 @@ function auditRecord(record = {}) {
     };
   }
   const report = auditReport(result);
+  const read = schemaReadPresentation(record, { compact: true, maxSections: 1 });
   return {
     id: record.id || record.path || record.title || '',
     title: record.title || result.artifact?.title || 'Untitled artifact',
@@ -58,7 +60,11 @@ function auditRecord(record = {}) {
     status: result.status,
     schemaId: report.schemaId || record.schemaId || record.kind || '',
     moduleId: report.moduleId || '',
-    fallbackUsed: Boolean(report.fallbackUsed),
+    fallbackUsed: Boolean(report.fallbackUsed || read.fallbackUsed),
+    readState: read.readState || (report.fallbackUsed ? 'root-fallback' : 'schema-owned'),
+    schemaCoverage: read.schemaCoverage || 'missing-schema',
+    bodyAvailability: result.materialAvailability?.status === 'pending-unavailable' ? 'unavailable-body' : (read.bodyAvailability || (markdown ? 'available' : 'unavailable-body')),
+    exactCompanion: Boolean(read.exactCompanion),
     summary: report.summary || {},
     findings: report.findings || [],
     markdownAvailable: Boolean(markdown),
@@ -77,6 +83,12 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     unavailable: 0,
     supporting: 0,
     fallbackUsed: 0,
+    schemaOwned: 0,
+    rootReadable: 0,
+    rootFallback: 0,
+    unknownSchema: 0,
+    unavailableBody: 0,
+    partialLineage: countPartialLineageNodes(lineageFindings),
     errors: 0,
     warnings: 0,
     infos: 0,
@@ -92,11 +104,24 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     } else if (item.status === 'supporting-material') counts.supporting += 1;
     else counts.invalid += 1;
     if (item.fallbackUsed) counts.fallbackUsed += 1;
+    if (item.readState === 'schema-owned') counts.schemaOwned += 1;
+    if (item.readState === 'root-readable') counts.rootReadable += 1;
+    if (item.readState === 'root-fallback') counts.rootFallback += 1;
+    if (item.schemaCoverage === 'unknown-schema') counts.unknownSchema += 1;
+    if (item.bodyAvailability === 'unavailable-body') counts.unavailableBody += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);
     counts.infos += Number(item.summary?.info || 0);
   }
   return counts;
+}
+
+function countPartialLineageNodes(lineageFindings = []) {
+  const ids = new Set();
+  for (const finding of Array.isArray(lineageFindings) ? lineageFindings : []) {
+    ids.add(finding.nodeId || finding.target || finding.code || 'workspace');
+  }
+  return ids.size;
 }
 
 function auditItemMatchesQuery(item = {}, query = '') {
@@ -106,6 +131,9 @@ function auditItemMatchesQuery(item = {}, query = '') {
     item.schemaId,
     item.moduleId,
     item.status,
+    item.readState,
+    item.schemaCoverage,
+    item.bodyAvailability,
     item.sourceLabel,
     ...(item.findings || []).flatMap((finding) => [finding.code, finding.message, finding.severity])
   ].some((value) => String(value || '').toLowerCase().includes(query));

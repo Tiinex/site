@@ -63,9 +63,13 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
   const resolvedTraversalFindings = (Array.isArray(resolvedFindings) ? resolvedFindings : []).filter((finding) => finding.nodeId && traversalNodeIds.has(finding.nodeId));
   const terminalNodes = terminalTraversalNodes(traversal);
   const rootNodeIds = new Set(resolvedTraversalFindings.filter((finding) => finding.code === 'lineage.root').map((finding) => finding.nodeId));
-  const rootReached = Boolean(!traversal.missingEdges?.length && terminalNodes.some((node) => rootNodeIds.has(node.id)));
   const ambiguous = Boolean(resolvedTraversalFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || (traversal.findings || []).some((finding) => finding.code === 'lineage.target.ambiguous'));
   const hasMissing = Boolean((traversal.missingEdges || []).length || (traversal.findings || []).some((finding) => finding.code === 'lineage.traversal.missingTarget'));
+  const depthLimited = Boolean(traversal.stats?.stoppedAtDepth);
+  const rootReached = Boolean(!hasMissing && !ambiguous && !depthLimited && terminalNodes.some((node) => rootNodeIds.has(node.id)));
+  const noParentDeclared = Boolean(rootReached && (traversal.nodes || []).length === 1 && terminalNodes.some((node) => rootNodeIds.has(node.id)));
+  const scopeTransitions = buildScopeTransitions(traversal.nodes || [], nodesById);
+  const status = traversalStatus({ rootReached, noParentDeclared, ambiguous, hasMissing, depthLimited, scopeTransitions, traversal });
   const secondaryFindings = resolvedTraversalFindings.filter((finding) => finding.code !== 'lineage.root' && finding.code !== 'lineage.parent.missing' && finding.code !== 'lineage.target.ambiguous');
   return {
     schema: traversal.schema,
@@ -75,10 +79,14 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
     startIds: Array.isArray(traversal.startIds) ? traversal.startIds.slice() : [],
     nodes: (traversal.nodes || []).map((node) => {
       const resolvedNode = nodesById.get(node.id) || {};
+      const source = resolvedNode.record?.source || {};
       return Object.assign({}, node, {
         path: node.path || resolvedNode.path || '',
-        sourceLabel: resolvedNode.record?.source?.label || '',
-        sourceBacked: Boolean(resolvedNode.record?.source?.adapterId && resolvedNode.record.source.adapterId !== 'local'),
+        sourceId: resolvedNode.sourceId || source.id || '',
+        sourceLabel: source.label || '',
+        sourceBoundary: resolvedNode.boundary || source.boundary || '',
+        sourceRef: source.ref || '',
+        sourceBacked: Boolean(source.adapterId && source.adapterId !== 'local'),
         record: resolvedNode.record || null,
         findings: findingsByNodeId.get(node.id) || [],
         terminal: terminalNodes.some((terminal) => terminal.id === node.id),
@@ -92,11 +100,17 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
     resolvedFindings: resolvedTraversalFindings,
     secondaryFindings,
     rootReached,
+    noParentDeclared,
     ambiguous,
     hasMissing,
+    depthLimited,
+    complete: status.complete,
+    completeness: status.complete ? 'complete' : 'partial',
+    terminalState: status.terminalState,
+    scopeTransitions,
     terminalNodeIds: terminalNodes.map((node) => node.id),
-    status: traversalStatus({ rootReached, ambiguous, hasMissing, traversal }),
-    stats: Object.assign({}, traversal.stats || {}, { rootReached, ambiguous, hasMissing })
+    status,
+    stats: Object.assign({}, traversal.stats || {}, { rootReached, noParentDeclared, ambiguous, hasMissing, depthLimited, complete: status.complete, scopeTransitions: scopeTransitions.length })
   };
 }
 
@@ -171,12 +185,44 @@ function terminalTraversalNodes(traversal = {}) {
   return nodes.filter((node) => Number(node.depth || 0) === maxDepth);
 }
 
-function traversalStatus({ rootReached = false, ambiguous = false, hasMissing = false, traversal = {} } = {}) {
-  if (ambiguous) return { label: 'ambiguous parent', tone: 'mismatch', message: 'Selected lineage has an ambiguous declared target; no guessed edge was created.' };
-  if (hasMissing) return { label: 'missing parent', tone: 'mismatch', message: 'Selected lineage stops because a declared parent is not loaded.' };
-  if (rootReached) return { label: 'root reached', tone: 'ok', message: 'Selected Parent Trace chain reaches a loaded root.' };
+function buildScopeTransitions(nodes = [], nodesById = new Map()) {
+  const transitions = [];
+  const lineageNodes = Array.isArray(nodes) ? nodes : [];
+  for (let index = 1; index < lineageNodes.length; index += 1) {
+    const from = sourceSignature(nodesById.get(lineageNodes[index - 1]?.id));
+    const to = sourceSignature(nodesById.get(lineageNodes[index]?.id));
+    if (!from.key || !to.key || from.key === to.key) continue;
+    transitions.push(Object.freeze({
+      from: from.label,
+      to: to.label,
+      fromId: from.id,
+      toId: to.id,
+      index
+    }));
+  }
+  return Object.freeze(transitions);
+}
+
+function sourceSignature(node = {}) {
+  const record = node?.record || {};
+  const source = record.source || {};
+  const id = String(node?.sourceId || source.id || '').trim();
+  const ref = String(source.ref || '').trim();
+  const boundary = String(node?.boundary || source.boundary || '').trim();
+  const label = String(source.label || id || boundary || 'unknown source').trim();
+  const key = [id, ref, boundary].filter(Boolean).join('@');
+  return { id, ref, boundary, label: ref ? `${label}@${ref}` : label, key };
+}
+
+function traversalStatus({ rootReached = false, noParentDeclared = false, ambiguous = false, hasMissing = false, depthLimited = false, scopeTransitions = [], traversal = {} } = {}) {
+  if (ambiguous) return { label: 'ambiguous parent', tone: 'mismatch', terminalState: 'ambiguous-parent', complete: false, message: 'Selected lineage has an ambiguous declared target; no guessed edge was created.' };
+  if (hasMissing) return { label: 'target unavailable', tone: 'mismatch', terminalState: 'target-unavailable', complete: false, message: 'Selected lineage stops because a declared parent target is not loaded.' };
+  if (depthLimited) return { label: 'partial lineage', tone: 'open', terminalState: 'depth-limited', complete: false, message: 'Selected lineage reached the current traversal limit before a terminal root was proven.' };
+  if (noParentDeclared) return { label: 'no parent declared', tone: 'ok', terminalState: 'no-parent-declared', complete: true, message: 'Selected artifact declares no Parent Trace and is terminal in the loaded workspace graph.' };
+  if (rootReached && scopeTransitions.length) return { label: 'root reached · scope transition', tone: 'ok', terminalState: 'root-reached-scope-transition', complete: true, message: 'Selected Parent Trace chain reaches a loaded root and crosses explicit source scope.' };
+  if (rootReached) return { label: 'root reached', tone: 'ok', terminalState: 'root-reached', complete: true, message: 'Selected Parent Trace chain reaches a loaded root.' };
   const nodes = Array.isArray(traversal.nodes) ? traversal.nodes : [];
-  if (nodes.length > 1) return { label: 'parent chain loaded', tone: 'ok', message: 'Selected Parent Trace chain is loaded; no missing parent was found.' };
-  if (nodes.length === 1) return { label: 'loaded root', tone: 'open', message: 'Selected artifact has no loaded parent trace in this workspace.' };
-  return { label: 'selected open', tone: 'open', message: 'No selected lineage traversal is loaded.' };
+  if (nodes.length > 1) return { label: 'partial lineage', tone: 'open', terminalState: 'not-exhausted', complete: false, message: 'Selected Parent Trace chain is loaded so far, but no terminal root/no-parent state was proven.' };
+  if (nodes.length === 1) return { label: 'partial lineage', tone: 'open', terminalState: 'not-exhausted', complete: false, message: 'Selected artifact has no proven terminal lineage state in the loaded workspace.' };
+  return { label: 'selected open', tone: 'open', terminalState: 'not-loaded', complete: false, message: 'No selected lineage traversal is loaded.' };
 }

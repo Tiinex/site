@@ -39,6 +39,9 @@ assert.equal(view.mode, 'loaded-only');
 assert.equal(view.items.length, 3);
 assert(view.counts.records === 3, 'audit should count loaded records');
 assert(view.counts.fallbackUsed >= 1, 'unknown schema should use root fallback');
+assert(view.counts.schemaOwned >= 2, 'known topic records should count as schema-owned reads');
+assert(view.counts.rootFallback >= 1, 'unknown schema should count as root fallback');
+assert(view.counts.unknownSchema >= 1, 'unknown schema coverage should be counted separately');
 assert(view.counts.warnings >= 1, 'missing integrity should become a warning');
 assert(view.lineage.edges.some((edge) => edge.from === 'parent' && edge.to === 'child'), 'audit view should include loaded lineage edges');
 assert(view.boundary.includes('Loaded material only'), 'audit view must disclose loaded-only boundary');
@@ -48,7 +51,12 @@ assert.equal(filtered.items.length, 1, 'audit query should filter rows');
 assert.equal(filtered.items[0].id, 'unknown');
 assert(filtered.visibleCounts.fallbackUsed >= 1, 'visible counts should reflect filtered rows');
 
-console.log('✓ workspace.auditView tests passed');
+
+const rootRecord = record({ id: 'root-record', title: 'Root Record', schema: 'tiinex.root.v1', path: 'topics/root.md' });
+const rootAuditView = buildWorkspaceAuditView({ id: 'w4', title: 'Root Audit', records: [rootRecord] });
+assert.equal(rootAuditView.items[0].readState, 'root-readable', 'root schema must be root-readable, not fallback');
+assert.equal(rootAuditView.counts.rootReadable, 1, 'root-readable count is exposed');
+assert.equal(rootAuditView.counts.rootFallback, 0, 'root-readable should not count as root fallback');
 
 const metadataOnly = {
   id: 'source:github:demo:topics/remote.md',
@@ -66,6 +74,8 @@ const metadataOnly = {
 const pendingView = buildWorkspaceAuditView({ id: 'w2', title: 'Pending Audit', records: [metadataOnly] });
 assert.equal(pendingView.items[0].status, 'pending-unavailable', 'metadata-only source-backed record is pending, not invalid');
 assert.equal(pendingView.counts.pending, 1, 'pending count is exposed');
+assert.equal(pendingView.items[0].readState, 'unavailable-body', 'pending metadata-only source has unavailable-body read state');
+assert.equal(pendingView.counts.unavailableBody, 1, 'unavailable body count is exposed');
 assert.equal(pendingView.counts.invalid, 0, 'metadata-only source-backed record must not count as invalid');
 assert(pendingView.items[0].findings.some((finding) => finding.code === 'audit.material.unavailable'), 'pending audit finding is present');
 
@@ -79,3 +89,5 @@ assert.equal(supportingView.counts.supporting, 1, 'supporting material count is 
 assert.equal(supportingView.counts.invalid, 0, 'plain markdown should not count as invalid');
 assert.equal(supportingView.counts.errors, 0, 'plain markdown support classification should not emit audit errors');
 assert(supportingView.items[0].findings.some((finding) => finding.code === 'audit.markdown.supporting-material'), 'supporting material finding is present');
+
+console.log('✓ workspace.auditView tests passed');

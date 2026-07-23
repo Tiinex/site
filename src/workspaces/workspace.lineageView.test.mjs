@@ -65,5 +65,27 @@ assert(selectedWithSecondaryOrigin.selectedTraversal.secondaryFindings.some((fin
 const selectedMissing = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent, child, missing] }, { selectedRecordId: 'c2' });
 assert.equal(selectedMissing.selectedTraversal.missingEdges.length, 1, 'selected traversal should expose missing edge for selected leaf only');
 assert(selectedMissing.selectedTraversal.findings.some((finding) => finding.code === 'lineage.traversal.missingTarget'), 'selected traversal should explain where the selected lineage stops');
+assert.equal(selectedMissing.selectedTraversal.status.label, 'target unavailable', 'missing loaded parent should be reported as target unavailable');
+assert.equal(selectedMissing.selectedTraversal.complete, false, 'missing loaded parent means selected lineage is partial');
+assert.equal(selectedMissing.selectedTraversal.terminalState, 'target-unavailable', 'missing loaded parent should expose terminal state');
+
+const selectedRoot = buildWorkspaceLineageView({ id: 'w1', title: 'Demo', records: [parent] }, { selectedRecordId: 'p1' });
+assert.equal(selectedRoot.selectedTraversal.status.label, 'no parent declared', 'single loaded root should be explicit no-parent terminal state');
+assert.equal(selectedRoot.selectedTraversal.noParentDeclared, true, 'single loaded root should expose noParentDeclared');
+assert.equal(selectedRoot.selectedTraversal.complete, true, 'no-parent terminal state is complete for loaded-workspace traversal');
+
+const scopedParent = Object.assign(record({ id: 'scope-parent', title: 'Scoped Parent', path: 'topics/scoped-parent.md' }), {
+  source: { id: 'github:tiinex/docs@main', label: 'Tiinex/docs', ref: 'main', boundary: 'repo main', adapterId: 'github' },
+  sourceMode: 'source-backed'
+});
+const scopedChild = Object.assign(record({ id: 'scope-child', title: 'Scoped Child', path: 'topics/scoped-child.md', trace: 'record:scope-parent' }), {
+  source: { id: 'github:tiinex/docs@52ecdea', label: 'Tiinex/docs', ref: '52ecdea', boundary: 'repo commit', adapterId: 'github' },
+  sourceMode: 'source-backed'
+});
+const scopeTransition = buildWorkspaceLineageView({ id: 'w2', title: 'Scope Demo', records: [scopedParent, scopedChild] }, { selectedRecordId: 'scope-child' });
+assert.equal(scopeTransition.selectedTraversal.rootReached, true, 'scope transition chain can still reach a loaded root');
+assert.equal(scopeTransition.selectedTraversal.complete, true, 'scope transition is complete when terminal root is loaded');
+assert.equal(scopeTransition.selectedTraversal.scopeTransitions.length, 1, 'lineage should expose explicit source scope transition');
+assert.equal(scopeTransition.selectedTraversal.terminalState, 'root-reached-scope-transition', 'scope transition should be reflected in terminal state');
 
 console.log('✓ workspace.lineageView tests passed');

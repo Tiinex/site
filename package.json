@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.23-v203",
+  "version": "0.2.27-v207",
   "private": true,
-  "description": "Tiinex Site v203: package-lock platform guard calibration after local dependency repair.",
+  "description": "Tiinex Site v207: Root lineage terminal-state and audit completeness contract.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

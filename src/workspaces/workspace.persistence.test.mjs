@@ -106,10 +106,11 @@ const scaleRecords = Array.from({ length: 325 }, (_, index) => ({
   hasContinuityContext: true,
   schemaId: 'tiinex.topic.v1'
 }));
+const scaleScrollKey = `scale-w:lineage::${scaleRecords[200].id}:`;
 const scaleState = {
   version: 1,
   activeWorkspaceId: 'scale-w',
-  view: { workspaceVerse: 'lineage', query: '', selectedRecordId: scaleRecords[200].id },
+  view: { workspaceVerse: 'lineage', query: '', lineageQuery: '', selectedRecordId: scaleRecords[200].id, scrollPositions: { [scaleScrollKey]: 1840 } },
   workspaces: [{ id: 'scale-w', name: 'Scale', sources: [scaleSource], sourceOrder: [scaleSource.id], records: scaleRecords, assets: [], workspaceMergeCandidates: [], importLog: [] }]
 };
 scaleEnv.persistence.writeState(scaleState, { storage: scaleEnv.env.localStorage, location: scaleEnv.env.location, history: scaleEnv.env.history, mode: 'push' });
@@ -120,6 +121,7 @@ if (!restoredScaleRecord.markdown.includes('# Topic 200')) throw new Error('scal
 if (restoredScaleRecord.cacheState !== 'source-backed-session-cache-complete') throw new Error('scale restore should disclose complete source-backed session cache state');
 if (restoredScaleRecord.materialRole !== 'leaf') throw new Error('scale restore should preserve materialRole across hash restore');
 if (scaleRestored.view.selectedRecordId !== scaleRecords[200].id) throw new Error('scale restore should preserve selected record view state');
+if (scaleRestored.view.scrollPositions?.[scaleScrollKey] !== 1840) throw new Error('scale restore should preserve per-view scroll positions');
 
 
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });

@@ -66,10 +66,15 @@ function auditIndexForWorkspace(workspace = {}, records = []) {
 function auditBadgeForRecord(record = {}, auditItem = null) {
   const item = auditItem || null;
   const status = String(item?.status || '').toLowerCase();
-  if (status === 'readable') return { label: item?.fallbackUsed ? 'open' : 'schema ok', tone: item?.fallbackUsed ? 'open' : 'ok', title: item?.fallbackUsed ? 'Readable through root fallback; review schema confidence.' : 'Loaded leaf passed schema/audit checks; byte-level integrity is not claimed.' };
+  const readState = String(item?.readState || '').toLowerCase();
+  if (status === 'readable') {
+    if (readState === 'root-readable') return { label: 'root ok', tone: 'ok', title: 'Root envelope is readable through the Root companion.' };
+    if (item?.fallbackUsed || readState === 'root-fallback') return { label: 'fallback', tone: 'fallback', title: 'Readable through Root fallback; exact child schema companion did not validate this card.' };
+    return { label: 'schema ok', tone: 'ok', title: 'Loaded leaf passed schema/audit checks; byte-level integrity is not claimed.' };
+  }
   if (status === 'supporting-material') return { label: 'doc', tone: 'open', title: 'Plain Markdown supporting material; not an invalid Tiinex leaf.' };
-  if (status === 'pending-unavailable') return { label: 'open', tone: 'pending', title: 'Material is not loaded in this route/session; audit is pending.' };
-  if (status === 'degraded') return { label: 'open', tone: 'pending', title: 'Readable with warnings or fallback; review lineage/source confidence.' };
+  if (status === 'pending-unavailable' || readState === 'unavailable-body') return { label: 'unavailable', tone: 'pending', title: 'Material is not loaded in this route/session; audit is pending.' };
+  if (status === 'degraded') return { label: (item?.fallbackUsed || readState === 'root-fallback') ? 'fallback' : 'open', tone: (item?.fallbackUsed || readState === 'root-fallback') ? 'fallback' : 'pending', title: (item?.fallbackUsed || readState === 'root-fallback') ? 'Readable through Root fallback with warnings; child-specific companion is not available.' : 'Readable with warnings; review lineage/source confidence.' };
   if (status) return { label: 'mismatch', tone: 'mismatch', title: 'Audit found errors or incomplete Tiinex leaf structure.' };
   if (record?.hasIntegrity || record?.hasContinuityContext || record?.schemaId) return { label: 'open', tone: 'pending', title: 'Lineage/audit status is not fully resolved yet.' };
   return { label: 'doc', tone: 'open', title: 'Supporting material.' };
@@ -132,7 +137,7 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, onToggleLineageCard, onRunLineageAudit }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -142,8 +147,12 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
     stage.scrollTop = Number.isFinite(top) && top > 0 ? top : 0;
   }, [restoreKey, stageScrollTop]);
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
-  const query = state.view?.query || '';
   const verse = state.view?.workspaceVerse || 'feed';
+  const lineageVerse = verse === 'lineage';
+  const lineageLoadReady = lineageVerse && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || '');
+  const discoveryQuery = state.view?.query || '';
+  const lineageQuery = lineageLoadReady ? (state.view?.lineageQuery || '') : '';
+  const query = lineageVerse ? lineageQuery : discoveryQuery;
   const displayOptions = normalizeWorkspaceDisplayOptions(state.view?.displayOptions);
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
   const selectedRecordId = String(state.view?.selectedRecordId || '');
@@ -151,17 +160,17 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const auditById = auditIndexForWorkspace(workspace, allRecords);
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
   const allWorkspaceCandidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-  const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
+  const workspaceCandidates = displayOptions.showWorkspaceCandidates ? allWorkspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, discoveryQuery)) : [];
   const displayChoices = displayOptionChoices(allRecords, auditById);
   const records = sortWorkspaceFeedRecords(allRecords
     .filter((record) => displayRecordIncluded(record, displayOptions, auditById))
-    .filter((record) => recordMatchesQuery(record, query)));
-  const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, query)) : [];
+    .filter((record) => recordMatchesQuery(record, discoveryQuery)));
+  const assets = displayOptions.showAssets ? allAssets.filter((asset) => assetMatchesQuery(asset, discoveryQuery)) : [];
   const hasMaterial = Boolean(allRecords.length || allAssets.length || allWorkspaceCandidates.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length && !workspaceCandidates.length);
   const presentation = verse === 'tree'
-    ? presentWorkspaceTree(workspace, { verse, query })
-    : presentWorkspaceFeed(workspace, { verse, query });
+    ? presentWorkspaceTree(workspace, { verse, query: discoveryQuery })
+    : presentWorkspaceFeed(workspace, { verse, query: discoveryQuery });
   const materialSummary = summarizeWorkspaceMaterial(workspace);
   return (
     <section className="tx-workspace-window tx-column-window tx-uc001-created-workspace tx-schema-workspace-surface tx-compact-column-window" aria-label="Tiinex workspace window" data-schema-id="tiinex.workspace.v1" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer) onDropFiles?.(event.dataTransfer, { sourceMode: 'workspace-drop', fromDataTransfer: true }); }}>
@@ -182,13 +191,13 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} />
+      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} expandedRecordIds={expandedLineageRecordIds} onToggleLineageCard={onToggleLineageCard} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -358,14 +367,18 @@ function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit }) {
+function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage }) {
   const verse = state.view?.workspaceVerse || 'feed';
   const discoveryVerse = verse === 'feed' || verse === 'tree';
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
+  const selectedRecordId = String(state.view?.selectedRecordId || '');
+  const lineageLoaded = Boolean(lineageVerse && selectedRecord && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId);
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
   const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0) + (displayOptions?.sourceFilter !== 'all' ? 1 : 0);
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
+  const canDisplayOptions = discoveryVerse || lineageLoaded;
+  const canSearch = !lineageVerse || lineageLoaded;
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
       <strong className="tx-mode-name">{modeLabel}</strong>
@@ -377,16 +390,28 @@ function ModeToolbar({ state, query, displayOptions, selectedRecord, onVerse, on
       ) : (
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
-      {lineageVerse && selectedRecord ? (
+      {lineageVerse && selectedRecord && !lineageLoaded ? (
+        <button type="button" className="tx-mode-load-lineage-button" onClick={onLoadFullLineage} title="Load the full loaded-workspace lineage index before search, filters, or Audit" aria-label="Load full lineage">
+          <Icon name="lineage" /><span>Load full lineage</span>
+        </button>
+      ) : null}
+      {lineageLoaded ? (
         <button type="button" className="tx-mode-action-button tx-mode-audit-button tx-mode-audit-run-button" onClick={onRunLineageAudit} title="Audit lineage" aria-label="Audit lineage">
           <Icon name="audit" /><span>Audit</span>
         </button>
       ) : null}
-      {discoveryVerse ? <button type="button" className="tx-mode-link tx-display-options-trigger" onClick={onOpenDisplayOptions}>Display options{hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}</button> : null}
-      <label className="tx-search-field tx-search-field-icon">
-        <Icon name="search" />
-        <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search lineage title/body/schema…' : 'Search title/body/schema…'} />
-      </label>
+      {canDisplayOptions ? (
+        <button type="button" className="tx-mode-action-button tx-display-options-icon-trigger" onClick={onOpenDisplayOptions} title={`Display options${hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}`} aria-label={`Display options${hiddenPresentationCount ? `, ${hiddenPresentationCount} hidden` : ''}`}>
+          <Icon name="filters" />
+          {hiddenPresentationCount ? <span className="tx-mode-action-count">{hiddenPresentationCount}</span> : null}
+        </button>
+      ) : null}
+      {canSearch ? (
+        <label className="tx-search-field tx-search-field-icon">
+          <Icon name="search" />
+          <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search loaded lineage…' : 'Search title/body/schema…'} />
+        </label>
+      ) : null}
     </div>
   );
 }
@@ -540,7 +565,9 @@ function WorkspaceAuditState({ workspace, query = '', records = [], assets = [],
       <div className="tx-audit-finding-summary" aria-label="Audit finding summary">
         <span><Icon name={counts.errors ? 'warning' : 'check'} /> {counts.errors || 0} errors</span>
         <span><Icon name={counts.warnings ? 'warning' : 'check'} /> {counts.warnings || 0} warnings</span>
-        <span><Icon name="audit" /> {counts.fallbackUsed || 0} root fallback</span>
+        <span><Icon name="audit" /> {counts.rootFallback || counts.fallbackUsed || 0} root fallback</span>
+        <span><Icon name="open" /> {counts.rootReadable || 0} root-readable</span>
+        {counts.unavailableBody ? <span><Icon name="warning" /> {counts.unavailableBody} body unavailable</span> : null}
         <span><Icon name="lineage" /> {counts.lineageFindings || 0} lineage findings</span>
       </div>
       {audit.lineage.findings.length ? (
@@ -658,6 +685,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
       </span>
       <span className="tx-audit-record-meta">
         <Badge>{item.status}</Badge>
+        <Badge>{item.readState || 'read-state unknown'}</Badge>
         <Badge>{item.schemaId || 'markdown'}</Badge>
         <Badge>{item.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
         {item.fallbackUsed ? <Badge>root fallback</Badge> : null}
@@ -668,7 +696,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, expandedRecordIds = [], onToggleLineageCard }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, lineageLoadReport = null, displayOptions = null, expandedRecordIds = [], onToggleLineageCard }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
     ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
@@ -676,6 +704,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
   const selectedFromRecords = selectedRecordId ? records.find((record) => record.id === selectedRecordId) : null;
   const selected = selectedFromTraversal || (selectedFromRecords ? { id: selectedFromRecords.id, title: selectedFromRecords.title, path: selectedFromRecords.path, schemaId: selectedFromRecords.schemaId, record: selectedFromRecords } : null);
   const selectedAudit = selected ? auditById.get(selected.id) : null;
+  const lineageLoadReady = Boolean(selected && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(selected.id || ''));
   return (
     <section className="tx-workspace-lineage-state" aria-label="Loaded lineage">
       <header className="tx-lineage-header">
@@ -693,8 +722,9 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
         ) : null}
       </header>
       {selected ? <>
+          <LineageLoadStatus report={lineageLoadReport} selectedRecordId={selected.id} ready={lineageLoadReady} />
           <LineageAuditInlineReport report={lineageAuditReport} selectedRecordId={selected.id} />
-          <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} />
+          <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} query={query} displayOptions={lineageLoadReady ? displayOptions : null} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} />
         </> : null}
       {!selected ? (
         <details className="tx-lineage-workspace-overview" open aria-label="Workspace lineage overview">
@@ -736,9 +766,27 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
 }
 
 
+function LineageLoadStatus({ report = null, selectedRecordId = '', ready = false }) {
+  if (!ready || !report || String(report.selectedRecordId || '') !== String(selectedRecordId || '')) return null;
+  const partial = report.state === 'partial';
+  const terminalLabel = lineageTerminalLabel(report.terminalState, report.statusLabel);
+  return (
+    <div className={`tx-lineage-load-status ${partial ? 'tx-lineage-load-partial' : 'tx-lineage-load-complete'}`} role="status" aria-live="polite">
+      <Icon name={partial ? 'warning' : 'check'} />
+      <strong>{partial ? 'Loaded partial lineage index' : 'Loaded full lineage index'}</strong>
+      <span>{Number(report.nodes || 0)} node{Number(report.nodes || 0) === 1 ? '' : 's'}</span>
+      {terminalLabel ? <small>{terminalLabel}</small> : null}
+      {Number(report.scopeTransitions || 0) ? <small>{Number(report.scopeTransitions || 0)} scope transition{Number(report.scopeTransitions || 0) === 1 ? '' : 's'}</small> : null}
+    </div>
+  );
+}
+
+
 function LineageAuditInlineReport({ report = null, selectedRecordId = '' }) {
   if (!report || String(report.selectedRecordId || '') !== String(selectedRecordId || '')) return null;
   const counts = report.counts || {};
+  const partial = report.state === 'partial';
+  const terminalLabel = lineageTerminalLabel(report.terminalState, report.statusLabel);
   const parts = [
     `${Number(counts.ok || 0)} OK`,
     `${Number(counts.mismatch || 0)} mismatch`,
@@ -746,32 +794,43 @@ function LineageAuditInlineReport({ report = null, selectedRecordId = '' }) {
     `${Number(counts.pending || 0)} pending`
   ];
   return (
-    <div className={`tx-lineage-audit-inline ${Number(counts.mismatch || 0) ? 'tx-lineage-audit-inline-warn' : 'tx-lineage-audit-inline-ok'}`} role="status" aria-live="polite">
-      <Icon name={Number(counts.mismatch || 0) ? 'warning' : 'check'} />
-      <strong>Lineage audit complete</strong>
+    <div className={`tx-lineage-audit-inline ${partial || Number(counts.mismatch || 0) ? 'tx-lineage-audit-inline-warn' : 'tx-lineage-audit-inline-ok'}`} role="status" aria-live="polite">
+      <Icon name={partial || Number(counts.mismatch || 0) ? 'warning' : 'check'} />
+      <strong>{partial ? 'Lineage audit partial' : 'Lineage audit complete'}</strong>
       <span>{parts.join(' · ')}</span>
-      {report.rootReached ? <small>root reached</small> : null}
+      {terminalLabel ? <small>{terminalLabel}</small> : null}
+      {Number(report.scopeTransitions || 0) ? <small>{Number(report.scopeTransitions || 0)} scope transition{Number(report.scopeTransitions || 0) === 1 ? '' : 's'}</small> : null}
     </div>
   );
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onRecordAction, onShareRecord, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard }) {
+function LineageSelectedSummary({ node, auditItem, lineage, query = '', displayOptions = null, onOpenRecord, onRecordAction, onShareRecord, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard }) {
   const traversal = lineage.selectedTraversal || null;
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
   const pathNodes = lineageViewerNodes(node, traversal);
+  const normalizedOptions = displayOptions ? normalizeWorkspaceDisplayOptions(displayOptions) : { leavesFirst: false, leavesOnly: false, mismatchesOnly: false, showSupportingMarkdown: true, showWorkspaceCandidates: true, showAssets: true, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' };
+  const normalizedQuery = String(query || '').trim().toLowerCase();
+  const visiblePathNodes = pathNodes
+    .map((item, index) => ({ item, originalIndex: index }))
+    .filter(({ item }) => {
+      const record = item.record || (item.id === node.id ? node.record : {}) || {};
+      const audit = item.id === node.id ? auditItem : auditById.get(item.id);
+      if (!displayRecordIncluded(record, normalizedOptions, audit)) return false;
+      return !normalizedQuery || lineageCardMatchesQuery(item, record, normalizedQuery);
+    });
   const secondaryFindings = selectedSecondaryFindings(rawFindings, traversal, selectedLineage);
   return (
     <section className="tx-lineage-record-list tx-unified-record-list" aria-label="Lineage artifact chain">
       <ol className="tx-lineage-record-chain" aria-label="Selected artifact and parent chain">
-        {pathNodes.map((item, index) => {
+        {visiblePathNodes.map(({ item, originalIndex }, displayIndex) => {
           const record = item.record || (item.id === node.id ? node.record : {}) || {};
           const audit = item.id === node.id ? auditItem : auditById.get(item.id);
-          const relation = lineageRelationLabel(item, index, pathNodes.length);
+          const relation = lineageRelationLabel(item, originalIndex, pathNodes.length);
           return (
-            <li key={item.id || index} className="tx-lineage-record-chain-item">
-              {index > 0 ? <LineageRelationSeparator relation={relation} /> : null}
+            <li key={item.id || originalIndex} className="tx-lineage-record-chain-item">
+              {displayIndex > 0 ? <LineageRelationSeparator relation={relation} /> : null}
               <RecordCard
                 record={record}
                 auditItem={audit}
@@ -786,6 +845,7 @@ function LineageSelectedSummary({ node, auditItem, lineage, onOpenRecord, onReco
             </li>
           );
         })}
+        {!visiblePathNodes.length ? <li className="tx-lineage-record-chain-empty">No loaded lineage cards match the current search/display filters.</li> : null}
       </ol>
       <LineagePathResult traversal={traversal} status={selectedLineage} />
       {secondaryFindings.length ? (
@@ -827,12 +887,48 @@ function lineageViewerNodes(selectedNode = {}, traversal = null) {
 
 function LineagePathResult({ traversal = null, status = {} }) {
   if (!traversal) return null;
-  const stats = traversal.stats || {};
-  const missing = Array.isArray(traversal.missingEdges) ? traversal.missingEdges : [];
-  if (traversal.rootReached) return null;
-  if (missing.length) return <div className="tx-lineage-terminal-status tx-mismatch"><Icon name="warning" /> Missing parent · {stats.missingEdges || missing.length}</div>;
-  return <div className="tx-lineage-terminal-status"><Icon name="lineage" /> {status.label || 'Lineage path loaded'}</div>;
+  const terminalState = traversal.terminalState || status.terminalState || '';
+  const label = lineageTerminalLabel(terminalState, status.label) || status.label || 'Lineage path loaded';
+  const partial = traversal.complete === false || status.complete === false;
+  const tone = status.tone || (partial ? 'open' : 'ok');
+  return (
+    <div className={`tx-lineage-terminal-status tx-${tone} ${partial ? 'tx-lineage-terminal-partial' : 'tx-lineage-terminal-complete'}`} title={status.message || ''}>
+      <Icon name={partial || tone === 'mismatch' ? 'warning' : 'check'} /> {label}
+      {Array.isArray(traversal.scopeTransitions) && traversal.scopeTransitions.length ? <span> · {traversal.scopeTransitions.length} scope transition{traversal.scopeTransitions.length === 1 ? '' : 's'}</span> : null}
+    </div>
+  );
 }
+
+function lineageTerminalLabel(terminalState = '', fallback = '') {
+  const state = String(terminalState || '').trim();
+  if (state === 'root-reached' || state === 'root-reached-scope-transition') return 'root reached';
+  if (state === 'no-parent-declared') return 'no parent declared';
+  if (state === 'target-unavailable') return 'target unavailable';
+  if (state === 'ambiguous-parent') return 'ambiguous parent';
+  if (state === 'depth-limited') return 'partial lineage · depth limit';
+  if (state === 'not-exhausted') return 'partial lineage';
+  if (state === 'not-loaded') return 'lineage not loaded';
+  return fallback || '';
+}
+
+function lineageCardMatchesQuery(item = {}, record = {}, query = '') {
+  return [
+    item.title,
+    item.path,
+    item.schemaId,
+    item.trace,
+    item.origin,
+    item.boundary,
+    record.title,
+    record.summary,
+    record.kind,
+    record.schemaId,
+    record.currentSchemaId,
+    record.markdown,
+    record.source?.label
+  ].some((value) => String(value || '').toLowerCase().includes(query));
+}
+
 
 function selectedLineageStatus(node = {}, lineage = {}, traversal = null) {
   if (traversal?.status) return traversal.status;
@@ -1093,6 +1189,37 @@ function SchemaReadSectionBody({ value = '' }) {
   );
 }
 
+function readStateLabel(value = '') {
+  const state = String(value || '').trim();
+  if (state === 'schema-owned') return 'schema-owned';
+  if (state === 'root-readable') return 'root-readable';
+  if (state === 'root-fallback') return 'root fallback';
+  if (state === 'unavailable-body') return 'body unavailable';
+  if (state === 'unknown-schema') return 'unknown schema';
+  return state || 'read state unknown';
+}
+
+function schemaCoverageLabel(value = '') {
+  const state = String(value || '').trim();
+  if (state === 'exact-companion') return 'exact companion';
+  if (state === 'unknown-schema') return 'unknown schema';
+  if (state === 'missing-schema') return 'missing schema';
+  return state || 'schema unknown';
+}
+
+function SchemaReadStateChips({ presentation = {} }) {
+  const readState = presentation.readState || (presentation.fallbackUsed ? 'root-fallback' : 'schema-owned');
+  const coverage = presentation.schemaCoverage || (presentation.fallbackUsed ? 'unknown-schema' : 'exact-companion');
+  const body = presentation.bodyAvailability || 'available';
+  return (
+    <div className="tx-read-state-chips" aria-label="Read-state contract">
+      <Badge className={`tx-read-state-chip tx-read-state-${readState}`}>{readStateLabel(readState)}</Badge>
+      {coverage !== 'exact-companion' ? <Badge className={`tx-read-state-chip tx-schema-coverage-${coverage}`}>{schemaCoverageLabel(coverage)}</Badge> : null}
+      {body === 'unavailable-body' ? <Badge className="tx-read-state-chip tx-read-state-unavailable-body">body unavailable</Badge> : null}
+    </div>
+  );
+}
+
 function schemaReadBlocks(value = '') {
   const lines = String(value || '').split(/\r?\n/);
   const blocks = [];
@@ -1131,11 +1258,18 @@ function schemaReadBlocks(value = '') {
 
 function SchemaReadView({ record = {}, compact = false, maxSections = null, showHeader = true, lineClamp = false }) {
   const presentation = schemaReadPresentation(record, { compact, maxSections, lineClamp });
+  const fallbackUsed = presentation.readMode === 'root-fallback' || presentation.fallbackUsed === true;
+  const readState = presentation.readState || (fallbackUsed ? 'root-fallback' : 'schema-owned');
   if (!presentation.sections.length) {
-    return <p className="tx-muted">No schema-owned read view is available. Use Show markdown for the exact source.</p>;
+    return (
+      <section className={`tx-schema-read-view tx-schema-read-fallback tx-schema-read-empty-fallback tx-read-state-${readState}`} aria-label="Root fallback artifact read view">
+        <SchemaReadStateChips presentation={presentation} />
+        <div className="tx-schema-read-disclosure"><Icon name="warning" /><strong>{readState === 'unavailable-body' ? 'Body unavailable' : 'Root fallback'}</strong><span>{readState === 'unavailable-body' ? 'Material is not loaded in this route/session; source boundary is preserved.' : 'Exact schema read companion is not registered yet; source Markdown remains available.'}</span></div>
+      </section>
+    );
   }
   return (
-    <section className={`tx-schema-read-view ${compact ? 'tx-schema-read-compact' : ''}`} aria-label="Schema-owned artifact read view">
+    <section className={`tx-schema-read-view ${compact ? 'tx-schema-read-compact' : ''} ${fallbackUsed ? 'tx-schema-read-fallback' : 'tx-schema-read-owned'} tx-read-state-${readState}`} aria-label={fallbackUsed ? 'Root fallback artifact read view' : 'Schema-owned artifact read view'}>
       {showHeader ? (
         <header>
           <span>{presentation.label}</span>
@@ -1143,6 +1277,8 @@ function SchemaReadView({ record = {}, compact = false, maxSections = null, show
           {presentation.summary ? <p>{presentation.summary}</p> : null}
         </header>
       ) : null}
+      <SchemaReadStateChips presentation={presentation} />
+      {fallbackUsed ? <div className="tx-schema-read-disclosure"><Icon name="warning" /><strong>Root fallback</strong><span>Generic Root projection; exact child companion is not implemented yet.</span></div> : null}
       <div className="tx-schema-read-sections">
         {presentation.sections.map((section) => (
           <article key={section.label} className="tx-schema-read-section">

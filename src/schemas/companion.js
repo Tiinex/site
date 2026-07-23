@@ -21,9 +21,52 @@ export function companionForRecord(record = {}) {
 export function schemaReadPresentation(record = {}, options = {}) {
   const parsed = parseRecordMarkdown(record);
   const schema = recordSchemaId(record, parsed);
+  const exactCompanion = Boolean(schema && schemaRegistry.byId?.has(schema));
   const companion = companionForRecord({ ...record, schemaId: schema });
   const read = companion?.read || {};
   const sections = extractMarkdownSections(parsed.body?.text || record.markdown || '');
+  const bodyAvailable = Boolean(String(record.markdown || parsed.body?.text || '').trim());
+  const fallbackUsed = Boolean(schema && !exactCompanion);
+  const readState = classifyReadState({ schema, companion, exactCompanion, fallbackUsed, bodyAvailable });
+  const schemaCoverage = classifySchemaCoverage({ schema, exactCompanion, fallbackUsed });
+  const bodyAvailability = bodyAvailable ? 'available' : 'unavailable-body';
+  const picked = fallbackUsed
+    ? rootFallbackReadSections({ parsed, record, schema, sections, options })
+    : schemaOwnedReadSections({ parsed, record, schema, sections, read, options });
+  const maxSections = Number(options.maxSections || 0);
+  const visibleSections = maxSections > 0 ? picked.slice(0, maxSections) : picked;
+  return {
+    schema,
+    companionId: companion?.id || 'tiinex.root.v1',
+    contract: SCHEMA_COMPANION_CONTRACT_ID,
+    label: fallbackUsed ? 'Root fallback' : (read.label || companion?.label || displaySchemaLabel(schema)),
+    title: record.title || parsed.title || 'Untitled artifact',
+    summary: record.summary || parsed.envelope?.current?.summary || '',
+    sections: visibleSections,
+    readMode: fallbackUsed ? 'root-fallback' : 'schema-owned',
+    readState,
+    schemaCoverage,
+    bodyAvailability,
+    fallbackUsed,
+    exactCompanion
+  };
+}
+
+export function classifyReadState({ schema = '', companion = null, exactCompanion = false, fallbackUsed = false, bodyAvailable = false } = {}) {
+  if (!bodyAvailable) return 'unavailable-body';
+  if (fallbackUsed) return 'root-fallback';
+  if (exactCompanion && (companion?.id === 'tiinex.root.v1' || String(schema || '') === 'tiinex.root.v1')) return 'root-readable';
+  if (exactCompanion) return 'schema-owned';
+  return 'unknown-schema';
+}
+
+export function classifySchemaCoverage({ schema = '', exactCompanion = false, fallbackUsed = false } = {}) {
+  if (!schema) return 'missing-schema';
+  if (fallbackUsed || !exactCompanion) return 'unknown-schema';
+  return 'exact-companion';
+}
+
+function schemaOwnedReadSections({ parsed, record, schema, sections, read, options }) {
   const wanted = Array.isArray(read.sections) && read.sections.length ? read.sections : DEFAULT_READ_SECTIONS;
   const picked = [];
   for (const label of wanted) {
@@ -32,24 +75,45 @@ export function schemaReadPresentation(record = {}, options = {}) {
   }
   if (!picked.length) {
     for (const [label, value] of sections.entries()) {
-      if (/^(continuity context|continuity integrity)$/i.test(label)) continue;
+      if (isEnvelopeSection(label)) continue;
       if (options.compact && isRedundantIdentitySection(label, value, record, schema)) continue;
       if (picked.length >= (options.compact ? 2 : 5)) break;
       picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
     }
   }
-  if (!picked.length && parsed.body?.text) picked.push({ label: 'Artifact body', value: trimReadValue(parsed.body.text, options) });
-  const maxSections = Number(options.maxSections || 0);
-  const visibleSections = maxSections > 0 ? picked.slice(0, maxSections) : picked;
-  return {
-    schema,
-    companionId: companion?.id || 'tiinex.root.v1',
-    contract: SCHEMA_COMPANION_CONTRACT_ID,
-    label: read.label || companion?.label || displaySchemaLabel(schema),
-    title: record.title || parsed.title || 'Untitled artifact',
-    summary: record.summary || parsed.envelope?.current?.summary || '',
-    sections: visibleSections
-  };
+  if (!picked.length && parsed.body?.text) picked.push({ label: 'Artifact body', value: trimReadValue(stripEnvelopeSectionText(parsed.body.text), options) });
+  return picked.filter((section) => String(section.value || '').trim());
+}
+
+function rootFallbackReadSections({ parsed, record, schema, sections, options }) {
+  const envelope = parsed.envelope || {};
+  const current = envelope.current || {};
+  const parent = envelope.parent || {};
+  const currentLines = compactLines([
+    schema ? `Schema: ${schema}` : '',
+    current.createdAt || record.currentCreatedAt ? `Created: ${current.createdAt || record.currentCreatedAt}` : '',
+    current.status || record.lifecycleStatus || record.status ? `Status: ${current.status || record.lifecycleStatus || record.status}` : '',
+    current.summary || record.summary ? `Summary: ${current.summary || record.summary}` : ''
+  ]);
+  const continuityLines = compactLines([
+    parent.schema?.id || record.parentSchemaId ? `Parent schema: ${parent.schema?.id || record.parentSchemaId}` : '',
+    parent.trace || record.trace ? `Trace: ${parent.trace || record.trace}` : '',
+    parent.origin || record.origin ? `Origin: ${parent.origin || record.origin}` : '',
+    parent.boundary || record.boundary ? `Boundary: ${parent.boundary || record.boundary}` : ''
+  ]);
+  const picked = [];
+  if (currentLines) picked.push({ label: 'Fallback status', value: trimReadValue(`Root fallback preserves ${schema || 'this schema'} because no exact schema-owned read companion is registered yet.\n${currentLines}`, options) });
+  if (continuityLines) picked.push({ label: 'Continuity', value: trimReadValue(continuityLines, options) });
+  const bodySections = Array.from(sections.entries()).filter(([label, value]) => !isEnvelopeSection(label) && !isRedundantIdentitySection(label, value, record, schema));
+  for (const [label, value] of bodySections) {
+    if (picked.length >= (options.compact ? 2 : 5)) break;
+    picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
+  }
+  if (picked.length < (options.compact ? 2 : 5)) {
+    const body = stripEnvelopeSectionText(parsed.body?.text || record.markdown || '');
+    if (body && !picked.some((section) => section.value === body)) picked.push({ label: 'Readable body', value: trimReadValue(body, options) });
+  }
+  return picked.filter((section) => String(section.value || '').trim());
 }
 
 export function schemaReadSummaryItems(record = {}, limit = 2) {
@@ -140,6 +204,26 @@ function displaySectionLabel(label = '') {
 
 function displaySchemaLabel(schemaId = '') {
   return String(schemaId || 'artifact').replace(/^tiinex\./, '').replace(/\.v\d+$/, '').replace(/[._-]+/g, ' ');
+}
+
+function isEnvelopeSection(label = '') {
+  return /^(continuity context|continuity integrity)$/i.test(String(label || '').trim());
+}
+
+function compactLines(lines = []) {
+  return lines.filter(Boolean).map((line) => `- ${line}`).join('\n');
+}
+
+function stripEnvelopeSectionText(text = '') {
+  const sections = extractMarkdownSections(text);
+  const kept = [];
+  for (const [label, value] of sections.entries()) {
+    if (isEnvelopeSection(label)) continue;
+    if (!String(value || '').trim()) continue;
+    kept.push(`## ${label}\n\n${value}`);
+  }
+  if (kept.length) return kept.join('\n\n');
+  return String(text || '').replace(/^#\s+Continuity Context[\s\S]*?(?=^#\s+|\Z)/m, '').replace(/^#\s+Continuity Integrity[\s\S]*?(?=^#\s+|\Z)/m, '').trim();
 }
 
 function trimReadValue(value = '', options = {}) {

@@ -7054,3 +7054,210 @@ pre { white-space: pre-wrap; overflow:auto; }
     margin-right: .72rem;
   }
 }
+
+/* v204: view-state history hygiene and honest Lineage completion controls. */
+.tx-mode-strip.tx-column-toolbar .tx-display-options-icon-trigger {
+  position: relative;
+  color: rgba(101,242,231,.88);
+  border-color: rgba(101,242,231,.34);
+  background: rgba(101,242,231,.08);
+}
+.tx-mode-strip.tx-column-toolbar .tx-display-options-icon-trigger:hover,
+.tx-mode-strip.tx-column-toolbar .tx-display-options-icon-trigger:focus-visible {
+  color: rgba(255,255,255,.98);
+  border-color: rgba(101,242,231,.64);
+  background: rgba(101,242,231,.15);
+}
+.tx-mode-action-count {
+  position: absolute;
+  top: -0.34rem;
+  right: -0.34rem;
+  min-width: .92rem;
+  height: .92rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 .18rem;
+  border: 1px solid rgba(0,0,0,.42);
+  border-radius: 999px;
+  color: rgba(10,18,24,.94);
+  background: rgba(101,242,231,.95);
+  font-size: .58rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.tx-mode-load-lineage-button {
+  flex: 0 0 auto;
+  min-height: 1.92rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: 0 .72rem;
+  border: 1px solid rgba(255,196,87,.52);
+  border-radius: 999px;
+  color: rgba(255,236,190,.96);
+  background: linear-gradient(135deg, rgba(255,196,87,.16), rgba(189,115,255,.08));
+  box-shadow: 0 0 0 1px rgba(255,196,87,.04), 0 8px 28px rgba(255,196,87,.08);
+  cursor: pointer;
+}
+.tx-mode-load-lineage-button:hover,
+.tx-mode-load-lineage-button:focus-visible {
+  border-color: rgba(255,216,124,.82);
+  background: linear-gradient(135deg, rgba(255,196,87,.22), rgba(189,115,255,.12));
+  box-shadow: var(--tx-focus-ring), 0 10px 32px rgba(255,196,87,.13);
+}
+.tx-mode-load-lineage-button span {
+  font-size: .72rem;
+  font-weight: 820;
+  white-space: nowrap;
+}
+.tx-lineage-load-status {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .42rem;
+  margin: 0 0 .58rem;
+  padding: .42rem .62rem;
+  border: 1px solid rgba(101,242,231,.2);
+  border-radius: 14px;
+  color: rgba(247,248,251,.8);
+  background: rgba(101,242,231,.055);
+  font-size: .76rem;
+  line-height: 1.25;
+}
+.tx-lineage-load-status strong {
+  color: rgba(247,248,251,.94);
+  font-size: .76rem;
+}
+.tx-lineage-load-status small {
+  color: rgba(247,248,251,.6);
+}
+.tx-lineage-load-status .tx-icon {
+  color: rgba(101,242,231,.92);
+}
+.tx-lineage-load-partial {
+  border-color: rgba(255,196,87,.28);
+  background: rgba(255,196,87,.06);
+}
+.tx-lineage-load-partial .tx-icon {
+  color: rgba(255,216,124,.92);
+}
+@media (max-width: 760px) {
+  .tx-mode-load-lineage-button {
+    padding: 0 .58rem;
+  }
+  .tx-mode-load-lineage-button span {
+    max-width: 7.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* v205: Root read UX closure - improve card rhythm and honest fallback projection. */
+.tx-primary-stage.tx-column-primary-stage {
+  display: grid;
+  align-content: start;
+  gap: 0.82rem;
+}
+.tx-old-like-record-card.tx-record-card,
+.tx-old-like-record-card.tx-artifact-card {
+  gap: 0.66rem;
+}
+.tx-old-like-record-card h3 {
+  margin-bottom: 0.05rem;
+}
+.tx-old-like-record-card p {
+  line-height: 1.44;
+  margin-bottom: 0.16rem;
+}
+.tx-old-like-record-card .tx-card-pathline {
+  margin-top: 0.18rem;
+  padding-top: 0.08rem;
+  color: rgba(247,248,251,0.52);
+}
+.tx-old-like-record-card .tx-card-pathline .tx-icon {
+  opacity: 0.92;
+}
+.tx-audit-badge-fallback {
+  border-color: rgba(255,196,87,0.36);
+  background: rgba(255,196,87,0.12);
+  color: rgba(255,225,156,0.94);
+}
+.tx-schema-read-fallback {
+  border-color: rgba(255,196,87,0.16);
+}
+.tx-schema-read-disclosure {
+  display: flex;
+  align-items: center;
+  gap: 0.46rem;
+  min-width: 0;
+  margin: 0 0 0.58rem;
+  padding: 0.42rem 0.56rem;
+  border: 1px solid rgba(255,196,87,0.16);
+  border-radius: 0.72rem;
+  background: rgba(255,196,87,0.055);
+  color: rgba(247,248,251,0.76);
+  font-size: 0.76rem;
+  line-height: 1.28;
+}
+.tx-schema-read-disclosure .tx-icon {
+  flex: 0 0 auto;
+  color: rgba(255,196,87,0.86);
+}
+.tx-schema-read-disclosure strong {
+  flex: 0 0 auto;
+  color: rgba(255,232,180,0.94);
+}
+.tx-schema-read-disclosure span {
+  min-width: 0;
+}
+.tx-schema-read-compact .tx-schema-read-disclosure {
+  margin-bottom: 0.44rem;
+  padding: 0.34rem 0.48rem;
+  font-size: 0.72rem;
+}
+.tx-schema-read-empty-fallback {
+  padding: 0.58rem;
+}
+
+/* v206: Root read-state status contract chips. */
+.tx-read-state-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+  min-width: 0;
+}
+.tx-read-state-chip {
+  font-weight: 850;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  font-size: 0.64rem;
+}
+.tx-read-state-schema-owned,
+.tx-read-state-root-readable {
+  border-color: rgba(128,255,214,0.36);
+  background: rgba(128,255,214,0.08);
+  color: rgba(217,255,243,0.94);
+}
+.tx-read-state-root-fallback,
+.tx-schema-coverage-unknown-schema,
+.tx-schema-coverage-missing-schema {
+  border-color: rgba(255,196,87,0.35);
+  background: rgba(255,196,87,0.1);
+  color: rgba(255,225,156,0.94);
+}
+.tx-read-state-unavailable-body {
+  border-color: rgba(220,176,255,0.38);
+  background: rgba(189,115,255,0.09);
+  color: rgba(240,221,255,0.96);
+}
+.tx-schema-read-view .tx-read-state-chips {
+  margin-top: -0.08rem;
+}
+.tx-schema-read-view header + .tx-read-state-chips {
+  margin-top: -0.16rem;
+}
+.tx-schema-read-empty-fallback .tx-read-state-chips {
+  margin-bottom: 0.5rem;
+}

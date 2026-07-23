@@ -1,45 +1,33 @@
-# Validation Notes v203
+# Validation Notes v207
 
-Base: latest user-provided v202 checkpoint zip (`site(19).zip`) with Q's local dependency repair.
+v207 is a Root lineage terminal-state and audit-completeness contract pass.
 
-v203 is a package-lock platform guard calibration. It changes install/checkpoint hygiene, not product surface behavior.
+## Changed
 
-## What changed
+- Checkpoint/version moved from `0.2.26-v206` to `0.2.27-v207`.
+- Selected Lineage traversal now exposes terminal states for root reached, no parent declared, unavailable targets, ambiguous parents, depth limits, and non-exhausted partial paths.
+- Loaded lineage reports now include `terminalState`, `statusLabel`, complete/partial state, and scope-transition counts.
+- Inline Lineage Audit now says `complete` only when the loaded lineage report and traversal both prove completion; otherwise it reports partial.
+- Workspace Lineage tests now guard no-parent terminal roots, target-unavailable partial paths, and loaded source-scope transitions.
 
-- `package-lock.json` still includes explicit Linux x64 and Windows x64 native optional entries for Rolldown, Lightning CSS, and TypeScript.
-- `tools/check-package-lock-platforms.mjs` no longer requires Linux `libc` metadata when npm's package-lock entry does not persist it.
-- The guard still validates parent optionalDependencies, package presence, version, resolved URL, integrity, optional flag, os, and cpu.
-- Package/checkpoint/build identity moved from `0.2.22-v202` to `0.2.23-v203`.
+## Not changed
 
-## Validation run in the working tree
+- No source transport, issue discovery, recursive adapter traversal, transition creation, portable tooling, dependency, or public deployment behavior changed.
+- No new schema-specific companions were added in this batch.
+- `Load full lineage` is still loaded-workspace exhaustion, not remote/cross-adapter recursion.
+
+## Validation target
+
+Expected green gates:
 
 ```bash
 npm run validate
-npm run portable:smoke
 npm run ui:shape
+npm run portable:smoke
 npm run usecase:uc001
 npm run storage:scan
 npm run metrics
-npm ci --ignore-scripts --no-audit --no-fund --dry-run
-npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
-npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=linux --cpu=x64
+npm run typecheck
 ```
 
-## Validation run from source-clean zip
-
-```bash
-npm run validate
-npm run portable:smoke
-npm run ui:shape
-npm run usecase:uc001
-npm run storage:scan
-npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
-npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=linux --cpu=x64
-```
-
-## Known limits
-
-- Actual Windows `npm ci` and `npm run dev` still need Q's Windows environment to confirm native package install/runtime.
-- Full `npm run runtime:smoke`, `npm run build:public`, `npm run public:check`, `npm run typecheck`, and full `npm run test` should be run in a dependency-installed environment.
-- Metrics remain non-blocking diagnostics.
-- Real issue snapshot reader, partial promotion, full mirror/proxy parity, and binary asset fetching remain out of scope.
+`runtime:smoke`, `build:public`, and `public:check` still require a full dependency install with the Vite binary available.

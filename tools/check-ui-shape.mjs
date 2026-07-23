@@ -35,6 +35,16 @@ if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage 
 if (appAndWorkspace.includes('tx-selected-lineage-chip')) failures.push('Lineage mode toolbar must not render a selected-artifact status chip');
 if (appAndWorkspace.includes('tx-audit-details-trigger')) failures.push('Lineage mode toolbar must not render Audit details as a textual badge/pill');
 if (!appAndWorkspace.includes('tx-mode-audit-button')) failures.push('Lineage mode must keep audit reachable as a normal compact toolbar action');
+
+if (!appAndWorkspace.includes('tx-mode-load-lineage-button')) failures.push('Lineage mode must expose Load full lineage before search/filter/audit controls are shown');
+if (!appAndWorkspace.includes('lineageLoadReport')) failures.push('Lineage search/filter/audit controls must be gated by an explicit lineage load report');
+if (!appAndWorkspace.includes('terminalState')) failures.push('Lineage load/audit reports must expose terminalState for complete-vs-partial claims');
+if (!appAndWorkspace.includes('noParentDeclared')) failures.push('Lineage status must distinguish no-parent terminal roots from generic loaded roots');
+if (!appAndWorkspace.includes('target unavailable')) failures.push('Lineage status must call unresolved loaded parent targets unavailable, not just missing parent');
+if (!appAndWorkspace.includes('scopeTransitions')) failures.push('Lineage status must expose source scope transitions when loaded traversal crosses explicit source scope');
+if (!appAndWorkspace.includes("commit(next, 'replace');") || !appAndWorkspace.includes('function toggleLineageCard')) failures.push('Lineage card expand/collapse must use replace-state, not push-history');
+if (!appAndWorkspace.includes('scrollPersistTimerRef') || !appAndWorkspace.includes("persistCapturedViewScroll('replace')")) failures.push('scroll state must persist by replace-state without growing browser history');
+if (!appAndWorkspace.includes('tx-display-options-icon-trigger')) failures.push('Display options should be icon-forward, not a long text pill in the mode toolbar');
 const lineageStateSignature = appAndWorkspace.match(/function WorkspaceLineageState\(\{([^}]*)\}\)/s)?.[1] || '';
 if (!lineageStateSignature.includes('expandedRecordIds = []') || !lineageStateSignature.includes('onToggleLineageCard')) failures.push('Lineage card expansion props must be owned by WorkspaceLineageState; missing props can blank the app at runtime');
 if (!appAndWorkspace.includes('aria-label="Discovery view"')) failures.push('Feed/Tree should be Discovery view tabs, not a generic Lineage tab strip');
@@ -59,6 +69,12 @@ has('src/styles/app.css', '.tx-source-pill', 'source pills must have CSS ownersh
 has('src/styles/app.css', '.tx-compact-column-window', 'created workspace must keep compact old-like column sizing');
 has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
+has('src/schemas/companion.js', 'readState,', 'schema read presentation must expose readState contract');
+has('src/schemas/companion.js', 'schemaCoverage,', 'schema read presentation must expose schemaCoverage contract');
+has('src/schemas/workspace/workspace.views.jsx', 'tx-read-state-chips', 'Root fallback/read-state chips must be rendered through workspace views');
+has('src/styles/app.css', '.tx-read-state-chips', 'read-state chips need CSS ownership');
+has('src/workspaces/workspace.auditView.js', 'rootReadable', 'Audit view must distinguish root-readable from root fallback');
+has('src/workspaces/workspace.auditView.js', 'unavailableBody', 'Audit view must count unavailable bodies separately');
 
 has('src/styles/app.css', '/* v165: closure repair chrome parity guard', 'v165 dock/scrollbar parity guard missing');
 has('src/styles/app.css', '.tx-centered-dock-core.tx-content-fit-dock', 'content-fit dock must override route/config min-widths');
