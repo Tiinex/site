@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TIINEX_PUBLIC_BUILD_SOURCE, TIINEX_RUNTIME_ID, TIINEX_SITE_CHECKPOINT, TIINEX_SITE_VERSION } from '../src/build.identity.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
@@ -37,14 +38,16 @@ try {
   if (!jsFiles.length) fail('No bundled JS assets emitted');
   const runtime = jsFiles.map(read).join('\n');
   for (const needle of [
-    'react-v181-card-lineage-navigation-parity', 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
+    TIINEX_RUNTIME_ID, 'UC-001-empty-create-local-workspace', 'No nodes match this view', 'Workspace name is required',
     'no source files or GitHub provenance inferred', 'workspace-source-strip', 'tx-react-runtime', 'FontAwesomeIcon'
   ]) if (!runtime.includes(needle)) fail(`Public React runtime missing ${needle}`);
   if (runtime.includes('Create your first workspace') || runtime.includes('data-verse="map"')) fail('Public runtime contains deferred/onboarding UI');
   const identity = existsSync(join(out, 'tiinex.build.json')) ? JSON.parse(read(join(out, 'tiinex.build.json'))) : {};
   if (identity.type !== 'tiinex.public.build.identity.v1') fail('Missing public build identity type');
   if (identity.publicRuntime !== 'vite-react-bundle') fail('Public build identity must disclose Vite React runtime');
-  if (!String(identity.source || '').includes('v176')) fail('Public build identity should disclose v176 source shell');
+  if (identity.source !== TIINEX_PUBLIC_BUILD_SOURCE) fail('Public build identity should disclose current source checkpoint');
+  if (identity.siteVersion !== TIINEX_SITE_VERSION) fail('Public build identity should disclose current site version');
+  if (identity.checkpoint !== TIINEX_SITE_CHECKPOINT) fail('Public build identity should disclose current checkpoint');
   if (failures.length) {
     console.error(failures.map((f) => `- ${f}`).join('\n'));
     process.exit(1);

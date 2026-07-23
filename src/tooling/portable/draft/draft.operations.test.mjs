@@ -59,7 +59,7 @@ const rootValidation = validatePortableArtifactDraft({
 assert.equal(rootValidation.validation.structural.missingFields.includes('Parent Schema'), false);
 assert.equal(rootValidation.validation.structural.missingFields.includes('Trace'), false);
 assert.equal(rootValidation.validation.structural.conditionalRequirements.some((entry) => entry.name === 'Parent'), true);
-assert.equal(rootValidation.validation.sharedParserQuirks.some((entry) => entry.code === 'portable.draft.shared-parser.parent-block-fallback'), true);
+assert.equal(rootValidation.validation.sharedParserQuirks.some((entry) => entry.code === 'portable.draft.shared-parser.parent-block-fallback'), false);
 assert.equal(rootValidation.findings.some((finding) => finding.code === 'root.parent.schema.missing'), false);
 assert.equal(rootValidation.findings.some((finding) => finding.code === 'root.parent.trace.missing'), false);
 assert.equal(rootValidation.findings.some((finding) => finding.code === 'root.parent.origin.missing'), false);

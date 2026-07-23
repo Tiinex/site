@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TIINEX_PUBLIC_BUILD_SOURCE, TIINEX_RUNTIME_ID, TIINEX_SITE_CHECKPOINT, TIINEX_SITE_VERSION } from '../src/build.identity.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const tmp = mkdtempSync(join(tmpdir(), 'tiinex-runtime-'));
@@ -25,7 +26,7 @@ try {
   if (!html.includes('type="module"')) failures.push('React startup did not produce module entry');
   for (const needle of [
     'Every handoff starts somewhere',
-    'react-v181-card-lineage-navigation-parity',
+    TIINEX_RUNTIME_ID,
     'tx-centered-dock-core',
     'tx-empty-stage',
     'UC-001-empty-create-local-workspace',

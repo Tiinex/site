@@ -107,7 +107,7 @@ assert.equal(unknown.draft.markdown.includes('## Note'), true);
 assert.equal(unknown.qualification.exactCreateTooling, false);
 assert.equal(unknown.qualification.contractDrivenStructuralValidation, true);
 assert.equal(unknown.validation.qualification.fallbackUsed, true);
-assert.equal(unknown.validation.sharedParserQuirks.some((entry) => entry.code === 'portable.draft.shared-parser.parent-block-fallback'), true);
+assert.equal(unknown.validation.sharedParserQuirks.some((entry) => entry.code === 'portable.draft.shared-parser.parent-block-fallback'), false);
 assert.equal(unknown.findings.some((finding) => finding.code === 'root.parent.schema.missing'), false);
 assert.equal(unknown.findings.some((finding) => finding.code === 'root.parent.trace.missing'), false);
 assert.equal(unknown.findings.some((finding) => finding.code === 'root.parent.origin.missing'), false);

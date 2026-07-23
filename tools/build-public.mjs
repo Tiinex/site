@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TIINEX_PUBLIC_BUILD_SOURCE, TIINEX_SITE_CHECKPOINT, TIINEX_SITE_VERSION } from '../src/build.identity.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const outArg = process.argv.indexOf('--out');
@@ -33,10 +34,12 @@ writeFileSync(join(out, 'tiinex.build.json'), JSON.stringify({
   type: 'tiinex.public.build.identity.v1',
   version: 1,
   builtAt: new Date().toISOString(),
-  source: 'v190-schema-companion-lineage-viewer',
+  source: TIINEX_PUBLIC_BUILD_SOURCE,
   publicRuntime: 'vite-react-bundle',
   entry: 'src/main.jsx',
   legacyReference: '.old is optional source-only behavior reference, not public runtime or build input',
-  releaseCacheKey: `v190-${Date.now()}`
+  siteVersion: TIINEX_SITE_VERSION,
+  checkpoint: TIINEX_SITE_CHECKPOINT,
+  releaseCacheKey: `${TIINEX_SITE_CHECKPOINT}-${Date.now()}`
 }, null, 2) + '\n', 'utf8');
 console.log(`Built Vite React public shell to ${out}`);

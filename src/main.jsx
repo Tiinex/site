@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import './ui/icon.paths.js';
 import './workspaces/workspace.config.js';
+import { tiinexBuildIdentity, TIINEX_RUNTIME_ID } from './build.identity.js';
 import './sources/source.identity.js';
 import './workspaces/workspace.lifecycle.js';
 import './workspaces/workspace.route.js';
@@ -17,6 +18,9 @@ import { TiinexApp } from './app/TiinexApp.jsx';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root mount point');
+
+window.TiinexRuntimeIdentity = tiinexBuildIdentity();
+document.documentElement.dataset.tiinexRuntime = TIINEX_RUNTIME_ID;
 
 createRoot(root).render(
   <React.StrictMode>

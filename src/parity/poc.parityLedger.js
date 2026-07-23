@@ -1,3 +1,5 @@
+import { TIINEX_SITE_CHECKPOINT } from '../build.identity.js';
+
 export const POC_PARITY_LEDGER_SCHEMA_ID = 'tiinex.poc.parity.ledger.v1';
 
 export const PoCParityStatus = Object.freeze({
@@ -12,7 +14,7 @@ export const PoCParityStatus = Object.freeze({
 
 export const pocParityLedger = Object.freeze({
   schema: POC_PARITY_LEDGER_SCHEMA_ID,
-  checkpoint: 'v181',
+  checkpoint: TIINEX_SITE_CHECKPOINT,
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
     scenario({

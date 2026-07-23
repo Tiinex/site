@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIINEX_RUNTIME_ID } from '../src/build.identity.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
@@ -28,6 +29,8 @@ if (!existsSync(path('.topics', '.schemas', 'tiinex.workspace.v1.schema.md'))) f
 if (!read('.gitignore').includes('.old/')) failures.push('.old/ must be ignored when present as local behavior reference');
 
 if (existsSync(path('yarn.lock')) && read('yarn.lock').includes('applied-caas-gateway')) failures.push('source yarn.lock must use public registry URLs, not applied-caas-gateway');
+if (existsSync(path('yarn.lock'))) failures.push('yarn.lock must not exist when npm/package-lock is the dependency truth');
+if (!existsSync(path('package-lock.json'))) failures.push('package-lock.json missing for npm ci');
 if (!existsSync(path('public', 'assets', 'tiinex-logo-white-transparent.png'))) failures.push('public/assets/tiinex-logo-white-transparent.png missing');
 
 const index = read('index.html');
@@ -35,7 +38,7 @@ const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/sc
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
-if (!index.includes('react-v181-card-lineage-navigation-parity')) failures.push('index.html must disclose v181 React runtime');
+if (!index.includes(TIINEX_RUNTIME_ID)) failures.push('index.html must disclose current React runtime identity');
 if ((reactAppAndWorkspace + '\n' + read('src/actions/record.actions.js') + '\n' + read('src/artifacts/artifact.record.js')).includes('byte ok')) failures.push('runtime must not claim byte ok without byte/digest verification');
 
 const pkg = JSON.parse(read('package.json'));

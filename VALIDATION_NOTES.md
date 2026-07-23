@@ -1,37 +1,47 @@
-# Validation Notes v200
+# Validation Notes v201
 
-Base: latest user-provided source after v199 toolbar/audit action work and portable-tooling overlay.
+Base: latest available user-provided v200 checkpoint zip with portable tooling included.
 
-## Scope
+v201 is a consolidation pass. It changes install/release/checkpoint hygiene and a parser regression, not product surface behavior.
 
-v200 keeps the Lineage card structure stable and changes only the audit affordance and mobile chrome density:
+## What changed
 
-- Lineage Audit is now a scoped inline action for the selected lineage chain.
-- The full workspace Audit view remains available but is not launched by the Lineage toolbar Audit button.
-- Mobile chrome is compressed so artifact cards appear earlier in the first viewport.
-- `npm run validate` now includes the aggregate portable-tooling test.
+- Direct dependencies are exact-version pinned.
+- `package-lock.json` is included and `yarn.lock` is removed.
+- Public workflow uses `npm ci` and a fuller release gate.
+- `portable:smoke` proves the public CLI process entrypoint is wired.
+- `typecheck` is a named script using the current full `tsconfig.json` baseline.
+- `check-checkpoint-identity` verifies package, runtime, README, Validation Notes, public build source, and parity ledger checkpoint consistency.
+- `artifact.parse.test.mjs` protects missing-Parent parsing.
 
-## Commands run
+## Validation run in the working tree
 
 ```bash
 npm run validate
+npm run portable:smoke
 npm run ui:shape
+npm run typecheck
 npm run usecase:uc001
+npm run storage:scan
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
 ```
 
-Source-clean zip verification:
+`npm run runtime:smoke`, `npm run build:public`, `npm run public:check`, and full `npm run test` require installed Vite/React dependencies from `npm ci`.
+
+## Validation run from source-clean zip
 
 ```bash
 npm run validate
+npm run portable:smoke
 npm run ui:shape
+npm run typecheck
 npm run usecase:uc001
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
+npm run storage:scan
 ```
 
 ## Known limits
 
-- Full `npm run test` was not completed in the sandbox because runtime/public build smoke requires installed Vite/React dependencies.
-- Dependency pinning and lockfile release reproducibility remain open consolidation items.
-- Full workspace Audit remains dense; v200 only removes it from the primary Lineage Audit action.
+- `package-lock.json` was generated from the existing `yarn.lock` dependency resolution because the sandbox could not complete a networked lock regeneration.
+- Full public build/runtime smoke should be run in an environment where `npm ci` can install dependencies.
+- Metrics remain non-blocking diagnostics.
+- Real issue snapshot reader, partial promotion, full mirror/proxy parity, and binary asset fetching remain out of scope.

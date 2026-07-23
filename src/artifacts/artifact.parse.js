@@ -107,7 +107,7 @@ function normalizeFieldValue(value, options = {}) {
 function blockAfterTopLevelList(text, label) {
   const lines = String(text || '').split('\n');
   const start = lines.findIndex((line) => line.trim() === `- ${label}`);
-  if (start === -1) return text;
+  if (start === -1) return '';
   const out = [];
   for (let i = start + 1; i < lines.length; i += 1) {
     if (/^-\s+\S/.test(lines[i])) break;

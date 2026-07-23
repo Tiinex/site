@@ -29,10 +29,32 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci
 
       - name: Validate source
         run: npm run validate
+
+      - name: Portable CLI smoke
+        run: npm run portable:smoke
+
+      - name: UI shape guard
+        run: npm run ui:shape
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Runtime smoke
+        run: npm run runtime:smoke
+
+      - name: UC-001 workflow
+        run: npm run usecase:uc001
+
+      - name: Storage scan
+        run: npm run storage:scan
+
+      - name: Metrics diagnostics
+        run: npm run metrics
+        continue-on-error: true
 
       - name: Build public site
         run: npm run build:public

@@ -2,6 +2,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TIINEX_RUNTIME_ID, TIINEX_SITE_VERSION } from '../src/build.identity.js';
 const root=fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/,'');
 function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:true})){ if(['.old','node_modules','.site-publish','.git'].includes(e.name)) continue; const p=join(dir,e.name); if(e.isDirectory()) out=out.concat(walk(p)); else out.push(p);} return out;}
 const files=walk(root);
@@ -15,7 +16,8 @@ console.log(JSON.stringify({
   activeFiles:files.length,
   legacyArchived: existsSync(join(root,'.old')) && statSync(join(root,'.old')).isDirectory(),
   appJsLoaded:false,
-  reactRuntime:index.includes('src/main.jsx') && app.includes('react-v181-card-lineage-navigation-parity'),
+  siteVersion: TIINEX_SITE_VERSION,
+  reactRuntime:index.includes('src/main.jsx') && index.includes(TIINEX_RUNTIME_ID),
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,

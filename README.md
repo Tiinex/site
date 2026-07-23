@@ -1,47 +1,61 @@
-# Tiinex Site v200
+# Tiinex Site v201
 
-v200 is a focused audit-affordance and mobile chrome pass on top of v199 plus the portable-tooling overlay. It keeps the v194 source-plan reconciliation, v195 display/view-state work, v197 Feed ordering, v198 schema-artifact display handling, and v199 simpler Lineage toolbar, but changes Lineage audit from a mode-switch into a scoped inline action.
+v201 is a release/checkpoint consolidation pass on top of v200. It does not add viewer or portable-tooling product features. It tightens the checkpoint so the same source can be installed, validated, typechecked, built, and published through one explicit gate.
 
-## v200 batch
+## v201 batch
 
-- Changes the Lineage toolbar Audit action from a full Audit Details view jump into a scoped inline report for the current selected Lineage chain.
-- The inline Lineage Audit reports only the current chain first: node count, OK/mismatch/open/pending counts, and root reached when applicable.
-- Keeps the full workspace Audit view available as a secondary workspace surface, but it is no longer the primary Lineage audit affordance.
-- Renames the selected-Lineage secondary finding drawer to Diagnostics, so raw audit/finding codes are not presented as the main Audit action.
-- Preserves the v192+ unified RecordCard Lineage model and v195 Lineage expand/collapse behavior.
-- Reduces mobile first-viewport chrome: hides workspace stat pills, hides the material summary row, compresses dock/workspace/source/toolbars, and lets artifact cards appear earlier.
-- Adds the aggregate portable-tooling test to `npm run validate`, addressing the external validator’s warning that portable tests were not part of the main validation spine.
-- Leaves portable-tooling source paths untouched.
+- Pins direct runtime/build dependencies to exact versions.
+- Switches the repository dependency truth to npm + `package-lock.json` + `npm ci`.
+- Removes `yarn.lock` from the source checkpoint.
+- Adds `packageManager: npm@10.9.2` to `package.json`.
+- Adds `npm run portable:smoke` for the public process entrypoint:
+  - `node tools/tiinex-portable.mjs operations --compact`
+  - `node tools/tiinex-portable.mjs inspect src/artifacts/fixtures/topic.trace.md --compact`
+- Adds `npm run typecheck` as a named TypeScript no-emit gate.
+- Expands the public workflow to run validate, portable smoke, UI shape, typecheck, runtime smoke, UC-001, storage scan, public build, and public check.
+- Keeps `npm run metrics` as diagnostic output, not a release blocker.
+- Adds a single build/checkpoint identity module and a guard to catch package/README/validation/parity/runtime drift.
+- Repairs the artifact parser Parent-block bug where missing `- Parent` could cause `Current Created At` to be read as parent metadata.
+- Adds parser regression tests for root-without-parent, child-schema-without-artifact-parent, valid Parent blocks, and Current/Parent separation.
 
 ## Still intentionally out of scope
 
-- Full workspace Audit redesign beyond making it secondary from Lineage.
-- Feed product modes beyond PoC-compatible created-time ordering.
-- A real browser issue snapshot reader.
+- New viewer UX, Lineage polish, or Display Options behavior.
+- New portable-tooling operations.
+- Real browser issue snapshot reading.
 - Partial record promotion during GitHub import.
-- Full mirror/proxy snapshot parity beyond the current transport ladder and diagnostics.
-- Dependency pinning / lockfile release hardening; noted for the consolidation pause.
+- Full mirror/proxy parity.
+- Automatic binary asset fetching.
+- Splitting `workspace.views.jsx` into surface files.
+- Making `metrics` a blocking release policy without explicit thresholds.
 
 ## Supported local start
 
 Use the dev server for local browser validation:
 
 ```bash
+npm ci
 npm run dev
 ```
 
 Open the printed localhost URL and test against source zips/workspaces.
 
-## Validation
+## Release/checkpoint gate
 
 Run:
 
 ```bash
+npm ci
 npm run validate
+npm run portable:smoke
 npm run ui:shape
+npm run typecheck
+npm run runtime:smoke
 npm run usecase:uc001
+npm run storage:scan
 npm run metrics
-npx tsc --allowJs --jsx react-jsx --noEmit --skipLibCheck --moduleResolution bundler --module ESNext --target ES2022 src/app/TiinexApp.jsx src/schemas/workspace/workspace.views.jsx src/schemas/companion.js src/workspaces/workspace.feedSort.js src/workspaces/workspace.materialRole.js
+npm run build:public
+npm run public:check
 ```
 
-`npm run build:public` still requires installed Vite/React dependencies.
+`npm run test` runs the blocking gate except `metrics`, which remains diagnostic until thresholds are defined.
