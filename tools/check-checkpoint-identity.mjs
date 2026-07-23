@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  tiinexBuildIdentity,
   TIINEX_PUBLIC_BUILD_SOURCE,
   TIINEX_RUNTIME_ID,
   TIINEX_SITE_CHECKPOINT,
@@ -32,6 +33,11 @@ contains('VALIDATION_NOTES.md', `Validation Notes ${TIINEX_SITE_CHECKPOINT}`, 'V
 contains('index.html', TIINEX_RUNTIME_ID, 'index runtime meta must match build identity runtime');
 contains('src/main.jsx', 'tiinexBuildIdentity', 'React entry must publish build identity');
 contains('tools/build-public.mjs', 'TIINEX_PUBLIC_BUILD_SOURCE', 'public build must use build identity source constant');
+
+
+const runtimeIdentity = tiinexBuildIdentity();
+if (runtimeIdentity.siteVersion !== TIINEX_SITE_VERSION) fail('tiinexBuildIdentity siteVersion must match build identity');
+if (runtimeIdentity.runtimeId !== TIINEX_RUNTIME_ID) fail('tiinexBuildIdentity runtimeId must match build identity');
 
 if (pocParityLedger.checkpoint !== TIINEX_SITE_CHECKPOINT) fail(`parity ledger checkpoint ${pocParityLedger.checkpoint} != ${TIINEX_SITE_CHECKPOINT}`);
 if (existsSync(path('yarn.lock'))) fail('yarn.lock must not exist when npm/package-lock is the repository package-manager truth');

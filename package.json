@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.27-v207",
+  "version": "0.2.28-v208",
   "private": true,
-  "description": "Tiinex Site v207: Root lineage terminal-state and audit completeness contract.",
+  "description": "Tiinex Site v208: runtime startup export and lineage ready-control hotfix.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

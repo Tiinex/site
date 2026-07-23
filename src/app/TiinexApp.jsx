@@ -763,11 +763,12 @@ export function TiinexApp() {
       setNotice('Select an artifact lineage before running Audit.');
       return;
     }
-    if (!lineageLoadReportForSelected(state)) {
+    const lineage = buildWorkspaceLineageView(active, { records, query: state.view?.lineageQuery || '', selectedRecordId });
+    const existingLoadReport = lineageLoadReportForSelected(state);
+    if (!existingLoadReport && !lineage.selectedTraversal?.complete) {
       setNotice('Load full lineage before running Audit.');
       return;
     }
-    const lineage = buildWorkspaceLineageView(active, { records, query: state.view?.lineageQuery || '', selectedRecordId });
     const audit = buildWorkspaceAuditView(active, { records, query: '' });
     const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
     const traversalNodes = Array.isArray(lineage.selectedTraversal?.nodes) && lineage.selectedTraversal.nodes.length
@@ -783,7 +784,17 @@ export function TiinexApp() {
       else if (status === 'readable' || status === 'degraded' || item?.fallbackUsed || !status) counts.open += 1;
       else counts.mismatch += 1;
     }
-    const loadReport = lineageLoadReportForSelected(state);
+    const loadReport = existingLoadReport || {
+      selectedRecordId,
+      state: lineage.selectedTraversal?.complete ? 'complete' : 'partial',
+      terminalState: lineage.selectedTraversal?.terminalState || lineage.selectedTraversal?.status?.terminalState || '',
+      rootReached: Boolean(lineage.selectedTraversal?.rootReached),
+      noParentDeclared: Boolean(lineage.selectedTraversal?.noParentDeclared),
+      hasMissing: Boolean(lineage.selectedTraversal?.hasMissing),
+      ambiguous: Boolean(lineage.selectedTraversal?.ambiguous),
+      depthLimited: Boolean(lineage.selectedTraversal?.depthLimited),
+      scopeTransitions: Array.isArray(lineage.selectedTraversal?.scopeTransitions) ? lineage.selectedTraversal.scopeTransitions.length : 0
+    };
     const auditState = loadReport?.state === 'complete' && lineage.selectedTraversal?.complete ? 'complete' : 'partial';
     const next = structuredClone(state);
     next.view = Object.assign({}, next.view || {}, {

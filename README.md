@@ -1,13 +1,13 @@
-# Tiinex Site v207
+# Tiinex Site v208
 
-v207 is a Root lineage terminal-state and audit-completeness contract pass on top of v206. It keeps the Root fallback/read-state layer intact and makes selected Lineage paths distinguish complete roots from partial or unavailable paths before transport recursion and schema-specific companions expand.
+v208 is a runtime-startup and lineage ready-control hotfix on top of v207. It restores the exported build identity expected by the React entrypoint and keeps `Load full lineage` hidden when the currently selected loaded-workspace lineage is already complete.
 
-## v207 batch
+## v208 batch
 
-- Adds explicit selected-lineage terminal states: `root-reached`, `no-parent-declared`, `target-unavailable`, `ambiguous-parent`, `depth-limited`, and `not-exhausted`.
-- Exposes `complete` / `partial` lineage claims through loaded lineage reports and inline lineage Audit reports.
-- Reports source scope transitions when a loaded selected lineage crosses explicit source identities or refs.
-- Keeps Discovery from doing recursive adapter traversal and keeps Lineage exhaustive loading limited to the loaded workspace graph.
+- Restores `tiinexBuildIdentity()` from `src/build.identity.js` so `src/main.jsx` can boot the app.
+- Extends the checkpoint identity guard so the runtime build identity function is checked, not just mentioned in source text.
+- Treats already-complete selected lineage paths as lineage-ready without requiring an explicit `Load full lineage` click.
+- Keeps incomplete/partial lineage paths behind `Load full lineage` before search, display options, or Audit are shown.
 - Does not change source transport, issue discovery, recursive adapter traversal, transitions, portable tooling, dependency pinning, or public build semantics.
 
 ## Supported local start

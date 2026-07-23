@@ -1,14 +1,15 @@
-# Validation Notes v207
+# Validation Notes v208
 
-v207 is a Root lineage terminal-state and audit-completeness contract pass.
+v208 is a runtime-startup and lineage ready-control hotfix.
 
 ## Changed
 
-- Checkpoint/version moved from `0.2.26-v206` to `0.2.27-v207`.
-- Selected Lineage traversal now exposes terminal states for root reached, no parent declared, unavailable targets, ambiguous parents, depth limits, and non-exhausted partial paths.
-- Loaded lineage reports now include `terminalState`, `statusLabel`, complete/partial state, and scope-transition counts.
-- Inline Lineage Audit now says `complete` only when the loaded lineage report and traversal both prove completion; otherwise it reports partial.
-- Workspace Lineage tests now guard no-parent terminal roots, target-unavailable partial paths, and loaded source-scope transitions.
+- Checkpoint/version moved from `0.2.27-v207` to `0.2.28-v208`.
+- `src/build.identity.js` now exports `tiinexBuildIdentity()` again, matching the import used by `src/main.jsx`.
+- `tools/check-checkpoint-identity.mjs` now calls `tiinexBuildIdentity()` so this startup contract is guarded.
+- Selected Lineage now treats an already-complete loaded-workspace traversal as lineage-ready without requiring the `Load full lineage` button.
+- `Load full lineage` remains visible only for selected lineage paths that are not already complete and not explicitly loaded.
+- Lineage Audit can run on an already-complete selected traversal even without an explicit load report.
 
 ## Not changed
 

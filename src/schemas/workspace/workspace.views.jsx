@@ -149,13 +149,17 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const verse = state.view?.workspaceVerse || 'feed';
   const lineageVerse = verse === 'lineage';
-  const lineageLoadReady = lineageVerse && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || '');
+  const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
+  const selectedRecordId = String(state.view?.selectedRecordId || '');
+  const lineageTraversalPreview = lineageVerse && selectedRecordId
+    ? buildWorkspaceLineageView(workspace, { records: allRecords, query: '', selectedRecordId }).selectedTraversal
+    : null;
+  const lineageAlreadyComplete = Boolean(lineageTraversalPreview?.complete);
+  const lineageLoadReady = Boolean(lineageVerse && selectedRecordId && (lineageAlreadyComplete || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || ''))));
   const discoveryQuery = state.view?.query || '';
   const lineageQuery = lineageLoadReady ? (state.view?.lineageQuery || '') : '';
   const query = lineageVerse ? lineageQuery : discoveryQuery;
   const displayOptions = normalizeWorkspaceDisplayOptions(state.view?.displayOptions);
-  const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
-  const selectedRecordId = String(state.view?.selectedRecordId || '');
   const selectedRecord = selectedRecordFrom(workspace, selectedRecordId);
   const auditById = auditIndexForWorkspace(workspace, allRecords);
   const allAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
@@ -191,13 +195,13 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
       <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} />
       <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
+      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -367,13 +371,13 @@ function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage }) {
+function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage }) {
   const verse = state.view?.workspaceVerse || 'feed';
   const discoveryVerse = verse === 'feed' || verse === 'tree';
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
   const selectedRecordId = String(state.view?.selectedRecordId || '');
-  const lineageLoaded = Boolean(lineageVerse && selectedRecord && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId);
+  const lineageLoaded = Boolean(lineageVerse && selectedRecord && (lineageReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId)));
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
   const hiddenPresentationCount = (displayOptions?.showAssets === false ? 1 : 0) + (displayOptions?.showWorkspaceCandidates === false ? 1 : 0) + (displayOptions?.showSupportingMarkdown === false ? 1 : 0) + (displayOptions?.leavesOnly ? 1 : 0) + (displayOptions?.mismatchesOnly ? 1 : 0) + (displayOptions?.schemaFilter !== 'all' ? 1 : 0) + (displayOptions?.artifactFilter !== 'all' ? 1 : 0) + (displayOptions?.sourceFilter !== 'all' ? 1 : 0);
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
@@ -696,7 +700,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
   );
 }
 
-function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, lineageLoadReport = null, displayOptions = null, expandedRecordIds = [], onToggleLineageCard }) {
+function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, lineageLoadReport = null, lineageReady = false, displayOptions = null, expandedRecordIds = [], onToggleLineageCard }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
     ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
@@ -704,7 +708,7 @@ function WorkspaceLineageState({ workspace, query = '', records = [], selectedRe
   const selectedFromRecords = selectedRecordId ? records.find((record) => record.id === selectedRecordId) : null;
   const selected = selectedFromTraversal || (selectedFromRecords ? { id: selectedFromRecords.id, title: selectedFromRecords.title, path: selectedFromRecords.path, schemaId: selectedFromRecords.schemaId, record: selectedFromRecords } : null);
   const selectedAudit = selected ? auditById.get(selected.id) : null;
-  const lineageLoadReady = Boolean(selected && lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(selected.id || ''));
+  const lineageLoadReady = Boolean(selected && (lineageReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(selected.id || ''))));
   return (
     <section className="tx-workspace-lineage-state" aria-label="Loaded lineage">
       <header className="tx-lineage-header">
