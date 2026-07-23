@@ -83,6 +83,7 @@ function buildTaskRoutes(capabilities = {}) {
     'search-lineage': route('search-lineage', suppliedReady ? 'ready' : 'material-required', ['load-material', 'search-loaded-lineage']),
     'create-local-draft': route('create-local-draft', 'ready', ['resolve-schema-material', 'schema-guide', 'plan-artifact', 'create-local-draft', 'validate-draft', 'stage-draft']),
     'materialize-durable-findings': route('materialize-durable-findings', 'ready', ['plan-durable-materialization', 'resolve-schema-material', 'create-local-draft', 'validate-draft', 'stage-draft']),
+    'qualify-checkpoint': route('qualify-checkpoint', 'ready', ['describe-checkpoint-gate', 'execute-fixed-gates-in-trusted-node-adapter', 'qualify-checkpoint']),
     'create-checkpoint': route('create-checkpoint', 'ready', ['serialize-explicit-session-state', 'create-checkpoint']),
     'build-runtime-package': route('build-runtime-package', 'ready', ['collect-loaded-and-staged-material', 'build-runtime-package', 'roundtrip-runtime-package', ...(capabilities.mutation?.filesystemWrite ? ['optional-local-zip-write'] : [])]),
     'analyze-image-asset': route('analyze-image-asset', access.archiveRead && multimodal.images ? 'ready' : 'host-adapter-required', [

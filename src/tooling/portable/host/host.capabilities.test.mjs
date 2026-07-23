@@ -23,6 +23,7 @@ assert.equal(discovered.routes['resolve-unknown-schema'].status, 'ready');
 assert.equal(discovered.routes['analyze-image-asset'].status, 'ready');
 assert.equal(discovered.routes['publish-or-remote-write'].status, 'blocked');
 assert.equal(discovered.routes['materialize-durable-findings'].status, 'ready');
+assert.equal(discovered.routes['qualify-checkpoint'].status, 'ready');
 assert.equal(discovered.routes['create-checkpoint'].status, 'ready');
 assert.equal(discovered.routes['build-runtime-package'].sequence.includes('optional-local-zip-write'), false);
 

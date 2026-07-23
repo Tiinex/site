@@ -29,6 +29,7 @@ import { createPortableCheckpoint, restorePortableCheckpoint } from './checkpoin
 import { materializePortableDurableFindings, planPortableDurableMaterialization } from './materialization/durable.materialize.js';
 import { buildPortableRuntimePackage, inspectPortableRuntimePackage, rehydratePortableRuntimePackage, roundTripPortableRuntimePackage } from './package/runtime.package.js';
 import { acceptPortableHostActionReceipt, planPortableHostAction } from './host/tool.bindings.js';
+import { describePortableCheckpointGate, qualifyPortableCheckpoint } from './conformance/checkpoint.qualification.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
 
@@ -62,6 +63,20 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only-normalization',
     inputSchema: 'tiinex.portable.host-action-receipt.accept.request.v1',
     handler: (input = {}, options = {}) => wrapPortableResult('accept-host-receipt', acceptPortableHostActionReceipt(input, options))
+  }),
+  'describe-checkpoint-gate': operation({
+    name: 'describe-checkpoint-gate',
+    description: 'Describe fixed portable, source-clean, or release checkpoint gates without executing commands or claiming browser parity.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.checkpoint-gate.request.v1',
+    handler: (input = {}) => wrapPortableResult('describe-checkpoint-gate', describePortableCheckpointGate(input))
+  }),
+  'qualify-checkpoint': operation({
+    name: 'qualify-checkpoint',
+    description: 'Qualify explicit validation receipts, portable source identity, checkpoint continuity, reproducibility metadata, and private-evidence boundaries without executing commands.',
+    safety: 'read-only-normalization',
+    inputSchema: 'tiinex.portable.checkpoint-qualification.request.v1',
+    handler: (input = {}) => wrapPortableResult('qualify-checkpoint', qualifyPortableCheckpoint(input))
   }),
   'list-material-providers': operation({
     name: 'list-material-providers',

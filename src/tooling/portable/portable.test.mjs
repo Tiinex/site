@@ -16,7 +16,9 @@ const tests = [
   './session/portable.session.test.mjs',
   './materialization/durable.materialize.test.mjs',
   './checkpoint/portable.checkpoint.test.mjs',
-  './package/runtime.package.test.mjs'
+  './package/runtime.package.test.mjs',
+  './conformance/checkpoint.qualification.test.mjs',
+  './adapters/node/checkpoint.verify.test.mjs'
 ];
 
 for (const test of tests) await import(test);

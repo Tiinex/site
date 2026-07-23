@@ -52,6 +52,26 @@ try {
   assert.equal(operations.some((operation) => operation.name === 'create-checkpoint'), true);
   assert.equal(operations.some((operation) => operation.name === 'build-runtime-package'), true);
 
+  assert.equal(operations.some((operation) => operation.name === 'describe-checkpoint-gate'), true);
+  assert.equal(operations.some((operation) => operation.name === 'qualify-checkpoint'), true);
+  const gateOutput = [];
+  assert.equal(await runPortableCli(['describe-checkpoint-gate', '--profile', 'portable'], { log(value) { gateOutput.push(value); }, error() {} }), 0);
+  const gateResult = JSON.parse(gateOutput[0]);
+  assert.equal(gateResult.profile, 'portable');
+  assert.equal(gateResult.gates.length, 2);
+  const qualificationInputPath = path.join(root, 'qualification-input.json');
+  await writeFile(qualificationInputPath, JSON.stringify({
+    profile: 'portable',
+    siteIdentity: { name: 'tiinex-site', version: '0.0.1-v1' },
+    portableIdentity: { sourceFingerprint: 'sha256:source', operationFingerprint: 'sha256:catalog' },
+    receipts: gateResult.gates.map((gate) => ({ schema: 'tiinex.portable.validation-receipt.v1', gateId: gate.id, command: gate.command, status: 'passed', exitCode: 0 })),
+    reproducibility: { dependencies: {}, lockfiles: ['package-lock.json'], installer: 'npm ci' },
+    continuity: { parityCheckpoint: 'v1' }
+  }), 'utf8');
+  const qualificationOutput = [];
+  assert.equal(await runPortableCli(['qualify-checkpoint', qualificationInputPath], { log(value) { qualificationOutput.push(value); }, error() {} }), 0);
+  assert.equal(JSON.parse(qualificationOutput[0]).status, 'qualified');
+
   const searchOutput = [];
   assert.equal(await runPortableCli(['search-lineage', nested, '--query', 'portable local'], { log(value) { searchOutput.push(value); }, error() {} }), 0);
   assert.equal(JSON.parse(searchOutput[0]).matches.some((match) => match.path === 'artifact.md'), true);

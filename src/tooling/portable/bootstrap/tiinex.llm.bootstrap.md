@@ -4,7 +4,7 @@
 
 This bootstrap gives an LLM a thin entrypoint to the same JavaScript parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic used by `Tiinex/site`.
 
-It also exposes capability-level host discovery, concrete host-tool binding and receipt normalization, schema providers, compact schema guides, bounded schema retrieval, loaded-lineage search/filtering, local draft creation/staging, draft validation, repair planning, durable-finding materialization, recoverable checkpoints, the current site runtime-package round trip, and host-mediated asset analysis preparation so an LLM does not need to repeatedly reread every Markdown file in full.
+It also exposes capability-level host discovery, concrete host-tool binding and receipt normalization, schema providers, compact schema guides, bounded schema retrieval, loaded-lineage search/filtering, local draft creation/staging, draft validation, repair planning, durable-finding materialization, recoverable checkpoints, the current site runtime-package round trip, host-mediated asset analysis preparation, and explicit checkpoint qualification receipts so an LLM does not need to repeatedly reread every Markdown file in full or mistake an incomplete validation run for a qualified checkpoint.
 
 It is not a second Tiinex runtime. It does not make a chat, IDE, CLI, MCP host, or LLM prompt the semantic authority for a Tiinex artifact.
 
@@ -123,6 +123,7 @@ validate-draft
 search-lineage
 analyze-asset
 materialize-findings
+qualify-checkpoint
 checkpoint
 package
 ```
@@ -163,6 +164,34 @@ const accepted = await runTiinexLlmOperation('accept-host-receipt', {
 ```
 
 Repository material becomes `providerResponses`; local/archive material remains local; image/PDF descriptions remain generated interpretations and are not source evidence. Missing repository commits are disclosed as moving-ref qualification. Remote writes remain blocked unless explicitly authorized by the human.
+
+## Qualify The Actual Checkpoint
+
+Use `describe-checkpoint-gate` to inspect the fixed gates for `portable`, `source-clean`, or `release` profiles without executing anything:
+
+```js
+await runTiinexLlmOperation('describe-checkpoint-gate', { profile: 'source-clean' });
+```
+
+The pure portable operation `qualify-checkpoint` accepts explicit `tiinex.portable.validation-receipt.v1` results. It checks required gates, package/checkpoint identity, portable source fingerprints, dependency/install reproducibility metadata, and private dogfood-evidence boundaries. It never runs shell commands and never upgrades a technical gate receipt into browser parity or a canonical release claim.
+
+A trusted local Node host may execute the fixed gate list through:
+
+```bash
+node tools/tiinex-portable-verify.mjs --profile source-clean --output portable-checkpoint-report.json
+```
+
+Profiles:
+
+```text
+portable     → portable source syntax + aggregate portable suite
+source-clean → portable + shared validation + UI shape + UC001 + metrics + storage scan + focused typecheck
+release      → source-clean + runtime smoke + public build + public output check
+```
+
+The Node verifier hashes the complete portable source set and operation catalog, emits command receipts, and passes them through the same pure qualifier. Missing dependencies produce an incomplete/blocked release qualification rather than a false pass. Current dependency pinning, lockfile/installer mismatch, or checkpoint identity drift remain visible diagnostics and are not repaired by this adapter.
+
+Private manual corpora may be listed as private evidence, but `private: true` together with `embedded: true` is a hard qualification error.
 
 ## Resolve Unknown Schemas Through Providers
 
@@ -643,6 +672,8 @@ When Node and filesystem access are available:
 
 ```bash
 node tools/tiinex-portable.mjs operations
+node tools/tiinex-portable.mjs describe-checkpoint-gate --profile source-clean
+node tools/tiinex-portable-verify.mjs --profile source-clean --output portable-checkpoint-report.json
 node tools/tiinex-portable.mjs prepare-task ./received --task create-artifact --schema tiinex.example.v1 --host host.json
 node tools/tiinex-portable.mjs discover-tooling --host host.json
 node tools/tiinex-portable.mjs resolve-schema-chain-material ./docs.zip --schema tiinex.example.v1

@@ -19,3 +19,4 @@ export * from './orchestration/task.prepare.js';
 export * from './checkpoint/portable.checkpoint.js';
 export * from './materialization/durable.materialize.js';
 export * from './package/runtime.package.js';
+export * from './conformance/checkpoint.qualification.js';

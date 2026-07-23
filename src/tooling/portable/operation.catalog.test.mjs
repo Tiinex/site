@@ -11,6 +11,8 @@ const expected = [
   'discover-tooling',
   'plan-host-action',
   'accept-host-receipt',
+  'describe-checkpoint-gate',
+  'qualify-checkpoint',
   'resolve-schema-material',
   'search-lineage',
   'schema-guide',

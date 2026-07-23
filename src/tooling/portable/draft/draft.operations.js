@@ -17,7 +17,12 @@ export function validatePortableDraft(input = {}, options = {}) {
   const parsed = safeParse(markdown);
   const declaredSchema = String(parsed.envelope?.current?.schema?.id || record.schemaId || '').trim();
   if (requestedSchema && declaredSchema !== requestedSchema) findings.push(portableFinding('error', 'portable.draft.schema.mismatch', 'Draft Current Schema does not match the requested schema.', { requestedSchema, declaredSchema, ref: path }));
-  findings.push(...(audit.findings || []).map((finding) => normalizePortableFinding(finding, { ref: path })));
+  const sharedParserQuirks = detectSharedParserQuirks(markdown, parsed, audit, path);
+  const suppressedAuditCodes = new Set(sharedParserQuirks.flatMap((quirk) => quirk.suppressedCodes || []));
+  findings.push(...(audit.findings || [])
+    .filter((finding) => !suppressedAuditCodes.has(finding.code))
+    .map((finding) => normalizePortableFinding(finding, { ref: path })));
+  for (const quirk of sharedParserQuirks) findings.push(portableFinding('info', quirk.code, quirk.message, { ref: path, suppressedCodes: quirk.suppressedCodes, owner: quirk.owner }));
   const schemaMaterial = findSchemaMaterial(requestedSchema || declaredSchema, input.materials || input);
   let structural = null;
   if (schemaMaterial?.markdown) {
@@ -45,6 +50,7 @@ export function validatePortableDraft(input = {}, options = {}) {
     declaredSchema,
     status: summary.counts.error ? 'invalid' : summary.counts.warning ? 'degraded' : 'clean',
     audit: sanitizeAudit(audit),
+    sharedParserQuirks: Object.freeze(sharedParserQuirks),
     structural,
     qualification: Object.freeze({
       exactRuntimeValidation,
@@ -53,6 +59,7 @@ export function validatePortableDraft(input = {}, options = {}) {
       fallbackUsed: Boolean(audit.resolution?.fallbackUsed),
       limitations: Object.freeze([
         ...(audit.resolution?.fallbackUsed ? ['Runtime audit used Root fallback and does not prove child-schema validity.'] : []),
+        ...(sharedParserQuirks.length ? ['The shared parser currently leaks Current.CreatedAt into Parent when no Parent block exists; raw audit findings are preserved, but parser-induced parent repair findings are excluded from portable repair guidance.'] : []),
         ...(structural ? ['Contract-driven checks cover explicit required sections/fields, not all prose semantics.'] : ['Readable schema contract was unavailable.'])
       ])
     }),
@@ -110,6 +117,31 @@ export function buildPortableRepairPlan(input = {}) {
     }),
     findingSummary: explanation.findingSummary
   });
+}
+
+function detectSharedParserQuirks(markdown, parsed, audit, path) {
+  const quirks = [];
+  const parentBlockDeclared = /^-\s+Parent\s*$/m.test(String(markdown || ''));
+  const parent = parsed.envelope?.parent || {};
+  const current = parsed.envelope?.current || {};
+  const leakedCurrentCreatedAt = !parentBlockDeclared
+    && !parent.schema?.id
+    && !parent.trace
+    && !parent.origin
+    && Boolean(parent.createdAt)
+    && parent.createdAt === current.createdAt;
+  const parentWarningCodes = ['root.parent.schema.missing', 'root.parent.trace.missing', 'root.parent.origin.missing'];
+  const auditCodes = new Set((audit.findings || []).map((finding) => finding.code));
+  if (leakedCurrentCreatedAt && parentWarningCodes.some((code) => auditCodes.has(code))) {
+    quirks.push(Object.freeze({
+      code: 'portable.draft.shared-parser.parent-block-fallback',
+      message: 'The shared artifact parser treated Current.CreatedAt as Parent.CreatedAt because no Parent block was present. Portable repair guidance excludes the resulting parent warnings so an LLM is not encouraged to invent lineage.',
+      owner: 'src/artifacts/artifact.parse.js:blockAfterTopLevelList',
+      ref: path,
+      suppressedCodes: Object.freeze(parentWarningCodes.filter((code) => auditCodes.has(code)))
+    }));
+  }
+  return Object.freeze(quirks);
 }
 
 function validateContractStructure(draftMarkdown, schemaMarkdown, schemaId, path) {

@@ -6,6 +6,7 @@ import { validatePortableDraft } from '../draft/draft.operations.js';
 import { searchPortableLineage } from '../lineage/lineage.search.js';
 import { preparePortableAssetAnalysis } from '../assets/asset.operations.js';
 import { planPortableHostAction } from '../host/tool.bindings.js';
+import { describePortableCheckpointGate, qualifyPortableCheckpoint } from '../conformance/checkpoint.qualification.js';
 
 export const PORTABLE_TASK_PREPARATION_SCHEMA_ID = 'tiinex.portable.task-preparation.v1';
 
@@ -82,6 +83,27 @@ export async function preparePortableTask(input = {}, options = {}) {
       operation: plan.status === 'ready' ? 'materialize-durable-findings' : 'collect-materialization-map',
       unassignedFindings: plan.unassignedFindings?.length || 0
     });
+  } else if (task === 'qualify-checkpoint') {
+    if (Array.isArray(input.receipts) && input.receipts.length) {
+      const qualification = qualifyPortableCheckpoint(input);
+      findings.push(...(qualification.findings || []));
+      result = Object.freeze({ qualification });
+      status = qualification.status;
+      nextAction = Object.freeze({
+        operation: qualification.status === 'qualified' || qualification.status === 'qualified-with-warnings' ? 'review-checkpoint-qualification' : 'run-or-repair-checkpoint-gates',
+        gateSummary: qualification.gateSummary
+      });
+    } else {
+      const checkpointGate = describePortableCheckpointGate({ profile: input.profile || 'source-clean' });
+      result = Object.freeze({ checkpointGate });
+      status = 'receipt-required';
+      nextAction = Object.freeze({
+        operation: 'run-checkpoint-gates',
+        adapter: 'tools/tiinex-portable-verify.mjs',
+        profile: checkpointGate.profile,
+        commandsExecutedByPortableCore: false
+      });
+    }
   } else if (task === 'checkpoint') {
     const session = input.session || input.snapshot || input;
     result = Object.freeze({
@@ -101,7 +123,7 @@ export async function preparePortableTask(input = {}, options = {}) {
     nextAction = Object.freeze({ operation: stagedCount ? 'build-runtime-package' : 'stage-draft', then: stagedCount ? 'roundtrip-runtime-package' : 'build-runtime-package' });
   } else {
     result = Object.freeze({
-      operations: Object.freeze(['inspect', 'audit', 'search-lineage', 'read-schema', 'create-artifact', 'validate-draft', 'analyze-asset', 'materialize-findings', 'checkpoint', 'package'])
+      operations: Object.freeze(['inspect', 'audit', 'search-lineage', 'read-schema', 'create-artifact', 'validate-draft', 'analyze-asset', 'materialize-findings', 'qualify-checkpoint', 'checkpoint', 'package'])
     });
     status = task === 'inspect' ? 'ready' : 'unknown-task';
     nextAction = Object.freeze({ operation: task === 'inspect' ? 'inspect' : 'discover-tooling' });
@@ -145,6 +167,9 @@ function normalizeTask(value = '') {
     'analyze-image': 'analyze-asset',
     materialize: 'materialize-findings',
     'materialize-durable-findings': 'materialize-findings',
+    qualify: 'qualify-checkpoint',
+    verify: 'qualify-checkpoint',
+    'verify-checkpoint': 'qualify-checkpoint',
     checkpoint: 'checkpoint',
     package: 'package',
     'build-package': 'package'
@@ -159,6 +184,7 @@ function routeTask(task) {
   if (task === 'search-lineage') return 'search-lineage';
   if (task === 'analyze-asset') return 'analyze-image-asset';
   if (task === 'materialize-findings') return 'materialize-durable-findings';
+  if (task === 'qualify-checkpoint') return 'qualify-checkpoint';
   if (task === 'checkpoint') return 'create-checkpoint';
   if (task === 'package') return 'build-runtime-package';
   return 'load-material';

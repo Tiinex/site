@@ -112,8 +112,16 @@ async function commandInput(parsed) {
     return { input: { plan: plan.result || plan, receipt: receipt.result || receipt }, options: {} };
   }
 
+  if (parsed.command === 'describe-checkpoint-gate') return { input: { profile: flags.profile || parsed.positionals[0] || 'source-clean' }, options: {} };
+  if (parsed.command === 'qualify-checkpoint') {
+    const file = flags.receipt || flags.report || parsed.positionals[0] || flags.input;
+    if (!file) throw new Error('portable.cli.checkpoint-qualification-file.required');
+    const value = JSON.parse(await readFile(file, 'utf8'));
+    return { input: value.qualificationInput || value.input || value, options: {} };
+  }
+
   const targets = parsed.positionals.length ? parsed.positionals : flags.input ? [flags.input] : [];
-  const operationsWithoutMaterial = new Set(['prepare-task', 'plan-host-action', 'accept-host-receipt', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
+  const operationsWithoutMaterial = new Set(['prepare-task', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
   if (!targets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
   const material = targets.length ? await loadNodePortableInput(targets, {
     maxFiles: flags['max-files'],

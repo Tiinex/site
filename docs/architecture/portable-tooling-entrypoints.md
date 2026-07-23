@@ -4,9 +4,9 @@
 
 This document describes the additive portable-tooling line now present on `Tiinex/site@refactor`.
 
-The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch added LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering. The third batch added capability-level host discovery, material/schema providers, unknown-schema parent-chain material resolution, explicit schema cache, safe local draft creation/staging, task orchestration, and host-mediated asset analysis preparation. The fourth batch added explicit durable-finding materialization, recoverable non-handoff checkpoints, and the current site runtime-package build/inspection/round-trip surface with optional local ZIP serialization in the Node CLI. The fifth batch binds capability-level needs to concrete host tools, ranked alternatives, invocation templates, and explicit normalized receipts so the LLM can identify not only that a capability exists, but which tool to call and how to return the result safely.
+The first batch exposed existing site parsing, schema capability, audit, lineage, creation-contract, and schema-companion logic to non-React callers. The second batch added LLM-oriented schema guides, progressive schema retrieval, draft validation/repair planning, and loaded-lineage search/filtering. The third batch added capability-level host discovery, material/schema providers, unknown-schema parent-chain material resolution, explicit schema cache, safe local draft creation/staging, task orchestration, and host-mediated asset analysis preparation. The fourth batch added explicit durable-finding materialization, recoverable non-handoff checkpoints, and the current site runtime-package build/inspection/round-trip surface with optional local ZIP serialization in the Node CLI. The fifth batch binds capability-level needs to concrete host tools, ranked alternatives, invocation templates, and explicit normalized receipts so the LLM can identify not only that a capability exists, but which tool to call and how to return the result safely. The sixth batch adds fixed checkpoint-gate descriptions, explicit validation-receipt qualification, deterministic portable source/catalog fingerprints, continuity and reproducibility diagnostics, and a Node-only fixed-command verifier that can later be wired into CI without placing shell execution inside the portable semantic core.
 
-The cumulative portable line is grounded and validated against the supplied v197 checkpoint (`site(11).zip`). It does not introduce a second Tiinex engine.
+The cumulative portable line is grounded and validated against the supplied v199 checkpoint (`site(12).zip`). It does not introduce a second Tiinex engine.
 
 ## Ownership
 
@@ -73,6 +73,8 @@ prepare-task
 discover-tooling
 plan-host-action
 accept-host-receipt
+describe-checkpoint-gate
+qualify-checkpoint
 list-material-providers
 resolve-schema-material
 resolve-schema-chain-material
@@ -148,6 +150,7 @@ validate-draft
 search-lineage
 analyze-asset
 materialize-findings
+qualify-checkpoint
 checkpoint
 package
 ```
@@ -172,6 +175,22 @@ continuation operation
 The planner never invokes the host itself. The LLM or host executes the selected tool and returns an explicit `tiinex.portable.host-action-receipt.v1` object. `accept-host-receipt` verifies the plan/action/step identities and normalizes only the explicit receipt. Raw tool output is not silently promoted to provenance.
 
 Repository receipts require explicit repository identity and remain moving-ref qualified when no commit is supplied. Local or archive receipts cannot acquire GitHub provenance, even when a caller accidentally supplies repository metadata. Multimodal receipts are stored as generated interpretations separate from the source asset. Remote-write plans remain blocked until explicit human authorization is present.
+
+## Checkpoint Qualification And Validation Receipts
+
+`describe-checkpoint-gate` exposes three fixed technical profiles without executing commands:
+
+```text
+portable
+source-clean
+release
+```
+
+`qualify-checkpoint` accepts explicit `tiinex.portable.validation-receipt.v1` records and returns `tiinex.portable.checkpoint-qualification.v1`. It distinguishes passed, failed, blocked, skipped, and missing gates; binds the result to supplied site identity and portable source/catalog fingerprints; diagnoses package/checkpoint drift; and reports dependency/install reproducibility risk. It does not claim browser parity, a canonical release, or a canonical handoff.
+
+`tools/tiinex-portable-verify.mjs` is a Node-only adapter over this contract. It executes only the fixed commands declared by the selected profile, hashes the cumulative portable source set, emits receipts, and passes those receipts into the pure qualifier. Arbitrary command execution is not exposed through the operation catalog.
+
+The verifier intentionally reports current `latest` dependencies, npm-without-package-lock installs, `npm install` instead of `npm ci`, and parity/checkpoint identity drift. It does not mutate package metadata or workflows because those remain shared/release seams. Private dogfood corpora may contribute manual evidence, but embedding private evidence in distributable fixtures is a qualification error.
 
 ## Schema Material Providers
 

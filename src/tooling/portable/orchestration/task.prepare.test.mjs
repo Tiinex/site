@@ -49,6 +49,24 @@ const materialization = await preparePortableTask({
 assert.equal(materialization.status, 'ready');
 assert.equal(materialization.nextAction.operation, 'materialize-durable-findings');
 
+const qualificationPlan = await preparePortableTask({ task: 'qualify-checkpoint', profile: 'source-clean' });
+assert.equal(qualificationPlan.status, 'receipt-required');
+assert.equal(qualificationPlan.nextAction.operation, 'run-checkpoint-gates');
+assert.equal(qualificationPlan.result.checkpointGate.gates.some((gate) => gate.id === 'portable-tests'), true);
+
+const portableGate = qualificationPlan.result.checkpointGate.gates.filter((gate) => gate.id === 'portable-syntax' || gate.id === 'portable-tests');
+const qualifiedTask = await preparePortableTask({
+  task: 'qualify-checkpoint',
+  profile: 'portable',
+  siteIdentity: { version: '0.2.19-v199' },
+  portableIdentity: { sourceFingerprint: 'sha256:source', operationFingerprint: 'sha256:catalog' },
+  receipts: portableGate.map((gate) => ({ schema: 'tiinex.portable.validation-receipt.v1', gateId: gate.id, command: gate.command, status: 'passed', exitCode: 0 })),
+  reproducibility: { dependencies: {}, lockfiles: ['package-lock.json'], installer: 'npm ci' },
+  continuity: { parityCheckpoint: 'v199' }
+});
+assert.equal(qualifiedTask.status, 'qualified');
+assert.equal(qualifiedTask.nextAction.operation, 'review-checkpoint-qualification');
+
 const checkpoint = await preparePortableTask({ task: 'checkpoint', stagedArtifacts: [], durableFindings: [] });
 assert.equal(checkpoint.status, 'ready');
 assert.equal(checkpoint.nextAction.operation, 'create-checkpoint');
