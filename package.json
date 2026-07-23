@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.39-v219",
+  "version": "0.2.40-v220",
   "private": true,
-  "description": "Tiinex Site v219: Discovery render performance stabilization.",
+  "description": "Tiinex Site v220: Discovery interaction clone debt repair.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

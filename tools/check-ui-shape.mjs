@@ -50,7 +50,8 @@ if (!appAndWorkspace.includes('terminalState')) failures.push('Lineage load/audi
 if (!appAndWorkspace.includes('noParentDeclared')) failures.push('Lineage status must distinguish no-parent terminal roots from generic loaded roots');
 if (!appAndWorkspace.includes('target unavailable')) failures.push('Lineage status must call unresolved loaded parent targets unavailable, not just missing parent');
 if (!appAndWorkspace.includes('scopeTransitions')) failures.push('Lineage status must expose source scope transitions when loaded traversal crosses explicit source scope');
-if (!appAndWorkspace.includes("commit(next, 'replace');") || !appAndWorkspace.includes('function toggleLineageCard')) failures.push('Lineage card expand/collapse must use replace-state, not push-history');
+if (!appAndWorkspace.includes('function toggleLineageCard') || !appAndWorkspace.includes('commitViewUpdate') || !appAndWorkspace.includes("}, 'replace');")) failures.push('Lineage card expand/collapse must use replace-state through view-only updates, not push-history or full-state clone');
+if (read('src/app/TiinexApp.jsx').includes('structuredClone(state)')) failures.push('view-only interactions must not structuredClone the full workspace/records state');
 if (!appAndWorkspace.includes('scrollPersistTimerRef') || !appAndWorkspace.includes("persistCapturedViewScroll('replace')")) failures.push('scroll state must persist by replace-state without growing browser history');
 if (!appAndWorkspace.includes('tx-display-options-icon-trigger')) failures.push('Display options should be icon-forward, not a long text pill in the mode toolbar');
 if (!appAndWorkspace.includes('lineageDisplayOptions')) failures.push('Lineage display filtering must ignore Discovery-only membership controls such as Leaves only');

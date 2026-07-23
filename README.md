@@ -1,25 +1,31 @@
-# Tiinex Site v219
+# Tiinex Site v220
 
-Checkpoint: `v219`
-Version: `0.2.39-v219`
-Runtime: `react-v219-discovery-render-stabilization`
+Checkpoint: `v220`
+Version: `0.2.40-v220`
+Runtime: `react-v220-discovery-interaction-clone-debt-repair`
 
 ## Focus
 
-Discovery render performance stabilization after v218 moved parent detection into the Discovery read-model.
+Discovery interaction clone debt repair after the v219 browser video still showed interaction stalls while moving between Tree/Feed and expanded folders.
 
 ## Changes
 
-- Replaced the v218 O(n²) path-parent scan with an indexed directory membership pass.
-- Preserved the Discovery ownership split: material role stays separate from graph/display membership.
-- Preserved Trace target truth, self-parent protection, and path/folder parent fallback semantics.
-- Added a performance regression guard for 325 source-backed Discovery records.
-- Memoized the expensive WorkspaceColumnSurface read-models so scroll/view-state updates do not rebuild Discovery/Audit/Lineage projections unnecessarily.
-- Changed scroll persistence to shallow-clone view state instead of structured-cloning the whole workspace.
+- Preserved the v217/v218 Discovery read-model owner and v219 indexed path-parent membership.
+- Removed `structuredClone(state)` from view-only interactions in `src/app/TiinexApp.jsx`.
+- Added shallow view patch/update helpers so these operations keep workspace and record object identity stable:
+  - focus lineage from a card
+  - switch Feed/Tree/Lineage verse
+  - toggle tree folders
+  - type search queries
+  - apply Display options
+  - expand/collapse Lineage cards
+  - run Lineage load/audit reports
+  - cycle workspaces
+- Updated UI shape guards so future view-only interactions cannot reintroduce full workspace cloning.
 
 ## Boundaries
 
-No transitions, artifact creation, source transport, recursive adapter traversal, or issue discovery changes.
+No transitions, artifact creation, source transport, recursive adapter traversal, issue discovery, or new schema companions changed.
 
 ## Supported local start
 
@@ -28,4 +34,14 @@ npm install
 npm run dev
 ```
 
-For CI-like checks use `npm run validate` and `npm run typecheck`.
+## Useful validation
+
+```bash
+npm run validate
+npm run ui:shape
+npm run portable:smoke
+npm run usecase:uc001
+npm run storage:scan
+npm run metrics
+npm run typecheck
+```

@@ -233,6 +233,30 @@ export function TiinexApp() {
     return `${workspaceId}:${verse}:${query}:${selected}:${display}`;
   }
 
+
+  function stateWithViewPatch(sourceState = state, patch = {}) {
+    return Object.assign({}, sourceState, {
+      view: Object.assign({}, sourceState.view || {}, patch)
+    });
+  }
+
+  function stateWithViewUpdate(sourceState = state, updater = null) {
+    const currentView = sourceState.view || {};
+    const nextView = typeof updater === 'function' ? updater(currentView, sourceState) : Object.assign({}, currentView, updater || {});
+    if (nextView === currentView) return sourceState;
+    return Object.assign({}, sourceState, { view: nextView });
+  }
+
+  function commitViewPatch(patch = {}, mode = 'replace') {
+    const sourceState = latestStateRef.current || state;
+    commit(stateWithViewPatch(sourceState, patch), mode);
+  }
+
+  function commitViewUpdate(updater = null, mode = 'replace') {
+    const sourceState = latestStateRef.current || state;
+    commit(stateWithViewUpdate(sourceState, updater), mode);
+  }
+
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
     const key = viewScrollKeyFor(sourceState);
     const top = viewScrollRef.current[key];
@@ -569,16 +593,14 @@ export function TiinexApp() {
     setActiveAssetId('');
     setActiveRecordId('');
     if (!id) return;
-    const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, {
+    commitViewPatch({
       workspaceVerse: 'lineage',
       selectedRecordId: id,
       lineageQuery: '',
       expandedLineageRecordIds: [],
       lineageAuditReport: null,
       lineageLoadReport: null
-    });
-    commit(next, 'push');
+    }, 'push');
   }
 
   function dismissRecord() {
@@ -662,14 +684,13 @@ export function TiinexApp() {
   }
 
   function cycleWorkspace(direction) {
-    const workspaces = Array.isArray(state.workspaces) ? state.workspaces : [];
+    const sourceState = latestStateRef.current || state;
+    const workspaces = Array.isArray(sourceState.workspaces) ? sourceState.workspaces : [];
     if (workspaces.length <= 1) return;
-    const currentIndex = Math.max(0, workspaces.findIndex((workspace) => workspace.id === state.activeWorkspaceId));
+    const currentIndex = Math.max(0, workspaces.findIndex((workspace) => workspace.id === sourceState.activeWorkspaceId));
     const offset = direction === 'previous' ? -1 : 1;
     const nextIndex = (currentIndex + offset + workspaces.length) % workspaces.length;
-    const next = structuredClone(state);
-    next.activeWorkspaceId = workspaces[nextIndex]?.id || state.activeWorkspaceId;
-    commit(next, 'push');
+    commit(Object.assign({}, sourceState, { activeWorkspaceId: workspaces[nextIndex]?.id || sourceState.activeWorkspaceId }), 'push');
   }
 
   function lineageLoadReportForSelected(sourceState = state) {
@@ -700,10 +721,8 @@ export function TiinexApp() {
     const stateLabel = traversal?.complete ? 'complete' : 'partial';
     const terminalState = traversal?.terminalState || traversal?.status?.terminalState || (stateLabel === 'complete' ? 'complete' : 'partial');
     const scopeTransitions = Array.isArray(traversal?.scopeTransitions) ? traversal.scopeTransitions : [];
-    const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, {
-      lineageQuery: '',
-      lineageLoadReport: {
+    const sourceState = latestStateRef.current || state;
+    const lineageLoadReport = {
         schema: 'tiinex.workspace.lineageLoadReport.v1',
         selectedRecordId,
         mode: 'loaded-workspace',
@@ -718,11 +737,13 @@ export function TiinexApp() {
         depthLimited: Boolean(traversal?.depthLimited),
         scopeTransitions: scopeTransitions.length,
         generatedAt: new Date().toISOString()
-      },
-      lineageAuditReport: null
-    });
+      };
     setNotice(stateLabel === 'complete' ? 'Full loaded-workspace lineage index ready.' : 'Loaded lineage index is partial; terminal root was not proven.');
-    commit(next, 'replace');
+    commit(stateWithViewPatch(sourceState, {
+      lineageQuery: '',
+      lineageLoadReport,
+      lineageAuditReport: null
+    }), 'replace');
   }
 
   function runLineageAudit() {
@@ -766,9 +787,8 @@ export function TiinexApp() {
       scopeTransitions: Array.isArray(lineage.selectedTraversal?.scopeTransitions) ? lineage.selectedTraversal.scopeTransitions.length : 0
     };
     const auditState = loadReport?.state === 'complete' && lineage.selectedTraversal?.complete ? 'complete' : 'partial';
-    const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, {
-      lineageAuditReport: {
+    const sourceState = latestStateRef.current || state;
+    const lineageAuditReport = {
         schema: 'tiinex.workspace.lineageAuditInline.v1',
         selectedRecordId,
         state: auditState,
@@ -781,62 +801,57 @@ export function TiinexApp() {
         scopeTransitions: Array.isArray(lineage.selectedTraversal?.scopeTransitions) ? lineage.selectedTraversal.scopeTransitions.length : Number(loadReport?.scopeTransitions || 0),
         counts,
         generatedAt: new Date().toISOString()
-      }
-    });
-    commit(next, 'replace');
+      };
+    commit(stateWithViewPatch(sourceState, { lineageAuditReport }), 'replace');
   }
 
   function setVerse(verse) {
-    const currentVerse = state.view?.workspaceVerse || 'feed';
-    if ((verse === 'feed' || verse === 'tree') && currentVerse === 'lineage' && Array.isArray(state.view?.expandedLineageRecordIds) && state.view.expandedLineageRecordIds.length) {
-      const collapsed = structuredClone(state);
-      collapsed.view = Object.assign({}, collapsed.view || {}, { expandedLineageRecordIds: [] });
-      commit(collapsed, 'replace');
-      return;
-    }
-    const next = runtime().lifecycle?.setWorkspaceVerse?.(state, verse) || state;
-    if (verse === 'feed' || verse === 'tree') {
-      next.view = Object.assign({}, next.view || {}, { selectedRecordId: '', expandedLineageRecordIds: [], lineageAuditReport: null, lineageLoadReport: null });
-    }
-    commit(next, 'push');
+    const normalizedVerse = verse === 'tree' || verse === 'lineage' ? verse : 'feed';
+    const resetLineage = normalizedVerse === 'feed' || normalizedVerse === 'tree';
+    commitViewPatch(Object.assign({
+      workspaceVerse: normalizedVerse
+    }, resetLineage ? {
+      selectedRecordId: '',
+      expandedLineageRecordIds: [],
+      lineageAuditReport: null,
+      lineageLoadReport: null
+    } : {}), 'push');
   }
 
   function toggleLineageCard(recordId) {
     const id = String(recordId || '').trim();
     if (!id) return;
-    const next = structuredClone(state);
-    const current = new Set(Array.isArray(next.view?.expandedLineageRecordIds) ? next.view.expandedLineageRecordIds : []);
-    if (current.has(id)) current.delete(id);
-    else current.add(id);
-    next.view = Object.assign({}, next.view || {}, { expandedLineageRecordIds: Array.from(current) });
-    commit(next, 'replace');
+    commitViewUpdate((currentView) => {
+      const current = new Set(Array.isArray(currentView.expandedLineageRecordIds) ? currentView.expandedLineageRecordIds : []);
+      if (current.has(id)) current.delete(id);
+      else current.add(id);
+      return Object.assign({}, currentView, { expandedLineageRecordIds: Array.from(current) });
+    }, 'replace');
   }
 
   function setQuery(query) {
-    const next = structuredClone(state);
-    const verse = next.view?.workspaceVerse || 'feed';
-    next.view = verse === 'lineage'
-      ? Object.assign({}, next.view || {}, { lineageQuery: query })
-      : Object.assign({}, next.view || {}, { query });
-    commit(next, 'replace');
+    commitViewUpdate((currentView) => {
+      const verse = currentView.workspaceVerse || 'feed';
+      return verse === 'lineage'
+        ? Object.assign({}, currentView, { lineageQuery: query })
+        : Object.assign({}, currentView, { query });
+    }, 'replace');
   }
 
   function setDisplayOptions(options) {
-    const next = structuredClone(state);
-    next.view = Object.assign({}, next.view || {}, { displayOptions: normalizeWorkspaceDisplayOptions(options) });
     setDialog(null);
-    commit(next, 'replace');
+    commitViewPatch({ displayOptions: normalizeWorkspaceDisplayOptions(options) }, 'replace');
   }
 
   function toggleTreeFolder(folderPath, open) {
     const path = String(folderPath || '').trim();
     if (!path) return;
-    const next = structuredClone(state);
-    const existing = new Set(Array.isArray(next.view?.expandedTreeFolders) ? next.view.expandedTreeFolders : []);
-    if (open) existing.add(path);
-    else existing.delete(path);
-    next.view = Object.assign({}, next.view || {}, { expandedTreeFolders: Array.from(existing).sort() });
-    commit(next, 'replace');
+    commitViewUpdate((currentView) => {
+      const existing = new Set(Array.isArray(currentView.expandedTreeFolders) ? currentView.expandedTreeFolders : []);
+      if (open) existing.add(path);
+      else existing.delete(path);
+      return Object.assign({}, currentView, { expandedTreeFolders: Array.from(existing).sort() });
+    }, 'replace');
   }
 
   function copyShareUrl() {
