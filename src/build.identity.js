@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v202';
-export const TIINEX_SITE_VERSION = '0.2.22-v202';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v202';
-export const TIINEX_RUNTIME_ID = 'react-v202-dependency-lock-portability-repair';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v202-dependency-lock-portability-repair';
+export const TIINEX_SITE_CHECKPOINT = 'v203';
+export const TIINEX_SITE_VERSION = '0.2.23-v203';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v203';
+export const TIINEX_RUNTIME_ID = 'react-v203-package-lock-platform-guard-calibration';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v203-package-lock-platform-guard-calibration';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

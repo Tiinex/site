@@ -1,15 +1,15 @@
-# Validation Notes v202
+# Validation Notes v203
 
-Base: latest available user-provided v201 checkpoint zip (`site(18).zip`).
+Base: latest user-provided v202 checkpoint zip (`site(19).zip`) with Q's local dependency repair.
 
-v202 is a dependency-lock portability repair. It changes install/checkpoint hygiene, not product surface behavior.
+v203 is a package-lock platform guard calibration. It changes install/checkpoint hygiene, not product surface behavior.
 
 ## What changed
 
-- `package-lock.json` now includes explicit Linux x64 and Windows x64 native optional entries for Rolldown, Lightning CSS, and TypeScript.
-- `tools/check-package-lock-platforms.mjs` validates those lock entries and their parent `optionalDependencies` mappings.
-- `npm run validate` now runs the package-lock platform guard immediately after checkpoint identity validation.
-- Package/checkpoint/build identity moved from `0.2.21-v201` to `0.2.22-v202`.
+- `package-lock.json` still includes explicit Linux x64 and Windows x64 native optional entries for Rolldown, Lightning CSS, and TypeScript.
+- `tools/check-package-lock-platforms.mjs` no longer requires Linux `libc` metadata when npm's package-lock entry does not persist it.
+- The guard still validates parent optionalDependencies, package presence, version, resolved URL, integrity, optional flag, os, and cpu.
+- Package/checkpoint/build identity moved from `0.2.22-v202` to `0.2.23-v203`.
 
 ## Validation run in the working tree
 
@@ -39,7 +39,7 @@ npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=linux --cpu=x64
 
 ## Known limits
 
-- Full `npm ci`, `npm run dev`, `npm run runtime:smoke`, `npm run build:public`, `npm run public:check`, `npm run typecheck`, and full `npm run test` should be run in a network/cache-enabled environment where dependencies can actually install.
-- The sandbox validation used dry-run install checks to verify the lock plan and local Node tests for source-only guards.
+- Actual Windows `npm ci` and `npm run dev` still need Q's Windows environment to confirm native package install/runtime.
+- Full `npm run runtime:smoke`, `npm run build:public`, `npm run public:check`, `npm run typecheck`, and full `npm run test` should be run in a dependency-installed environment.
 - Metrics remain non-blocking diagnostics.
 - Real issue snapshot reader, partial promotion, full mirror/proxy parity, and binary asset fetching remain out of scope.

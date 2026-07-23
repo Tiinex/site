@@ -29,14 +29,16 @@ function requirePackage(path, { version, os, cpu, libc }) {
   if (pkg.optional !== true) fail(`${path} must be optional: true`);
   for (const value of os || []) if (!pkg.os?.includes(value)) fail(`${path} missing os ${value}`);
   for (const value of cpu || []) if (!pkg.cpu?.includes(value)) fail(`${path} missing cpu ${value}`);
-  for (const value of libc || []) if (!pkg.libc?.includes(value)) fail(`${path} missing libc ${value}`);
+  // npm v10 lockfiles do not consistently persist libc metadata for optional native packages.
+  // Guard os/cpu, optional flag, version, resolved URL, integrity, and parent optionalDependencies instead.
+  for (const value of libc || []) if (pkg.libc && !pkg.libc.includes(value)) fail(`${path} libc excludes ${value}`);
 }
 
 const required = [
   {
     parent: ['node_modules/rolldown', '@rolldown/binding-linux-x64-gnu', '1.1.5'],
     path: 'node_modules/@rolldown/binding-linux-x64-gnu',
-    shape: { version: '1.1.5', os: ['linux'], cpu: ['x64'], libc: ['glibc'] }
+    shape: { version: '1.1.5', os: ['linux'], cpu: ['x64'] }
   },
   {
     parent: ['node_modules/rolldown', '@rolldown/binding-win32-x64-msvc', '1.1.5'],
@@ -46,7 +48,7 @@ const required = [
   {
     parent: ['node_modules/lightningcss', 'lightningcss-linux-x64-gnu', '1.32.0'],
     path: 'node_modules/lightningcss-linux-x64-gnu',
-    shape: { version: '1.32.0', os: ['linux'], cpu: ['x64'], libc: ['glibc'] }
+    shape: { version: '1.32.0', os: ['linux'], cpu: ['x64'] }
   },
   {
     parent: ['node_modules/lightningcss', 'lightningcss-win32-x64-msvc', '1.32.0'],

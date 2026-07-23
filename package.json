@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.22-v202",
+  "version": "0.2.23-v203",
   "private": true,
-  "description": "Tiinex Site v202: dependency-lock portability repair for native optional package installs on Windows and Linux.",
+  "description": "Tiinex Site v203: package-lock platform guard calibration after local dependency repair.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -1,21 +1,22 @@
-# Tiinex Site v202
+# Tiinex Site v203
 
-v202 is a dependency-lock portability repair on top of v201. It does not add viewer, source-transport, or portable-tooling product features. It repairs the v201 npm lock so native optional dependencies needed by Vite/Rolldown, Lightning CSS, and TypeScript are represented for both Linux x64 and Windows x64.
+v203 is a package-lock platform guard calibration on top of v202. It keeps the v202 dependency-lock portability repair, but fixes the validation guard so it accepts npm lockfiles that include Linux/Windows native optional packages without persisted `libc` metadata.
 
-## v202 batch
+## v203 batch
 
 - Keeps npm + `package-lock.json` + `npm ci` as the repository dependency truth.
 - Keeps direct dependencies exact-version pinned.
-- Adds Linux and Windows native optional package entries to `package-lock.json` for:
-  - `@rolldown/binding-linux-x64-gnu`
-  - `@rolldown/binding-win32-x64-msvc`
-  - `lightningcss-linux-x64-gnu`
-  - `lightningcss-win32-x64-msvc`
-  - `@typescript/typescript-linux-x64`
-  - `@typescript/typescript-win32-x64`
-- Adds `tools/check-package-lock-platforms.mjs` to fail validation if the lock regresses to a single-platform native-binding lock.
-- Wires that guard into `npm run validate` after checkpoint identity validation.
-- Updates checkpoint/build identity from v201 to v202.
+- Keeps Linux and Windows native optional package entries in `package-lock.json` for Rolldown, Lightning CSS, and TypeScript.
+- Updates `tools/check-package-lock-platforms.mjs` so it guards the evidence npm actually preserves reliably:
+  - parent `optionalDependencies` mappings
+  - optional package entry presence
+  - version
+  - resolved tarball URL
+  - integrity hash
+  - `os`
+  - `cpu`
+- Does not require Linux `libc` metadata unless the package-lock entry explicitly contains a `libc` field.
+- Updates checkpoint/build identity from v202 to v203.
 
 ## Still intentionally out of scope
 
@@ -37,7 +38,7 @@ npm ci
 npm run dev
 ```
 
-On Windows this checkpoint is intended to install the Win32 native optional packages through `npm ci` rather than requiring a manual `--no-save` install.
+On Windows this checkpoint should install the Win32 native optional packages through `npm ci`; no manual `--no-save` install should be needed.
 
 ## Release/checkpoint gate
 
