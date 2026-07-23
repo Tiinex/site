@@ -64,6 +64,12 @@ function auditRecord(record = {}) {
     readState: read.readState || (report.fallbackUsed ? 'root-fallback' : 'schema-owned'),
     schemaCoverage: read.schemaCoverage || 'missing-schema',
     bodyAvailability: result.materialAvailability?.status === 'pending-unavailable' ? 'unavailable-body' : (read.bodyAvailability || (markdown ? 'available' : 'unavailable-body')),
+    validation: report.validation || result.validation || null,
+    validationState: report.validation?.state || result.validation?.state || 'validation-unknown',
+    validationCoverage: report.validation?.coverage || result.validation?.coverage || 'unknown',
+    childValidator: report.validation?.childValidator || result.validation?.childValidator || 'unknown',
+    rootValidator: report.validation?.rootValidator || result.validation?.rootValidator || 'unknown',
+    integrityMethodVersions: report.validation?.integrityMethodVersions || result.validation?.integrityMethodVersions || [],
     exactCompanion: Boolean(read.exactCompanion),
     summary: report.summary || {},
     findings: report.findings || [],
@@ -88,6 +94,12 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     rootFallback: 0,
     unknownSchema: 0,
     unavailableBody: 0,
+    validationComplete: 0,
+    validationPartial: 0,
+    validationUnavailable: 0,
+    validationNotApplicable: 0,
+    childValidatorUnavailable: 0,
+    integrityV2: 0,
     partialLineage: countPartialLineageNodes(lineageFindings),
     errors: 0,
     warnings: 0,
@@ -109,6 +121,12 @@ function summarizeAuditItems(items = [], lineageFindings = []) {
     if (item.readState === 'root-fallback') counts.rootFallback += 1;
     if (item.schemaCoverage === 'unknown-schema') counts.unknownSchema += 1;
     if (item.bodyAvailability === 'unavailable-body') counts.unavailableBody += 1;
+    if (item.validationState === 'exact-schema-validated' || item.validationState === 'root-validated') counts.validationComplete += 1;
+    else if (item.validationState === 'root-only-child-validator-unavailable' || item.validationState === 'validation-unknown') counts.validationPartial += 1;
+    else if (item.validationState === 'not-run-body-unavailable') counts.validationUnavailable += 1;
+    else if (item.validationState === 'not-applicable-supporting') counts.validationNotApplicable += 1;
+    if (item.childValidator === 'unavailable') counts.childValidatorUnavailable += 1;
+    if ((item.integrityMethodVersions || []).includes('v2')) counts.integrityV2 += 1;
     counts.errors += Number(item.summary?.error || 0);
     counts.warnings += Number(item.summary?.warning || 0);
     counts.infos += Number(item.summary?.info || 0);
@@ -132,6 +150,8 @@ function auditItemMatchesQuery(item = {}, query = '') {
     item.moduleId,
     item.status,
     item.readState,
+    item.validationState,
+    item.validationCoverage,
     item.schemaCoverage,
     item.bodyAvailability,
     item.sourceLabel,

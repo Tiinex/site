@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v208';
-export const TIINEX_SITE_VERSION = '0.2.28-v208';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v208';
-export const TIINEX_RUNTIME_ID = 'react-v208-runtime-startup-lineage-ready';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v208-runtime-startup-lineage-ready';
+export const TIINEX_SITE_CHECKPOINT = 'v212';
+export const TIINEX_SITE_VERSION = '0.2.32-v212';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v212';
+export const TIINEX_RUNTIME_ID = 'react-v212-root-action-gating';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v212-root-action-gating';
 
 
 export function tiinexBuildIdentity() {

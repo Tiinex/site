@@ -20,7 +20,7 @@ export const workspaceSchemaModule = defineSchemaModule({
   validate: workspaceValidate,
   present: workspacePresent,
   read: Object.freeze({ label: 'Workspace', sections: Object.freeze(['Workspace', 'Sources', 'Display Options', 'Validation', 'Interpretation Limits']) }),
-  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.source']) }),
   transitions: workspaceTransitions,
   i18n: workspaceI18n,
   findings: workspaceFindings

@@ -23,14 +23,22 @@ if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty wo
 if (!appAndWorkspace.includes('tx-mode-strip tx-column-toolbar')) failures.push('mode/search toolbar must remain a primary landmark');
 if (appAndWorkspace.includes('tx-lineage-trust-strip')) failures.push('lineage/audit trust must not be a persistent always-visible row');
 if (!appAndWorkspace.includes('tx-audit-badge')) failures.push('cards and tree rows must expose old-like per-artifact audit/status badges');
+if (!appAndWorkspace.includes('AuditBadgeDialog') || !appAndWorkspace.includes('tx-audit-badge-button')) failures.push('per-artifact audit/status badges must open compact explainers instead of inert labels');
+if (!appAndWorkspace.includes('body missing')) failures.push('body-unavailable card state must not be exposed as generic unavailable');
+if (!appAndWorkspace.includes('lineageControlsReadyForTraversal')) failures.push('Lineage toolbar must hide Load full lineage when loaded-workspace traversal is already terminal');
 if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact lineage focus must keep selectedRecordId state');
 if (!appAndWorkspace.includes('function focusRecordLineage')) failures.push('Lineage focus must be separate from Open/detail reading');
 if (!appAndWorkspace.includes('tx-clickable-record-card')) failures.push('record card itself must be the Lineage focus target, not a crowded Lineage button');
+if (!appAndWorkspace.includes('function DiscoveryRecordList') || !appAndWorkspace.includes('tx-discovery-record-list')) failures.push('Discovery feed must render records through an owned list wrapper so card surfaces cannot collapse into stage background');
 if (appAndWorkspace.includes("label: 'Lineage'")) failures.push('cards must not reintroduce a visible Lineage action label');
 if (!appAndWorkspace.includes('Show markdown')) failures.push('cards must expose old-like Show markdown dialog action');
 if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte ok without byte/digest verification');
 if (!appAndWorkspace.includes('schema ok')) failures.push('audit status badge should use schema/readability wording instead of byte integrity wording');
 if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evidence operation must not be presented as old Reference parity');
+
+if (!read('src/actions/record.actions.js').includes('actionAvailabilityForRecord')) failures.push('record actions must be gated by schema/transition capability availability, not generic card affordances');
+if (!read('src/actions/record.actions.js').includes('enabled: implemented')) failures.push('create-like record actions must only render from implemented schema capabilities');
+if (read('src/schemas/root.schema.js').includes('record.continue') || read('src/schemas/root.schema.js').includes('record.reference')) failures.push('Root schema view actions must not declare generic Continue/Reference actions');
 if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage mode must show selected artifact trust/audit status after artifact selection');
 if (appAndWorkspace.includes('tx-selected-lineage-chip')) failures.push('Lineage mode toolbar must not render a selected-artifact status chip');
 if (appAndWorkspace.includes('tx-audit-details-trigger')) failures.push('Lineage mode toolbar must not render Audit details as a textual badge/pill');
@@ -67,6 +75,7 @@ has('src/styles/app.css', '@media (max-width: 760px)', 'mobile responsive breakp
 has('src/styles/app.css', '.tx-dialog-backdrop', 'modal/sheet primitive CSS missing');
 has('src/styles/app.css', '.tx-source-pill', 'source pills must have CSS ownership');
 has('src/styles/app.css', '.tx-compact-column-window', 'created workspace must keep compact old-like column sizing');
+has('src/styles/app.css', '.tx-discovery-record-list', 'Discovery feed cards need a dedicated list wrapper CSS owner');
 has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
 has('src/schemas/companion.js', 'readState,', 'schema read presentation must expose readState contract');

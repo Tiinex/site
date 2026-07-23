@@ -716,6 +716,13 @@ export function TiinexApp() {
     return selectedRecordId && report && String(report.selectedRecordId || '') === selectedRecordId ? report : null;
   }
 
+  function lineageControlsReadyForTraversal(traversal = null) {
+    if (!traversal) return false;
+    const terminalState = String(traversal.terminalState || traversal.status?.terminalState || '').trim();
+    if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent'].includes(terminalState)) return true;
+    return traversal.complete === true;
+  }
+
   function loadFullLineage() {
     if (!active) return;
     const selectedRecordId = String(state.view?.selectedRecordId || '').trim();
@@ -765,7 +772,7 @@ export function TiinexApp() {
     }
     const lineage = buildWorkspaceLineageView(active, { records, query: state.view?.lineageQuery || '', selectedRecordId });
     const existingLoadReport = lineageLoadReportForSelected(state);
-    if (!existingLoadReport && !lineage.selectedTraversal?.complete) {
+    if (!existingLoadReport && !lineageControlsReadyForTraversal(lineage.selectedTraversal)) {
       setNotice('Load full lineage before running Audit.');
       return;
     }

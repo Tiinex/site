@@ -5,6 +5,7 @@ export function auditReport(result) {
     schemaId: result.artifact.schemaId,
     moduleId: result.artifact.moduleId,
     fallbackUsed: result.artifact.fallbackUsed,
+    validation: result.validation || null,
     summary: result.summary,
     findings: result.findings
   };

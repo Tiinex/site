@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.28-v208",
+  "version": "0.2.32-v212",
   "private": true,
-  "description": "Tiinex Site v208: runtime startup export and lineage ready-control hotfix.",
+  "description": "Tiinex Site v212: Root action availability gating.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

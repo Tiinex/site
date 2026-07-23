@@ -67,13 +67,14 @@ function auditBadgeForRecord(record = {}, auditItem = null) {
   const item = auditItem || null;
   const status = String(item?.status || '').toLowerCase();
   const readState = String(item?.readState || '').toLowerCase();
+  const bodyAvailability = String(item?.bodyAvailability || '').toLowerCase();
   if (status === 'readable') {
     if (readState === 'root-readable') return { label: 'root ok', tone: 'ok', title: 'Root envelope is readable through the Root companion.' };
     if (item?.fallbackUsed || readState === 'root-fallback') return { label: 'fallback', tone: 'fallback', title: 'Readable through Root fallback; exact child schema companion did not validate this card.' };
     return { label: 'schema ok', tone: 'ok', title: 'Loaded leaf passed schema/audit checks; byte-level integrity is not claimed.' };
   }
   if (status === 'supporting-material') return { label: 'doc', tone: 'open', title: 'Plain Markdown supporting material; not an invalid Tiinex leaf.' };
-  if (status === 'pending-unavailable' || readState === 'unavailable-body') return { label: 'unavailable', tone: 'pending', title: 'Material is not loaded in this route/session; audit is pending.' };
+  if (status === 'pending-unavailable' || readState === 'unavailable-body' || bodyAvailability === 'unavailable-body') return { label: 'body missing', tone: 'pending', title: 'The route/session preserved metadata, but the Markdown body is not loaded.' };
   if (status === 'degraded') return { label: (item?.fallbackUsed || readState === 'root-fallback') ? 'fallback' : 'open', tone: (item?.fallbackUsed || readState === 'root-fallback') ? 'fallback' : 'pending', title: (item?.fallbackUsed || readState === 'root-fallback') ? 'Readable through Root fallback with warnings; child-specific companion is not available.' : 'Readable with warnings; review lineage/source confidence.' };
   if (status) return { label: 'mismatch', tone: 'mismatch', title: 'Audit found errors or incomplete Tiinex leaf structure.' };
   if (record?.hasIntegrity || record?.hasContinuityContext || record?.schemaId) return { label: 'open', tone: 'pending', title: 'Lineage/audit status is not fully resolved yet.' };
@@ -81,8 +82,78 @@ function auditBadgeForRecord(record = {}, auditItem = null) {
 }
 
 function AuditStatusBadge({ record, item }) {
+  const [open, setOpen] = useState(false);
   const badge = auditBadgeForRecord(record, item);
-  return <Badge className={`tx-audit-badge tx-audit-badge-${badge.tone}`} title={badge.title}>{badge.label}</Badge>;
+  const title = record?.title || item?.title || 'Artifact';
+  return (
+    <>
+      <button type="button" className={`tx-badge tx-audit-badge tx-audit-badge-${badge.tone} tx-audit-badge-button`} title={`${badge.title} Open compact status explainer.`} aria-label={`Explain ${badge.label} status for ${title}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpen(true); }}>{badge.label}</button>
+      {open ? <AuditBadgeDialog record={record} item={item} badge={badge} onDismiss={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+function AuditBadgeDialog({ record = {}, item = null, badge = {}, onDismiss }) {
+  const status = String(item?.status || 'not audited');
+  const readState = String(item?.readState || (record?.markdown ? 'not indexed' : 'unknown'));
+  const coverage = String(item?.schemaCoverage || 'unknown');
+  const body = String(item?.bodyAvailability || (record?.markdown ? 'available' : 'unknown'));
+  const validationState = String(item?.validationState || item?.validation?.state || 'validation unknown');
+  const validationCoverage = String(item?.validationCoverage || item?.validation?.coverage || 'unknown');
+  const childValidator = String(item?.childValidator || item?.validation?.childValidator || 'unknown');
+  const integrityVersions = Array.isArray(item?.integrityMethodVersions) ? item.integrityMethodVersions : (Array.isArray(item?.validation?.integrityMethodVersions) ? item.validation.integrityMethodVersions : []);
+  const findings = Array.isArray(item?.findings) ? item.findings : [];
+  const summary = item?.summary || {};
+  const hasFindings = findings.length > 0;
+  return (
+    <Modal title={`${badge.label || 'Status'} · ${record.title || item?.title || 'Artifact'}`} onDismiss={onDismiss} className="tx-audit-badge-dialog">
+      <div className="tx-badge-diagnostic-summary">
+        <Badge className={`tx-audit-badge tx-audit-badge-${badge.tone || 'open'}`}>{badge.label || 'status'}</Badge>
+        <span>{badge.title || 'Compact status explanation.'}</span>
+      </div>
+      <div className="tx-badge-diagnostic-grid" aria-label="Badge diagnostic facts">
+        <span><strong>Audit</strong><small>{status}</small></span>
+        <span><strong>Read state</strong><small>{readStateLabel(readState)}</small></span>
+        <span><strong>Schema coverage</strong><small>{schemaCoverageLabel(coverage)}</small></span>
+        <span><strong>Body</strong><small>{body === 'unavailable-body' ? 'body unavailable' : body}</small></span>
+        <span><strong>Validation</strong><small>{validationStateLabel(validationState)}</small></span>
+        <span><strong>Validator</strong><small>{validatorLabel(childValidator, validationCoverage)}</small></span>
+        {integrityVersions.length ? <span><strong>Integrity method</strong><small>{integrityVersions.join(', ')}</small></span> : null}
+        {record?.schemaId || item?.schemaId ? <span><strong>Schema</strong><small>{record.schemaId || item?.schemaId}</small></span> : null}
+        {record?.source?.label || item?.sourceLabel ? <span><strong>Source</strong><small>{record.source?.label || item?.sourceLabel}</small></span> : null}
+      </div>
+      <div className="tx-badge-diagnostic-panels">
+        <section>
+          <strong>What this means</strong>
+          <ul>
+            {badge.tone === 'ok' ? <li>The loaded material passed this card's current validation/read check.</li> : null}
+            {badge.tone === 'fallback' ? <li>The artifact is readable through Root fallback, but no exact child companion owns the read view yet.</li> : null}
+            {childValidator === 'unavailable' ? <li>Root v1 validation ran, but the child schema-specific validator did not run because no exact validator is registered.</li> : null}
+            {validationState === 'exact-schema-validated' ? <li>The exact schema companion validator ran for this loaded material.</li> : null}
+            {body === 'unavailable-body' ? <li>The source boundary or route shell is known, but the Markdown body is not loaded in this session.</li> : null}
+            {badge.tone === 'mismatch' ? <li>Audit found errors or incomplete Tiinex leaf structure.</li> : null}
+            {badge.tone === 'pending' || badge.tone === 'open' ? <li>The card remains inspectable, but one or more checks are incomplete, degraded, or awaiting material.</li> : null}
+          </ul>
+        </section>
+        <section>
+          <strong>What this does not verify</strong>
+          <ul>
+            <li>It does not prove authorship, consent, or semantic correctness.</li>
+            <li>It does not fetch missing remote material or repair stale lineage.</li>
+            <li>It does not turn Root fallback into a schema-owned companion.</li>
+            <li>It does not claim child-schema validation when the validator is unavailable.</li>
+          </ul>
+        </section>
+      </div>
+      <details className="tx-badge-diagnostic-findings">
+        <summary>Findings · {findings.length}</summary>
+        {hasFindings ? findings.slice(0, 8).map((finding, index) => (
+          <p key={`${finding.code || 'finding'}-${index}`}><strong>{finding.code || finding.severity || 'finding'}</strong><span>{finding.message || 'No message.'}</span></p>
+        )) : <p>No findings attached to this card status.</p>}
+        <p className="tx-muted">Summary: {Number(summary.error || 0)} errors · {Number(summary.warning || 0)} warnings · {Number(summary.info || 0)} info</p>
+      </details>
+    </Modal>
+  );
 }
 
 function auditIsMismatch(record = {}, auditItem = null) {
@@ -137,6 +208,13 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   return records.find((record) => record.id === selectedRecordId) || null;
 }
 
+function lineageControlsReadyForTraversal(traversal = null) {
+  if (!traversal) return false;
+  const state = String(traversal.terminalState || traversal.status?.terminalState || '').trim();
+  if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent'].includes(state)) return true;
+  return traversal.complete === true;
+}
+
 export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
@@ -154,8 +232,8 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
   const lineageTraversalPreview = lineageVerse && selectedRecordId
     ? buildWorkspaceLineageView(workspace, { records: allRecords, query: '', selectedRecordId }).selectedTraversal
     : null;
-  const lineageAlreadyComplete = Boolean(lineageTraversalPreview?.complete);
-  const lineageLoadReady = Boolean(lineageVerse && selectedRecordId && (lineageAlreadyComplete || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || ''))));
+  const lineageAlreadyReady = lineageControlsReadyForTraversal(lineageTraversalPreview);
+  const lineageLoadReady = Boolean(lineageVerse && selectedRecordId && (lineageAlreadyReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === String(state.view?.selectedRecordId || ''))));
   const discoveryQuery = state.view?.query || '';
   const lineageQuery = lineageLoadReady ? (state.view?.lineageQuery || '') : '';
   const query = lineageVerse ? lineageQuery : discoveryQuery;
@@ -205,17 +283,36 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
-            ? <>
-                {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
-                {records.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
-                {assets.map((asset) => <AssetCard key={asset.id || asset.path} asset={asset} onOpenAsset={onOpenAsset} />)}
-              </>
+            ? <DiscoveryRecordList
+                workspaceCandidates={workspaceCandidates}
+                records={records}
+                assets={assets}
+                auditById={auditById}
+                onOpenWorkspaceCandidate={onOpenWorkspaceCandidate}
+                onMergeWorkspaceCandidate={onMergeWorkspaceCandidate}
+                onOpenRecord={onOpenRecord}
+                onFocusRecordLineage={onFocusRecordLineage}
+                onShareRecord={onShareRecord}
+                onRecordAction={onRecordAction}
+                onOpenAsset={onOpenAsset}
+              />
             : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} summary={materialSummary} />}
       </section>
     </section>
   );
 }
 
+
+
+function DiscoveryRecordList({ workspaceCandidates = [], records = [], assets = [], auditById = new Map(), onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenAsset }) {
+  return (
+    <div className="tx-discovery-record-list tx-unified-record-list" aria-label="Discovery artifacts">
+      {workspaceCandidates.map((candidate) => <WorkspaceCandidateCard key={candidate.id || candidate.path} candidate={candidate} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />)}
+      {records.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
+      {assets.map((asset) => <AssetCard key={asset.id || asset.path} asset={asset} onOpenAsset={onOpenAsset} />)}
+    </div>
+  );
+}
 
 function WorkspaceBoundaryKicker({ workspace = {} }) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -516,14 +613,16 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecord
   }
   const auditItem = auditById.get(item.source.id);
   return (
-    <button type="button" className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" onClick={() => onFocusRecordLineage?.(item.source.id)} title={item.path || ''} aria-label={`Open lineage for ${item.name || item.title || 'artifact'}`}>
-      <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
+    <div className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" title={item.path || ''}>
+      <button type="button" className="tx-tree-row-main" onClick={() => onFocusRecordLineage?.(item.source.id)} aria-label={`Open lineage for ${item.name || item.title || 'artifact'}`}>
+        <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
+      </button>
       <span className="tx-tree-row-badges">
         <AuditStatusBadge record={item.source} item={auditItem} />
         {recordLifecycleBadge(item.source) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(item.source)}</Badge> : null}
         <Badge>{item.source.kind || item.kind || 'artifact'}</Badge>
       </span>
-    </button>
+    </div>
   );
 }
 
@@ -563,6 +662,7 @@ function WorkspaceAuditState({ workspace, query = '', records = [], assets = [],
           <span><strong>{counts.invalid || 0}</strong><small>invalid</small></span>
           <span><strong>{counts.degraded || 0}</strong><small>degraded</small></span>
           {counts.supporting ? <span><strong>{counts.supporting}</strong><small>supporting</small></span> : null}
+          {counts.validationPartial ? <span><strong>{counts.validationPartial}</strong><small>partial validation</small></span> : null}
           <span><strong>{counts.missingLineage || 0}</strong><small>missing lineage</small></span>
         </div>
       </header>
@@ -572,6 +672,8 @@ function WorkspaceAuditState({ workspace, query = '', records = [], assets = [],
         <span><Icon name="audit" /> {counts.rootFallback || counts.fallbackUsed || 0} root fallback</span>
         <span><Icon name="open" /> {counts.rootReadable || 0} root-readable</span>
         {counts.unavailableBody ? <span><Icon name="warning" /> {counts.unavailableBody} body unavailable</span> : null}
+        {counts.childValidatorUnavailable ? <span><Icon name="warning" /> {counts.childValidatorUnavailable} validator unavailable</span> : null}
+        {counts.integrityV2 ? <span><Icon name="check" /> {counts.integrityV2} v2 integrity methods</span> : null}
         <span><Icon name="lineage" /> {counts.lineageFindings || 0} lineage findings</span>
       </div>
       {audit.lineage.findings.length ? (
@@ -690,6 +792,7 @@ function AuditRecordRow({ item, onOpenRecord }) {
       <span className="tx-audit-record-meta">
         <Badge>{item.status}</Badge>
         <Badge>{item.readState || 'read-state unknown'}</Badge>
+        <Badge>{validationStateLabel(item.validationState)}</Badge>
         <Badge>{item.schemaId || 'markdown'}</Badge>
         <Badge>{item.sourceBacked ? 'source-backed' : 'local/session'}</Badge>
         {item.fallbackUsed ? <Badge>root fallback</Badge> : null}
@@ -1191,6 +1294,28 @@ function SchemaReadSectionBody({ value = '' }) {
       ))}
     </div>
   );
+}
+
+
+function validationStateLabel(value = '') {
+  const state = String(value || '').trim();
+  if (state === 'exact-schema-validated') return 'schema validation ran';
+  if (state === 'root-validated') return 'root validation ran';
+  if (state === 'root-only-child-validator-unavailable') return 'root only · validator unavailable';
+  if (state === 'not-run-body-unavailable') return 'not run · body missing';
+  if (state === 'not-applicable-supporting') return 'not applicable';
+  if (state === 'validation-unknown') return 'validation unknown';
+  return state || 'validation unknown';
+}
+
+function validatorLabel(childValidator = '', coverage = '') {
+  const child = String(childValidator || '').trim();
+  const cov = String(coverage || '').trim();
+  if (child === 'run') return 'exact child validator ran';
+  if (child === 'unavailable') return 'child validator unavailable';
+  if (child === 'skipped') return 'skipped until body loads';
+  if (child === 'not-applicable') return cov === 'root-exact' ? 'Root validator only' : 'not applicable';
+  return child || cov || 'validator unknown';
 }
 
 function readStateLabel(value = '') {

@@ -1,38 +1,27 @@
-# Tiinex Site v208
+# Tiinex Site v212
 
-v208 is a runtime-startup and lineage ready-control hotfix on top of v207. It restores the exported build identity expected by the React entrypoint and keeps `Load full lineage` hidden when the currently selected loaded-workspace lineage is already complete.
+v212 is a Root-milestone action availability pass on top of v211. It keeps Root validation truth and gates user-visible create-like record actions behind schema/transition capability instead of presenting generic Continue/Reference affordances for every readable card.
 
-## v208 batch
+## v212 batch
 
-- Restores `tiinexBuildIdentity()` from `src/build.identity.js` so `src/main.jsx` can boot the app.
-- Extends the checkpoint identity guard so the runtime build identity function is checked, not just mentioned in source text.
-- Treats already-complete selected lineage paths as lineage-ready without requiring an explicit `Load full lineage` click.
-- Keeps incomplete/partial lineage paths behind `Load full lineage` before search, display options, or Audit are shown.
-- Does not change source transport, issue discovery, recursive adapter traversal, transitions, portable tooling, dependency pinning, or public build semantics.
+- Record cards keep inspect/read actions: Open details, Show markdown, Source, Share, and Lineage anchoring where relevant.
+- Continue and Reference/Preserve are no longer shown as generic actions unless a schema companion exposes a concrete transition capability.
+- Root fallback, unknown child schemas, and generic source-backed records no longer look create-capable just because they are readable.
+- Existing transition draft helpers remain available behind explicit code paths; this batch does not implement artifact creation or transition execution.
+- Schema module `viewActions` declarations no longer list broad Continue/Reference actions by default.
+- No recursive adapter traversal, issue discovery, source transport change, transition artifact creation, or new schema-specific companions are introduced in this batch.
+
+## Validation
+
+See `VALIDATION_NOTES.md`. Manual milestone browser testing is intentionally deferred until the Root milestone closes.
 
 ## Supported local start
 
-Use the Vite development server for source work:
+Use the Vite development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Directly opening `index.html` from the source tree is not the supported local runtime path for the React/Vite app.
-
-## Validation
-
-Run the usual local gates before handoff:
-
-```bash
-npm run validate
-npm run ui:shape
-npm run portable:smoke
-npm run usecase:uc001
-npm run storage:scan
-npm run metrics
-npm run typecheck
-```
-
-Manual browser testing is intentionally deferred until the end of this Root-closure milestone unless a runtime failure appears.
+Source `index.html` is not a double-click runtime; JSX is compiled by Vite.

@@ -7261,3 +7261,110 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-schema-read-empty-fallback .tx-read-state-chips {
   margin-bottom: 0.5rem;
 }
+
+
+/* v209: Discovery render ownership guard. Feed cards live in an explicit list wrapper
+   like Lineage/Tree so the scroll-stage background can never become the only visible
+   Discovery surface when card rhythm CSS changes. */
+.tx-discovery-record-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0.92rem;
+  min-width: 0;
+  width: 100%;
+}
+.tx-discovery-record-list > .tx-artifact-card,
+.tx-discovery-record-list > .tx-record-card,
+.tx-discovery-record-list > .tx-asset-card,
+.tx-discovery-record-list > .tx-workspace-candidate-card {
+  width: 100%;
+  min-width: 0;
+}
+.tx-discovery-record-list .tx-old-like-record-card {
+  display: grid;
+  min-height: 8.4rem;
+}
+
+.tx-audit-badge-button {
+  appearance: none;
+  border-style: solid;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.1;
+}
+.tx-audit-badge-button:hover,
+.tx-audit-badge-button:focus-visible {
+  filter: brightness(1.12);
+  box-shadow: 0 0 0 2px rgba(147, 255, 244, 0.16);
+  outline: none;
+}
+.tx-audit-badge-dialog {
+  max-width: min(42rem, calc(100vw - 2rem));
+}
+.tx-badge-diagnostic-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.72rem 0.82rem;
+  border: 1px solid rgba(189,115,255,0.20);
+  border-radius: 0.92rem;
+  background: rgba(255,255,255,0.035);
+  color: rgba(247,248,251,0.82);
+}
+.tx-badge-diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+.tx-badge-diagnostic-grid span {
+  display: grid;
+  gap: 0.24rem;
+  padding: 0.62rem 0.72rem;
+  border: 1px solid rgba(189,115,255,0.18);
+  border-radius: 0.82rem;
+  background: rgba(18,20,32,0.52);
+}
+.tx-badge-diagnostic-grid strong,
+.tx-badge-diagnostic-panels strong {
+  color: rgba(222,179,255,0.92);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tx-badge-diagnostic-grid small {
+  color: rgba(247,248,251,0.82);
+  overflow-wrap: anywhere;
+}
+.tx-badge-diagnostic-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.72rem;
+  margin-top: 0.8rem;
+}
+.tx-badge-diagnostic-panels section,
+.tx-badge-diagnostic-findings {
+  padding: 0.72rem 0.86rem;
+  border: 1px solid rgba(189,115,255,0.18);
+  border-radius: 0.9rem;
+  background: rgba(12,14,24,0.46);
+}
+.tx-badge-diagnostic-panels ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.05rem;
+  color: rgba(247,248,251,0.76);
+  line-height: 1.45;
+}
+.tx-badge-diagnostic-findings {
+  margin-top: 0.78rem;
+}
+.tx-badge-diagnostic-findings p {
+  display: grid;
+  gap: 0.18rem;
+  margin: 0.55rem 0 0;
+  color: rgba(247,248,251,0.76);
+}
+.tx-badge-diagnostic-findings span {
+  overflow-wrap: anywhere;
+}

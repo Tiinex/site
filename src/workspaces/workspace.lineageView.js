@@ -66,8 +66,9 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
   const ambiguous = Boolean(resolvedTraversalFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || (traversal.findings || []).some((finding) => finding.code === 'lineage.target.ambiguous'));
   const hasMissing = Boolean((traversal.missingEdges || []).length || (traversal.findings || []).some((finding) => finding.code === 'lineage.traversal.missingTarget'));
   const depthLimited = Boolean(traversal.stats?.stoppedAtDepth);
-  const rootReached = Boolean(!hasMissing && !ambiguous && !depthLimited && terminalNodes.some((node) => rootNodeIds.has(node.id)));
-  const noParentDeclared = Boolean(rootReached && (traversal.nodes || []).length === 1 && terminalNodes.some((node) => rootNodeIds.has(node.id)));
+  const terminalRootReached = terminalNodes.some((node) => rootNodeIds.has(node.id) || isRootLikeLineageNode(node, nodesById));
+  const rootReached = Boolean(!hasMissing && !ambiguous && !depthLimited && terminalRootReached);
+  const noParentDeclared = Boolean(!hasMissing && !ambiguous && !depthLimited && (traversal.nodes || []).length === 1 && terminalNodes.some((node) => rootNodeIds.has(node.id)));
   const scopeTransitions = buildScopeTransitions(traversal.nodes || [], nodesById);
   const status = traversalStatus({ rootReached, noParentDeclared, ambiguous, hasMissing, depthLimited, scopeTransitions, traversal });
   const secondaryFindings = resolvedTraversalFindings.filter((finding) => finding.code !== 'lineage.root' && finding.code !== 'lineage.parent.missing' && finding.code !== 'lineage.target.ambiguous');
@@ -183,6 +184,15 @@ function terminalTraversalNodes(traversal = {}) {
   if (!nodes.length) return [];
   const maxDepth = Math.max(...nodes.map((node) => Number(node.depth || 0)));
   return nodes.filter((node) => Number(node.depth || 0) === maxDepth);
+}
+
+function isRootLikeLineageNode(node = {}, nodesById = new Map()) {
+  const resolvedNode = nodesById.get(node.id) || {};
+  const record = resolvedNode.record || {};
+  const schema = String(node.schemaId || resolvedNode.schemaId || record.schemaId || record.kind || '').toLowerCase();
+  const title = String(node.title || resolvedNode.title || record.title || '').trim().toLowerCase();
+  const path = String(node.path || resolvedNode.path || record.path || '').toLowerCase();
+  return schema === 'tiinex.root.v1' || schema === 'root' || title === 'root' || /tiinex\.root\.v1\.schema\.md$/.test(path);
 }
 
 function buildScopeTransitions(nodes = [], nodesById = new Map()) {

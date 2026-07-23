@@ -19,7 +19,7 @@ export const topicSchemaModule = defineSchemaModule({
   validate: topicValidate,
   present: topicPresent,
   read: Object.freeze({ label: 'Topic', sections: Object.freeze(['Content', 'Current Read', 'Design Direction', 'Next Artifacts', 'Good Child Candidates', 'Transition Boundary']) }),
-  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.continue', 'record.reference', 'record.source']) }),
+  viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.source']) }),
   transitions: topicTransitions,
   i18n: topicI18n,
   findings: topicFindings

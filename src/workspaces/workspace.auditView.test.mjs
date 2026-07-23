@@ -22,7 +22,7 @@ function record({ id, title, schema = 'tiinex.topic.v1', path = `${id}.md`, trac
     '',
     integrity ? '# Continuity Integrity' : '',
     integrity ? '' : '',
-    integrity ? '- Fixture Integrity' : '',
+    integrity ? '- sha256-base64url-c14n-v2' : '',
     integrity ? '  - Method: fixture' : '',
     integrity ? '  - Value: ok' : ''
   ].filter(Boolean).join('\n');
@@ -43,6 +43,13 @@ assert(view.counts.schemaOwned >= 2, 'known topic records should count as schema
 assert(view.counts.rootFallback >= 1, 'unknown schema should count as root fallback');
 assert(view.counts.unknownSchema >= 1, 'unknown schema coverage should be counted separately');
 assert(view.counts.warnings >= 1, 'missing integrity should become a warning');
+assert(view.counts.validationComplete >= 2, 'known schema companions should count as complete validation');
+assert(view.counts.validationPartial >= 1, 'unknown child schema should count as partial validation');
+assert(view.counts.childValidatorUnavailable >= 1, 'unknown child schema should expose unavailable child validator');
+assert(view.counts.integrityV2 >= 2, 'v2 integrity method usage should be counted when present');
+assert.equal(view.items.find((item) => item.id === 'child').validationState, 'exact-schema-validated', 'known topic child runs exact schema validation');
+assert.equal(view.items.find((item) => item.id === 'unknown').validationState, 'root-only-child-validator-unavailable', 'unknown child schema is Root-only validation, not exact validation');
+assert(view.items.find((item) => item.id === 'unknown').findings.some((finding) => finding.code === 'audit.validator.unavailable'), 'unknown child schema reports unavailable child validator');
 assert(view.lineage.edges.some((edge) => edge.from === 'parent' && edge.to === 'child'), 'audit view should include loaded lineage edges');
 assert(view.boundary.includes('Loaded material only'), 'audit view must disclose loaded-only boundary');
 
@@ -57,6 +64,7 @@ const rootAuditView = buildWorkspaceAuditView({ id: 'w4', title: 'Root Audit', r
 assert.equal(rootAuditView.items[0].readState, 'root-readable', 'root schema must be root-readable, not fallback');
 assert.equal(rootAuditView.counts.rootReadable, 1, 'root-readable count is exposed');
 assert.equal(rootAuditView.counts.rootFallback, 0, 'root-readable should not count as root fallback');
+assert.equal(rootAuditView.items[0].validationState, 'root-validated', 'root artifacts run Root validation exactly');
 
 const metadataOnly = {
   id: 'source:github:demo:topics/remote.md',
@@ -77,6 +85,8 @@ assert.equal(pendingView.counts.pending, 1, 'pending count is exposed');
 assert.equal(pendingView.items[0].readState, 'unavailable-body', 'pending metadata-only source has unavailable-body read state');
 assert.equal(pendingView.counts.unavailableBody, 1, 'unavailable body count is exposed');
 assert.equal(pendingView.counts.invalid, 0, 'metadata-only source-backed record must not count as invalid');
+assert.equal(pendingView.items[0].validationState, 'not-run-body-unavailable', 'metadata-only source shell validation is not run until body loads');
+assert.equal(pendingView.counts.validationUnavailable, 1, 'body-unavailable validation count is exposed');
 assert(pendingView.items[0].findings.some((finding) => finding.code === 'audit.material.unavailable'), 'pending audit finding is present');
 
 const plainMarkdown = createRecordFromMarkdown('# Plain README\n\nThis is supporting project documentation, not a Tiinex leaf.', {
@@ -88,6 +98,8 @@ assert.equal(supportingView.items[0].status, 'supporting-material', 'plain markd
 assert.equal(supportingView.counts.supporting, 1, 'supporting material count is exposed');
 assert.equal(supportingView.counts.invalid, 0, 'plain markdown should not count as invalid');
 assert.equal(supportingView.counts.errors, 0, 'plain markdown support classification should not emit audit errors');
+assert.equal(supportingView.items[0].validationState, 'not-applicable-supporting', 'supporting markdown is not a failed Tiinex schema validation');
+assert.equal(supportingView.counts.validationNotApplicable, 1, 'supporting validation not-applicable count is exposed');
 assert(supportingView.items[0].findings.some((finding) => finding.code === 'audit.markdown.supporting-material'), 'supporting material finding is present');
 
 console.log('✓ workspace.auditView tests passed');

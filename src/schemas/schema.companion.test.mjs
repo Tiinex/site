@@ -42,9 +42,10 @@ assert.equal(read.schemaCoverage, 'exact-companion', 'evidence companion must re
 assert.equal(read.bodyAvailability, 'available', 'schema-owned evidence read body is available');
 
 const actions = schemaLineageActions(evidence, { surface: 'lineage' }).map((action) => action.id);
-assert(actions.includes('record.continue'));
-assert(actions.includes('record.reference'));
+assert(!actions.includes('record.continue'), 'lineage actions must not expose Continue until a schema/transition companion declares it');
+assert(!actions.includes('record.reference'), 'lineage actions must not expose Reference/Preserve until a schema/transition companion declares it');
 assert(actions.includes('record.markdown'));
+assert(actions.includes('record.source'), 'schema-owned source-backed records should keep source inspection available');
 assert(!actions.includes('record.share'));
 
 const binding = schemaCanonicalBinding(evidence);

@@ -1,3 +1,5 @@
+import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
+
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
 
@@ -11,41 +13,52 @@ export const RecordActionKind = Object.freeze({
   share: 'record.share'
 });
 
-export function presentRecordActions(record = {}) {
+export function presentRecordActions(record = {}, options = {}) {
   const sourceHref = sourceHrefForRecord(record);
-  const hasText = Boolean(String(record.markdown || record.summary || record.title || '').trim());
+  const hasMaterialText = Boolean(String(record.markdown || record.summary || record.title || '').trim());
+  const availability = actionAvailabilityForRecord(record, options);
   const actions = [
     {
       id: RecordActionKind.open,
       label: 'Open details',
       icon: 'open',
       enabled: true,
-      contract: RECORD_ACTIONS_CONTRACT_ID
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented'
     },
     {
       id: RecordActionKind.markdown,
       label: 'Show markdown',
       icon: 'open',
       enabled: true,
-      contract: RECORD_ACTIONS_CONTRACT_ID
-    },
-    {
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented'
+    }
+  ];
+  if (availability.continue.enabled && hasMaterialText) {
+    actions.push({
       id: RecordActionKind.continue,
       label: 'Continue',
       icon: 'continue',
-      enabled: hasText,
+      enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
-      produces: RECORD_ACTION_RESULT_SCHEMA_ID
-    },
-    {
+      produces: RECORD_ACTION_RESULT_SCHEMA_ID,
+      capabilityStatus: availability.continue.status,
+      capabilityReason: availability.continue.reason
+    });
+  }
+  if (availability.reference.enabled) {
+    actions.push({
       id: RecordActionKind.reference,
       label: 'Preserve evidence',
       icon: 'reference',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
-      produces: RECORD_ACTION_RESULT_SCHEMA_ID
-    }
-  ];
+      produces: RECORD_ACTION_RESULT_SCHEMA_ID,
+      capabilityStatus: availability.reference.status,
+      capabilityReason: availability.reference.reason
+    });
+  }
   if (sourceHref) {
     actions.push({
       id: RecordActionKind.source,
@@ -53,7 +66,8 @@ export function presentRecordActions(record = {}) {
       icon: 'source',
       enabled: true,
       href: sourceHref,
-      contract: RECORD_ACTIONS_CONTRACT_ID
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented'
     });
   }
   actions.push({
@@ -61,9 +75,39 @@ export function presentRecordActions(record = {}) {
     label: 'Share session',
     icon: 'shareNodes',
     enabled: true,
-    contract: RECORD_ACTIONS_CONTRACT_ID
+    contract: RECORD_ACTIONS_CONTRACT_ID,
+    capabilityStatus: 'implemented'
   });
   return Object.freeze(actions);
+}
+
+export function actionAvailabilityForRecord(record = {}, options = {}) {
+  const schemaId = recordSchemaId(record);
+  const resolution = resolveSchemaCapabilities({ schemaId });
+  const fallbackUsed = Boolean(resolution.fallbackUsed || resolution.descriptor?.resolution?.fallbackUsed);
+  const actions = resolution.descriptor?.actions || {};
+  return Object.freeze({
+    schemaId,
+    moduleId: resolution.descriptor?.moduleId || '',
+    fallbackUsed,
+    continue: actionAvailability(actions.continue, { fallbackUsed, action: RecordActionKind.continue }),
+    reference: actionAvailability(actions.reference, { fallbackUsed, action: RecordActionKind.reference })
+  });
+}
+
+function actionAvailability(capability = {}, { fallbackUsed = false, action = '' } = {}) {
+  const status = capability?.status || CapabilityStatus.unavailable;
+  const implemented = status === CapabilityStatus.implemented && !fallbackUsed;
+  return Object.freeze({
+    action,
+    enabled: implemented,
+    status,
+    reason: fallbackUsed ? 'root fallback does not expose schema-specific create transitions' : (capability?.reason || 'schema action unavailable')
+  });
+}
+
+function recordSchemaId(record = {}) {
+  return String(record.schemaId || record.currentSchemaId || record.kind || '').trim();
 }
 
 export function sourceHrefForRecord(record = {}) {

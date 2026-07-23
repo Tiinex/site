@@ -1,25 +1,23 @@
-# Validation Notes v208
+# Validation Notes v212
 
-v208 is a runtime-startup and lineage ready-control hotfix.
+v212 is a Root action availability and create-like action gating pass.
 
-## Changed
+## Identity
 
-- Checkpoint/version moved from `0.2.27-v207` to `0.2.28-v208`.
-- `src/build.identity.js` now exports `tiinexBuildIdentity()` again, matching the import used by `src/main.jsx`.
-- `tools/check-checkpoint-identity.mjs` now calls `tiinexBuildIdentity()` so this startup contract is guarded.
-- Selected Lineage now treats an already-complete loaded-workspace traversal as lineage-ready without requiring the `Load full lineage` button.
-- `Load full lineage` remains visible only for selected lineage paths that are not already complete and not explicitly loaded.
-- Lineage Audit can run on an already-complete selected traversal even without an explicit load report.
+- Checkpoint/version moved from `0.2.31-v211` to `0.2.32-v212`.
+- Runtime identity moved to `react-v212-root-action-gating`.
 
-## Not changed
+## What changed
 
-- No source transport, issue discovery, recursive adapter traversal, transition creation, portable tooling, dependency, or public deployment behavior changed.
-- No new schema-specific companions were added in this batch.
-- `Load full lineage` is still loaded-workspace exhaustion, not remote/cross-adapter recursion.
+- User-visible record actions now distinguish inspect/read actions from create-like actions.
+- Continue and Reference/Preserve are hidden unless the resolved schema companion advertises an implemented transition capability.
+- Root fallback and unknown child schema records remain readable but do not expose fake creation/transitions.
+- Schema companion lineage action tests now assert that Continue/Reference stay unavailable until declared by transition capability.
+- Existing draft/transition helper functions are retained for future transition milestone work; this batch only gates presentation and availability.
 
-## Validation target
+## Validation run
 
-Expected green gates:
+Expected source-clean checks for this checkpoint:
 
 ```bash
 npm run validate
@@ -29,6 +27,7 @@ npm run usecase:uc001
 npm run storage:scan
 npm run metrics
 npm run typecheck
+npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
 ```
 
-`runtime:smoke`, `build:public`, and `public:check` still require a full dependency install with the Vite binary available.
+Manual browser testing remains deferred until the Root milestone closes.
