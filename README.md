@@ -1,22 +1,21 @@
-# Tiinex Site v201
+# Tiinex Site v202
 
-v201 is a release/checkpoint consolidation pass on top of v200. It does not add viewer or portable-tooling product features. It tightens the checkpoint so the same source can be installed, validated, typechecked, built, and published through one explicit gate.
+v202 is a dependency-lock portability repair on top of v201. It does not add viewer, source-transport, or portable-tooling product features. It repairs the v201 npm lock so native optional dependencies needed by Vite/Rolldown, Lightning CSS, and TypeScript are represented for both Linux x64 and Windows x64.
 
-## v201 batch
+## v202 batch
 
-- Pins direct runtime/build dependencies to exact versions.
-- Switches the repository dependency truth to npm + `package-lock.json` + `npm ci`.
-- Removes `yarn.lock` from the source checkpoint.
-- Adds `packageManager: npm@10.9.2` to `package.json`.
-- Adds `npm run portable:smoke` for the public process entrypoint:
-  - `node tools/tiinex-portable.mjs operations --compact`
-  - `node tools/tiinex-portable.mjs inspect src/artifacts/fixtures/topic.trace.md --compact`
-- Adds `npm run typecheck` as a named TypeScript no-emit gate.
-- Expands the public workflow to run validate, portable smoke, UI shape, typecheck, runtime smoke, UC-001, storage scan, public build, and public check.
-- Keeps `npm run metrics` as diagnostic output, not a release blocker.
-- Adds a single build/checkpoint identity module and a guard to catch package/README/validation/parity/runtime drift.
-- Repairs the artifact parser Parent-block bug where missing `- Parent` could cause `Current Created At` to be read as parent metadata.
-- Adds parser regression tests for root-without-parent, child-schema-without-artifact-parent, valid Parent blocks, and Current/Parent separation.
+- Keeps npm + `package-lock.json` + `npm ci` as the repository dependency truth.
+- Keeps direct dependencies exact-version pinned.
+- Adds Linux and Windows native optional package entries to `package-lock.json` for:
+  - `@rolldown/binding-linux-x64-gnu`
+  - `@rolldown/binding-win32-x64-msvc`
+  - `lightningcss-linux-x64-gnu`
+  - `lightningcss-win32-x64-msvc`
+  - `@typescript/typescript-linux-x64`
+  - `@typescript/typescript-win32-x64`
+- Adds `tools/check-package-lock-platforms.mjs` to fail validation if the lock regresses to a single-platform native-binding lock.
+- Wires that guard into `npm run validate` after checkpoint identity validation.
+- Updates checkpoint/build identity from v201 to v202.
 
 ## Still intentionally out of scope
 
@@ -38,7 +37,7 @@ npm ci
 npm run dev
 ```
 
-Open the printed localhost URL and test against source zips/workspaces.
+On Windows this checkpoint is intended to install the Win32 native optional packages through `npm ci` rather than requiring a manual `--no-save` install.
 
 ## Release/checkpoint gate
 
