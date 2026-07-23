@@ -1,14 +1,14 @@
-# Tiinex Site v215
+# Tiinex Site v216
 
-v215 is a Root-milestone Discovery terminal-leaf membership repair on top of v214. It preserves the v214 source-backed metadata cache restore, but fixes the next drift: `Leaves only` now hides loaded lineage parents in Discovery instead of treating every work/schema artifact as a visible terminal leaf.
+v216 is a Root-milestone Discovery work-leaf membership repair on top of v215. It keeps the terminal loaded-lineage leaf rule, but adds the missing prerequisite: Discovery `Leaves only` means terminal work leaves, not schema/type-definition records that happen to be terminal in the schema hierarchy.
 
-## v215 batch
+## v216 batch
 
-- Discovery `Leaves only` now means terminal loaded lineage leaves: material-role leaf records that are not loaded parents of another record.
-- Source-backed metadata-only cache records may still be visible leaves when terminal, so refresh/session restore does not empty Discovery.
-- Loaded parents are hidden by `Leaves only`, including source-backed metadata-only parents and canonical schema parent nodes.
+- Discovery `Leaves only` now hides `.schema.md` / schema type-definition artifacts even when they are terminal nodes.
+- Terminal source-backed metadata-only work leaves, such as `.trace.md` material, remain visible after refresh/session restore.
 - Route-only material-unavailable shells remain hidden.
-- Lineage display scope remains unchanged: Leaves-only and Discovery-only membership controls do not affect Lineage.
+- Lineage display scope remains unchanged: parent/root chains are not filtered by Discovery-only `Leaves only` membership.
+- Display-option copy/counts now refer to terminal work leaves rather than generic Tiinex artifact leaves.
 - No transition/artifact creation, source transport, issue discovery, recursive adapter traversal, or new schema-specific companion work is included.
 
 ## Supported local start

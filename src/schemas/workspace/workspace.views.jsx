@@ -1695,7 +1695,7 @@ export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery'
         </div>
         {!lineageScope ? (
           <label className="tx-display-option-row tx-display-option-primary">
-            <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} terminal Tiinex artifact {Number(counts.leaves || 0) === 1 ? 'leaf' : 'leaves'} · hides loaded parents, support files, and body-missing source shells</small></span>
+            <span><strong>Leaves only</strong><small>{Number(counts.leaves || 0)} terminal work {Number(counts.leaves || 0) === 1 ? 'leaf' : 'leaves'} · hides loaded parents, schema/type definitions, support files, and body-missing source shells</small></span>
             <input id="displayLeavesOnly" type="checkbox" checked={draft.leavesOnly} onChange={(event) => setFlag('leavesOnly', event.target.checked)} />
           </label>
         ) : null}

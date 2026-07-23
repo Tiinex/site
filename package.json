@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.35-v215",
+  "version": "0.2.36-v216",
   "private": true,
-  "description": "Tiinex Site v215: Discovery terminal-leaf membership repair.",
+  "description": "Tiinex Site v216: Discovery work-leaf membership repair.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -1,14 +1,16 @@
-# Validation Notes v215
+# Validation Notes v216
 
-v215 is a focused Root-milestone Discovery membership repair.
+v216 is a focused Root-milestone Discovery membership repair.
 
 ## Scope
 
-- Checkpoint/version moved from `0.2.34-v214` to `0.2.35-v215`.
-- Runtime identity moved to `react-v215-discovery-terminal-leaf-membership`.
-- `workspace.materialRole` now exposes a Discovery material index that resolves loaded parent edges and distinguishes terminal display leaves from loaded parents.
-- Discovery `Leaves only` uses terminal leaf membership.
-- Display option counts now report terminal leaves.
+- Checkpoint/version moved from `0.2.35-v215` to `0.2.36-v216`.
+- Runtime identity moved to `react-v216-discovery-work-leaf-membership`.
+- Discovery `Leaves only` now requires both:
+  - work-leaf eligibility, and
+  - terminal loaded-lineage membership.
+- Schema/type-definition artifacts, including canonical `.schema.md` records, are no longer Discovery leaves even when they are terminal schema nodes.
+- Source-backed metadata-only `.trace.md` work leaves can still remain visible after refresh/session restore.
 - Lineage scope remains independent from Discovery membership controls.
 
 ## Validation performed

@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v215';
-export const TIINEX_SITE_VERSION = '0.2.35-v215';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v215';
-export const TIINEX_RUNTIME_ID = 'react-v215-discovery-terminal-leaf-membership';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v215-discovery-terminal-leaf-membership';
+export const TIINEX_SITE_CHECKPOINT = 'v216';
+export const TIINEX_SITE_VERSION = '0.2.36-v216';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v216';
+export const TIINEX_RUNTIME_ID = 'react-v216-discovery-work-leaf-membership';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v216-discovery-work-leaf-membership';
 
 
 export function tiinexBuildIdentity() {

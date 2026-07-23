@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { inferRecordMaterialRole, MaterialRole, isSupportingRecord } from './workspace.materialRole.js';
+import { inferRecordMaterialRole, MaterialRole, isSupportingRecord, isWorkLeafRecord } from './workspace.materialRole.js';
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/educational/memes/doom/001.trace.md',
@@ -155,5 +155,31 @@ assert.equal(isDiscoveryLeafRecord({
   materialAvailability: 'material-unavailable',
   cacheState: 'route-shell-material-unavailable'
 }, routeOnlyIndex), false);
+
+
+const schemaTypeDefinition = {
+  id: 'schema:event-meeting',
+  path: '.topics/.schemas/event/meeting/tiinex.event.meeting.v1.schema.md',
+  schemaId: 'tiinex.event.meeting.v1',
+  sourceMode: 'source-backed',
+  source: { adapterId: 'github', rootPath: '.topics' },
+  hasContinuityContext: true,
+  cacheState: 'source-backed-metadata-only-session-cache'
+};
+assert.equal(inferRecordMaterialRole(schemaTypeDefinition), MaterialRole.leaf);
+assert.equal(isWorkLeafRecord(schemaTypeDefinition), false);
+assert.equal(isDiscoveryLeafRecord(schemaTypeDefinition, buildDiscoveryMaterialIndex([schemaTypeDefinition])), false);
+
+const terminalWorkLeaf = {
+  id: 'work:event-meeting',
+  path: '.topics/events/meeting/001.trace.md',
+  schemaId: 'tiinex.event.meeting.v1',
+  sourceMode: 'source-backed',
+  source: { adapterId: 'github', rootPath: '.topics' },
+  hasContinuityContext: true,
+  cacheState: 'source-backed-metadata-only-session-cache'
+};
+assert.equal(isWorkLeafRecord(terminalWorkLeaf), true);
+assert.equal(isDiscoveryLeafRecord(terminalWorkLeaf, buildDiscoveryMaterialIndex([terminalWorkLeaf])), true);
 
 console.log('✓ workspace.materialRole tests passed');

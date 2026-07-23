@@ -70,14 +70,21 @@ export function buildDiscoveryMaterialIndex(records = []) {
 }
 
 export function isDiscoveryLeafRecord(record = {}, materialIndex = null) {
-  if (inferRecordMaterialRole(record) !== MaterialRole.leaf) return false;
+  if (!isDiscoveryWorkLeafEligible(record)) return false;
   const id = String(record.id || record.path || '').trim();
   if (!id || !materialIndex?.parentIds) return true;
   return !materialIndex.parentIds.has(id);
 }
 
 export function isWorkLeafRecord(record = {}) {
-  return inferRecordMaterialRole(record) === MaterialRole.leaf;
+  return isDiscoveryWorkLeafEligible(record);
+}
+
+export function isDiscoveryWorkLeafEligible(record = {}) {
+  if (inferRecordMaterialRole(record) !== MaterialRole.leaf) return false;
+  if (isSchemaTypeDefinitionRecord(record)) return false;
+  if (isRouteOnlyMaterialUnavailableShell(record)) return false;
+  return true;
 }
 
 export function isSupportingRecord(record = {}) {
@@ -119,6 +126,16 @@ function isRouteOnlyMaterialUnavailableShell(record = {}) {
   return cacheState === 'route-shell-material-unavailable'
     || materialAvailability === 'material-unavailable'
     || materialAvailability === 'route-shell-material-unavailable';
+}
+
+function isSchemaTypeDefinitionRecord(record = {}) {
+  const path = String(record.path || record.name || '').toLowerCase();
+  const kind = String(record.kind || '').toLowerCase();
+  const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
+  if (isSchemaDefinitionPath(path) || isCanonicalSchemaArtifactPath(path)) return true;
+  if (kind.includes('schema-definition') || kind.includes('schema module')) return true;
+  if (schema === 'tiinex.schema.module.v1' || schema.startsWith('tiinex.schema.')) return true;
+  return false;
 }
 
 function hasSourceBackedLeafEvidence(record = {}, path = '', schema = '') {
