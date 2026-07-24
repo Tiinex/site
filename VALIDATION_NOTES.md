@@ -1,68 +1,27 @@
-# Validation Notes v230
+# Validation Notes v231
 
-## v230 no-audio browser review
+## v231 PoC lineage comparison
 
-Q's v229 no-audio video showed two product frictions before the final Milestone A browser pass:
-
-1. GitHub issue snapshots loaded, but they appeared as red `mismatch` Evidence cards because the issue wrapper did not satisfy the Evidence validator's required sections.
-2. Issue snapshot cards used a generic boundary summary instead of the issue body's useful human text, so the new reader felt less like the PoC's discovery surface.
-3. The Display options dialog still exposed a visible "Deferred PoC controls" explanation. It was truthful, but it added boilerplate instead of helping the test pass.
-
-## Fix
-
-- Reworked GitHub issue snapshot Markdown generation so records remain read-only source-backed Evidence, but include the required Evidence sections:
-  - Supported Claim Or Question
-  - Provenance
-  - Evidence Material
-  - Preservation And Fidelity
-  - Interpretation Limits
-- Projected issue body excerpts into the record summary for better Feed/Search usefulness.
-- Kept GitHub discussion URLs explicitly degraded/deferred; no fake discussion reader was added.
-- Removed the visible deferred-controls block from Display options.
-
-## v230 test-readiness audit
-
-Q's public-build screenshot confirmed the Windows/Vite build path works in the local environment, but the visible package identity was still `0.2.46-v226`. I treat that as environment evidence, not as direct v230 build proof.
-
-The screenshot pass also showed the empty-stage header still felt unfinished after the source/issue/export closure work.
-
-The review found two presentation debts that would make Milestone A testing noisier than needed:
-
-1. The global dock still depended on broad historical toolbar/button CSS, making the top header look like accumulated patches rather than a single product contract.
-2. The source rail rendered internal `source.discoveryState` / idle labels directly, despite those states being lifecycle truth rather than user-facing material. That violated the earlier Add/Source boundary direction to avoid visible boilerplate for a missing/loading system.
-
-## Fix
-
-- Added dock-specific classes in `GlobalDock` and a single final v230 header contract in `src/styles/app.css`.
-- Kept the center logo anchored with symmetric side tracks instead of optical transform patches.
-- Kept `source.discoveryState` internal on the source pill as a data attribute, removed raw visible `deferred`/`idle` labels, and only shows transport pills after actual transport evidence exists.
-- Updated UI and architecture guards for the header/source-rail cleanup.
+Q compared v230 against the PoC and showed that GitHub issue discovery still did not rebuild the visible parent hierarchy. The v230 issue reader had fixed the earlier Evidence-wrapper mismatch, but it still materialized Tiinex issue payloads as generic read-only Evidence snapshots. In the PoC, issues/comments that contain Tiinex Source Markdown recover the typed artifact inside the GitHub issue/comment, and that recovered artifact participates in loaded Parent Trace lineage.
 
 ## Root-cause hypothesis
 
+The v230 browser issue reader collapsed two different source-material cases into one representation:
 
-Milestone A could not close while three PoC parity loops remained only partial:
+1. Plain GitHub issue material, which should remain a read-only Evidence snapshot.
+2. GitHub issue/comment bodies that contain embedded Tiinex Source Markdown, which should recover the embedded artifact as the artifact, not as an adapter wrapper.
 
-1. Source transport receipts were present but issue API material still did not use the same concrete materialization path as repo files.
-2. Issue snapshot discovery was mostly deferred, which made the Add/source surface look selectable while not producing the material class the user selected.
-3. Export package contracts existed in audit/portable code, but the browser viewer lacked a concrete workspace export action that produced a bounded package.
+Because the embedded artifact was wrapped as Evidence, the viewer saw an issue shell with no meaningful Parent Trace chain. This caused Lineage to stop at the issue record even when the source material contained a real Tiinex artifact with a declared parent.
 
 ## Fix
 
-- Debt-review follow-up after v227 found three blind spots before manual testing:
-  - the export button was rendered but not wired to `exportWorkspacePackage`;
-  - resolved GitHub refs could be pinned and then overwritten by an unresolved source update;
-  - issue snapshot records could inherit repo-root path rewriting, e.g. `.topics/<repo>/issues/<n>`, instead of preserving the GitHub issue/discussion target.
-- Added guards for those seams plus request-budget enforcement for explicit issue snapshot loads.
-- Added `src/adapters/github/github.issueSurface.js` to keep issue/discovery ownership outside the already-bounded GitHub adapter.
-- Extended `src/adapters/github/github.issueSnapshot.js` with:
-  - bounded repo issue discovery;
-  - explicit issue target fetching;
-  - comment capture within a bounded limit;
-  - source-backed Evidence snapshot record creation through the existing artifact record path.
-- Updated `src/adapters/github/github.adapter.js` so issue surfaces are reconciled alongside repo and explicit-file surfaces without attributing issue material to repo files.
-- Added `src/export/package.zip.js` and `src/export/package.zip.test.mjs` for browser-safe stored ZIP export from the existing export package bundle contract.
-- Added a workspace export action that downloads the package ZIP without mutating sources or fetching remote material.
+- Added `src/adapters/github/github.issueEmbedded.js` as the owner for embedded Source Markdown extraction/recovery.
+- Updated `src/adapters/github/github.issueSnapshot.js` so:
+  - issue bodies/comments with embedded Tiinex artifacts materialize typed records via `createRecordFromMarkdown`;
+  - plain issue bodies still materialize as schema-valid Evidence snapshots;
+  - recovered records keep `sourceTarget.surface = issueSnapshots` and `targetKind = github-issue-embedded-artifact` / `github-comment-embedded-artifact`;
+  - publication boundary source paths are preserved when present, giving relative Parent Trace resolution the same path context as source-backed repo files.
+- Extended `src/adapters/github/github.issueSnapshot.test.mjs` to prove embedded issue recovery preserves schema/title/path/trace and traverses to a loaded parent.
 
 ## Validation run
 
@@ -70,6 +29,11 @@ Commands run from this checkpoint:
 
 ```bash
 npm run validate
+```
+
+Then after package/source-clean packaging:
+
+```bash
 npm run ui:shape
 npm run architecture:shape
 npm run typecheck
@@ -83,15 +47,16 @@ npm ci --ignore-scripts --no-audit --no-fund --dry-run
 
 ## Manual status
 
-Manual browser validation is still needed before declaring Milestone A fully closed. The focused checks are:
+Manual browser validation is still needed before declaring Milestone A closed. The highest-value v231 checks are:
 
 ```text
-1. Add → GitHub source → repo files discovery still loads repo Markdown.
-2. Add → GitHub source → Issue snapshot discovery with no explicit URLs loads bounded public issue snapshots or gives an explicit unavailable/degraded receipt.
-3. Add → GitHub source → explicit issue URL materializes an Evidence snapshot record.
-4. Source receipt details show repo/explicit/issues surfaces separately.
-5. Export workspace package downloads a ZIP and does not convert source-backed material into local leaves.
-6. Discovery, Tree, Lineage, and Audit still behave as in v226.
+1. Add GitHub source → repo files + issue snapshot discovery for Tiinex/docs.
+2. Select an issue-backed record that contains Tiinex Source Markdown.
+3. Open Lineage and verify the typed artifact appears, not just an Evidence issue wrapper.
+4. Verify the parent/root hierarchy is rebuilt when the parent artifacts are loaded.
+5. Verify plain issues without embedded Tiinex payloads still render as read-only Evidence snapshots.
+6. Export workspace ZIP.
+7. Regression: Discovery / Tree / Lineage / Audit / Display options / header.
 ```
 
 ## Not validated here
@@ -101,4 +66,4 @@ npm run build:public
 npm run public:check
 ```
 
-These remain environment-sensitive in this source-clean sandbox when local Vite runtime is unavailable. Q's screenshot proves local Windows Vite can build a prior checkpoint; v230 still needs a local public-build receipt before deploy.
+These remain environment-sensitive in this source-clean sandbox when local Vite runtime is unavailable. Q should run the public build checks locally on v231 before deploy.

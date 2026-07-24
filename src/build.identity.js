@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v230';
-export const TIINEX_SITE_VERSION = '0.2.50-v230';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v230';
-export const TIINEX_RUNTIME_ID = 'react-v230-milestone-a-friction-closure';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v230-milestone-a-friction-closure';
+export const TIINEX_SITE_CHECKPOINT = 'v231';
+export const TIINEX_SITE_VERSION = '0.2.51-v231';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v231';
+export const TIINEX_RUNTIME_ID = 'react-v231-issue-embedded-lineage-recovery';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v231-issue-embedded-lineage-recovery';
 
 
 export function tiinexBuildIdentity() {

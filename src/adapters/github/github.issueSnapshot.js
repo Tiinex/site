@@ -1,4 +1,5 @@
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
+import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks, sourceArtifactPathFromPublicationBody } from './github.issueEmbedded.js';
 
 export const GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID = 'tiinex.github.issueSnapshot.v1';
 const TARGET_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(issues|pull|discussions)\/(\d+)(?:[#?].*)?$/i;
@@ -120,16 +121,18 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
       const comments = maxComments && Number(issue.comments || 0) > 0
         ? await fetchCommentsForIssue(normalized, fetchImpl, maxComments)
         : [];
-      const record = createGithubIssueSnapshotRecord(Object.assign({}, issue, { target: normalized, comments, method: 'github-browser-issue-reader' }), options);
-      record.sourceTarget = Object.assign({
-        schema: 'tiinex.source.material.target.v1',
-        surface: 'issueSnapshots',
-        targetKind: `github-${normalized.kind}-snapshot`,
-        inputTarget: normalized.canonicalUrl,
-        transportTier: issue.transportTier || '',
-        loaded: true
-      }, record.sourceTarget || {});
-      records.push(record);
+      const issueRecords = createGithubIssueSnapshotRecords(Object.assign({}, issue, { target: normalized, comments, method: 'github-browser-issue-reader' }), options);
+      for (const record of issueRecords) {
+        record.sourceTarget = Object.assign({
+          schema: 'tiinex.source.material.target.v1',
+          surface: 'issueSnapshots',
+          targetKind: record.snapshot?.embedded ? `github-${normalized.kind}-embedded-artifact` : `github-${normalized.kind}-snapshot`,
+          inputTarget: record.snapshot?.sourceUrl || normalized.canonicalUrl,
+          transportTier: issue.transportTier || '',
+          loaded: true
+        }, record.sourceTarget || {});
+        records.push(record);
+      }
     } catch (error) {
       warnings.push(githubIssueFetchWarning(error, 'github.issue.snapshot.fetch-failed', `Could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl }));
     }
@@ -144,6 +147,29 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
 }
 
 export function createGithubIssueSnapshotRecord(snapshot = {}, options = {}) {
+  return createGithubIssueSnapshotRecords(snapshot, options)[0];
+}
+
+export function createGithubIssueSnapshotRecords(snapshot = {}, options = {}) {
+  const target = snapshot.target || parseGithubIssueSnapshotTarget(snapshot.url || snapshot.html_url || '');
+  if (!target.ok) throw new Error(target.error || 'invalid issue snapshot target');
+  const issueEmbedded = extractEmbeddedTiinexMarkdownBlocks(snapshot.body || '');
+  const records = [];
+  if (issueEmbedded.length) {
+    records.push(createGithubEmbeddedArtifactRecord(issueEmbedded[0], { target, item: snapshot, ordinal: 0, sourceKind: 'issue', sourceUrl: target.canonicalUrl, sourceArtifactPath: sourceArtifactPathFromPublicationBody(snapshot.body || ''), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+  } else {
+    records.push(createGithubIssueSnapshotEvidenceRecord(snapshot, options));
+  }
+  const comments = Array.isArray(snapshot.comments) ? snapshot.comments : [];
+  comments.forEach((comment, index) => {
+    for (const embedded of extractEmbeddedTiinexMarkdownBlocks(comment.body || '')) {
+      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+    }
+  });
+  return records;
+}
+
+function createGithubIssueSnapshotEvidenceRecord(snapshot = {}, options = {}) {
   const target = snapshot.target || parseGithubIssueSnapshotTarget(snapshot.url || snapshot.html_url || '');
   if (!target.ok) throw new Error(target.error || 'invalid issue snapshot target');
   const comments = Array.isArray(snapshot.comments) ? snapshot.comments : [];
@@ -240,7 +266,7 @@ export function materializeGithubIssueSnapshotFixtures(issueUrls = '', fixtures 
       continue;
     }
     try {
-      records.push(createGithubIssueSnapshotRecord(Object.assign({}, fixture, { target })));
+      records.push(...createGithubIssueSnapshotRecords(Object.assign({}, fixture, { target })));
     } catch (error) {
       errors.push({ ref: target.canonicalUrl, error: error?.message || String(error) });
     }
@@ -253,6 +279,7 @@ export function materializeGithubIssueSnapshotFixtures(issueUrls = '', fixtures 
     counts: { targets: parsed.targets.length, records: records.length, warnings: warnings.length, errors: errors.length }
   };
 }
+
 
 
 function issueSnapshotSummary({ body = '', title = '', target = {} } = {}) {

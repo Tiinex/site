@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.50-v230",
+  "version": "0.2.51-v231",
   "private": true,
-  "description": "Tiinex Site v230: Milestone A friction closure and issue snapshot read-model candidate.",
+  "description": "Tiinex Site v231: Milestone A issue embedded lineage recovery candidate.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
