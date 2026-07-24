@@ -26,6 +26,7 @@ import {
 import { normalizeWorkspaceDisplayOptions } from '../workspaces/workspace.displayOptions.js';
 import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.jsx';
 import { DisplayOptionsDialog } from '../schemas/workspace/workspace.displayOptions.views.jsx';
+import { schemaRegistry } from '../schemas/registry.js';
 import { workspaceViewScrollKeyFor, stateWithViewPatch, stateWithViewUpdate, stateWithCapturedViewScroll } from './viewState.js';
 
 export function TiinexApp() {

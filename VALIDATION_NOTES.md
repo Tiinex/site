@@ -1,58 +1,21 @@
-# Validation Notes v225
+# Validation Notes v226
 
 ## Root cause hypothesis
 
-v224 improved the validation and companion architecture, but two debts remained before Root closure:
+The v225 manual video showed a browser runtime crash when opening a record-action dialog:
 
-1. The schema folders still contained many inert scaffold files. They looked like active companion roles but were not imported by schema modules or consumed by the registry. That made the companion contract look more complex than it is and invited future copy/paste scale debt.
-2. The extracted app shell restored the logo class names, but CSS still had accumulated historical logo overrides. The dock grid used asymmetric side widths, so the center logo could drift when the left and right action groups differed in width.
+```text
+Uncaught ReferenceError: schemaRegistry is not defined
+at TiinexApp.jsx:787
+```
+
+The v222-v225 view split moved dialogs and shell presentation out of `TiinexApp.jsx`, but the controller still passed `schemaRegistry` to `RecordActionDialog` without importing the registry. Source-clean validation did not catch this because the sandbox still cannot run the Vite public build, and the current JS typecheck does not run with `checkJs`.
 
 ## Fix
 
-- Removed unused surface presenter wrappers and inactive form scaffolds from schema companion folders.
-- Kept the flat versioned companion contract:
-
-```text
-<schema-id>.schema.md
-<schema-id>.schema.json
-<schema-id>.schema.js
-<schema-id>.validate.js
-<schema-id>.presenter.js
-<schema-id>.capabilities.js
-<schema-id>.findings.js
-<schema-id>.<locale>.i18n.json
-```
-
-- Kept transitions as passive imported companions because action capability checks depend on explicit transition declarations, but did not activate transition/product behavior.
-- Added `src/schemas/schema.companionContract.test.mjs` to prove:
-  - registered modules use versioned schema-id filenames;
-  - finding codes render through i18n;
-  - inert surface/form scaffold files are not shipped before they have a real owner.
-- Updated the audit badge dialog to render finding messages through the i18n resolver.
-- Added a final canonical dock/logo CSS owner so the Tiinex mark is centered by layout, not by accumulated optical transform patches.
-
-## Companion contract status
-
-A schema builder should be able to generate a minimal companion with only:
-
-```text
-<schema-id>.schema.md
-<schema-id>.schema.json
-<schema-id>.schema.js
-```
-
-Then add optional files only when the schema diverges from Root or needs extra behavior:
-
-```text
-<schema-id>.validate.js
-<schema-id>.presenter.js
-<schema-id>.capabilities.js
-<schema-id>.findings.js
-<schema-id>.<locale>.i18n.json
-<schema-id>.transitions.js
-```
-
-Forms remain transition-milestone material and are intentionally not shipped as passive scaffold in this checkpoint.
+- Restored `import { schemaRegistry } from '../schemas/registry.js';` in `src/app/TiinexApp.jsx`.
+- Added an architecture-shape guard for this exact seam.
+- Left the v225 companion contract, finding/i18n rendering, scaffold removals, and dock-logo CSS contract unchanged.
 
 ## Validation run
 
@@ -73,7 +36,7 @@ npm ci --ignore-scripts --no-audit --no-fund --dry-run
 
 ## Manual status
 
-Manual browser validation is still needed for full UX confidence. Test the dock logo, local workspace filters, Tiinex/docs Discovery leaves, and Lineage independence together.
+Manual browser validation is still needed for full UX confidence. The highest-priority check is reopening the same record/action flow shown in the v225 video and verifying that the app no longer crashes.
 
 ## Not validated here
 
@@ -82,4 +45,4 @@ npm run build:public
 npm run public:check
 ```
 
-The sandbox has not reliably provided an installed local Vite runtime for public build verification. Dependency dry-runs passed, but this checkpoint should still be public-build checked in the normal local environment after `npm install`.
+Reason: the source-clean sandbox still lacks a local Vite runtime in `node_modules/.bin/vite`, so no public build is claimed from this environment.

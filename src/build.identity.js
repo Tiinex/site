@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v225';
-export const TIINEX_SITE_VERSION = '0.2.45-v225';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v225';
-export const TIINEX_RUNTIME_ID = 'react-v225-companion-hygiene-logo-closure';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v225-companion-hygiene-logo-closure';
+export const TIINEX_SITE_CHECKPOINT = 'v226';
+export const TIINEX_SITE_VERSION = '0.2.46-v226';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v226';
+export const TIINEX_RUNTIME_ID = 'react-v226-record-action-registry-import';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v226-record-action-registry-import';
 
 
 export function tiinexBuildIdentity() {

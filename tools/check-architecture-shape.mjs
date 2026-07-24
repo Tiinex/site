@@ -79,6 +79,7 @@ includes('src/app/TiinexApp.jsx', "from './appShell.views.jsx'", 'TiinexApp must
 includes('src/app/TiinexApp.jsx', "from './runtimeState.js'", 'TiinexApp must import runtime/default state from extracted module');
 includes('src/app/TiinexApp.jsx', "from './githubMaterializationSummary.js'", 'TiinexApp must import source-summary helpers from extracted module');
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
+includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
 
 excludes('src/schemas/workspace/workspace.views.jsx', 'function normalizeDisplayFilterValue', 'workspace.views must not own display filter normalization');
 excludes('src/schemas/workspace/workspace.views.jsx', 'function displayRecordIncluded', 'workspace.views must not own record display membership');
