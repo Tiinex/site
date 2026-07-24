@@ -164,7 +164,7 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
         </label>
         <label className={`tx-github-discovery-card ${issueDiscovery ? 'is-active' : ''}`}>
           <input type="checkbox" checked={issueDiscovery} onChange={(event) => setIssueDiscovery(event.target.checked)} />
-          <span><strong>Issue snapshot discovery</strong><small>Use explicit issue/discussion targets as read-only source snapshots.</small></span>
+          <span><strong>Issue snapshot discovery</strong><small>Read bounded public issues or explicit issue URLs as read-only source snapshots; discussion URLs stay degraded when unsupported.</small></span>
         </label>
       </fieldset>
       <label className="tx-textarea-field">

@@ -35,15 +35,18 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
           const closeable = Boolean(source.closeable);
           const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
           const transport = sourceTransportSummary(source);
-          const idle = source.discoveryState === 'deferred' || source.discoveryState === 'not-started';
           return (
-            <span key={source.id || source.label} className={`tx-source-pill ${closeable ? 'tx-source-pill-closeable' : ''} ${kind.includes('github') ? 'source-github' : 'source-local'}`} title={source.boundary || boundary || ''}>
+            <span
+              key={source.id || source.label}
+              className={`tx-source-pill ${closeable ? 'tx-source-pill-closeable' : ''} ${kind.includes('github') ? 'source-github' : 'source-local'}`}
+              title={source.boundary || boundary || ''}
+              data-discovery-state={source.discoveryState || undefined}
+              data-source-kind={kind || undefined}
+            >
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
               <strong>{source.label || source.id || 'Source'}</strong>
               <small>{source.count || 0}</small>
               {transport.label ? <button type="button" className="tx-source-transport tx-source-transport-button" title={transport.title} onClick={() => onSourceTransportRefresh?.(source.id)}>{transport.label}</button> : null}
-              {source.discoveryState ? <em className={`tx-source-state tx-source-state-${source.discoveryState}`}>{source.discoveryState}</em> : null}
-              {idle ? <em className="tx-source-motion-state" title="No source materialization is currently running.">idle</em> : null}
               {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
@@ -62,13 +65,15 @@ function sourceTransportSummary(source = {}) {
     ? outcome.winningTiers
     : ['cache', 'mirror', 'proxy', 'direct'].filter((tier) => Number(tiers[tier] || 0) > 0);
   const attempted = Array.isArray(outcome.attemptedTiers) ? outcome.attemptedTiers : [];
-  const label = winning.length ? `used: ${winning.join('+')}` : 'plan';
   const skipped = Array.isArray(outcome.skipped) ? outcome.skipped : [];
   const failed = Array.isArray(outcome.failed) ? outcome.failed : [];
+  const hasObservedTransport = Boolean(winning.length || attempted.length || skipped.length || failed.length);
+  if (!hasObservedTransport) return { label: '', title: '' };
+  const label = winning.length ? `used: ${winning.join('+')}` : 'transport';
   const titleParts = [
     `Configured plan: ${plan}`,
-    attempted.length ? `Attempted: ${attempted.join(' → ')}` : 'Attempted: not browser-verified yet',
-    winning.length ? `Delivered by: ${winning.join(', ')}` : 'Delivered by: none recorded yet',
+    attempted.length ? `Attempted: ${attempted.join(' → ')}` : '',
+    winning.length ? `Delivered by: ${winning.join(', ')}` : 'Delivered by: none recorded',
     skipped.length ? `Skipped/unavailable: ${skipped.map((item) => `${item.tier}${item.message ? ` (${item.message})` : ''}`).join(', ')}` : '',
     failed.length ? `Failed attempts: ${failed.map((item) => `${item.tier}${item.status ? ` ${item.status}` : ''}`).join(', ')}` : '',
     'Click to clear this source cache and reopen source controls for the next explicit transport attempt.'

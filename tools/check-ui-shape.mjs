@@ -89,6 +89,7 @@ if (appAndWorkspace.includes('aria-label="Workspace verse"')) failures.push('Lin
 if (!appAndWorkspace.includes('Display options')) failures.push('workspace presentation needs display options for assets/supporting material');
 if (!appAndWorkspace.includes('showAssets: false')) failures.push('assets must be hidden by default in Feed/Tree presentation');
 if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
+if (appAndWorkspace.includes('tx-source-motion-state') || appAndWorkspace.includes('tx-source-state-')) failures.push('source rail must not render idle/deferred raw discovery labels');
 if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
 if (!appAndWorkspace.includes('schemaRegistry.modules.length')) failures.push('help surface should disclose schema companion state');
 has('src/schemas/workspace/tiinex.workspace.v1.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
@@ -129,9 +130,9 @@ has('src/styles/app.css', '/* v119.3 dock ergonomics:', 'dock recognition ergono
 has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must wrap visible controls instead of stretching toward the column');
 has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
 has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
-has('src/styles/app.css', '/* v225: canonical dock/logo centering contract.', 'canonical dock/logo centering contract must be the final owner');
+has('src/styles/app.css', '/* v229: canonical global-dock/header contract.', 'canonical global dock/header contract must be the final owner');
 has('src/styles/app.css', 'grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;', 'dock logo must remain center-anchored with symmetric side tracks');
-has('src/styles/app.css', 'width: 138%;', 'logo image itself must be larger without increasing the button size');
+has('src/styles/app.css', 'width: 136%;', 'logo image itself must remain larger without increasing the button size');
 has('src/styles/app.css', 'transform: none;', 'logo glyph should be centered by layout contract, not accumulating optical transform patches');
 
 has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');

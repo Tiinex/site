@@ -16,21 +16,21 @@ export function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPrevi
       data-workspace-count={workspaceCount}
       data-overflow-pager={showPager ? 'visible' : 'hidden'}
     >
-      {showPager ? <Button shape="round" icon="previous" aria-label="Previous workspace" onClick={onPreviousWorkspace} /> : null}
+      {showPager ? <Button shape="round" icon="previous" className="tx-dock-pager-button" aria-label="Previous workspace" onClick={onPreviousWorkspace} /> : null}
       <span className="tx-dock-core tx-centered-dock-core tx-content-fit-dock">
         <span className="tx-dock-side tx-dock-left">
-          <Button icon="multiverse" variant="nav" aria-label="Change multiverse" title="Change multiverse" onClick={onMultiverse} />
-          <Button icon="create" variant="primary" onClick={onCreate}>Create</Button>
+          <Button icon="multiverse" variant="nav" className="tx-dock-icon-button" aria-label="Change multiverse" title="Change multiverse" onClick={onMultiverse} />
+          <Button icon="create" variant="primary" className="tx-dock-action-button tx-dock-create-button" onClick={onCreate}>Create</Button>
         </span>
         <button className="tx-logo-command tx-logo-home tx-dock-logo-large" data-home type="button" onClick={onHome} aria-label="Tiinex home">
           <img src={LOGO_SRC} alt="" />
         </button>
         <span className="tx-dock-side tx-dock-right">
-          <Button icon="shareNodes" variant="nav" onClick={onShare}>Share session</Button>
-          <Button icon="help" variant="nav" aria-label="Help" onClick={onHelp} />
+          <Button icon="shareNodes" variant="nav" className="tx-dock-action-button tx-dock-share-button" onClick={onShare}>Share session</Button>
+          <Button icon="help" variant="nav" className="tx-dock-icon-button" aria-label="Help" onClick={onHelp} />
         </span>
       </span>
-      {showPager ? <Button shape="round" icon="next" aria-label="Next workspace" onClick={onNextWorkspace} /> : null}
+      {showPager ? <Button shape="round" icon="next" className="tx-dock-pager-button" aria-label="Next workspace" onClick={onNextWorkspace} /> : null}
     </nav>
   );
 }

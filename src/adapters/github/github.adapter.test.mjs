@@ -30,6 +30,9 @@ const repoApi = 'https://api.github.com/repos/owner/repo';
 const treeApi = 'https://api.github.com/repos/owner/repo/git/trees/main?recursive=1';
 const rawTopic = 'https://raw.githubusercontent.com/owner/repo/main/.topics/a.md';
 const rawNested = 'https://raw.githubusercontent.com/owner/repo/main/.topics/nested/b.trace.md';
+const issueApi = 'https://api.github.com/repos/owner/repo/issues/1';
+const issueCommentsApi = 'https://api.github.com/repos/owner/repo/issues/1/comments?per_page=20';
+const issueListApi = 'https://api.github.com/repos/owner/repo/issues?state=all&per_page=25';
 
 const map = {
   [repoApi]: { json: { default_branch: 'main' } },
@@ -40,7 +43,10 @@ const map = {
     { type: 'blob', path: 'README.md' }
   ] } },
   [rawTopic]: { text: '# A\n\n![diagram](diagram.png)' },
-  [rawNested]: { text: '# B\n\nBody' }
+  [rawNested]: { text: '# B\n\nBody' },
+  [issueApi]: { json: { html_url: 'https://github.com/owner/repo/issues/1', number: 1, title: 'API issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z', comments: 1 } },
+  [issueCommentsApi]: { json: [{ user: { login: 'reviewer' }, body: 'Comment body' }] },
+  [issueListApi]: { json: [{ html_url: 'https://github.com/owner/repo/issues/1', number: 1, title: 'API issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z', comments: 0 }] }
 };
 
 const called = [];
@@ -96,14 +102,16 @@ assert.equal(budgetCalled.length, 0, 'budget-blocked raw load must not call fetc
 assert(budgetLimited.warnings.some((warning) => warning.code === 'transport.policy.request-budget-exceeded'), 'budget warning must be surfaced');
 assert(budgetLimited.diagnostics.transportEvents.some((event) => event.code === 'transport.policy.request-budget-exceeded'), 'budget warning must be a transport event');
 
-const issueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
-assert(issueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'issue reader must be honest/deferred without fixtures');
-assert.equal(issueDeferred.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
-assert.equal(issueDeferred.diagnostics.surfaces.issueSnapshots.deferred, true, 'issue surface should report deferred browser reader state');
-assert.equal(issueDeferred.diagnostics.surfaces.repoFiles.loaded, 0, 'deferred issue targets must not be attributed to repo files');
-assert.deepEqual(issueDeferred.diagnostics.recordAttribution, [], 'deferred issue targets must not claim materialized records');
-assert.equal(issueDeferred.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'normalized source plan should preserve requested issue surface');
-assert.equal(issueDeferred.diagnostics.sourcePlan.surfaces.issueSnapshots.attempted, true, 'normalized source plan should preserve attempted issue surface');
+const issueLoaded = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
+assert.equal(issueLoaded.records.length, 1, 'explicit issue target should materialize through browser issue reader');
+assert.equal(issueLoaded.records[0].kind, 'tiinex.evidence.v1', 'issue reader should create an Evidence snapshot record');
+assert.equal(issueLoaded.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
+assert.equal(issueLoaded.diagnostics.surfaces.issueSnapshots.loaded, 1, 'issue surface should report loaded browser issue reader state');
+assert.equal(issueLoaded.diagnostics.surfaces.repoFiles.loaded, 0, 'issue targets must not be attributed to repo files');
+assert.equal(issueLoaded.diagnostics.recordAttribution[0].surface, 'issueSnapshots', 'issue targets must claim issueSnapshots attribution');
+assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'normalized source plan should preserve requested issue surface');
+assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.attempted, true, 'normalized source plan should preserve attempted issue surface');
+assert(issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.direct.ok'), 'issue reader should use shared transport events');
 
 const issueUrlAsExplicitFile = await materializeGithubSource(source, { repoDiscovery: false, fileRefs: ['https://github.com/owner/repo/issues/1'], issueDiscovery: false, issueUrls: '' }, { fetchImpl });
 assert.equal(issueUrlAsExplicitFile.okCount, 0, 'issue URL in explicit file surface must not become a repo file');
@@ -111,9 +119,22 @@ assert.equal(issueUrlAsExplicitFile.diagnostics.surfaces.repoFiles.loaded, 0, 'i
 assert.equal(issueUrlAsExplicitFile.diagnostics.surfaces.explicitFiles.failed, 1, 'invalid explicit issue URL should be owned by explicit files surface');
 assert(issueUrlAsExplicitFile.errors.some((error) => error.surface === 'explicitFiles'), 'invalid explicit target should preserve owning surface');
 
-const repoWideIssueDeferred = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: '' }, { fetchImpl });
-assert(repoWideIssueDeferred.warnings.some((warning) => warning.code === 'github.issue.reader.deferred'), 'repo-wide issue discovery without explicit URLs should be an honest deferred surface');
-assert.equal(repoWideIssueDeferred.diagnostics.surfaces.issueSnapshots.unavailable, true, 'issue surface should report unavailable repo-wide browser reader');
+
+const issueBudgetCalled = [];
+const issueBudgetBlocked = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { fetchImpl: makeFetch(map, issueBudgetCalled), maxRequestsPerOperation: 1, allowCache: false }
+);
+assert.equal(issueBudgetBlocked.records.length, 0, 'transport budget should block explicit issue snapshot loading before fetching');
+assert.equal(issueBudgetCalled.length, 0, 'budget-blocked issue snapshot load must not call GitHub API');
+assert.equal(issueBudgetBlocked.diagnostics.surfaces.issueSnapshots.skipped, true, 'issue surface should report skipped when budget-blocked');
+assert(issueBudgetBlocked.warnings.some((warning) => warning.code === 'transport.policy.request-budget-exceeded' && warning.surface === 'issueSnapshots'), 'issue budget warning must stay owned by issueSnapshots');
+
+const repoWideIssueLoaded = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: '' }, { fetchImpl });
+assert.equal(repoWideIssueLoaded.records.length, 1, 'repo-wide issue discovery should materialize bounded public issue snapshots');
+assert.equal(repoWideIssueLoaded.diagnostics.issueSnapshotDiscovery.discovered, 1, 'repo-wide issue discovery should report discovered targets');
+assert.equal(repoWideIssueLoaded.diagnostics.surfaces.issueSnapshots.loaded, 1, 'issue surface should report loaded repo-wide issue snapshots');
 
 const issueSnapshot = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl, issueSnapshotFixtures: { 'https://github.com/owner/repo/issues/1': { title: 'Fixture issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z' } } });
 assert.equal(issueSnapshot.records.length, 1, 'fixture-backed issue snapshot should materialize one evidence record');

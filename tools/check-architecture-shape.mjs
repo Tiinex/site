@@ -60,10 +60,15 @@ includes('src/app/viewState.js', 'export function stateWithCapturedViewScroll', 
 includes('src/app/appShell.views.jsx', 'export function GlobalDock', 'GlobalDock must stay outside TiinexApp');
 includes('src/app/appShell.views.jsx', 'export function EmptyStage', 'EmptyStage must stay outside TiinexApp');
 includes('src/app/appShell.views.jsx', 'tx-logo-command tx-logo-home tx-dock-logo-large', 'extracted GlobalDock must preserve the styled home logo command classes');
-includes('src/styles/app.css', '/* v225: canonical dock/logo centering contract.', 'logo/dock centering must have a single final contract owner');
+includes('src/styles/app.css', '/* v229: canonical global-dock/header contract.', 'global dock/header polish must have a single final contract owner');
 includes('src/styles/app.css', 'grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;', 'dock logo must be centered through symmetric side tracks');
 includes('src/app/appShell.views.jsx', 'emptyStageSubtitle', 'extracted EmptyStage must preserve configured subtitle/MOTD rendering');
 includes('src/app/appShell.views.jsx', 'tx-top-dock tx-dock-shell-row', 'extracted GlobalDock must preserve top-dock wrapper classes so dock CSS applies');
+includes('src/app/appShell.views.jsx', 'tx-dock-action-button tx-dock-create-button', 'global dock buttons must expose header-specific classes instead of relying on broad button cascade');
+includes('src/app/appShell.views.jsx', 'tx-dock-icon-button', 'global dock icon buttons must expose header-specific classes for compact symmetry');
+includes('src/schemas/workspace/workspace.chrome.views.jsx', 'data-discovery-state={source.discoveryState || undefined}', 'source discovery state must remain inspectable as internal state on source rail');
+excludes('src/schemas/workspace/workspace.chrome.views.jsx', 'tx-source-motion-state', 'source rail must not render idle/deferred boilerplate labels');
+excludes('src/schemas/workspace/workspace.chrome.views.jsx', 'tx-source-state-', 'source rail must not render raw discoveryState labels');
 includes('src/app/appShell.views.jsx', 'export function HelpDialog', 'HelpDialog must stay outside TiinexApp');
 includes('src/app/runtimeState.js', 'export function runtime', 'runtime/default state must stay outside TiinexApp');
 includes('src/app/githubMaterializationSummary.js', 'export function summarizeGithubMaterialization', 'GitHub materialization summary helpers must stay outside TiinexApp');
@@ -80,6 +85,7 @@ includes('src/app/TiinexApp.jsx', "from './runtimeState.js'", 'TiinexApp must im
 includes('src/app/TiinexApp.jsx', "from './githubMaterializationSummary.js'", 'TiinexApp must import source-summary helpers from extracted module');
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
 includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
+includes('src/app/TiinexApp.jsx', 'onExportWorkspace={exportWorkspacePackage}', 'workspace export action must be wired from TiinexApp into WorkspaceColumnSurface');
 
 excludes('src/schemas/workspace/workspace.views.jsx', 'function normalizeDisplayFilterValue', 'workspace.views must not own display filter normalization');
 excludes('src/schemas/workspace/workspace.views.jsx', 'function displayRecordIncluded', 'workspace.views must not own record display membership');

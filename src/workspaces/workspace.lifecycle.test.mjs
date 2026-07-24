@@ -159,3 +159,24 @@ try {
   process.exit(1);
 }
 
+
+
+{
+  let state = globalThis.TiinexWorkspaceLifecycle.makeEmptyAppState();
+  const created = globalThis.TiinexWorkspaceLifecycle.createWorkspace(state, { name: 'Issue path guard' }, { clock: () => '2026-07-24T00:00:00.000Z' });
+  state = created.state;
+  const source = globalThis.TiinexWorkspaceLifecycle.addWorkspaceSource(state, created.workspace.id, { repository: 'Tiinex/docs', ref: 'main', rootPath: '.topics', label: 'Tiinex/docs' });
+  state = source.state;
+  const added = globalThis.TiinexWorkspaceLifecycle.addWorkspaceSourceRecords(state, created.workspace.id, source.source.id, [{
+    id: 'adapter-record-id',
+    title: 'Issue snapshot',
+    path: 'https://github.com/Tiinex/docs/issues/123',
+    kind: 'tiinex.evidence.v1',
+    sourceMode: 'github-issue-snapshot',
+    sourceTarget: { surface: 'issueSnapshots', inputTarget: 'https://github.com/Tiinex/docs/issues/123' },
+    markdown: `# Continuity Context\n\n# Evidence\n`
+  }]);
+  assert.equal(added.ok, true, 'issue snapshot source record should insert');
+  assert.equal(added.records[0].path, 'https://github.com/Tiinex/docs/issues/123', 'issue snapshot source path must not be rewritten under repo rootPath');
+  assert(!added.records[0].id.includes('.topics/tiinex/docs/issues'), 'issue snapshot deterministic id must not inherit repo rootPath');
+}

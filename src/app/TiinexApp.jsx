@@ -12,6 +12,8 @@ import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../work
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { clearGithubSourceTextCacheForSource } from '../sources/github/github.transport.js';
+import { buildExportPackageBundle } from '../export/package.builder.js';
+import { exportPackageZipBlob } from '../export/package.zip.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
@@ -520,6 +522,30 @@ export function TiinexApp() {
     setNotice(`Workspace/session share copied for ${label}; route-only viewers preserve boundary and may show material unavailable.`);
   }
 
+  function exportWorkspacePackage() {
+    if (!active) {
+      setNotice('No workspace to export.');
+      return;
+    }
+    try {
+      const bundle = buildExportPackageBundle(active);
+      const blob = exportPackageZipBlob(bundle);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = exportPackageFilename(active, bundle);
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice(`Export package ${bundle.status}: ${bundle.counts.files} files · ${bundle.counts.materialFiles} material files · no source mutation.`);
+    } catch (error) {
+      console.error(error);
+      setNotice('Could not build export package.');
+    }
+  }
+
   function closeSource(sourceId) {
     const result = runtime().lifecycle?.closeWorkspaceSource?.(state, active?.id, sourceId);
     if (!result?.ok) {
@@ -701,6 +727,12 @@ export function TiinexApp() {
     }, 'replace');
   }
 
+  function exportPackageFilename(workspace = {}, bundle = {}) {
+    const slug = String(workspace.title || workspace.name || workspace.id || 'workspace').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'workspace';
+    const stamp = String(bundle.builtAt || new Date().toISOString()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
+    return `tiinex-${slug}-${stamp}.zip`;
+  }
+
   function copyShareUrl() {
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
@@ -754,6 +786,7 @@ export function TiinexApp() {
           onQuery={setQuery}
           onOpenDisplayOptions={() => setDialog('display-options')}
           onOpenAddDialog={openAddToWorkspace}
+          onExportWorkspace={exportWorkspacePackage}
           onCloseSource={closeSource}
           onDropFiles={addLocalFiles}
           onOpenRecord={openRecord}

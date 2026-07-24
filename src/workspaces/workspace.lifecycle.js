@@ -20,6 +20,30 @@ return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_TITLE_MAX
 function normalizeRecordSummary(value) {
 return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_SUMMARY_MAX_LENGTH);
 }
+
+function canonicalizeSourceRecordPath(input = {}, source = {}) {
+const target = input.sourceTarget || {};
+const surface = String(target.surface || '').toLowerCase();
+const sourceMode = String(input.sourceMode || '').toLowerCase();
+const raw = target.inputTarget || target.url || input.path || input.name || '';
+if (surface === 'issuesnapshots' || sourceMode.includes('issue-snapshot') || /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|discussions)\/\d+/i.test(String(raw || ''))) {
+return canonicalizeExternalSourceTarget(raw);
+}
+return canonicalizeSourcePath(input.path || input.name || '', source);
+}
+function canonicalizeExternalSourceTarget(value = '') {
+const raw = String(value || '').trim();
+if (!raw) return '';
+try {
+const url = new URL(raw);
+const host = String(url.hostname || '').toLowerCase();
+if (host === 'github.com' || host.endsWith('.github.com')) return `https://github.com${url.pathname.replace(/\/+$/g, '')}`;
+return `${url.origin}${url.pathname.replace(/\/+$/g, '')}`;
+} catch (_) {
+return raw.replace(/#.*$/g, '').replace(/\?utm_[^#]*/g, '').replace(/\/+$/g, '');
+}
+}
+
 function canonicalizeSourcePath(inputPath, source = {}) {
 let p = String(inputPath || '').trim();
 if (!p) return '';
@@ -304,7 +328,7 @@ for (const input of records) {
 const title = normalizeRecordTitle(input.title || input.name);
 if (!title) continue;
 const createdAt = nowIso(options.clock);
-const canonicalPath = canonicalizeSourcePath(input.path || input.name || '', existingSource);
+const canonicalPath = canonicalizeSourceRecordPath(input, existingSource);
 const deterministicId = `source:${existingSource.id}:${canonicalPath || 'root'}`;
 const existingIndex = Array.isArray(workspace.records)
 ? workspace.records.findIndex((r) => r.id === deterministicId || (r.source && r.source.id === existingSource.id && String(r.path || '').trim() === canonicalPath))

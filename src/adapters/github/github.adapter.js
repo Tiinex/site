@@ -1,6 +1,6 @@
 import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '../adapter.contracts.js';
 import { loadGithubFilesForSource } from '../../sources/github/github.loader.js';
-import { materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { materializeGithubIssueSurface } from './github.issueSurface.js';
 import { authorizeSourceTransport } from '../../sources/transport.policy.js';
 import { collectSourceAssetReferences } from '../../sources/source.assetReferences.js';
 import { createGithubTransportFetch } from '../../sources/github/github.transport.js';
@@ -228,31 +228,6 @@ function summarizeSurfaceCountsFromTargets(result = {}) {
   return counts;
 }
 
-function issueSurfaceWarning(parsedIssueTargets = {}, hasFixtures = false) {
-  const targetCount = Number(parsedIssueTargets?.counts?.targets || 0);
-  if (targetCount > 0 && !hasFixtures) return {
-    code: 'github.issue.reader.deferred',
-    severity: 'warning',
-    surface: 'issueSnapshots',
-    requested: true,
-    attempted: true,
-    deferred: true,
-    targetCount,
-    message: 'Explicit GitHub issue/discussion targets were parsed, but snapshot fetching is deferred without fixtures or a future reader slice.'
-  };
-  return {
-    code: 'github.issue.reader.deferred',
-    severity: 'warning',
-    surface: 'issueSnapshots',
-    requested: true,
-    attempted: true,
-    deferred: true,
-    unavailable: true,
-    targetCount: 0,
-    message: 'Issue snapshot discovery was selected, but browser runtime has no repo-wide issue reader yet; provide explicit issue/discussion URLs or use a future reader slice.'
-  };
-}
-
 export async function materializeGithubSource(source, input = {}, options = {}) {
   const explicitRefs = Array.isArray(input.fileRefs) ? input.fileRefs : [];
   const explicitTargets = explicitRefs.map((ref, index) => fileTarget(ref, 'explicitFiles', index, 'explicit-markdown'));
@@ -316,28 +291,14 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   }
 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
-  let parsedIssueTargets = { targets: [], errors: [], counts: { targets: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
-    reportProgress(options, { phase: 'issue-snapshots', percent: fileTargets.length ? 32 : 24, label: 'Checking explicit GitHub issue/discussion snapshot targets' });
-    markSurface(sourcePlan, 'issueSnapshots', { attempted: true });
-    parsedIssueTargets = parseGithubIssueSnapshotTargets(input.issueUrls || []);
-    diagnostics.issueSnapshotTargets = parsedIssueTargets.counts.targets;
-    markSurface(sourcePlan, 'issueSnapshots', { requestedCount: parsedIssueTargets.counts.targets, targets: parsedIssueTargets.counts.targets });
-    if (parsedIssueTargets.errors.length) errors.push(...parsedIssueTargets.errors.map((entry) => Object.assign({ surface: 'issueSnapshots', ref: entry.ref }, entry)));
-    if (options.issueSnapshotFixtures && parsedIssueTargets.counts.targets) {
-      issueSnapshotResult = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
-      warnings.push(...issueSnapshotResult.warnings.map((warning) => Object.assign({ surface: 'issueSnapshots' }, warning)));
-      errors.push(...issueSnapshotResult.errors.map((error) => Object.assign({ surface: 'issueSnapshots' }, error)));
-      diagnostics.issueSnapshotRecords = issueSnapshotResult.records.length;
-      markSurface(sourcePlan, 'issueSnapshots', { loaded: issueSnapshotResult.records.length, records: issueSnapshotResult.records.map((record) => record.id).filter(Boolean) });
-      for (const record of issueSnapshotResult.records || []) {
-        record.sourceTarget = Object.assign({ schema: 'tiinex.source.material.target.v1', surface: 'issueSnapshots', targetKind: 'github-issue-snapshot', loaded: true }, record.sourceTarget || {});
-      }
-    } else {
-      const warning = issueSurfaceWarning(parsedIssueTargets, false);
-      warnings.push(warning);
-      markSurface(sourcePlan, 'issueSnapshots', { deferred: true, unavailable: parsedIssueTargets.counts.targets === 0, skipped: true });
-    }
+    const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
+    issueSnapshotResult = issueSurface;
+    warnings.push(...(issueSurface.warnings || []));
+    errors.push(...(issueSurface.errors || []));
+    diagnostics.transportEvents.push(...(issueSurface.diagnostics?.transportEvents || []));
+    Object.assign(diagnostics, issueSurface.diagnostics || {});
+    markSurface(sourcePlan, 'issueSnapshots', issueSurface.surface || {});
   }
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
