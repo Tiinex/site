@@ -32,7 +32,7 @@ const rawTopic = 'https://raw.githubusercontent.com/owner/repo/main/.topics/a.md
 const rawNested = 'https://raw.githubusercontent.com/owner/repo/main/.topics/nested/b.trace.md';
 const issueApi = 'https://api.github.com/repos/owner/repo/issues/1';
 const issueCommentsApi = 'https://api.github.com/repos/owner/repo/issues/1/comments?per_page=20';
-const issueListApi = 'https://api.github.com/repos/owner/repo/issues?state=all&per_page=25';
+const issueListApi = 'https://api.github.com/repos/owner/repo/issues?state=all&sort=updated&direction=desc&per_page=25';
 
 const map = {
   [repoApi]: { json: { default_branch: 'main' } },
@@ -105,6 +105,8 @@ assert(budgetLimited.diagnostics.transportEvents.some((event) => event.code === 
 const issueLoaded = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl });
 assert.equal(issueLoaded.records.length, 1, 'explicit issue target should materialize through browser issue reader');
 assert.equal(issueLoaded.records[0].kind, 'tiinex.evidence.v1', 'issue reader should create an Evidence snapshot record');
+assert.equal(issueLoaded.records[0].summary, 'Issue body', 'issue reader should project issue body into the visible card summary');
+assert(issueLoaded.records[0].markdown.includes('## Interpretation Limits'), 'issue reader should create schema-valid Evidence sections');
 assert.equal(issueLoaded.diagnostics.issueSnapshotTargets, 1, 'issue targets should be parsed into diagnostics');
 assert.equal(issueLoaded.diagnostics.surfaces.issueSnapshots.loaded, 1, 'issue surface should report loaded browser issue reader state');
 assert.equal(issueLoaded.diagnostics.surfaces.repoFiles.loaded, 0, 'issue targets must not be attributed to repo files');

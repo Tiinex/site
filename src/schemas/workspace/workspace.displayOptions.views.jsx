@@ -73,10 +73,6 @@ export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery'
             </label>
           </>
         ) : null}
-        <details className="tx-display-deferred-controls">
-          <summary>Deferred PoC controls</summary>
-          <p>Time Portal and link-behavior controls remain deferred until their runtime owners are restored. They are not hidden parity claims.</p>
-        </details>
         <div className="tx-dialog-actions">
           <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
           <Button type="submit" variant="primary" icon="check">Apply</Button>

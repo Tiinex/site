@@ -1,8 +1,28 @@
-# Validation Notes v229
+# Validation Notes v230
 
-## v229 test-readiness audit
+## v230 no-audio browser review
 
-Q's public-build screenshot confirmed the Windows/Vite build path works in the local environment, but the visible package identity was still `0.2.46-v226`. I treat that as environment evidence, not as direct v229 build proof.
+Q's v229 no-audio video showed two product frictions before the final Milestone A browser pass:
+
+1. GitHub issue snapshots loaded, but they appeared as red `mismatch` Evidence cards because the issue wrapper did not satisfy the Evidence validator's required sections.
+2. Issue snapshot cards used a generic boundary summary instead of the issue body's useful human text, so the new reader felt less like the PoC's discovery surface.
+3. The Display options dialog still exposed a visible "Deferred PoC controls" explanation. It was truthful, but it added boilerplate instead of helping the test pass.
+
+## Fix
+
+- Reworked GitHub issue snapshot Markdown generation so records remain read-only source-backed Evidence, but include the required Evidence sections:
+  - Supported Claim Or Question
+  - Provenance
+  - Evidence Material
+  - Preservation And Fidelity
+  - Interpretation Limits
+- Projected issue body excerpts into the record summary for better Feed/Search usefulness.
+- Kept GitHub discussion URLs explicitly degraded/deferred; no fake discussion reader was added.
+- Removed the visible deferred-controls block from Display options.
+
+## v230 test-readiness audit
+
+Q's public-build screenshot confirmed the Windows/Vite build path works in the local environment, but the visible package identity was still `0.2.46-v226`. I treat that as environment evidence, not as direct v230 build proof.
 
 The screenshot pass also showed the empty-stage header still felt unfinished after the source/issue/export closure work.
 
@@ -13,7 +33,7 @@ The review found two presentation debts that would make Milestone A testing nois
 
 ## Fix
 
-- Added dock-specific classes in `GlobalDock` and a single final v229 header contract in `src/styles/app.css`.
+- Added dock-specific classes in `GlobalDock` and a single final v230 header contract in `src/styles/app.css`.
 - Kept the center logo anchored with symmetric side tracks instead of optical transform patches.
 - Kept `source.discoveryState` internal on the source pill as a data attribute, removed raw visible `deferred`/`idle` labels, and only shows transport pills after actual transport evidence exists.
 - Updated UI and architecture guards for the header/source-rail cleanup.
@@ -81,4 +101,4 @@ npm run build:public
 npm run public:check
 ```
 
-These remain environment-sensitive in this source-clean sandbox when local Vite runtime is unavailable. Q's screenshot proves local Windows Vite can build a prior checkpoint; v229 still needs a local public-build receipt before deploy.
+These remain environment-sensitive in this source-clean sandbox when local Vite runtime is unavailable. Q's screenshot proves local Windows Vite can build a prior checkpoint; v230 still needs a local public-build receipt before deploy.

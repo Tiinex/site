@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.49-v229",
+  "version": "0.2.50-v230",
   "private": true,
-  "description": "Tiinex Site v229: Milestone A test-readiness and header/source-rail debt closure candidate.",
+  "description": "Tiinex Site v230: Milestone A friction closure and issue snapshot read-model candidate.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

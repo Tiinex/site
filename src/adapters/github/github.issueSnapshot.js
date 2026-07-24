@@ -59,7 +59,7 @@ export async function discoverGithubIssueSnapshotTargets(source = {}, options = 
       counts: { discovered: 0, targets: 0, warnings: 1, errors: 0 }
     };
   }
-  const url = `https://api.github.com/repos/${owner}/${repo}/issues?state=all&per_page=${encodeURIComponent(String(maxIssues))}`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/issues?state=all&sort=updated&direction=desc&per_page=${encodeURIComponent(String(maxIssues))}`;
   try {
     const rows = await fetchJson(url, fetchImpl);
     const seen = new Set();
@@ -151,8 +151,9 @@ export function createGithubIssueSnapshotRecord(snapshot = {}, options = {}) {
   const title = snapshot.title || `${capitalize(target.kind)} #${target.number}`;
   const state = snapshot.state || 'unknown';
   const author = snapshot.user?.login || snapshot.author || 'unknown';
-  const body = snapshot.body || '';
+  const body = String(snapshot.body || '');
   const method = snapshot.method || 'github-explicit-snapshot-fixture';
+  const summary = issueSnapshotSummary({ body, title, target });
   const markdown = [
     '# Continuity Context',
     '',
@@ -160,15 +161,19 @@ export function createGithubIssueSnapshotRecord(snapshot = {}, options = {}) {
     '- Current',
     '  - Current Schema: [tiinex.evidence.v1](tiinex.evidence.v1.schema.md)',
     `  - Created At: ${createdAt}`,
-    `  - Summary: GitHub ${target.kind} snapshot for ${target.repository} #${target.number}`,
+    `  - Summary: ${summary}`,
     '  - Status: source-backed/snapshot',
-    '  - Why: Captured as an explicit GitHub issue/discussion snapshot target. No hidden repo discovery is implied.',
+    '  - Why: Captured as a read-only GitHub issue snapshot. It preserves observed source material without promoting it to project truth.',
     '',
     '---',
     '',
     `# ${title}`,
     '',
-    '## GitHub Snapshot Boundary',
+    '## Supported Claim Or Question',
+    '',
+    `This record preserves the observed GitHub ${target.kind} material for ${target.repository} #${target.number} so it can be inspected, searched, exported, and used explicitly by later Tiinex work.`,
+    '',
+    '## Provenance',
     '',
     `- Repository: ${target.repository}`,
     `- Kind: ${target.kind}`,
@@ -176,18 +181,34 @@ export function createGithubIssueSnapshotRecord(snapshot = {}, options = {}) {
     `- URL: ${target.canonicalUrl}`,
     `- State: ${state}`,
     `- Author: ${author}`,
+    `- Transport: ${method}`,
+    '- Source Boundary: read-only GitHub issue snapshot; no repo-file discovery or remote mutation is implied.',
     '',
-    '## Body',
+    '## Evidence Material',
     '',
-    body || '_No body captured._',
+    body ? markdownFence(body, 'md') : '_No issue body was captured._',
     '',
-    comments.length ? '## Comments' : '',
+    comments.length ? '### Captured comments' : '',
     ...comments.flatMap((comment, index) => [
-      comments.length ? `### Comment ${index + 1} · ${comment.user?.login || comment.author || 'unknown'}` : '',
+      comments.length ? `#### Comment ${index + 1} · ${comment.user?.login || comment.author || 'unknown'}` : '',
       comments.length ? '' : '',
-      comments.length ? (comment.body || '_No comment body captured._') : '',
+      comments.length ? markdownFence(comment.body || '_No comment body captured._', 'md') : '',
       comments.length ? '' : ''
     ]),
+    '',
+    '## Preservation And Fidelity',
+    '',
+    '- Snapshot Type: GitHub issue materialization',
+    `- Snapshot Method: ${method}`,
+    `- Snapshot Target: ${target.canonicalUrl}`,
+    '- Fidelity: preserves title, state, author, body, and bounded comments available to the browser reader at materialization time.',
+    '',
+    '## Interpretation Limits',
+    '',
+    '- GitHub issues and comments are mutable source material.',
+    '- This Evidence record does not mean acceptance, task status, owner intent, or canonical Tiinex lineage by itself.',
+    '- Use a later explicit transition or artifact draft to interpret this source material.',
+    '',
     '# Continuity Integrity',
     '',
     '- Snapshot Integrity',
@@ -231,6 +252,34 @@ export function materializeGithubIssueSnapshotFixtures(issueUrls = '', fixtures 
     errors,
     counts: { targets: parsed.targets.length, records: records.length, warnings: warnings.length, errors: errors.length }
   };
+}
+
+
+function issueSnapshotSummary({ body = '', title = '', target = {} } = {}) {
+  const excerpt = plainExcerpt(body, 140);
+  if (excerpt) return excerpt;
+  return `GitHub ${target.kind || 'issue'} snapshot for ${target.repository || 'repository'} #${target.number || ''}: ${plainExcerpt(title, 96) || 'untitled'}`.trim();
+}
+
+function plainExcerpt(value = '', limit = 140) {
+  return String(value || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/!?\[[^\]]*\]\([^)]*\)/g, (match) => {
+      const label = match.match(/!?\[([^\]]*)\]/)?.[1] || '';
+      return label ? ` ${label} ` : ' ';
+    })
+    .replace(/[#>*_`~\-|:[\](){}]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, limit);
+}
+
+function markdownFence(text, lang = '') {
+  const body = String(text || '');
+  let fence = '```';
+  while (body.includes(fence)) fence += '`';
+  return `${fence}${lang ? lang : ''}\n${body}\n${fence}`;
 }
 
 async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {

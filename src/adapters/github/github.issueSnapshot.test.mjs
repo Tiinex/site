@@ -33,8 +33,10 @@ assert.equal(materialized.warnings.length, 1, 'missing discussion fixture is def
 const record = materialized.records[0];
 assert.equal(record.kind, 'tiinex.evidence.v1', 'issue snapshot materializes as evidence record');
 assert.equal(record.snapshot.target.kind, 'issue');
-assert(record.markdown.includes('GitHub Snapshot Boundary'), 'snapshot markdown includes boundary section');
-assert(record.markdown.includes('No hidden repo discovery is implied'), 'snapshot markdown is explicit about source boundary');
+assert(record.markdown.includes('## Supported Claim Or Question'), 'snapshot markdown includes Evidence required sections');
+assert(record.markdown.includes('Source Boundary: read-only GitHub issue snapshot'), 'snapshot markdown is explicit about source boundary');
+assert(record.markdown.includes('## Preservation And Fidelity'), 'snapshot markdown includes preservation section');
+assert.equal(record.summary, 'Issue body', 'issue snapshot summary should use visible issue body excerpt instead of generic boundary text');
 assert.equal(record.source, undefined, 'adapter materialization must not assign lifecycle source provenance');
 
 console.log('github.issueSnapshot: ok');

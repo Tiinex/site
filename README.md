@@ -1,14 +1,20 @@
-# Tiinex Site v229
+# Tiinex Site v230
 
-Checkpoint: `v229`
-Version: `0.2.49-v229`
-Runtime: `react-v229-milestone-a-test-readiness`
+Checkpoint: `v230`
+Version: `0.2.50-v230`
+Runtime: `react-v230-milestone-a-friction-closure`
 
 ## Focus
 
-Milestone A test-readiness pass after the v228 source/issue/export closure slice. This checkpoint keeps the Milestone A functionality intact while tightening the global header polish, removing visible source-state boilerplate from the source rail, and adding guards for the cleaned presentation seams.
+Milestone A friction-closure pass after reviewing Q's no-audio v229 browser video. This checkpoint keeps the v229 source/issue/export scope intact while making GitHub issue snapshots more useful and less scary in the viewer: issue snapshots now render as schema-valid Evidence records with visible issue-body summaries instead of generic mismatch cards.
 
 ## Changes
+
+- No-audio video review fixes:
+  - GitHub issue snapshot cards now use the visible issue body as their summary when available.
+  - Issue snapshots now include the required Evidence sections, so they do not show as mismatch just because the wrapper used the Evidence schema.
+  - Issue discovery requests the sorted updated issue list from GitHub, keeping bounded discovery closer to the PoC's recency-oriented issue surface.
+  - Removed the visible "Deferred PoC controls" explanation from Display options; deferred controls should not add product boilerplate during Milestone A testing.
 
 - Polished the global dock/header as a compact Tiinex dock:
   - header-specific button classes avoid relying on broad button cascade;
