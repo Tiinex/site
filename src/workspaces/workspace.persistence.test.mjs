@@ -124,6 +124,20 @@ if (scaleRestored.view.selectedRecordId !== scaleRecords[200].id) throw new Erro
 if (scaleRestored.view.scrollPositions?.[scaleScrollKey] !== 1840) throw new Error('scale restore should preserve per-view scroll positions');
 
 
+
+const routeOverlayEnv = loadPersistence();
+const staleSource = { id: 'github:stale', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics', count: 328, repoDiscovery: true, issueDiscovery: false, requestedSurfaces: { repoFiles: { requested: true }, issueSnapshots: { requested: false } } };
+const staleState = { version: 1, activeWorkspaceId: 'overlay-w', view: { workspaceVerse: 'feed' }, workspaces: [{ id: 'overlay-w', name: 'Overlay', sources: [staleSource], sourceOrder: [staleSource.id], records: [], assets: [], workspaceMergeCandidates: [], importLog: [] }] };
+routeOverlayEnv.persistence.writeState(staleState, { storage: routeOverlayEnv.env.localStorage, location: routeOverlayEnv.env.location, history: routeOverlayEnv.env.history, mode: 'push' });
+const routeSource = Object.assign({}, staleSource, { issueDiscovery: true, requestedSurfaces: { repoFiles: { requested: true }, issueSnapshots: { requested: true, attempted: true, loaded: 0 } } });
+const routeStateWithRequestedIssue = { v: 2, activeWorkspaceId: 'overlay-w', view: { workspaceVerse: 'feed' }, workspaces: [{ id: 'overlay-w', name: 'Overlay', sources: [routeSource], sourceOrder: [routeSource.id], records: [], assets: [], workspaceMergeCandidates: [], importLog: [] }] };
+routeOverlayEnv.env.location.hash = `#state=${routeOverlayEnv.persistence.encodeState(routeStateWithRequestedIssue)}`;
+const overlayRestored = routeOverlayEnv.persistence.readInitialState({ storage: routeOverlayEnv.env.localStorage, location: routeOverlayEnv.env.location });
+const overlaySource = overlayRestored.workspaces[0].sources[0];
+if (overlaySource.issueDiscovery !== true) throw new Error('route shell source request must overlay stale session-cache source on F5/hash restore');
+if (overlaySource.requestedSurfaces?.issueSnapshots?.requested !== true) throw new Error('requested issue surface must survive route/cache hydration merge');
+
+
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
 if (persistence.readStoredState(env.localStorage)) throw new Error('clear should remove local storage cache');
 if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('closing last workspace should be push-history capable');

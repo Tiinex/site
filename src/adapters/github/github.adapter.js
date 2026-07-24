@@ -292,13 +292,31 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
-    const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
-    issueSnapshotResult = issueSurface;
-    warnings.push(...(issueSurface.warnings || []));
-    errors.push(...(issueSurface.errors || []));
-    diagnostics.transportEvents.push(...(issueSurface.diagnostics?.transportEvents || []));
-    Object.assign(diagnostics, issueSurface.diagnostics || {});
-    markSurface(sourcePlan, 'issueSnapshots', issueSurface.surface || {});
+    try {
+      const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
+      issueSnapshotResult = issueSurface;
+      warnings.push(...(issueSurface.warnings || []));
+      errors.push(...(issueSurface.errors || []));
+      diagnostics.transportEvents.push(...(issueSurface.diagnostics?.transportEvents || []));
+      Object.assign(diagnostics, issueSurface.diagnostics || {});
+      markSurface(sourcePlan, 'issueSnapshots', issueSurface.surface || {});
+    } catch (error) {
+      const warning = nonFatalIssueSurfaceWarning(error, source);
+      warnings.push(warning);
+      diagnostics.issueSnapshotException = {
+        schema: 'tiinex.github.issueSnapshot.exception.v1',
+        message: warning.message,
+        error: error?.message || String(error || '')
+      };
+      diagnostics.transportEvents.push(Object.assign({ resultKind: 'issue-surface-exception' }, warning));
+      markSurface(sourcePlan, 'issueSnapshots', {
+        attempted: true,
+        requested: true,
+        failed: 1,
+        unavailable: true,
+        error: warning.message
+      });
+    }
   }
 
   const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
@@ -365,6 +383,20 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       resolvedRef
     })
   });
+}
+
+
+function nonFatalIssueSurfaceWarning(error, source = {}) {
+  const message = error?.message || String(error || 'Issue snapshot reader failed');
+  return {
+    code: 'github.issue.surface.exception',
+    severity: 'warning',
+    surface: 'issueSnapshots',
+    sourceId: source?.id || '',
+    adapterId: GITHUB_ADAPTER_ID,
+    retryable: true,
+    message: `Issue snapshot discovery failed without invalidating the registered source boundary. Retry later or use explicit issue URLs. (${message})`
+  };
 }
 
 function summarizeTransportTiers(events = []) {

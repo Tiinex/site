@@ -1,21 +1,25 @@
-# Tiinex Site v232
+# Tiinex Site v233
 
-Checkpoint: `v232`
-Version: `0.2.52-v232`
-Runtime: `react-v232-issue-discovery-stability`
+Checkpoint: `v233`
+Version: `0.2.53-v233`
+Runtime: `react-v233-issue-discovery-hardening`
+
+## v233 focus
+
+Milestone A issue-discovery hardening after browser video feedback: preserve issue-snapshot surface selection across F5/hash restore even when the same-session cache is stale, and keep issue-surface failures degraded inside the GitHub adapter instead of turning the entire source materialization into a fatal UI failure.
 
 ## Focus
 
-Milestone A issue-discovery stability after v231 browser feedback. v231 recovered embedded Tiinex artifacts from GitHub issues/comments, but browser testing showed two closure blockers: continuation discovery surfaces could be unchecked after F5/hash restore, and issue materialization could freeze-lag while progress/URL state was written too often during large source operations.
+Milestone A issue-discovery hardening after v232 browser feedback. v231 recovered embedded Tiinex artifacts from GitHub issues/comments, and v232 reduced freeze-lag, but the latest test still exposed two closure risks: F5/hash restore could prefer a stale same-session source cache over the newer route source shell, and an issue-surface exception could still make the whole GitHub source materialization look fatal.
 
 ## Changes
 
-- Preserved selected GitHub discovery surfaces through route/hash state and continuation defaults.
-- Added a small app-level GitHub progress throttle helper so source materialization does not write hash/localStorage for every progress tick.
-- Yielded after closing the Add dialog and before/inside issue snapshot processing so progress can become visible before bounded issue work continues.
-- Reduced default issue snapshot breadth for browser UX: bounded issue discovery defaults to 12 issues and 6 comments per issue unless explicitly overridden.
-- Kept source counts cumulative when a later issue pass adds records to an already-loaded source.
-- Added guards/tests for route-preserved requested surfaces, continuation issue defaults, progress throttling ownership, and browser-yielding issue materialization.
+- Merged route source shells over same-session cached sources by source id so `issueDiscovery` and `requestedSurfaces.issueSnapshots.requested` survive F5/hash restore.
+- Converted issue-surface exceptions into non-fatal `github.issue.surface.exception` warnings owned by the `issueSnapshots` surface.
+- Preserved the registered GitHub source boundary even when issue snapshots degrade.
+- Kept repo-file, explicit-file, and issue-snapshot receipt ownership separate.
+- Kept v232 progress throttling/yielding and bounded issue defaults.
+- Added regression tests for route-source overlay and non-fatal issue-surface exceptions.
 
 ## Milestone A non-goals
 

@@ -153,7 +153,7 @@
   function mergeWorkspaceRouteShell(routeWorkspace = {}, cachedWorkspace = {}) {
     return Object.assign({}, cachedWorkspace, routeWorkspace, {
       source: Object.assign({}, cachedWorkspace.source || {}, routeWorkspace.source || {}),
-      sources: Array.isArray(cachedWorkspace.sources) && cachedWorkspace.sources.length ? cachedWorkspace.sources : (routeWorkspace.sources || []),
+      sources: mergeSourceShells(routeWorkspace.sources || [], cachedWorkspace.sources || []),
       sourceOrder: Array.isArray(cachedWorkspace.sourceOrder) && cachedWorkspace.sourceOrder.length ? cachedWorkspace.sourceOrder : (routeWorkspace.sourceOrder || []),
       records: Array.isArray(cachedWorkspace.records) ? cachedWorkspace.records : (routeWorkspace.records || []),
       assets: Array.isArray(cachedWorkspace.assets) ? cachedWorkspace.assets : [],
@@ -163,6 +163,19 @@
       workspaceImport: Object.assign({}, cachedWorkspace.workspaceImport || {}, routeWorkspace.workspaceImport || {})
     });
   }
+
+  function mergeSourceShells(routeSources = [], cachedSources = []) {
+    const out = new Map();
+    for (const source of Array.isArray(cachedSources) ? cachedSources : []) {
+      if (source?.id) out.set(source.id, Object.assign({}, source));
+    }
+    for (const source of Array.isArray(routeSources) ? routeSources : []) {
+      if (!source?.id) continue;
+      out.set(source.id, Object.assign({}, out.get(source.id) || {}, source));
+    }
+    return Array.from(out.values());
+  }
+
 
   function compactWorkspaceForCache(workspace = {}) {
     return Object.assign({}, workspace, {

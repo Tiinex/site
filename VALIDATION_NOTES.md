@@ -1,24 +1,20 @@
-# Validation Notes v232
+# Validation Notes v233
 
 ## Root cause hypothesis
 
-Browser feedback on v231 showed that GitHub issue loading could freeze-lag and that the issue discovery checkbox could be unchecked after an F5/hash restore. The likely owners were not the issue lineage recovery itself; they were the source continuation read model and the progress/persistence loop around large GitHub source operations.
+Browser feedback on v232 showed a remaining issue-discovery closure risk: the user could reopen the GitHub source dialog after refresh and see issue discovery unchecked, then an issue-list request could succeed while the UI reported fatal materialization failure.
 
-The concrete risks were:
+The likely root causes were:
 
-1. `workspace.route.js` compacted source shells without preserving selected/requested discovery surfaces, so route-only restore could lose `issueDiscovery`/`requestedSurfaces`.
-2. `workspace.add.views.jsx` defaulted issue discovery from incomplete-state only, so a previously requested issue surface could be unchecked even though the source plan remembered it.
-3. `TiinexApp.jsx` committed progress on every GitHub progress event. On large repo + issue operations this could repeatedly write route hash and session cache while the browser was also fetching/parsing source material.
-4. Issue snapshot materialization looped targets without yielding back to the browser and defaulted to a larger browser workload than needed for Milestone A.
+1. `workspace.persistence.js` hydrated route state from the same-session cache by taking cached `sources` wholesale when they existed. That allowed a stale cached source to override the newer route shell that carried `issueDiscovery` and `requestedSurfaces.issueSnapshots.requested`.
+2. The issue-surface reader was still allowed to throw through `materializeGithubSource`. A single issue-surface exception should degrade the `issueSnapshots` surface, not invalidate the registered source boundary or report the whole source as fatal.
 
 ## Fix
 
-- Route source shells now preserve `repoDiscovery`, `issueDiscovery`, `issueUrls`, `requestedSurfaces`, and `surfaces`.
-- The GitHub continuation form defaults selected checkboxes from the remembered source plan, not only from incomplete-state.
-- GitHub progress persistence is throttled in `src/app/githubProgress.js` and imported by `TiinexApp.jsx`.
-- The app yields after showing source-progress UI before the heavy materialization await continues.
-- Issue snapshot materialization yields between targets and defaults to 12 issues / 6 comments per issue.
-- Source record counts remain cumulative after adding issue records to an already materialized source.
+- `mergeWorkspaceRouteShell()` now merges sources by id, starting with cached source material and overlaying route source shells. Route-selected source surfaces win over stale cache values while cached material still hydrates records/assets.
+- `materializeGithubSource()` now contains issue-surface exceptions as a non-fatal `github.issue.surface.exception` warning owned by the `issueSnapshots` surface.
+- The source plan and surface diagnostics remain requested/attempted/unavailable instead of throwing away the source operation.
+- v232's progress throttling, issue-yielding, bounded defaults, and cumulative source counts remain intact.
 
 ## Validation run in sandbox
 
@@ -37,8 +33,9 @@ npm run public:check
 
 ## Manual browser checks
 
-1. Open an existing source, refresh with F5, and confirm Repo files / Issue snapshot discovery stay selected according to the source plan.
+1. Open an existing source, select issue discovery, refresh with F5, and confirm Issue snapshot discovery stays selected.
 2. Load GitHub repo files + issue snapshots and confirm the Add dialog closes promptly and progress appears instead of freezing in-dialog.
-3. Confirm issue-backed embedded Tiinex artifacts still recover lineage when available.
-4. Confirm plain GitHub issues remain read-only Evidence snapshots.
-5. Regression-check Discovery, Tree, Lineage, Audit, Display options, Export ZIP, and header.
+3. If issue snapshot loading degrades, confirm the source boundary remains registered and the receipt/warning is issue-surface scoped rather than fatal.
+4. Confirm issue-backed embedded Tiinex artifacts still recover lineage when available.
+5. Confirm plain GitHub issues remain read-only Evidence snapshots.
+6. Regression-check Discovery, Tree, Lineage, Audit, Display options, Export ZIP, and header.

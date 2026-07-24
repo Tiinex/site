@@ -143,6 +143,20 @@ assert.equal(issueSnapshot.records.length, 1, 'fixture-backed issue snapshot sho
 assert.equal(issueSnapshot.records[0].kind, 'tiinex.evidence.v1', 'issue snapshot should become an evidence record');
 assert.equal(issueSnapshot.records[0].source, undefined, 'adapter must not assign lifecycle source provenance to issue snapshots');
 
+
+
+const progressSinkFailure = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  { fetchImpl, onProgress: () => { throw new Error('progress sink failed'); } }
+);
+assert.equal(progressSinkFailure.records.length, 0, 'issue surface exceptions should not promote invalid records');
+assert.equal(progressSinkFailure.errors.length, 0, 'issue surface exceptions should remain degraded warnings, not fatal adapter errors');
+assert(progressSinkFailure.warnings.some((warning) => warning.code === 'github.issue.surface.exception'), 'issue surface exceptions should surface a retryable issue warning');
+assert.equal(progressSinkFailure.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'issue surface request must remain in diagnostics after degraded failure');
+assert.equal(progressSinkFailure.diagnostics.sourcePlan.surfaces.issueSnapshots.unavailable, true, 'issue surface exception should be marked unavailable, not fatal');
+
+
 console.log('✓ github.adapter tests passed');
 
 const discoveryBudgetCalled = [];

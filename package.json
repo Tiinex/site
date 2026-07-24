@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.52-v232",
+  "version": "0.2.53-v233",
   "private": true,
-  "description": "Tiinex Site v232: Milestone A issue discovery stability candidate.",
+  "description": "Tiinex Site v233: Milestone A issue discovery hardening candidate.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
