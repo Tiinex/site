@@ -49,7 +49,7 @@ export async function discoverGithubIssueSnapshotTargets(source = {}, options = 
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const repository = String(source.repo || source.repository || '').trim();
   const [owner, repo] = repository.split('/').filter(Boolean);
-  const maxIssues = Math.max(1, Math.min(100, Number(options.maxIssues || options.maxIssueSnapshots || 25)));
+  const maxIssues = Math.max(1, Math.min(100, Number(options.maxIssues || options.maxIssueSnapshots || 12)));
   if (!fetchImpl || !owner || !repo) {
     return {
       schema: 'tiinex.github.issueSnapshot.discovery.v1',
@@ -105,8 +105,9 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
     if (parsed.counts.targets) warnings.push(finding('warning', 'github.issue.reader.unavailable', 'Issue snapshot targets were parsed, but no fetch implementation is available.', { surface: 'issueSnapshots', targetCount: parsed.counts.targets }));
     return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, counts: { targets: parsed.counts.targets, records: 0, warnings: warnings.length, errors: errors.length } };
   }
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments || 20)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
   for (const target of parsed.targets) {
+    await yieldToBrowserIfAvailable();
     const normalized = target.ok ? target : parseGithubIssueSnapshotTarget(target.canonicalUrl || target.html_url || target.url || '');
     if (!normalized.ok) {
       errors.push({ ref: target.input || target.url || '', error: normalized.error || 'invalid issue target' });
@@ -351,3 +352,12 @@ function apiUrlFor({ owner, repo, kind, number }) {
 }
 function finding(severity, code, message, extra = {}) { return Object.assign({ severity, code, message }, extra); }
 function capitalize(value = '') { const text = String(value || 'item'); return text.charAt(0).toUpperCase() + text.slice(1); }
+
+
+function yieldToBrowserIfAvailable() {
+  if (typeof window === 'undefined') return Promise.resolve();
+  return new Promise((resolve) => {
+    const schedule = window.requestIdleCallback || window.requestAnimationFrame || window.setTimeout;
+    schedule(() => resolve(), 0);
+  });
+}

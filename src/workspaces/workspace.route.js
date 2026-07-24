@@ -33,6 +33,16 @@
     };
   }
 
+  function compactSurfaceMap(map = {}) {
+    const source = map && typeof map === 'object' ? map : {};
+    const out = {};
+    for (const [key, value] of Object.entries(source)) {
+      if (!value || typeof value !== 'object') continue;
+      out[key] = Object.assign({}, value);
+    }
+    return out;
+  }
+
   function compactSource(source = {}) {
     const config = Object.assign({}, source.config || {});
     return {
@@ -48,6 +58,11 @@
       boundary: source.boundary || '',
       transportLabel: source.transportLabel || '',
       discoveryState: source.discoveryState || '',
+      repoDiscovery: Boolean(source.repoDiscovery || source.requestedSurfaces?.repoFiles?.requested),
+      issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested),
+      issueUrls: source.issueUrls || config.issueUrls || '',
+      requestedSurfaces: compactSurfaceMap(source.requestedSurfaces || {}),
+      surfaces: compactSurfaceMap(source.surfaces || {}),
       closeable: Boolean(source.closeable),
       config
     };

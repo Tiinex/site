@@ -77,11 +77,11 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const rememberedIssue = continuation?.surfaces?.issueSnapshots || continuation?.requestedSurfaces?.issueSnapshots || {};
   const rememberedRepo = continuation?.surfaces?.repoFiles || continuation?.requestedSurfaces?.repoFiles || {};
   const repoRequested = Boolean(continuation?.repoDiscovery || rememberedRepo.requested || Number(rememberedRepo.discovered || 0) || Number(rememberedRepo.loaded || 0));
-  const repoIncomplete = Boolean(repoRequested && Number(rememberedRepo.discovered || 0) > 0 && Number(rememberedRepo.loaded || 0) < Number(rememberedRepo.discovered || 0));
-  const issueRequested = Boolean(continuation?.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || Number(rememberedIssue.requestedCount || 0));
-  const issueIncomplete = Boolean(issueRequested && (rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || (Number(rememberedIssue.discovered || rememberedIssue.requestedCount || 0) > 0 && Number(rememberedIssue.loaded || 0) < Number(rememberedIssue.discovered || rememberedIssue.requestedCount || 0))));
-  const [repoDiscovery, setRepoDiscovery] = useState(continuation ? Boolean(repoIncomplete || (!issueIncomplete && (repoRequested || !issueRequested))) : true);
-  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueIncomplete : false);
+  const issueRequested = Boolean(continuation?.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || Number(rememberedIssue.requestedCount || 0) || Number(rememberedIssue.discovered || 0) || Number(rememberedIssue.loaded || 0));
+  // v232: continuation defaults preserve the user's/source's selected surfaces across F5/hash restore.
+  // Incomplete-state still belongs in the receipt summary; it must not silently uncheck issue discovery.
+  const [repoDiscovery, setRepoDiscovery] = useState(continuation ? repoRequested : true);
+  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : false);
   const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '');
   const [fileRefs, setFileRefs] = useState('');
   const [error, setError] = useState('');

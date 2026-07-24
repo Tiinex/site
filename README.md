@@ -1,31 +1,27 @@
-# Tiinex Site v231
+# Tiinex Site v232
 
-Checkpoint: `v231`
-Version: `0.2.51-v231`
-Runtime: `react-v231-issue-embedded-lineage-recovery`
+Checkpoint: `v232`
+Version: `0.2.52-v232`
+Runtime: `react-v232-issue-discovery-stability`
 
 ## Focus
 
-Milestone A issue-embedded lineage recovery after Q compared v230 against the PoC. The v230 issue reader made issue snapshots valid Evidence, but it still treated GitHub issues that contain Tiinex Source Markdown as adapter snapshots instead of recovering the typed artifact inside the issue/comment. That made lineage stop at the issue wrapper instead of rebuilding the parent hierarchy visible in the PoC.
+Milestone A issue-discovery stability after v231 browser feedback. v231 recovered embedded Tiinex artifacts from GitHub issues/comments, but browser testing showed two closure blockers: continuation discovery surfaces could be unchecked after F5/hash restore, and issue materialization could freeze-lag while progress/URL state was written too often during large source operations.
 
 ## Changes
 
-- Recovered embedded Tiinex Source Markdown from GitHub issue bodies and issue comments:
-  - issue/comment bodies with `## Source Markdown` or fenced standalone `# Continuity Context` payloads now materialize the embedded artifact itself;
-  - plain GitHub issue bodies still fall back to the read-only Evidence snapshot wrapper from v230;
-  - embedded recovery keeps explicit source-target metadata and remains read-only/source-backed.
-- Preserved publication-provided source artifact paths when a GitHub issue body declares `Tiinex Source Artifact Path`, so relative Parent Trace resolution can rebuild loaded parent hierarchy instead of anchoring the artifact to the issue URL shell.
-- Split embedded issue recovery helpers into `src/adapters/github/github.issueEmbedded.js` to keep the issue snapshot reader below the source-size guard.
-- Added regression coverage proving embedded issue Source Markdown preserves Current Schema, title, Parent Trace target, source target class, and loaded lineage traversal to an available parent.
+- Preserved selected GitHub discovery surfaces through route/hash state and continuation defaults.
+- Added a small app-level GitHub progress throttle helper so source materialization does not write hash/localStorage for every progress tick.
+- Yielded after closing the Add dialog and before/inside issue snapshot processing so progress can become visible before bounded issue work continues.
+- Reduced default issue snapshot breadth for browser UX: bounded issue discovery defaults to 12 issues and 6 comments per issue unless explicitly overridden.
+- Kept source counts cumulative when a later issue pass adds records to an already-loaded source.
+- Added guards/tests for route-preserved requested surfaces, continuation issue defaults, progress throttling ownership, and browser-yielding issue materialization.
 
-## Non-goals
+## Milestone A non-goals
 
-- No transition/artifact creation activation.
-- No schema-builder UI.
-- No remote writes or GitHub mutation.
-- No hidden background retries.
-- No fake GitHub Discussion reader.
-- No full PoC issue/comment recovery rewrite; this is the minimal embedded-artifact lineage fix needed before Milestone A testing.
+- Artifact creation, transitions, forms, schema-builder UI, remote writes, and full discussion-reader parity remain outside this checkpoint.
+- Discussion URLs still degrade honestly rather than pretending to load.
+- Full PoC issue/comment recovery remains broader than this stabilization slice.
 
 ## Supported local start
 
@@ -38,4 +34,17 @@ The dev server is Vite on `127.0.0.1:5173`.
 
 ## Validation
 
-See `VALIDATION_NOTES.md`.
+Use the standard source validation chain plus local public build checks:
+
+```bash
+npm run validate
+npm run ui:shape
+npm run architecture:shape
+npm run typecheck
+npm run portable:smoke
+npm run usecase:uc001
+npm run storage:scan
+npm run metrics
+npm run build:public
+npm run public:check
+```

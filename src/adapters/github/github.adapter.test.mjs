@@ -31,8 +31,8 @@ const treeApi = 'https://api.github.com/repos/owner/repo/git/trees/main?recursiv
 const rawTopic = 'https://raw.githubusercontent.com/owner/repo/main/.topics/a.md';
 const rawNested = 'https://raw.githubusercontent.com/owner/repo/main/.topics/nested/b.trace.md';
 const issueApi = 'https://api.github.com/repos/owner/repo/issues/1';
-const issueCommentsApi = 'https://api.github.com/repos/owner/repo/issues/1/comments?per_page=20';
-const issueListApi = 'https://api.github.com/repos/owner/repo/issues?state=all&sort=updated&direction=desc&per_page=25';
+const issueCommentsApi = 'https://api.github.com/repos/owner/repo/issues/1/comments?per_page=6';
+const issueListApi = 'https://api.github.com/repos/owner/repo/issues?state=all&sort=updated&direction=desc&per_page=12';
 
 const map = {
   [repoApi]: { json: { default_branch: 'main' } },

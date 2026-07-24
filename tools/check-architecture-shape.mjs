@@ -72,6 +72,12 @@ excludes('src/schemas/workspace/workspace.chrome.views.jsx', 'tx-source-state-',
 includes('src/app/appShell.views.jsx', 'export function HelpDialog', 'HelpDialog must stay outside TiinexApp');
 includes('src/app/runtimeState.js', 'export function runtime', 'runtime/default state must stay outside TiinexApp');
 includes('src/app/githubMaterializationSummary.js', 'export function summarizeGithubMaterialization', 'GitHub materialization summary helpers must stay outside TiinexApp');
+includes('src/app/githubProgress.js', 'export function shouldCommitGithubProgress', 'GitHub progress throttling must be owned outside TiinexApp');
+includes('src/app/TiinexApp.jsx', "from './githubProgress.js'", 'TiinexApp must import GitHub progress throttling helpers instead of owning them inline');
+includes('src/workspaces/workspace.route.js', 'requestedSurfaces: compactSurfaceMap', 'route shell must preserve requested source surfaces across F5/hash restore');
+includes('src/workspaces/workspace.route.js', 'issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested)', 'route shell must preserve issue discovery selection across refresh');
+includes('src/adapters/github/github.issueSnapshot.js', 'await yieldToBrowserIfAvailable();', 'issue snapshot materialization must yield between targets to avoid browser freeze-lag');
+includes('src/adapters/github/github.issueSnapshot.js', 'options.maxComments ?? 6', 'bounded issue comments default must stay small enough for browser interaction');
 includes('src/app/workspaceDisplayCounts.js', 'export function buildDisplayOptionCounts', 'display counts bridge must stay outside TiinexApp');
 includes('src/schemas/workspace/workspace.displayOptions.views.jsx', 'export function DisplayOptionsDialog', 'DisplayOptionsDialog must stay outside workspace.views');
 includes('src/schemas/workspace/workspace.lineage.views.jsx', 'export function WorkspaceLineageState', 'Lineage surface must stay outside workspace.views');

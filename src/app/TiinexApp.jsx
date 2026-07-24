@@ -30,6 +30,7 @@ import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.j
 import { DisplayOptionsDialog } from '../schemas/workspace/workspace.displayOptions.views.jsx';
 import { schemaRegistry } from '../schemas/registry.js';
 import { workspaceViewScrollKeyFor, stateWithViewPatch, stateWithViewUpdate, stateWithCapturedViewScroll } from './viewState.js';
+import { shouldCommitGithubProgress, yieldForVisibleSourceProgress } from './githubProgress.js';
 
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
@@ -292,6 +293,7 @@ export function TiinexApp() {
     let materializationSourceId = result.source.id;
     let materializationSourceLabel = result.source.label;
     let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
+    const progressCommit = { at: 0, phase: '', percent: -1, label: '' };
     const publishGithubProgress = (progress = {}) => {
       const progressed = setWorkspaceDiscoveryProgress(finalState, active?.id, Object.assign({
         sourceId: materializationSourceId || result.source.id,
@@ -302,7 +304,7 @@ export function TiinexApp() {
       }, progress));
       if (progressed?.ok) {
         finalState = progressed.state;
-        commit(finalState, 'replace');
+        if (shouldCommitGithubProgress(progress, progressCommit)) commit(finalState, 'replace');
       }
     };
 
@@ -330,6 +332,7 @@ export function TiinexApp() {
       setDialog(null);
       setNotice(`${result.source.label} source registered; loading started.`);
       commit(finalState, 'push');
+      await yieldForVisibleSourceProgress();
       try {
         const transportPolicy = buildSourceTransportPolicy({
           mode: 'cache-mirror-proxy-direct',
@@ -371,13 +374,18 @@ export function TiinexApp() {
           const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || []);
           if (ins?.ok) finalState = ins.state;
         }
+        await yieldForVisibleSourceProgress();
+        const finalWorkspaceForSourceCount = runtime().lifecycle?.activeWorkspace?.(finalState);
+        const totalSourceRecordCount = Array.isArray(finalWorkspaceForSourceCount?.records)
+          ? finalWorkspaceForSourceCount.records.filter((record) => record?.source?.id === materializationSourceId).length
+          : 0;
         const sourceState = Number(out.okCount || 0) > 0
           ? (Number(out.failCount || 0) > 0 ? 'partial' : 'loaded')
           : (Number(out.failCount || 0) > 0 || (out.errors || []).length ? 'failed' : 'unavailable');
         const updatedSource = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
           id: materializationSourceId,
           label: materializationSourceLabel,
-          count: Number(out.okCount || 0),
+          count: Number(totalSourceRecordCount || out.okCount || 0),
           discoveryState: sourceState,
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),

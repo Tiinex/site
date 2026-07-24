@@ -38,7 +38,7 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   Object.assign(surface, { requestedCount: parsed.counts.targets, targets: parsed.counts.targets });
   if (parsed.errors.length) errors.push(...parsed.errors.map((entry) => Object.assign({ surface: 'issueSnapshots', ref: entry.ref }, entry)));
 
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments || 20)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
   const materializationAuth = policyInput && parsed.counts.targets && !surface.skipped
     ? authorizeSourceTransport({ kind: 'github.issue-snapshot-load', sourceId, adapterId, requestedRequests: Number(parsed.counts.targets || 0) * (maxComments > 0 ? 2 : 1) }, policyInput)
     : null;

@@ -1,69 +1,44 @@
-# Validation Notes v231
+# Validation Notes v232
 
-## v231 PoC lineage comparison
+## Root cause hypothesis
 
-Q compared v230 against the PoC and showed that GitHub issue discovery still did not rebuild the visible parent hierarchy. The v230 issue reader had fixed the earlier Evidence-wrapper mismatch, but it still materialized Tiinex issue payloads as generic read-only Evidence snapshots. In the PoC, issues/comments that contain Tiinex Source Markdown recover the typed artifact inside the GitHub issue/comment, and that recovered artifact participates in loaded Parent Trace lineage.
+Browser feedback on v231 showed that GitHub issue loading could freeze-lag and that the issue discovery checkbox could be unchecked after an F5/hash restore. The likely owners were not the issue lineage recovery itself; they were the source continuation read model and the progress/persistence loop around large GitHub source operations.
 
-## Root-cause hypothesis
+The concrete risks were:
 
-The v230 browser issue reader collapsed two different source-material cases into one representation:
-
-1. Plain GitHub issue material, which should remain a read-only Evidence snapshot.
-2. GitHub issue/comment bodies that contain embedded Tiinex Source Markdown, which should recover the embedded artifact as the artifact, not as an adapter wrapper.
-
-Because the embedded artifact was wrapped as Evidence, the viewer saw an issue shell with no meaningful Parent Trace chain. This caused Lineage to stop at the issue record even when the source material contained a real Tiinex artifact with a declared parent.
+1. `workspace.route.js` compacted source shells without preserving selected/requested discovery surfaces, so route-only restore could lose `issueDiscovery`/`requestedSurfaces`.
+2. `workspace.add.views.jsx` defaulted issue discovery from incomplete-state only, so a previously requested issue surface could be unchecked even though the source plan remembered it.
+3. `TiinexApp.jsx` committed progress on every GitHub progress event. On large repo + issue operations this could repeatedly write route hash and session cache while the browser was also fetching/parsing source material.
+4. Issue snapshot materialization looped targets without yielding back to the browser and defaulted to a larger browser workload than needed for Milestone A.
 
 ## Fix
 
-- Added `src/adapters/github/github.issueEmbedded.js` as the owner for embedded Source Markdown extraction/recovery.
-- Updated `src/adapters/github/github.issueSnapshot.js` so:
-  - issue bodies/comments with embedded Tiinex artifacts materialize typed records via `createRecordFromMarkdown`;
-  - plain issue bodies still materialize as schema-valid Evidence snapshots;
-  - recovered records keep `sourceTarget.surface = issueSnapshots` and `targetKind = github-issue-embedded-artifact` / `github-comment-embedded-artifact`;
-  - publication boundary source paths are preserved when present, giving relative Parent Trace resolution the same path context as source-backed repo files.
-- Extended `src/adapters/github/github.issueSnapshot.test.mjs` to prove embedded issue recovery preserves schema/title/path/trace and traverses to a loaded parent.
+- Route source shells now preserve `repoDiscovery`, `issueDiscovery`, `issueUrls`, `requestedSurfaces`, and `surfaces`.
+- The GitHub continuation form defaults selected checkboxes from the remembered source plan, not only from incomplete-state.
+- GitHub progress persistence is throttled in `src/app/githubProgress.js` and imported by `TiinexApp.jsx`.
+- The app yields after showing source-progress UI before the heavy materialization await continues.
+- Issue snapshot materialization yields between targets and defaults to 12 issues / 6 comments per issue.
+- Source record counts remain cumulative after adding issue records to an already materialized source.
 
-## Validation run
+## Validation run in sandbox
 
-Commands run from this checkpoint:
+Confirmed green before packaging:
 
 ```bash
 npm run validate
 ```
 
-Then after package/source-clean packaging:
-
-```bash
-npm run ui:shape
-npm run architecture:shape
-npm run typecheck
-npm run portable:smoke
-npm run usecase:uc001
-npm run storage:scan
-npm run metrics
-npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
-npm ci --ignore-scripts --no-audit --no-fund --dry-run
-```
-
-## Manual status
-
-Manual browser validation is still needed before declaring Milestone A closed. The highest-value v231 checks are:
-
-```text
-1. Add GitHub source → repo files + issue snapshot discovery for Tiinex/docs.
-2. Select an issue-backed record that contains Tiinex Source Markdown.
-3. Open Lineage and verify the typed artifact appears, not just an Evidence issue wrapper.
-4. Verify the parent/root hierarchy is rebuilt when the parent artifacts are loaded.
-5. Verify plain issues without embedded Tiinex payloads still render as read-only Evidence snapshots.
-6. Export workspace ZIP.
-7. Regression: Discovery / Tree / Lineage / Audit / Display options / header.
-```
-
-## Not validated here
+Additional validation still expected locally by Q because the sandbox lacks a reliable local Vite runtime:
 
 ```bash
 npm run build:public
 npm run public:check
 ```
 
-These remain environment-sensitive in this source-clean sandbox when local Vite runtime is unavailable. Q should run the public build checks locally on v231 before deploy.
+## Manual browser checks
+
+1. Open an existing source, refresh with F5, and confirm Repo files / Issue snapshot discovery stay selected according to the source plan.
+2. Load GitHub repo files + issue snapshots and confirm the Add dialog closes promptly and progress appears instead of freezing in-dialog.
+3. Confirm issue-backed embedded Tiinex artifacts still recover lineage when available.
+4. Confirm plain GitHub issues remain read-only Evidence snapshots.
+5. Regression-check Discovery, Tree, Lineage, Audit, Display options, Export ZIP, and header.

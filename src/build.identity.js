@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v231';
-export const TIINEX_SITE_VERSION = '0.2.51-v231';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v231';
-export const TIINEX_RUNTIME_ID = 'react-v231-issue-embedded-lineage-recovery';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v231-issue-embedded-lineage-recovery';
+export const TIINEX_SITE_CHECKPOINT = 'v232';
+export const TIINEX_SITE_VERSION = '0.2.52-v232';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v232';
+export const TIINEX_RUNTIME_ID = 'react-v232-issue-embedded-lineage-recovery';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v232-issue-embedded-lineage-recovery';
 
 
 export function tiinexBuildIdentity() {
