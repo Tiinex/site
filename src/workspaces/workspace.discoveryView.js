@@ -2,12 +2,14 @@ import { resolveLineage } from '../lineage/lineage.resolve.js';
 import { LineageEdgeKind, LineageResolutionStatus } from '../lineage/lineage.model.js';
 import { inferRecordMaterialRole, isDiscoveryWorkLeafEligible, isSupportingRecord, sourceBoundaryClass, MaterialRole } from './workspace.materialRole.js';
 import { sortWorkspaceFeedRecords } from './workspace.feedSort.js';
+import { normalizeWorkspaceDisplayOptions, normalizeDisplayFilterValue } from './workspace.displayOptions.js';
+import { auditIsMismatch, recordSchemaValue, recordMatchesQuery, assetMatchesQuery, workspaceCandidateMatchesQuery } from './workspace.displayFilters.js';
 
 export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
   const records = Array.isArray(options.records) ? options.records : (Array.isArray(workspace.records) ? workspace.records : []);
   const assets = Array.isArray(options.assets) ? options.assets : (Array.isArray(workspace.assets) ? workspace.assets : []);
   const workspaceCandidates = Array.isArray(options.workspaceCandidates) ? options.workspaceCandidates : (Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : []);
-  const displayOptions = normalizeDiscoveryDisplayOptions(options.displayOptions || {});
+  const displayOptions = normalizeWorkspaceDisplayOptions(options.displayOptions || {});
   const query = String(options.query || '').trim();
   const auditById = options.auditById instanceof Map ? options.auditById : new Map();
   const materialIndex = buildDiscoveryMaterialIndex(records);
@@ -328,52 +330,6 @@ function ancestorDirs(dir = '') {
   const out = [];
   for (let i = 1; i < parts.length; i += 1) out.push(parts.slice(0, i).join('/'));
   return out;
-}
-
-function normalizeDiscoveryDisplayOptions(input = {}) {
-  return {
-    leavesOnly: input.leavesOnly !== false,
-    showSupportingMarkdown: input.showSupportingMarkdown === true,
-    showWorkspaceCandidates: input.showWorkspaceCandidates !== false,
-    showAssets: input.showAssets === true,
-    mismatchesOnly: input.mismatchesOnly === true,
-    schemaFilter: normalizeDisplayFilterValue(input.schemaFilter),
-    artifactFilter: normalizeDisplayFilterValue(input.artifactFilter),
-    sourceFilter: normalizeDisplayFilterValue(input.sourceFilter)
-  };
-}
-
-function normalizeDisplayFilterValue(value) {
-  const text = String(value || 'all').trim();
-  return text || 'all';
-}
-
-function recordSchemaValue(record = {}) {
-  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || record.kind || 'artifact').trim() || 'artifact';
-}
-
-function auditIsMismatch(record = {}, auditItem = null) {
-  if (!auditItem) return false;
-  const status = String(auditItem.status || record.status || '').toLowerCase();
-  return status.includes('mismatch') || status.includes('invalid') || status.includes('error');
-}
-
-function recordMatchesQuery(record = {}, query = '') {
-  const q = String(query || '').trim().toLowerCase();
-  if (!q) return true;
-  return [record.title, record.summary, record.kind, record.status, record.path].some((value) => String(value || '').toLowerCase().includes(q));
-}
-
-function assetMatchesQuery(asset = {}, query = '') {
-  const q = String(query || '').trim().toLowerCase();
-  if (!q) return true;
-  return [asset.name, asset.path, asset.type, asset.previewState, asset.sourceMode].some((value) => String(value || '').toLowerCase().includes(q));
-}
-
-function workspaceCandidateMatchesQuery(candidate = {}, query = '') {
-  const q = String(query || '').trim().toLowerCase();
-  if (!q) return true;
-  return [candidate.title, candidate.path, candidate.sourceMode, candidate.schema].some((value) => String(value || '').toLowerCase().includes(q));
 }
 
 function normalizeDiscoveryPath(value = '') {

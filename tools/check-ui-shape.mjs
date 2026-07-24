@@ -7,16 +7,40 @@ const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '')
 const failures = [];
 function read(file) { return readFileSync(join(root, file), 'utf8'); }
 function combo(...files) { return files.map(read).join('\n'); }
-const appAndWorkspace = combo('src/app/TiinexApp.jsx', 'src/schemas/workspace/workspace.views.jsx', 'src/schemas/workspace/workspace.add.views.jsx');
+const workspaceViewModules = [
+  'src/schemas/workspace/workspace.views.jsx',
+  'src/schemas/workspace/workspace.chrome.views.jsx',
+  'src/schemas/workspace/workspace.discovery.views.jsx',
+  'src/schemas/workspace/workspace.tree.views.jsx',
+  'src/schemas/workspace/workspace.audit.views.jsx',
+  'src/schemas/workspace/workspace.lineage.views.jsx',
+  'src/schemas/workspace/workspace.cards.views.jsx',
+  'src/schemas/workspace/workspace.read.views.jsx',
+  'src/schemas/workspace/workspace.recordDialogs.views.jsx',
+  'src/schemas/workspace/workspace.auditBadge.views.jsx',
+  'src/schemas/workspace/workspace.displayOptions.views.jsx',
+  'src/schemas/workspace/workspace.viewFormatting.js'
+];
+const appModules = [
+  'src/app/TiinexApp.jsx',
+  'src/app/appShell.views.jsx',
+  'src/app/viewport.js',
+  'src/app/runtimeState.js',
+  'src/app/viewState.js',
+  'src/app/githubMaterializationSummary.js',
+  'src/app/workspaceDisplayCounts.js',
+  'src/app/recordUi.js'
+];
+const appAndWorkspace = combo(...appModules, 'src/schemas/workspace/workspace.add.views.jsx', 'src/workspaces/workspace.displayOptions.js', ...workspaceViewModules);
 function has(file, needle, label) { if (!read(file).includes(needle)) failures.push(label || `${file} missing ${needle}`); }
 function lacks(file, needle, label) { if (read(file).includes(needle)) failures.push(label || `${file} must not include ${needle}`); }
 
-has('src/app/TiinexApp.jsx', 'tx-centered-dock-core', 'global dock must keep centered Tiinex logo pattern');
-has('src/app/TiinexApp.jsx', 'tx-dock-left', 'Create/multiverse must live left of logo');
-has('src/app/TiinexApp.jsx', 'tx-dock-right', 'Share/help must live right of logo');
-has('src/app/TiinexApp.jsx', 'shouldPageWorkspaces', 'pager arrows must be size-gated, not count-only');
-has('src/app/TiinexApp.jsx', "data-overflow-pager={showPager ? 'visible' : 'hidden'}", 'dock must expose overflow pager state for regression checks');
-has('src/app/TiinexApp.jsx', 'tx-empty-stage tx-old-empty-stage', 'empty start must keep old empty-stage semantics');
+if (!appAndWorkspace.includes('tx-centered-dock-core')) failures.push('global dock must keep centered Tiinex logo pattern');
+if (!appAndWorkspace.includes('tx-dock-left')) failures.push('Create/multiverse must live left of logo');
+if (!appAndWorkspace.includes('tx-dock-right')) failures.push('Share/help must live right of logo');
+if (!appAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must be size-gated, not count-only');
+if (!appAndWorkspace.includes("data-overflow-pager={showPager ? 'visible' : 'hidden'}")) failures.push('dock must expose overflow pager state for regression checks');
+if (!appAndWorkspace.includes('tx-empty-stage tx-old-empty-stage')) failures.push('empty start must keep old empty-stage semantics');
 if (!appAndWorkspace.includes('tx-column-window')) failures.push('created workspace must render as Column window');
 if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
 if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty workspace drop hint must stay available');
@@ -64,7 +88,7 @@ if (!appAndWorkspace.includes('Display options')) failures.push('workspace prese
 if (!appAndWorkspace.includes('showAssets: false')) failures.push('assets must be hidden by default in Feed/Tree presentation');
 if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
 if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
-has('src/app/TiinexApp.jsx', 'schemaRegistry.modules.length', 'help surface should disclose schema companion state');
+if (!appAndWorkspace.includes('schemaRegistry.modules.length')) failures.push('help surface should disclose schema companion state');
 has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
@@ -83,7 +107,7 @@ has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
 has('src/schemas/companion.js', 'readState,', 'schema read presentation must expose readState contract');
 has('src/schemas/companion.js', 'schemaCoverage,', 'schema read presentation must expose schemaCoverage contract');
-has('src/schemas/workspace/workspace.views.jsx', 'tx-read-state-chips', 'Root fallback/read-state chips must be rendered through workspace views');
+if (!combo(...workspaceViewModules).includes('tx-read-state-chips')) failures.push('Root fallback/read-state chips must be rendered through workspace views');
 has('src/styles/app.css', '.tx-read-state-chips', 'read-state chips need CSS ownership');
 has('src/workspaces/workspace.auditView.js', 'rootReadable', 'Audit view must distinguish root-readable from root fallback');
 has('src/workspaces/workspace.auditView.js', 'unavailableBody', 'Audit view must count unavailable bodies separately');

@@ -1,158 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { schemaRegistry } from '../schemas/registry.js';
-import { Button } from '../ui/primitives/Button.jsx';
-import { Badge } from '../ui/primitives/Badge.jsx';
-import { Modal } from '../ui/primitives/Modal.jsx';
+import { EmptyStage, GlobalDock, HelpDialog } from './appShell.views.jsx';
+import { activeWorkspace, CLEAN_URL_BOUNDARY, defaultState, initialState, runtime } from './runtimeState.js';
+import { shouldPageWorkspaces, useViewportWidth } from './viewport.js';
+import { summarizeGithubAdapterResult, summarizeGithubMaterialization, normalizeRepository } from './githubMaterializationSummary.js';
+import { buildDisplayOptionCounts } from './workspaceDisplayCounts.js';
+import { hydrateUiRecord } from './recordUi.js';
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
-import { clearGithubSourceTextCacheForSource, hydrateGithubRecordFromSourceCache } from '../sources/github/github.transport.js';
+import { clearGithubSourceTextCacheForSource } from '../sources/github/github.transport.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
-import { buildDiscoveryDisplayOptionCounts } from '../workspaces/workspace.discoveryView.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
 import {
   AssetDetailDialog,
   CloseWorkspaceDialog,
   CreateWorkspaceDialog,
-  DisplayOptionsDialog,
   RecordActionDialog,
   RecordDetailDialog,
-  normalizeWorkspaceDisplayOptions,
   WorkspaceColumnSurface
 } from '../schemas/workspace/workspace.views.jsx';
+import { normalizeWorkspaceDisplayOptions } from '../workspaces/workspace.displayOptions.js';
 import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.jsx';
-
-const CLEAN_URL_BOUNDARY = 'clean-url-does-not-bootstrap-stale-local-storage';
-const LOGO_SRC = `${import.meta.env.BASE_URL}assets/tiinex-logo-white-transparent.png`;
-
-function runtime() {
-  return {
-    config: window.TiinexWorkspaceConfig,
-    lifecycle: window.TiinexWorkspaceLifecycle,
-    route: window.TiinexWorkspaceRoute,
-    persistence: window.TiinexWorkspacePersistence
-  };
-}
-
-function defaultState() {
-  return runtime().lifecycle?.makeEmptyAppState?.() || {
-    version: 1,
-    activeWorkspaceId: '',
-    view: { universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all', sourceFilter: 'all' }, expandedTreeFolders: [] },
-    workspaces: [],
-    audit: null
-  };
-}
-
-function initialState() {
-  const { lifecycle, route, persistence } = runtime();
-  const routeState = persistence?.readInitialState?.({ location: window.location, storage: window.localStorage });
-  return routeState ? route?.normalizeRouteState?.(routeState, lifecycle) || routeState : defaultState();
-}
-
-function activeWorkspace(state) {
-  return runtime().lifecycle?.activeWorkspace?.(state) || null;
-}
-
-function useViewportWidth() {
-  const readWidth = () => {
-    if (typeof window === 'undefined') return 0;
-    return Math.floor(window.visualViewport?.width || window.innerWidth || 0);
-  };
-  const [width, setWidth] = useState(readWidth);
-  useEffect(() => {
-    const update = () => setWidth(readWidth());
-    window.addEventListener('resize', update);
-    window.visualViewport?.addEventListener?.('resize', update);
-    return () => {
-      window.removeEventListener('resize', update);
-      window.visualViewport?.removeEventListener?.('resize', update);
-    };
-  }, []);
-  return width;
-}
-
-function shouldPageWorkspaces(workspaceCount, viewportWidth) {
-  const count = Number(workspaceCount || 0);
-  if (count <= 1) return false;
-  const width = Number(viewportWidth || 0) || 1280;
-  const minimumColumnWidth = width <= 760 ? 320 : 540;
-  const workspaceGap = width <= 760 ? 10 : 16;
-  const safeViewportPadding = width <= 760 ? 18 : 32;
-  const required = (count * minimumColumnWidth) + ((count - 1) * workspaceGap) + safeViewportPadding;
-  return required > width;
-}
-
-function summarizeGithubMaterialization(sourceLabel, out = {}) {
-  const okCount = Number(out.okCount || 0);
-  const failCount = Number(out.failCount || 0);
-  const warnings = Array.isArray(out.warnings) ? out.warnings : [];
-  const errors = Array.isArray(out.errors) ? out.errors : [];
-  const firstWarning = warnings[0];
-  const firstError = errors[0];
-  if (okCount > 0 && failCount === 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
-  }
-  if (okCount > 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
-  }
-  if (firstWarning?.message) return `${sourceLabel} source registered. ${firstWarning.message}`;
-  if (firstError?.error) return `${sourceLabel} source registered; source loading failed: ${firstError.error}.`;
-  return `${sourceLabel} source registered; no source files loaded.`;
-}
-
-function githubSurfaceSummary(out = {}) {
-  const surfaces = out.diagnostics?.surfaces || {};
-  const parts = [];
-  const repo = surfaces.repoFiles || {};
-  const explicit = surfaces.explicitFiles || {};
-  const issues = surfaces.issueSnapshots || {};
-  if (repo.requested) parts.push(`Repo files: ${Number(repo.loaded || 0)} loaded${repo.discovered != null ? ` / ${Number(repo.discovered || 0)} discovered` : ''}`);
-  if (explicit.requested) parts.push(`Explicit files: ${Number(explicit.loaded || 0)} loaded${explicit.requestedCount != null ? ` / ${Number(explicit.requestedCount || 0)} requested` : ''}`);
-  if (issues.requested) {
-    const issueState = Number(issues.loaded || 0) > 0
-      ? `${Number(issues.loaded || 0)} loaded`
-      : issues.deferred || issues.unavailable
-        ? 'deferred in browser runtime'
-        : `${Number(issues.targets || 0)} targets`;
-    parts.push(`Issue snapshots: ${issueState}`);
-  }
-  return parts.join(' · ');
-}
-
-
-function buildDisplayOptionCounts(workspace = {}) {
-  const records = Array.isArray(workspace.records) ? workspace.records : [];
-  const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
-  const auditById = new Map((audit.items || []).map((item) => [item.id, item]));
-  return buildDiscoveryDisplayOptionCounts(workspace, { records, auditById });
-}
-
-
-function summarizeGithubAdapterResult(out = {}) {
-  const warnings = Array.isArray(out.warnings) ? out.warnings : [];
-  const errors = Array.isArray(out.errors) ? out.errors : [];
-  return {
-    schema: 'tiinex.workspace.import.result.v1',
-    ok: Number(out.okCount || 0) > 0 || warnings.length > 0,
-    message: `GitHub source materialization: ${Number(out.okCount || 0)} loaded · ${warnings.length} warning${warnings.length === 1 ? '' : 's'} · ${errors.length} error${errors.length === 1 ? '' : 's'}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`,
-    counts: {
-      records: Number(out.okCount || 0),
-      assets: 0,
-      workspaceEntries: 0,
-      warnings: warnings.length,
-      errors: errors.length,
-      previewOmitted: 0
-    },
-    warnings,
-    errors,
-    diagnostics: Object.assign({ adapterId: 'github' }, out.diagnostics || {})
-  };
-}
+import { DisplayOptionsDialog } from '../schemas/workspace/workspace.displayOptions.views.jsx';
+import { workspaceViewScrollKeyFor, stateWithViewPatch, stateWithViewUpdate, stateWithCapturedViewScroll } from './viewState.js';
 
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
@@ -224,28 +98,9 @@ export function TiinexApp() {
   }
 
   function viewScrollKeyFor(sourceState = state, viewOverride = null) {
-    const view = viewOverride || sourceState?.view || {};
-    const workspaceId = sourceState?.activeWorkspaceId || active?.id || 'workspace';
-    const verse = view.workspaceVerse || 'feed';
-    const query = verse === 'lineage' ? (view.lineageQuery || '') : (view.query || '');
-    const selected = verse === 'lineage' ? (view.selectedRecordId || '') : '';
-    const display = view.displayOptions ? JSON.stringify(view.displayOptions) : '';
-    return `${workspaceId}:${verse}:${query}:${selected}:${display}`;
+    return workspaceViewScrollKeyFor(sourceState, viewOverride, active?.id || 'workspace');
   }
 
-
-  function stateWithViewPatch(sourceState = state, patch = {}) {
-    return Object.assign({}, sourceState, {
-      view: Object.assign({}, sourceState.view || {}, patch)
-    });
-  }
-
-  function stateWithViewUpdate(sourceState = state, updater = null) {
-    const currentView = sourceState.view || {};
-    const nextView = typeof updater === 'function' ? updater(currentView, sourceState) : Object.assign({}, currentView, updater || {});
-    if (nextView === currentView) return sourceState;
-    return Object.assign({}, sourceState, { view: nextView });
-  }
 
   function commitViewPatch(patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
@@ -258,16 +113,7 @@ export function TiinexApp() {
   }
 
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
-    const key = viewScrollKeyFor(sourceState);
-    const top = viewScrollRef.current[key];
-    if (!Number.isFinite(Number(top))) return nextState;
-    const scrollPositions = Object.assign({}, nextState.view?.scrollPositions || {});
-    const roundedTop = Math.max(0, Math.round(Number(top)));
-    if (Number(scrollPositions[key] || 0) === roundedTop) return nextState;
-    scrollPositions[key] = roundedTop;
-    return Object.assign({}, nextState, {
-      view: Object.assign({}, nextState.view || {}, { scrollPositions })
-    });
+    return stateWithCapturedViewScroll(nextState, sourceState, viewScrollRef.current, active?.id || 'workspace');
   }
 
   function persistCapturedViewScroll(mode = 'replace') {
@@ -963,83 +809,5 @@ export function TiinexApp() {
       {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={dismissDialog} /> : null}
     </main>
   );
-}
-
-
-function hydrateUiRecord(record) {
-  if (!record) return null;
-  return hydrateGithubRecordFromSourceCache(record, { storage: typeof window !== 'undefined' ? window.localStorage : null });
-}
-
-function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, onPreviousWorkspace, onNextWorkspace, onCreate, onHome, onShare, onHelp, onMultiverse }) {
-  const showPager = Boolean(hasWorkspace && pagerVisible);
-  return (
-    <nav
-      className={`tx-top-dock tx-dock-shell-row ${showPager ? 'tx-top-dock-paged' : 'tx-top-dock-fit'}`}
-      aria-label="Global actions"
-      data-workspace-count={workspaceCount}
-      data-overflow-pager={showPager ? 'visible' : 'hidden'}
-    >
-      {showPager ? <Button shape="round" icon="previous" aria-label="Previous workspace" onClick={onPreviousWorkspace} /> : null}
-      <span className="tx-dock-core tx-centered-dock-core tx-content-fit-dock">
-        <span className="tx-dock-side tx-dock-left">
-          <Button icon="multiverse" variant="nav" aria-label="Change multiverse" title="Change multiverse" onClick={onMultiverse} />
-          <Button icon="create" variant="primary" onClick={onCreate}>Create</Button>
-        </span>
-        <button className="tx-logo-command tx-logo-home tx-dock-logo-large" data-home type="button" onClick={onHome} aria-label="Tiinex home">
-          <img src={LOGO_SRC} alt="" />
-        </button>
-        <span className="tx-dock-side tx-dock-right">
-          <Button icon="shareNodes" variant="nav" onClick={onShare}>Share session</Button>
-          <Button icon="help" variant="nav" aria-label="Help" onClick={onHelp} />
-        </span>
-      </span>
-      {showPager ? <Button shape="round" icon="next" aria-label="Next workspace" onClick={onNextWorkspace} /> : null}
-    </nav>
-  );
-}
-
-function EmptyStage({ workspaceConfig }) {
-  const subtitle = runtime().config?.emptyStageSubtitle?.(workspaceConfig, 0) || 'Every handoff starts somewhere';
-  return (
-    <section className="tx-empty-stage tx-old-empty-stage tx-uc001-empty-start" aria-label="No workspace loaded">
-      <p>{subtitle}</p>
-    </section>
-  );
-}
-
-function HelpDialog({ workspaceConfig, onDismiss }) {
-  const help = workspaceConfig?.help || [];
-  return (
-    <Modal title="Help" onDismiss={onDismiss}>
-      <div className="tx-help-stack">
-        {help.length ? help.map((item) => (
-          <details key={item.question} open={item.question === 'What is this view?'}>
-            <summary>{item.question}</summary>
-            <p>{item.body}</p>
-          </details>
-        )) : <p className="tx-muted">No workspace help is configured.</p>}
-        <div className="tx-schema-origin-note">
-          <Badge>canonical-core: Tiinex/docs</Badge>
-          <Badge>viewer-extension: Tiinex/site</Badge>
-          <Badge>{schemaRegistry.modules.length} schema modules</Badge>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// `createRecordFromMarkdown` moved to `src/artifacts/artifact.record.js` (v121 materialization foundation)
-
-function normalizeRepository(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  try {
-    const url = new URL(raw);
-    const parts = url.pathname.replace(/^\/+|\.git$/g, '').split('/').filter(Boolean);
-    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : raw;
-  } catch {
-    return raw.replace(/^github\.com\//i, '').replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '');
-  }
 }
 

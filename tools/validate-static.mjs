@@ -34,7 +34,35 @@ if (!existsSync(path('package-lock.json'))) failures.push('package-lock.json mis
 if (!existsSync(path('public', 'assets', 'tiinex-logo-white-transparent.png'))) failures.push('public/assets/tiinex-logo-white-transparent.png missing');
 
 const index = read('index.html');
-const reactAppAndWorkspace = read('src/app/TiinexApp.jsx') + '\n' + read('src/schemas/workspace/workspace.views.jsx') + '\n' + read('src/schemas/workspace/workspace.add.views.jsx') + '\n' + read('src/schemas/workspace/workspace.schema.js') + '\n' + read('src/schemas/workspace/workspace.i18n.js') + '\n' + read('src/workspaces/workspace.lifecycle.js');
+const workspaceViewFiles = [
+  'src/schemas/workspace/workspace.views.jsx',
+  'src/schemas/workspace/workspace.chrome.views.jsx',
+  'src/schemas/workspace/workspace.discovery.views.jsx',
+  'src/schemas/workspace/workspace.tree.views.jsx',
+  'src/schemas/workspace/workspace.audit.views.jsx',
+  'src/schemas/workspace/workspace.lineage.views.jsx',
+  'src/schemas/workspace/workspace.cards.views.jsx',
+  'src/schemas/workspace/workspace.read.views.jsx',
+  'src/schemas/workspace/workspace.recordDialogs.views.jsx',
+  'src/schemas/workspace/workspace.auditBadge.views.jsx',
+  'src/schemas/workspace/workspace.displayOptions.views.jsx',
+  'src/schemas/workspace/workspace.viewFormatting.js'
+];
+const reactAppAndWorkspace = [
+  'src/app/TiinexApp.jsx',
+  'src/app/appShell.views.jsx',
+  'src/app/viewport.js',
+  'src/app/runtimeState.js',
+  'src/app/viewState.js',
+  'src/app/githubMaterializationSummary.js',
+  'src/app/workspaceDisplayCounts.js',
+  'src/app/recordUi.js',
+  'src/schemas/workspace/workspace.add.views.jsx',
+  'src/schemas/workspace/workspace.schema.js',
+  'src/schemas/workspace/workspace.i18n.js',
+  'src/workspaces/workspace.lifecycle.js',
+  ...workspaceViewFiles
+].map(read).join('\n');
 if (index.includes('./app.js')) failures.push('index.html must not load legacy app.js');
 if (!index.includes('type="module"') || !index.includes('./src/main.jsx')) failures.push('index.html must load React module entry src/main.jsx');
 if (index.includes('./src/main.js"') || index.includes("./src/main.js'")) failures.push('index.html must not load legacy vanilla main.js in React runtime');
@@ -71,14 +99,14 @@ for (const required of [
 
 has('src/main.jsx', 'createRoot', 'React entry must mount with react-dom/client');
 has('src/main.jsx', './workspaces/workspace.config.js', 'React entry must load workspace config runtime');
-has('src/app/TiinexApp.jsx', 'schemaRegistry', 'React app must stay schema-companion aware');
+if (!reactAppAndWorkspace.includes('schemaRegistry')) failures.push('React app must stay schema-companion aware');
 has('src/app/TiinexApp.jsx', 'readInitialState', 'React app must restore from hash state');
-has('src/app/TiinexApp.jsx', 'clean-url-does-not-bootstrap-stale-local-storage', 'React runtime must retain clean URL source-boundary invariant');
+if (!reactAppAndWorkspace.includes('clean-url-does-not-bootstrap-stale-local-storage')) failures.push('React runtime must retain clean URL source-boundary invariant');
 if (!reactAppAndWorkspace.includes('No nodes match this view.')) failures.push('UC-001 empty workspace state missing');
 if (!reactAppAndWorkspace.includes('no source files or GitHub provenance inferred')) failures.push('local/session workspace boundary missing');
 if (!reactAppAndWorkspace.includes('workspace-source-strip')) failures.push('source row must remain available');
-has('src/app/TiinexApp.jsx', 'count <= 1', 'pager arrows must only be possible with multiple workspaces');
-has('src/app/TiinexApp.jsx', 'shouldPageWorkspaces', 'pager arrows must also be gated by viewport size');
+if (!reactAppAndWorkspace.includes('count <= 1')) failures.push('pager arrows must only be possible with multiple workspaces');
+if (!reactAppAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must also be gated by viewport size');
 has('src/ui/primitives/Icon.jsx', '@fortawesome/react-fontawesome', 'Icon primitive must use Font Awesome React integration');
 has('src/styles/app.css', 'tx-react-runtime', 'React shell CSS missing');
 has('src/styles/app.css', '--tx-gap-icon', 'icon/text spacing must be token-owned');

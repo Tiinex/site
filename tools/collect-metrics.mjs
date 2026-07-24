@@ -8,6 +8,9 @@ function walk(dir){let out=[]; for(const e of readdirSync(dir,{withFileTypes:tru
 const files=walk(root);
 const index = readFileSync(join(root,'index.html'),'utf8');
 const app = readFileSync(join(root,'src/app/TiinexApp.jsx'),'utf8');
+const appShell = readFileSync(join(root,'src/app/appShell.views.jsx'),'utf8');
+const viewport = readFileSync(join(root,'src/app/viewport.js'),'utf8');
+const appSurface = `${app}\n${appShell}\n${viewport}`;
 const workspaceViews = readFileSync(join(root,'src/schemas/workspace/workspace.views.jsx'),'utf8');
 const workspaceAddViews = readFileSync(join(root,'src/schemas/workspace/workspace.add.views.jsx'),'utf8');
 console.log(JSON.stringify({
@@ -21,17 +24,17 @@ console.log(JSON.stringify({
   fileLocalStartup:false,
   localDevServer:'npm run dev',
   sourceCleanDelivery:true,
-  oldLikeFooter: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('/* v119.2 footer + recognition guard:') && readFileSync(join(root,'src/styles/app.css'),'utf8').includes('display: block;') && app.includes('https://github.com/Tiinex'),
+  oldLikeFooter: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('/* v119.2 footer + recognition guard:') && readFileSync(join(root,'src/styles/app.css'),'utf8').includes('display: block;') && appSurface.includes('https://github.com/Tiinex'),
   footerVisibleBeforeWorkspace:true,
   footerLinkable:true,
   compactBoilerplatePass:true,
   dockLogoLargerThanButtons: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('tx-dock-logo-large'),
   dockFitsVisibleControls: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('/* v119.3 dock ergonomics:') && readFileSync(join(root,'src/styles/app.css'),'utf8').includes('display: inline-flex !important;'),
-  workspacePagerSizeGated: app.includes('shouldPageWorkspaces') && app.includes('data-overflow-pager'),
+  workspacePagerSizeGated: appSurface.includes('shouldPageWorkspaces') && appSurface.includes('data-overflow-pager'),
   publicBuildBundled:true,
   publicRuntime:'vite-react-bundle',
   fontAwesomePrimitive: readFileSync(join(root,'src/ui/primitives/Icon.jsx'),'utf8').includes('@fortawesome/react-fontawesome'),
-  schemaCompanionAware: app.includes('schemaRegistry') && workspaceViews.includes('data-schema-id="tiinex.workspace.v1"'),
+  schemaCompanionAware: appSurface.includes('schemaRegistry') && workspaceViews.includes('data-schema-id="tiinex.workspace.v1"'),
   workspaceSchemaCompanion: existsSync(join(root,'src/schemas/workspace/workspace.schema.js')),
   oldLikeAddFlow: workspaceAddViews.includes('AddToWorkspaceDialog') && workspaceAddViews.includes('Manual files') && workspaceAddViews.includes('GitHub source'),
   localMarkdownIntake: app.includes('materializeLocalMarkdownFiles') && app.includes('applyLocalAdapterResultToWorkspace'),

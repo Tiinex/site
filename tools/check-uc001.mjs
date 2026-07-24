@@ -6,13 +6,15 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
 const failures = [];
 const app = readFileSync(join(root, 'src/app/TiinexApp.jsx'), 'utf8');
+const appShell = readFileSync(join(root, 'src/app/appShell.views.jsx'), 'utf8');
+const viewport = readFileSync(join(root, 'src/app/viewport.js'), 'utf8');
 const workspaceViews = readFileSync(join(root, 'src/schemas/workspace/workspace.views.jsx'), 'utf8') + '\n' + readFileSync(join(root, 'src/schemas/workspace/workspace.add.views.jsx'), 'utf8');
 const workspaceModule = readFileSync(join(root, 'src/schemas/workspace/workspace.schema.js'), 'utf8');
 const workspaceI18n = readFileSync(join(root, 'src/schemas/workspace/workspace.i18n.js'), 'utf8');
 const lifecycle = readFileSync(join(root, 'src/workspaces/workspace.lifecycle.js'), 'utf8');
 const persistence = readFileSync(join(root, 'src/workspaces/workspace.persistence.js'), 'utf8');
 const config = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
-const uiSource = `${app}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n}\n${lifecycle}`;
+const uiSource = `${app}\n${appShell}\n${viewport}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n}\n${lifecycle}`;
 function expect(text, needle, label) { if (!text.includes(needle)) failures.push(label); }
 function reject(text, needle, label) { if (text.includes(needle)) failures.push(label); }
 

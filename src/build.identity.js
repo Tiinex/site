@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v220';
-export const TIINEX_SITE_VERSION = '0.2.40-v220';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v220';
-export const TIINEX_RUNTIME_ID = 'react-v220-discovery-interaction-clone-debt-repair';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v220-discovery-interaction-clone-debt-repair';
+export const TIINEX_SITE_CHECKPOINT = 'v222';
+export const TIINEX_SITE_VERSION = '0.2.42-v222';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v222';
+export const TIINEX_RUNTIME_ID = 'react-v222-workspace-surface-debt-cleanup';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v222-workspace-surface-debt-cleanup';
 
 
 export function tiinexBuildIdentity() {
