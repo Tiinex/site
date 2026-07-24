@@ -1,6 +1,6 @@
 import { parseArtifactMarkdown } from './artifact.parse.js';
-import { schemaBadgeClass, schemaKey } from '../schemas/root.classify.js';
-import { createRootFallbackModel } from '../schemas/root.fallback.js';
+import { schemaBadgeClass, schemaKey } from '../schemas/tiinex.root.v1.classify.js';
+import { createRootFallbackModel } from '../schemas/tiinex.root.v1.fallback.js';
 import { inferRecordMaterialRole } from '../workspaces/workspace.materialRole.js';
 
 export function createRecordFromMarkdown(markdown = '', meta = {}) {

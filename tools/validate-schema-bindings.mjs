@@ -108,7 +108,7 @@ for (const entry of manifestModules) {
   else if (!existsSync(join(schemaRoot, entry.path))) failures.push(`manifest points to missing binding ${entry.path}`);
 }
 
-if (!existsSync(join(schemaRoot, 'root.schema.json'))) failures.push('root schema binding must live directly under src/schemas');
+if (!existsSync(join(schemaRoot, 'tiinex.root.v1.schema.json'))) failures.push('root schema binding must live directly under src/schemas');
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));
   process.exit(1);

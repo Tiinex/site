@@ -1,0 +1,21 @@
+{
+  "label": "Root",
+  "summary": "Minimum shared contract for Tiinex lineage artifacts; abstract envelope and fallback.",
+  "root.continuity.missing": "Missing # Continuity Context.",
+  "root.envelopeSchema.missing": "Missing Envelope Schema.",
+  "root.currentSchema.missing": "Missing Current → Current Schema.",
+  "root.createdAt.missing": "Missing Current → Created At.",
+  "root.integrity.missing": "Missing Continuity Integrity footer.",
+  "root.parent.absent": "No parent edge declared; artifact is local lineage root unless another relation says otherwise.",
+  "root.parent.schema.missing": "Parent edge is present but Parent Schema is missing.",
+  "root.parent.trace.missing": "Parent edge is present but Trace is missing; lineage traversal will be degraded.",
+  "root.parent.origin.missing": "Parent edge is present but Origin is missing; recovery will rely on other hints.",
+  "root.repairs.declared": "Envelope declares repair notes; validators should preserve unknown repair fields.",
+  "root.envelope.readable": "Root envelope is readable at current validation depth.",
+  "root.fallback.used": "Schema module is unavailable; root/envelope semantics only.",
+  "integrity.validation.skipped": "Continuity Integrity footer is missing; integrity engine did not run byte/canonicalization validation.",
+  "integrity.method.unspecified": "Continuity Integrity exists but no machine-verifiable integrity method is declared.",
+  "integrity.c14n-v2.detected": "c14n-v2 integrity method is declared; byte verification is delegated to the integrity engine when canonical bytes are available.",
+  "integrity.local-draft.declared": "Draft/local integrity marker is present; it is a recoverability marker, not a published byte-verification proof.",
+  "integrity.method.declared": "Integrity method declared."
+}

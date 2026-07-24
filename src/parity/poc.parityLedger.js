@@ -43,7 +43,7 @@ export const pocParityLedger = Object.freeze({
       legacyBehavior: 'Unknown schemas remain readable through Root/envelope semantics instead of becoming broken plain text.',
       semanticOwner: 'tiinex.root.v1 fallback',
       runtimeOwner: 'src/schemas/root.* + src/artifacts/*',
-      automatedChecks: ['src/schemas/root.fallback.test.mjs'],
+      automatedChecks: ['src/schemas/tiinex.root.v1.fallback.test.mjs'],
       manualChecks: ['open unknown-schema markdown detail'],
       failureResult: 'root fallback finding; preserve unknown child schema fields'
     }),

@@ -1,5 +1,5 @@
-import { createRootFallbackModel } from '../schemas/root.fallback.js';
-import { schemaBadgeClass, schemaKey } from '../schemas/root.classify.js';
+import { createRootFallbackModel } from '../schemas/tiinex.root.v1.fallback.js';
+import { schemaBadgeClass, schemaKey } from '../schemas/tiinex.root.v1.classify.js';
 
 export function normalizeArtifact(parsedArtifact, schemaResolution, validation = []) {
   const currentSchemaId = parsedArtifact.envelope.current.schema.id || 'unknown';

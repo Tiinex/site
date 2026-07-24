@@ -1,10 +1,10 @@
-import { rootSchemaModule } from './root.schema.js';
-import { topicSchemaModule } from './core/topic/topic.schema.js';
-import { preservationSchemaModule } from './core/preservation/preservation.schema.js';
-import { evidenceSchemaModule } from './core/evidence/evidence.schema.js';
-import { moduleSchemaModule } from './schema/module/module.schema.js';
-import { surfaceSchemaModule } from './presentation/surface/surface.schema.js';
-import { workspaceSchemaModule } from './workspace/workspace.schema.js';
+import { rootSchemaModule } from './tiinex.root.v1.schema.js';
+import { topicSchemaModule } from './core/topic/tiinex.topic.v1.schema.js';
+import { preservationSchemaModule } from './core/preservation/tiinex.preservation.v1.schema.js';
+import { evidenceSchemaModule } from './core/evidence/tiinex.evidence.v1.schema.js';
+import { moduleSchemaModule } from './schema/module/tiinex.schema.module.v1.schema.js';
+import { surfaceSchemaModule } from './presentation/surface/tiinex.presentation.surface.v1.schema.js';
+import { workspaceSchemaModule } from './workspace/tiinex.workspace.v1.schema.js';
 
 const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, preservationSchemaModule, evidenceSchemaModule, moduleSchemaModule, surfaceSchemaModule];
 const byId = new Map(modules.map((module) => [module.id, module]));

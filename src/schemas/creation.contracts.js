@@ -1,5 +1,5 @@
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
-import { rootValidate } from './root.validate.js';
+import { rootValidate } from './tiinex.root.v1.validate.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from './capability.registry.js';
 import { schemaRegistry } from './registry.js';
 import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';

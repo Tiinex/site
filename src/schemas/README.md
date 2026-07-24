@@ -1,52 +1,99 @@
-# Schema Modules
+# Schema Companion Contract
 
-This tree contains schema companions the viewer can render, validate, or use as UI affordances. **Tiinex/docs is the canonical core origin, not the only allowed origin.** Forked viewers and app-specific viewers may ship additional schema modules only when the module origin is explicit.
+This directory contains schema companions that the viewer can resolve through the schema registry. Tiinex/docs is the canonical core origin, not the only allowed origin. The file tree is an implementation detail; durable schema identity comes from each companion's schema id and binding metadata.
 
-Path is a discovery hint, not semantic authority. Resolve schema identity from the schema id, the module metadata, and its declared origin. For canonical Tiinex/docs schema artifacts, the embedded Markdown snapshot keeps the exact upstream schema artifact filename.
+This README describes the companion contract. It intentionally does **not** list every installed schema, because schema inventories belong in the registry/manifest and would become stale here.
 
-Each supported schema module should prefer:
+## Principle
 
-- `tiinex.<name>.v1.schema.md` — canonical Markdown schema artifact snapshot when sourced from `Tiinex/docs`.
-- `<module>.schema.json` — viewer binding metadata with origin, permalink or local path, checksum, trust role, and canonical snapshot filename.
-- `<module>.schema.js` — app-readable schema companion module.
+Schema-specific meaning stays with the schema companion.
 
-Short names such as `Root`, `Topic`, or `Evidence` are display labels only. They are not durable schema identity and must not replace canonical filenames or schema ids.
+Generic engines may live outside `src/schemas`, but they must not absorb Topic/Evidence/etc. rules:
 
-## Origin model
+- `src/validation/` owns validation orchestration, finding normalization, and i18n lookup APIs.
+- `src/integrity/` owns reusable checksum/canonicalization/integrity engines.
+- `src/schemas/<schema>/` owns schema-specific validation, presentation, capabilities, findings, i18n resources, and future transitions.
 
-Schema origins are intentionally plural:
+## Minimal companion
 
-- `canonical-core` — upstream/core schemas from `Tiinex/docs`.
-- `viewer-extension` — viewer-local or app-specific schemas used by this runtime.
-- `external-extension` — third-party schema modules that a fork or workspace can opt into.
+A schema builder should be able to generate a useful companion with only:
 
-A viewer must not treat every unknown schema as a Tiinex/docs miss. It should report the declared origin if present, then degrade clearly when no module can resolve it.
+```text
+<schema-id>.schema.md
+<schema-id>.schema.json
+<schema-id>.schema.js
+```
 
-## Canonical schema naming
+Example:
 
-Canonical Tiinex/docs schema snapshots use the exact artifact filename from `.topics/.schemas/README.md`. Examples:
+```text
+tiinex.topic.v1.schema.md
+tiinex.topic.v1.schema.json
+tiinex.topic.v1.schema.js
+```
 
-- `tiinex.root.v1.schema.md`
-- `tiinex.topic.v1.schema.md`
-- `tiinex.evidence.v1.schema.md`
+The schema id, including version suffix, is propagated into companion filenames. Short labels such as `Topic` are display labels only.
 
-Legacy local names such as `root.schema.md` or `topic.schema.md` may remain as migration aliases while the runtime transitions, but the binding `snapshot` must point at the canonical filename. Aliases are declared in `snapshotAliases` and are never the semantic authority.
+## Optional companion roles
 
-## Forking contract
+Optional files are added only when the schema diverges from Root or needs additional behavior:
 
-A fork may add schemas under its own namespace without changing Tiinex/docs. Add an explicit schema origin in `.workspace.md` or the schema manifest before using those modules in runtime UI.
+```text
+<schema-id>.validate.js
+<schema-id>.presenter.js
+<schema-id>.capabilities.js
+<schema-id>.findings.js
+<schema-id>.<locale>.i18n.json
+<schema-id>.transitions.js
+```
 
-## Viewer-local workspace module
+Current convention keeps the folder flat. Locale files use Tiinex-style naming:
 
-`src/schemas/workspace/` is the first viewer-extension schema companion. It binds the site-local `.topics/.schemas/tiinex.workspace.v1.schema.md` artifact to runtime capabilities, React surfaces, source/progress presentation, validation, and transitions. This keeps workspace-specific UI near the schema instead of duplicating it in a generic React component tree.
+```text
+<schema-id>.en.i18n.json
+<schema-id>.sv.i18n.json
+```
 
-## Companion contract
+## Validation
 
-A schema companion owns schema-specific presentation and transitions:
+Validation is composed by `src/validation/validateArtifact.js`:
 
-- compact card projection;
-- expanded/read projection;
-- detail projection;
-- available transition/action surface for a given viewer context.
+```text
+parse
+→ Root validation
+→ generic integrity validation
+→ exact schema validation, if available
+→ normalized findings + validation truth
+```
 
-The generic workspace viewer owns layout, anchoring, dialogs, markdown display, and dispatch. It must not hardcode that `Evidence` has `Supported Claim`, or that `Topic` has `Current Read`; those projections belong to schema companions.
+Child validators do not import or call Root validation manually. They only emit schema-specific finding codes.
+
+## Findings and i18n
+
+Validators emit stable finding codes, not user-facing prose as the source of truth.
+
+```text
+validator emits: topic.title.missing
+findings says: severity/fixability/messageKey
+i18n says: localized human text
+```
+
+A finding companion is useful when a schema owns custom finding codes. A schema that only relies on Root findings does not need its own findings file.
+
+Human-readable messages resolve through `<schema-id>.<locale>.i18n.json`. Missing locale keys should fall back explicitly; they must not create new validation semantics.
+
+## Presenters
+
+`<schema-id>.presenter.js` is the schema-specific projection seam. Feed, Tree, Lineage, and other workspace surfaces may share the same presenter unless the schema truly needs a divergent projection.
+
+Do not create surface-specific wrapper files just to set `surface: 'feed'` or similar. Add a surface-specific presenter only when it has real schema-specific behavior and is wired through the schema module/registry.
+
+## Transitions and forms
+
+Transitions are passive until the transition milestone. Root may define the safety contract for transitions, but concrete transition/product behavior must be explicit and schema/capability-owned.
+
+Form companions are not part of the active Root milestone. They should be introduced with the transition/artifact-creation milestone, not shipped as inert scaffold.
+
+## Workspace module
+
+`src/schemas/workspace/` is the viewer-local workspace schema companion. It is allowed to contain React workspace surfaces because the workspace schema is the viewer entrypoint. Core schema companions should stay React-free.

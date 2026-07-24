@@ -41,6 +41,8 @@ if (!appAndWorkspace.includes('tx-dock-right')) failures.push('Share/help must l
 if (!appAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must be size-gated, not count-only');
 if (!appAndWorkspace.includes("data-overflow-pager={showPager ? 'visible' : 'hidden'}")) failures.push('dock must expose overflow pager state for regression checks');
 if (!appAndWorkspace.includes('tx-empty-stage tx-old-empty-stage')) failures.push('empty start must keep old empty-stage semantics');
+if (!appAndWorkspace.includes('tx-logo-command tx-logo-home tx-dock-logo-large')) failures.push('global dock logo must keep styled home-logo command classes after extraction');
+if (!appAndWorkspace.includes('emptyStageSubtitle')) failures.push('empty stage must render configured subtitle/MOTD rather than fallback/undefined copy');
 if (!appAndWorkspace.includes('tx-column-window')) failures.push('created workspace must render as Column window');
 if (!appAndWorkspace.includes('tx-source-strip workspace-source-strip')) failures.push('source row must stay visible when sources exist');
 if (!appAndWorkspace.includes('tx-workspace-drop-hint')) failures.push('empty workspace drop hint must stay available');
@@ -62,7 +64,7 @@ if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evide
 
 if (!read('src/actions/record.actions.js').includes('actionAvailabilityForRecord')) failures.push('record actions must be gated by schema/transition capability availability, not generic card affordances');
 if (!read('src/actions/record.actions.js').includes('enabled: implemented')) failures.push('create-like record actions must only render from implemented schema capabilities');
-if (read('src/schemas/root.schema.js').includes('record.continue') || read('src/schemas/root.schema.js').includes('record.reference')) failures.push('Root schema view actions must not declare generic Continue/Reference actions');
+if (read('src/schemas/tiinex.root.v1.schema.js').includes('record.continue') || read('src/schemas/tiinex.root.v1.schema.js').includes('record.reference')) failures.push('Root schema view actions must not declare generic Continue/Reference actions');
 if (!appAndWorkspace.includes('LineageSelectedSummary')) failures.push('Lineage mode must show selected artifact trust/audit status after artifact selection');
 if (appAndWorkspace.includes('tx-selected-lineage-chip')) failures.push('Lineage mode toolbar must not render a selected-artifact status chip');
 if (appAndWorkspace.includes('tx-audit-details-trigger')) failures.push('Lineage mode toolbar must not render Audit details as a textual badge/pill');
@@ -89,7 +91,7 @@ if (!appAndWorkspace.includes('showAssets: false')) failures.push('assets must b
 if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
 if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
 if (!appAndWorkspace.includes('schemaRegistry.modules.length')) failures.push('help surface should disclose schema companion state');
-has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
+has('src/schemas/workspace/tiinex.workspace.v1.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
 has('src/schemas/workspace/workspace.add.views.jsx', 'tx-github-discovery-card', 'GitHub repo discovery must be a visible checkbox surface, not a hidden operation mode');
@@ -127,7 +129,10 @@ has('src/styles/app.css', '/* v119.3 dock ergonomics:', 'dock recognition ergono
 has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must wrap visible controls instead of stretching toward the column');
 has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
 has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
+has('src/styles/app.css', '/* v225: canonical dock/logo centering contract.', 'canonical dock/logo centering contract must be the final owner');
+has('src/styles/app.css', 'grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;', 'dock logo must remain center-anchored with symmetric side tracks');
 has('src/styles/app.css', 'width: 138%;', 'logo image itself must be larger without increasing the button size');
+has('src/styles/app.css', 'transform: none;', 'logo glyph should be centered by layout contract, not accumulating optical transform patches');
 
 has('src/styles/app.css', '.tx-react-runtime.tx-empty-stage-mode', 'React empty stage must have dedicated old parity shell CSS');
 has('src/styles/app.css', '.tx-empty-stage-mode .tx-empty-stage {', 'empty start must override card-frame stage CSS');

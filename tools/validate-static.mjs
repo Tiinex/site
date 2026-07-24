@@ -58,8 +58,8 @@ const reactAppAndWorkspace = [
   'src/app/workspaceDisplayCounts.js',
   'src/app/recordUi.js',
   'src/schemas/workspace/workspace.add.views.jsx',
-  'src/schemas/workspace/workspace.schema.js',
-  'src/schemas/workspace/workspace.i18n.js',
+  'src/schemas/workspace/tiinex.workspace.v1.schema.js',
+  'src/schemas/workspace/tiinex.workspace.v1.en.i18n.json',
   'src/workspaces/workspace.lifecycle.js',
   ...workspaceViewFiles
 ].map(read).join('\n');
@@ -91,7 +91,7 @@ for (const required of [
   'src/schemas/registry.js',
   'src/schemas/README.md',
   'src/schemas/origins.js',
-  'src/schemas/workspace/workspace.schema.js',
+  'src/schemas/workspace/tiinex.workspace.v1.schema.js',
   'src/schemas/workspace/workspace.views.jsx',
   'src/schemas/workspace/workspace.add.views.jsx',
   'docs/architecture/uc001-workspace-lifecycle.md'
@@ -112,7 +112,7 @@ has('src/styles/app.css', 'tx-react-runtime', 'React shell CSS missing');
 has('src/styles/app.css', '--tx-gap-icon', 'icon/text spacing must be token-owned');
 has('src/schemas/README.md', 'not the only allowed origin', 'schema README must avoid Tiinex/docs lock-in');
 has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema companion module must be registered');
-has('src/schemas/workspace/workspace.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema module must expose workspace schema id');
+has('src/schemas/workspace/tiinex.workspace.v1.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema module must expose workspace schema id');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'old-like Add flow must live in workspace schema companions');
 has('.topics/.schemas/tiinex.workspace.v1.schema.md', '## Schema Origins', 'workspace schema must define schema origins');
 has('.topics/.schemas/tiinex.workspace.v1.schema.md', '`Viewer local schemas`', 'workspace schema must support viewer-local schema origin language');

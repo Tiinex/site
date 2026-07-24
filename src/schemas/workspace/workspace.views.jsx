@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
-import { presentWorkspaceFeed, presentWorkspaceTree } from './workspace.presenter.js';
+import { presentWorkspaceFeed, presentWorkspaceTree } from './tiinex.workspace.v1.presenter.js';
 import { summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
 import { buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';

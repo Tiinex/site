@@ -1,0 +1,4 @@
+{
+  "label": "Schema Module",
+  "summary": "Capability bundle around schema interpretation, viewing, validation, forms, and fallback behavior."
+}

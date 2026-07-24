@@ -7368,3 +7368,48 @@ pre { white-space: pre-wrap; overflow:auto; }
 .tx-badge-diagnostic-findings span {
   overflow-wrap: anywhere;
 }
+
+/* v225: canonical dock/logo centering contract.
+   The logo is the center anchor; side action groups may differ in width without
+   pulling the Tiinex mark off-center. Keep this as the final logo rule. */
+.tx-react-runtime .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock,
+.tx-react-runtime.tx-empty-stage-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock,
+.tx-react-runtime.tx-workspace-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock {
+  display: grid !important;
+  grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;
+  width: fit-content !important;
+  max-width: calc(100vw - 1rem) !important;
+  align-items: center !important;
+}
+.tx-react-runtime .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-left,
+.tx-react-runtime.tx-empty-stage-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-left,
+.tx-react-runtime.tx-workspace-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-left {
+  justify-self: stretch;
+  justify-content: flex-start;
+}
+.tx-react-runtime .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-right,
+.tx-react-runtime.tx-empty-stage-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-right,
+.tx-react-runtime.tx-workspace-mode .tx-dock-core.tx-centered-dock-core.tx-content-fit-dock .tx-dock-right {
+  justify-self: stretch;
+  justify-content: flex-end;
+}
+.tx-react-runtime .tx-logo-command.tx-dock-logo-large,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command.tx-dock-logo-large,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command.tx-dock-logo-large {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 0;
+}
+.tx-react-runtime .tx-logo-command.tx-dock-logo-large img,
+.tx-react-runtime.tx-empty-stage-mode .tx-logo-command.tx-dock-logo-large img,
+.tx-react-runtime.tx-workspace-mode .tx-logo-command.tx-dock-logo-large img {
+  width: 138%;
+  height: 138%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  object-position: center center;
+  transform: none;
+  transform-origin: 50% 50%;
+}

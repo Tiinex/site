@@ -8,7 +8,7 @@
       "schemaId": "tiinex.root.v1",
       "kind": "abstract",
       "role": "envelope",
-      "path": "root.schema.json",
+      "path": "tiinex.root.v1.schema.json",
       "checksum": "f3fbdb3334b8cde361192f62c1e91cad46f5fb4c66cedd73a6be9018aff8a4f7",
       "sourceBlobSha": "99fb6a5cbd11b7ec456208496316066b7dcee16f"
     },
@@ -16,7 +16,7 @@
       "schemaId": "tiinex.workspace.v1",
       "kind": "concrete",
       "role": "viewer-workspace-entrypoint",
-      "path": "workspace/workspace.schema.json",
+      "path": "workspace/tiinex.workspace.v1.schema.json",
       "checksum": "27d73b65f745335da79a877d3678af5497b29bed4bace218a244deeb5647c4dc",
       "sourceBlobSha": "site-local-workspace-schema",
       "originId": "viewer-local",
@@ -26,7 +26,7 @@
       "schemaId": "tiinex.evidence.v1",
       "kind": "concrete",
       "role": "core-evidence-artifact",
-      "path": "core/evidence/evidence.schema.json",
+      "path": "core/evidence/tiinex.evidence.v1.schema.json",
       "checksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
       "sourceBlobSha": "430367bb717d93e396a50c993dc011f8d129bf54"
     },
@@ -34,7 +34,7 @@
       "schemaId": "tiinex.preservation.v1",
       "kind": "concrete",
       "role": "core-preservation-artifact",
-      "path": "core/preservation/preservation.schema.json",
+      "path": "core/preservation/tiinex.preservation.v1.schema.json",
       "checksum": "65593b96d3d68d378c4f7be9a765f0c0a97dcbd109c19bec817d4f63c6c8fd1b",
       "sourceBlobSha": "0a2f653a7188defcdf8bd60d9b845c695438f6b4"
     },
@@ -42,7 +42,7 @@
       "schemaId": "tiinex.topic.v1",
       "kind": "concrete",
       "role": "core-topic-artifact",
-      "path": "core/topic/topic.schema.json",
+      "path": "core/topic/tiinex.topic.v1.schema.json",
       "checksum": "d5fb337e126a1953967161b240dd18e8395bd9197f1f3c8f1b9b7c5b26ce77d4",
       "sourceBlobSha": "c36472b0d20ad97d01cc1ca78a50fc69ce35fdae"
     },
@@ -50,7 +50,7 @@
       "schemaId": "tiinex.presentation.surface.v1",
       "kind": "concrete",
       "role": "presentation-surface-artifact",
-      "path": "presentation/surface/surface.schema.json",
+      "path": "presentation/surface/tiinex.presentation.surface.v1.schema.json",
       "checksum": "37c2469e9f3d08f8d2934d47de2e1f3601203dda4868402380fc787775bea4f2",
       "sourceBlobSha": "22636384bd70620edf488ef919719a3c5f395978"
     },
@@ -58,7 +58,7 @@
       "schemaId": "tiinex.schema.module.v1",
       "kind": "concrete",
       "role": "schema-module-artifact",
-      "path": "schema/module/module.schema.json",
+      "path": "schema/module/tiinex.schema.module.v1.schema.json",
       "checksum": "8ddcdbe372bf2c7e817ec63b8cacd91ec6e23588a7e23fb1f918a429f699973c",
       "sourceBlobSha": "b4283720ae22d6342c5087e10c7260fdf0989505"
     }

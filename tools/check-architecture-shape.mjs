@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,6 +10,22 @@ function lineCount(file) { return read(file).split(/\r?\n/).length; }
 function fail(message) { failures.push(message); }
 function includes(file, needle, message) { if (!read(file).includes(needle)) fail(message || `${file} missing ${needle}`); }
 function excludes(file, needle, message) { if (read(file).includes(needle)) fail(message || `${file} must not include ${needle}`); }
+
+function walk(dir) {
+  if (!existsSync(join(root, dir))) return [];
+  const stack = [join(root, dir)];
+  const out = [];
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) stack.push(full);
+      else out.push(full);
+    }
+  }
+  return out;
+}
+function rel(path) { return path.replace(root + '/', '').replaceAll('\\', '/'); }
 
 const budgets = [
   ['src/schemas/workspace/workspace.views.jsx', 260, 'workspace surface orchestrator must stay thin and delegate sub-surfaces'],
@@ -43,6 +59,11 @@ includes('src/workspaces/workspace.displayFilters.js', 'export function displayR
 includes('src/app/viewState.js', 'export function stateWithCapturedViewScroll', 'view-only state patching must be owned outside TiinexApp');
 includes('src/app/appShell.views.jsx', 'export function GlobalDock', 'GlobalDock must stay outside TiinexApp');
 includes('src/app/appShell.views.jsx', 'export function EmptyStage', 'EmptyStage must stay outside TiinexApp');
+includes('src/app/appShell.views.jsx', 'tx-logo-command tx-logo-home tx-dock-logo-large', 'extracted GlobalDock must preserve the styled home logo command classes');
+includes('src/styles/app.css', '/* v225: canonical dock/logo centering contract.', 'logo/dock centering must have a single final contract owner');
+includes('src/styles/app.css', 'grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;', 'dock logo must be centered through symmetric side tracks');
+includes('src/app/appShell.views.jsx', 'emptyStageSubtitle', 'extracted EmptyStage must preserve configured subtitle/MOTD rendering');
+includes('src/app/appShell.views.jsx', 'tx-top-dock tx-dock-shell-row', 'extracted GlobalDock must preserve top-dock wrapper classes so dock CSS applies');
 includes('src/app/appShell.views.jsx', 'export function HelpDialog', 'HelpDialog must stay outside TiinexApp');
 includes('src/app/runtimeState.js', 'export function runtime', 'runtime/default state must stay outside TiinexApp');
 includes('src/app/githubMaterializationSummary.js', 'export function summarizeGithubMaterialization', 'GitHub materialization summary helpers must stay outside TiinexApp');
@@ -73,6 +94,25 @@ excludes('src/app/TiinexApp.jsx', 'function GlobalDock', 'TiinexApp must not re-
 excludes('src/app/TiinexApp.jsx', 'function EmptyStage', 'TiinexApp must not re-own empty-stage presentation');
 excludes('src/app/TiinexApp.jsx', 'function summarizeGithubMaterialization', 'TiinexApp must not re-own GitHub materialization summaries');
 excludes('src/app/TiinexApp.jsx', 'function normalizeRepository', 'TiinexApp must not re-own repository URL parsing');
+
+includes('src/validation/validateArtifact.js', 'export function validateArtifact', 'shared validation pipeline must own Root + exact schema composition');
+includes('src/integrity/integrity.validate.js', 'export function validateIntegrity', 'integrity validation engine must stay outside root.validate');
+includes('src/validation/findings.js', 'export function normalizeFinding', 'finding-code normalization must be shared and reusable');
+includes('src/validation/i18n.js', 'export function resolveFindingMessage', 'finding messages must resolve through i18n resources');
+includes('src/schemas/tiinex.root.v1.schema.js', "./tiinex.root.v1.en.i18n.json", 'Root i18n must use flat versioned locale JSON companion files');
+excludes('src/schemas/core/topic/tiinex.topic.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
+excludes('src/schemas/core/evidence/tiinex.evidence.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
+excludes('src/schemas/core/preservation/tiinex.preservation.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
+
+for (const file of walk('src/schemas')) {
+  const path = rel(file);
+  if (/\.i18n\.js$/.test(path)) fail(`${path} must use flat <schema-id>.<locale>.i18n.json naming, not JS i18n scaffold`);
+  if (/\.(feed|tree|lineage|detail|preview|share|graph)\.presenter\.js$/.test(path)) fail(`${path} is an inert surface presenter scaffold; use <schema-id>.presenter.js until a divergent surface owner is wired`);
+  if (/\.(create|edit|quick|full)\.form\.js$/.test(path)) fail(`${path} is passive form scaffold; forms wait for the transition/artifact-creation milestone`);
+  if (/\/(root|topic|evidence|preservation|module|surface)\.(schema|validate|findings|capabilities|presenter|transitions|feed\.presenter|tree\.presenter|lineage\.presenter|detail\.presenter|preview\.presenter|share\.presenter|graph\.presenter|create\.form|edit\.form|quick\.form|full\.form)\.(js|json)$/.test(path)) {
+    fail(`${path} uses old unversioned companion naming; use <schema-id>.<role>.<format>`);
+  }
+}
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));

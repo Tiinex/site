@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
+import { resolveFindingMessage } from '../../validation/i18n.js';
 import { readStateLabel, schemaCoverageLabel, validationStateLabel, validatorLabel } from './workspace.viewFormatting.js';
 
 export function auditBadgeForRecord(record = {}, auditItem = null) {
@@ -88,7 +89,7 @@ export function AuditBadgeDialog({ record = {}, item = null, badge = {}, onDismi
       <details className="tx-badge-diagnostic-findings">
         <summary>Findings · {findings.length}</summary>
         {hasFindings ? findings.slice(0, 8).map((finding, index) => (
-          <p key={`${finding.code || 'finding'}-${index}`}><strong>{finding.code || finding.severity || 'finding'}</strong><span>{finding.message || 'No message.'}</span></p>
+          <p key={`${finding.code || 'finding'}-${index}`}><strong>{finding.code || finding.severity || 'finding'}</strong><span>{resolveFindingMessage(finding, { locale: 'en', schemaId: record.schemaId || item?.schemaId })}</span></p>
         )) : <p>No findings attached to this card status.</p>}
         <p className="tx-muted">Summary: {Number(summary.error || 0)} errors · {Number(summary.warning || 0)} warnings · {Number(summary.info || 0)} info</p>
       </details>

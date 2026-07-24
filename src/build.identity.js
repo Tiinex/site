@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v222';
-export const TIINEX_SITE_VERSION = '0.2.42-v222';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v222';
-export const TIINEX_RUNTIME_ID = 'react-v222-workspace-surface-debt-cleanup';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v222-workspace-surface-debt-cleanup';
+export const TIINEX_SITE_CHECKPOINT = 'v225';
+export const TIINEX_SITE_VERSION = '0.2.45-v225';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v225';
+export const TIINEX_RUNTIME_ID = 'react-v225-companion-hygiene-logo-closure';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v225-companion-hygiene-logo-closure';
 
 
 export function tiinexBuildIdentity() {

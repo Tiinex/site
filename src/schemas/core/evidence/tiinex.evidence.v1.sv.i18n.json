@@ -1,0 +1,7 @@
+{
+  "label": "Evidence",
+  "summary": "Preserved material used to support, illuminate, test, or challenge a claim or question.",
+  "evidence.section.missing": "Missing required evidence section: {section}.",
+  "evidence.preservation.parent.unresolved": "Evidence is preservation-specialized; no parent preservation edge is declared in the envelope.",
+  "evidence.sections.present": "Required evidence sections are present at scaffold validation depth."
+}

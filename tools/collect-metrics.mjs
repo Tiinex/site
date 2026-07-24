@@ -35,7 +35,7 @@ console.log(JSON.stringify({
   publicRuntime:'vite-react-bundle',
   fontAwesomePrimitive: readFileSync(join(root,'src/ui/primitives/Icon.jsx'),'utf8').includes('@fortawesome/react-fontawesome'),
   schemaCompanionAware: appSurface.includes('schemaRegistry') && workspaceViews.includes('data-schema-id="tiinex.workspace.v1"'),
-  workspaceSchemaCompanion: existsSync(join(root,'src/schemas/workspace/workspace.schema.js')),
+  workspaceSchemaCompanion: existsSync(join(root,'src/schemas/workspace/tiinex.workspace.v1.schema.js')),
   oldLikeAddFlow: workspaceAddViews.includes('AddToWorkspaceDialog') && workspaceAddViews.includes('Manual files') && workspaceAddViews.includes('GitHub source'),
   localMarkdownIntake: app.includes('materializeLocalMarkdownFiles') && app.includes('applyLocalAdapterResultToWorkspace'),
   githubSourceRegistrationFlow: app.includes('addGitHubSource') && app.includes('addWorkspaceSource'),

@@ -1,0 +1,8 @@
+{
+  "label": "Topic",
+  "summary": "Bounded topic-oriented lineage artifacts for live design and implementation threads.",
+  "topic.schema.mismatch": "Topic validator was invoked for a non-topic current schema.",
+  "topic.title.missing": "Topic artifact should begin with a human-readable title.",
+  "topic.body.thin": "Topic body is thin; reader may not understand the active topic thread.",
+  "topic.body.readable": "Topic body is readable at scaffold validation depth."
+}

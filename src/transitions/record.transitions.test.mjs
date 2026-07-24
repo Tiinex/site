@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { schemaRegistry } from '../schemas/registry.js';
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
-import { rootValidate } from '../schemas/root.validate.js';
+import { rootValidate } from '../schemas/tiinex.root.v1.validate.js';
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets, RECORD_TRANSITION_RESULT_SCHEMA_ID } from './record.transitions.js';
 
 const targets = listContinuationTargets(schemaRegistry);
