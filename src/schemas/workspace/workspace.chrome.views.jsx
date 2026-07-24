@@ -4,6 +4,7 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { displayOptionsHiddenCount } from '../../workspaces/workspace.displayOptions.js';
 import { recordSourceClass } from '../../workspaces/workspace.displayFilters.js';
 import { shouldShowWorkspaceSummary } from '../../workspaces/workspace.summary.js';
+import { nextGithubTransportTier, normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
 
 export function WorkspaceBoundaryKicker({ workspace = {} }) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -46,7 +47,7 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
               <strong>{source.label || source.id || 'Source'}</strong>
               <small>{source.count || 0}</small>
-              {transport.label ? <button type="button" className="tx-source-transport tx-source-transport-button" title={transport.title} onClick={() => onSourceTransportRefresh?.(source.id)}>{transport.label}</button> : null}
+              {transport.label ? (transport.refreshable ? <button type="button" className={`tx-source-transport tx-source-transport-button ${transport.className}`} title={transport.title} aria-label={transport.title} onClick={() => onSourceTransportRefresh?.(source.id, transport.tier)}>{transport.label}</button> : <span className={`tx-source-transport ${transport.className}`} title={transport.title}>{transport.label}</span>) : null}
               {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
@@ -67,18 +68,29 @@ function sourceTransportSummary(source = {}) {
   const attempted = Array.isArray(outcome.attemptedTiers) ? outcome.attemptedTiers : [];
   const skipped = Array.isArray(outcome.skipped) ? outcome.skipped : [];
   const failed = Array.isArray(outcome.failed) ? outcome.failed : [];
-  const hasObservedTransport = Boolean(winning.length || attempted.length || skipped.length || failed.length);
+  const activeTier = normalizeGithubTransportTier(outcome.activeTier || source.transportRefreshTier || winning[winning.length - 1] || attempted[attempted.length - 1] || '');
+  const activeStatus = String(outcome.activeStatus || (failed.length && !winning.length ? 'failed' : winning.length ? 'ok' : '')).toLowerCase();
+  const hasObservedTransport = Boolean(activeTier || winning.length || attempted.length || skipped.length || failed.length);
   if (!hasObservedTransport) return { label: '', title: '' };
-  const label = winning.length ? `used: ${winning.join('+')}` : 'transport';
+  const configured = outcome.configured || source.transportPlan?.configured || {};
+  const nextTier = nextGithubTransportTier(activeTier || 'cache', configured);
+  const refreshable = Boolean(nextTier && activeTier !== 'direct');
   const titleParts = [
+    `Active transport: ${activeTier || 'unknown'}${activeStatus ? ` (${activeStatus})` : ''}`,
     `Configured plan: ${plan}`,
     attempted.length ? `Attempted: ${attempted.join(' → ')}` : '',
     winning.length ? `Delivered by: ${winning.join(', ')}` : 'Delivered by: none recorded',
     skipped.length ? `Skipped/unavailable: ${skipped.map((item) => `${item.tier}${item.message ? ` (${item.message})` : ''}`).join(', ')}` : '',
     failed.length ? `Failed attempts: ${failed.map((item) => `${item.tier}${item.status ? ` ${item.status}` : ''}`).join(', ')}` : '',
-    'Click to clear this source cache and reopen source controls for the next explicit transport attempt.'
+    refreshable ? `Click: try ${nextTier}` : 'Direct is the last fallback tier.'
   ].filter(Boolean);
-  return { label, title: titleParts.join(' · ') };
+  return {
+    label: activeTier || 'transport',
+    tier: activeTier,
+    refreshable,
+    title: titleParts.join(' · '),
+    className: [`tx-transport-tier-${activeTier || 'unknown'}`, activeStatus === 'failed' || activeStatus === 'unavailable' ? 'is-transport-failed' : activeStatus === 'ok' ? 'is-transport-ok' : ''].filter(Boolean).join(' ')
+  };
 }
 
 export function WorkspaceMaterialSummary({ summary }) {

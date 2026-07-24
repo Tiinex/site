@@ -77,3 +77,18 @@ assert.equal(hydrated.markdown, '# cached document', 'source-backed record shell
 assert.equal(hydrated.materialAvailability, 'available', 'cache-hydrated source record should become readable in detail/markdown views');
 
 console.log('github transport ladder: ok');
+
+const proxyOnlyEvents = [];
+const proxyOnlyRuntime = createGithubTransportFetch({ id: 'gh', repo: 'owner/repo' }, {
+  preferredTransports: ['proxy'],
+  transportOrderExact: true,
+  workspaceConfig,
+  sourceCache: Object.create(null),
+  onTransportEvent: (event) => proxyOnlyEvents.push(event),
+  fetchImpl: async () => { throw new Error('direct must not run during explicit proxy-tier refresh'); }
+});
+const proxyOnlyRes = await proxyOnlyRuntime.fetch('https://raw.githubusercontent.com/owner/repo/main/.topics/proxy-only.md', {});
+assert.equal(proxyOnlyRuntime.plan.label, 'proxy', 'explicit transport refresh should present the selected tier, not the whole ladder');
+assert.equal(proxyOnlyRes.transportTier, 'none', 'unavailable explicit tier should degrade without falling through to direct');
+assert(proxyOnlyEvents.some((event) => event.code === 'github.transport.proxy.configured-unavailable'), 'explicit proxy refresh should expose proxy unavailability');
+assert(!proxyOnlyEvents.some((event) => String(event.code || '').includes('direct')), 'explicit proxy refresh must not silently fall through to direct');

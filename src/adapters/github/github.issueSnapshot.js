@@ -357,7 +357,18 @@ function capitalize(value = '') { const text = String(value || 'item'); return t
 function yieldToBrowserIfAvailable() {
   if (typeof window === 'undefined') return Promise.resolve();
   return new Promise((resolve) => {
-    const schedule = window.requestIdleCallback || window.requestAnimationFrame || window.setTimeout;
-    schedule(() => resolve(), 0);
+    if (typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => resolve(), { timeout: 80 });
+      return;
+    }
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    window.setTimeout(resolve, 0);
   });
+}
+
+export function __testYieldToBrowserIfAvailable() {
+  return yieldToBrowserIfAvailable();
 }

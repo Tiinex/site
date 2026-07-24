@@ -416,19 +416,40 @@ function summarizeTransportOutcome(events = [], plan = {}) {
   const winning = new Set();
   const skipped = [];
   const failed = [];
+  let activeTier = '';
+  let activeStatus = 'idle';
   for (const event of Array.isArray(events) ? events : []) {
     const tier = String(event.tier || '').toLowerCase();
     const code = String(event.code || '');
     if (tier && ['cache', 'mirror', 'proxy', 'direct'].includes(tier)) {
-      if (/\.try$|\.miss$|\.hit$|\.ok$|configured-unavailable|unavailable|failed|exception/u.test(code)) attempted.add(tier);
-      if (/\.ok$|\.hit$/u.test(code)) winning.add(tier);
-      if (/configured-unavailable|unavailable/u.test(code)) skipped.push({ tier, code, resource: event.resource || '', message: event.message || '' });
-      if (/failed|exception|exhausted/u.test(code)) failed.push({ tier, code, resource: event.resource || '', status: event.status || 0, message: event.message || '' });
+      if (/\.try$|\.miss$|\.hit$|\.ok$|configured-unavailable|unavailable|failed|exception/u.test(code)) {
+        attempted.add(tier);
+        activeTier = tier;
+        activeStatus = 'attempted';
+      }
+      if (/\.ok$|\.hit$/u.test(code)) {
+        winning.add(tier);
+        activeTier = tier;
+        activeStatus = 'ok';
+      }
+      if (/configured-unavailable|unavailable/u.test(code)) {
+        skipped.push({ tier, code, resource: event.resource || '', message: event.message || '' });
+        activeTier = tier;
+        activeStatus = 'unavailable';
+      }
+      if (/failed|exception|exhausted/u.test(code)) {
+        failed.push({ tier, code, resource: event.resource || '', status: event.status || 0, message: event.message || '' });
+        activeTier = tier;
+        activeStatus = 'failed';
+      }
     }
   }
   return {
     schema: 'tiinex.github.transport.outcome.v1',
     configuredPlan: Array.isArray(plan.tiers) ? plan.tiers.slice() : [],
+    configured: plan.configured ? Object.assign({}, plan.configured) : {},
+    activeTier,
+    activeStatus,
     attemptedTiers: Array.from(attempted),
     winningTiers: Array.from(winning),
     skipped,

@@ -1,4 +1,24 @@
 const DEFAULT_ORDER = Object.freeze(['cache', 'mirror', 'proxy', 'direct']);
+export const GITHUB_TRANSPORT_TIER_ORDER = DEFAULT_ORDER;
+
+export function normalizeGithubTransportTier(value = '') {
+  const tier = String(value || '').trim().toLowerCase();
+  return DEFAULT_ORDER.includes(tier) ? tier : '';
+}
+
+export function nextGithubTransportTier(value = '', configured = {}) {
+  const tier = normalizeGithubTransportTier(value) || 'cache';
+  const index = DEFAULT_ORDER.indexOf(tier);
+  for (const candidate of DEFAULT_ORDER.slice(index + 1)) {
+    if (candidate === 'cache' || candidate === 'direct' || configured[candidate] !== false) return candidate;
+  }
+  return '';
+}
+
+export function githubTransportOrderFromTier(tier = '') {
+  const normalized = normalizeGithubTransportTier(tier);
+  return normalized ? [normalized] : Array.from(DEFAULT_ORDER);
+}
 const SOURCE_CACHE_PREFIX = 'tiinex.source-cache.v1:';
 
 export function normalizeGithubRepoIdentity(repo = '') {
@@ -11,7 +31,8 @@ export function normalizeGithubRepoIdentity(repo = '') {
 export function buildGithubTransportPlan(source = {}, options = {}) {
   const repo = normalizeGithubRepoIdentity(source.repo || source.repository || options.repo || '');
   const workspaceConfig = options.workspaceConfig || {};
-  const order = normalizeOrder(options.transportOrder || options.preferredTransports || DEFAULT_ORDER);
+  const exactOrder = options.transportOrderExact === true;
+  const order = normalizeOrder(options.transportOrder || options.preferredTransports || DEFAULT_ORDER, { appendMissing: !exactOrder });
   const mirrors = configuredMirrorsFor(repo, workspaceConfig, options);
   const proxies = configuredProxiesFor(repo, workspaceConfig, options);
   const allow = {
@@ -28,7 +49,7 @@ export function buildGithubTransportPlan(source = {}, options = {}) {
   };
   const tiers = order
     .filter((tier) => allow[tier])
-    .concat(order.includes('direct') || !allow.direct ? [] : ['direct'])
+    .concat(exactOrder || order.includes('direct') || !allow.direct ? [] : ['direct'])
     .filter((tier, index, array) => array.indexOf(tier) === index);
   return Object.freeze({
     schema: 'tiinex.github.transport.plan.v1',
@@ -187,12 +208,13 @@ export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
   return removed;
 }
 
-function normalizeOrder(input = DEFAULT_ORDER) {
+function normalizeOrder(input = DEFAULT_ORDER, options = {}) {
+  const appendMissing = options.appendMissing !== false;
   const values = (Array.isArray(input) ? input : String(input || '').split(/[>,\s]+/))
-    .map((item) => String(item || '').trim().toLowerCase())
-    .filter((item) => DEFAULT_ORDER.includes(item));
+    .map((item) => normalizeGithubTransportTier(item))
+    .filter(Boolean);
   const out = values.length ? values : Array.from(DEFAULT_ORDER);
-  for (const tier of DEFAULT_ORDER) if (!out.includes(tier)) out.push(tier);
+  if (appendMissing) for (const tier of DEFAULT_ORDER) if (!out.includes(tier)) out.push(tier);
   return out;
 }
 

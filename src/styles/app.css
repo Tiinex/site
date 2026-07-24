@@ -7513,3 +7513,49 @@ pre { white-space: pre-wrap; overflow:auto; }
     margin-inline: 0.02rem !important;
   }
 }
+
+/* v235: PoC-like transport badge semantics in the source rail. */
+.tx-source-pill .tx-source-transport.tx-source-transport-button,
+.tx-source-pill .tx-source-transport {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  min-height: 1.35rem;
+  padding: .13rem .42rem;
+  border-radius: 999px;
+  border: 1px solid rgba(167,139,250,.30);
+  background: rgba(76,29,149,.14);
+  color: rgba(237,233,254,.86);
+  font-style: normal;
+  font-size: .66rem;
+  line-height: 1;
+  text-transform: lowercase;
+}
+.tx-source-pill .tx-source-transport.tx-source-transport-button {
+  cursor: pointer;
+}
+.tx-source-pill .tx-source-transport.tx-source-transport-button:hover,
+.tx-source-pill .tx-source-transport.tx-source-transport-button:focus-visible {
+  border-color: rgba(125,211,252,.54);
+  background: rgba(14,116,144,.18);
+  color: rgba(255,255,255,.94);
+}
+.tx-source-pill .tx-source-transport.tx-transport-tier-cache,
+.tx-source-pill .tx-source-transport.tx-transport-tier-mirror {
+  border-color: rgba(56,189,248,.32);
+  background: rgba(14,116,144,.12);
+}
+.tx-source-pill .tx-source-transport.tx-transport-tier-proxy {
+  border-color: rgba(167,139,250,.36);
+  background: rgba(88,28,135,.16);
+}
+.tx-source-pill .tx-source-transport.tx-transport-tier-direct {
+  border-color: rgba(251,191,36,.34);
+  background: rgba(180,83,9,.12);
+}
+.tx-source-pill .tx-source-transport.is-transport-failed {
+  border-color: rgba(251,113,133,.58);
+  background: rgba(127,29,29,.18);
+  color: rgba(255,228,230,.96);
+  box-shadow: 0 0 0 1px rgba(251,113,133,.15), 0 0 12px rgba(127,29,29,.20);
+}

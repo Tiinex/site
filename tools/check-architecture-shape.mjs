@@ -77,6 +77,7 @@ includes('src/app/TiinexApp.jsx', "from './githubProgress.js'", 'TiinexApp must 
 includes('src/workspaces/workspace.route.js', 'requestedSurfaces: compactSurfaceMap', 'route shell must preserve requested source surfaces across F5/hash restore');
 includes('src/workspaces/workspace.route.js', 'issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested)', 'route shell must preserve issue discovery selection across refresh');
 includes('src/adapters/github/github.issueSnapshot.js', 'await yieldToBrowserIfAvailable();', 'issue snapshot materialization must yield between targets to avoid browser freeze-lag');
+includes('src/adapters/github/github.issueSnapshot.js', 'window.requestIdleCallback(() => resolve(), { timeout: 80 });', 'issue snapshot browser yield must pass IdleRequestOptions to requestIdleCallback, not a numeric timeout');
 includes('src/adapters/github/github.issueSnapshot.js', 'options.maxComments ?? 6', 'bounded issue comments default must stay small enough for browser interaction');
 includes('src/app/workspaceDisplayCounts.js', 'export function buildDisplayOptionCounts', 'display counts bridge must stay outside TiinexApp');
 includes('src/schemas/workspace/workspace.displayOptions.views.jsx', 'export function DisplayOptionsDialog', 'DisplayOptionsDialog must stay outside workspace.views');
@@ -89,6 +90,8 @@ includes('src/app/TiinexApp.jsx', "from './viewState.js'", 'TiinexApp must use p
 includes('src/app/TiinexApp.jsx', "from './appShell.views.jsx'", 'TiinexApp must render app shell through extracted presentation module');
 includes('src/app/TiinexApp.jsx', "from './runtimeState.js'", 'TiinexApp must import runtime/default state from extracted module');
 includes('src/app/TiinexApp.jsx', "from './githubMaterializationSummary.js'", 'TiinexApp must import source-summary helpers from extracted module');
+includes('src/app/sourceTransportRefresh.js', 'sourceTransportRefreshInputForSource', 'transport badge refresh input must stay outside TiinexApp controller');
+includes('src/sources/github/github.transport.js', 'transportOrderExact', 'explicit transport badge refresh must not silently fall through the full ladder');
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
 includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
 includes('src/app/TiinexApp.jsx', 'onExportWorkspace={exportWorkspacePackage}', 'workspace export action must be wired from TiinexApp into WorkspaceColumnSurface');

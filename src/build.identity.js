@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v233';
-export const TIINEX_SITE_VERSION = '0.2.53-v233';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v233';
-export const TIINEX_RUNTIME_ID = 'react-v233-issue-discovery-hardening';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v233-issue-discovery-hardening';
+export const TIINEX_SITE_CHECKPOINT = 'v235';
+export const TIINEX_SITE_VERSION = '0.2.55-v235';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v235';
+export const TIINEX_RUNTIME_ID = 'react-v235-transport-badge-cycle';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v235-transport-badge-cycle';
 
 
 export function tiinexBuildIdentity() {

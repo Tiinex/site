@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { __testYieldToBrowserIfAvailable, materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { traverseLoadedLineage } from '../../lineage/lineage.traverse.js';
 
@@ -19,6 +19,20 @@ assert.equal(discussion.canonicalUrl, 'https://github.com/Tiinex/docs/discussion
 const mixed = parseGithubIssueSnapshotTargets(['https://github.com/Tiinex/docs/issues/123', 'https://github.com/Tiinex/docs/issues/123', 'http://github.com/Tiinex/docs/issues/999', 'https://github.com/Tiinex/docs/pulls/1']);
 assert.equal(mixed.counts.targets, 1, 'duplicates are removed and unsupported plural pulls URL is rejected');
 assert.equal(mixed.counts.errors, 2, 'invalid issue targets are explicit errors');
+
+
+const originalWindow = globalThis.window;
+let idleOptions = null;
+globalThis.window = {
+  requestIdleCallback(callback, options) {
+    idleOptions = options;
+    callback({ didTimeout: false, timeRemaining: () => 0 });
+  }
+};
+await __testYieldToBrowserIfAvailable();
+assert.equal(idleOptions?.timeout, 80, 'browser yield must call requestIdleCallback with an IdleRequestOptions object, not a numeric timeout');
+if (originalWindow === undefined) delete globalThis.window;
+else globalThis.window = originalWindow;
 
 const materialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/123\nhttps://github.com/Tiinex/docs/discussions/45', {
   'https://github.com/Tiinex/docs/issues/123': {

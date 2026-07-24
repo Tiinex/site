@@ -1,31 +1,27 @@
-# Tiinex Site v233
+# Tiinex Site v235
 
-Checkpoint: `v233`
-Version: `0.2.53-v233`
-Runtime: `react-v233-issue-discovery-hardening`
+Checkpoint: `v235`
+Version: `0.2.55-v235`
+Runtime: `react-v235-transport-badge-cycle`
 
-## v233 focus
+## v235 focus
 
-Milestone A issue-discovery hardening after browser video feedback: preserve issue-snapshot surface selection across F5/hash restore even when the same-session cache is stale, and keep issue-surface failures degraded inside the GitHub adapter instead of turning the entire source materialization into a fatal UI failure.
+Milestone A transport-friction closure. Restore the useful PoC behavior where the source rail transport badge shows the active transport tier and clicking it retries the same saved source surfaces through the next explicit tier in the access ladder.
 
-## Focus
+## What changed
 
-Milestone A issue-discovery hardening after v232 browser feedback. v231 recovered embedded Tiinex artifacts from GitHub issues/comments, and v232 reduced freeze-lag, but the latest test still exposed two closure risks: F5/hash restore could prefer a stale same-session source cache over the newer route source shell, and an issue-surface exception could still make the whole GitHub source materialization look fatal.
-
-## Changes
-
-- Merged route source shells over same-session cached sources by source id so `issueDiscovery` and `requestedSurfaces.issueSnapshots.requested` survive F5/hash restore.
-- Converted issue-surface exceptions into non-fatal `github.issue.surface.exception` warnings owned by the `issueSnapshots` surface.
-- Preserved the registered GitHub source boundary even when issue snapshots degrade.
-- Kept repo-file, explicit-file, and issue-snapshot receipt ownership separate.
-- Kept v232 progress throttling/yielding and bounded issue defaults.
-- Added regression tests for route-source overlay and non-fatal issue-surface exceptions.
+- Source rail transport badge now shows the active tier directly, for example `cache`, `mirror`, `proxy`, or `direct`, instead of a vague `used: ...` label.
+- Failed/unavailable transport tiers get a visible failed style instead of being buried only in the receipt.
+- Clicking a refreshable transport badge retries the saved source plan through the next transport tier.
+- Explicit transport refresh uses an exact one-tier plan, so `proxy` failure does not silently fall through to `direct`; direct remains the last fallback, not the first hidden fallback.
+- Transport refresh input construction moved to `src/app/sourceTransportRefresh.js` so the app controller does not absorb more source semantics.
 
 ## Milestone A non-goals
 
-- Artifact creation, transitions, forms, schema-builder UI, remote writes, and full discussion-reader parity remain outside this checkpoint.
-- Discussion URLs still degrade honestly rather than pretending to load.
-- Full PoC issue/comment recovery remains broader than this stabilization slice.
+- No artifact creation, transitions, or forms.
+- No remote writes.
+- No fake discussion reader.
+- No background retry loop.
 
 ## Supported local start
 
@@ -38,7 +34,7 @@ The dev server is Vite on `127.0.0.1:5173`.
 
 ## Validation
 
-Use the standard source validation chain plus local public build checks:
+Run:
 
 ```bash
 npm run validate

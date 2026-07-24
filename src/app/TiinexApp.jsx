@@ -11,7 +11,8 @@ import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
-import { clearGithubSourceTextCacheForSource } from '../sources/github/github.transport.js';
+import { githubTransportOrderFromTier, nextGithubTransportTier, normalizeGithubTransportTier } from '../sources/github/github.transport.js';
+import { sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
 import { buildExportPackageBundle } from '../export/package.builder.js';
 import { exportPackageZipBlob } from '../export/package.zip.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
@@ -104,7 +105,6 @@ export function TiinexApp() {
   function viewScrollKeyFor(sourceState = state, viewOverride = null) {
     return workspaceViewScrollKeyFor(sourceState, viewOverride, active?.id || 'workspace');
   }
-
 
   function commitViewPatch(patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
@@ -243,7 +243,6 @@ export function TiinexApp() {
     commit(result.state, 'push');
   }
 
-
   async function addGitHubSource(input = {}) {
     if (githubRequestPending) {
       setNotice('GitHub source operation already in progress.');
@@ -259,6 +258,9 @@ export function TiinexApp() {
     const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
     const ref = String(input.ref || '').trim();
     const label = input.label || repository;
+    const transportRefreshTier = normalizeGithubTransportTier(input.transportRefreshTier || input.preferredTransportTier || '');
+    const preferredTransports = transportRefreshTier ? githubTransportOrderFromTier(transportRefreshTier) : null;
+    const transportLabel = preferredTransports ? preferredTransports.join(' → ') : 'cache → mirror → proxy → direct';
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
     const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, {
       kind: input.sourceKind || input.kind || 'github-tree',
@@ -270,7 +272,8 @@ export function TiinexApp() {
       repoDiscovery: Boolean(input.repoDiscovery),
       issueDiscovery: Boolean(input.issueDiscovery),
       issueUrls: input.issueUrls || '',
-      transportLabel: 'cache → mirror → proxy → direct',
+      transportLabel,
+      transportRefreshTier,
       requestedSurfaces: {
         repoFiles: { requested: Boolean(input.repoDiscovery) },
         explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
@@ -324,7 +327,7 @@ export function TiinexApp() {
       finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
         sourceId: result.source.id,
         phase: input.repoDiscovery ? 'repo-discovery' : input.issueDiscovery ? 'issue-snapshots' : 'source-materialization',
-        label: `${result.source.label} accepted · ${operationLabel} via cache → mirror → proxy → direct transport`,
+        label: `${result.source.label} accepted · ${operationLabel} via ${transportLabel} transport`,
         active: true,
         quantified: false,
         discoveryState: 'loading'
@@ -345,7 +348,7 @@ export function TiinexApp() {
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress });
+        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports) });
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
@@ -358,6 +361,7 @@ export function TiinexApp() {
             repoDiscovery: Boolean(input.repoDiscovery),
             issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
             issueUrls: input.issueUrls || '',
+            transportRefreshTier,
             requestedSurfaces: {
               repoFiles: { requested: Boolean(input.repoDiscovery) },
               explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
@@ -401,7 +405,8 @@ export function TiinexApp() {
           transportTiers: out.diagnostics?.transportTiers || {},
           transportOutcome: out.diagnostics?.transportOutcome || {},
           transportPlan: out.diagnostics?.transportPlan || {},
-          transportLabel: out.diagnostics?.transportPlan?.label || 'cache → mirror → proxy → direct'
+          transportLabel: out.diagnostics?.transportPlan?.label || transportLabel,
+          transportRefreshTier
         }));
         if (updatedSource?.ok) finalState = updatedSource.state;
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
@@ -426,15 +431,14 @@ export function TiinexApp() {
     commit(finalState, 'push');
   }
 
-  function refreshSourceTransport(sourceId) {
+  async function refreshSourceTransport(sourceId, currentTier = '') {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
-    if (!source) {
-      setNotice('Source not found.');
-      return;
-    }
-    const removed = clearGithubSourceTextCacheForSource(source);
-    setNotice(`${source.label || 'Source'} cache cleared (${removed} entr${removed === 1 ? 'y' : 'ies'}). Source controls opened; retry uses mirror/proxy before direct when configured.`);
-    openAddToWorkspace(source.id || sourceId);
+    if (!source) return setNotice('Source not found.');
+    const refresh = sourceTransportRefreshInputForSource(source, currentTier);
+    if (refresh.reason === 'last-tier') return setNotice(`${source.label || 'Source'} is already using the last transport tier (direct).`);
+    if (refresh.reason === 'no-surfaces') return openAddToWorkspace(source.id || sourceId);
+    setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
+    await addGitHubSource(refresh.input);
   }
 
   function openRecord(recordId) {
