@@ -13,6 +13,7 @@ import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { githubTransportOrderFromTier, nextGithubTransportTier, normalizeGithubTransportTier } from '../sources/github/github.transport.js';
 import { sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
+import { recoverMissingLineageParentsFromSource } from './lineageSourceRecovery.js';
 import { buildExportPackageBundle } from '../export/package.builder.js';
 import { exportPackageZipBlob } from '../export/package.zip.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
@@ -592,43 +593,34 @@ export function TiinexApp() {
     return traversal.complete === true;
   }
 
-  function loadFullLineage() {
+  async function loadFullLineage() {
     if (!active) return;
     const selectedRecordId = String(state.view?.selectedRecordId || '').trim();
-    const records = Array.isArray(active.records) ? active.records : [];
     if (!selectedRecordId) {
       setNotice('Select an artifact lineage before loading lineage.');
       return;
     }
-    const lineage = buildWorkspaceLineageView(active, { records, query: '', selectedRecordId });
+    const recovered = await recoverMissingLineageParentsFromSource({ lifecycle: runtime().lifecycle, state: latestStateRef.current || state, workspace: active, selectedRecordId, fetchImpl: fetch, workspaceConfig });
+    const sourceState = recovered.state || latestStateRef.current || state;
+    const lineage = recovered.lineage || buildWorkspaceLineageView(active, { records: Array.isArray(active.records) ? active.records : [], query: '', selectedRecordId });
+    const recoveredParents = Number(recovered.recoveredParents || 0);
     const traversal = lineage.selectedTraversal || null;
     const nodes = Array.isArray(traversal?.nodes) ? traversal.nodes : [];
     const stateLabel = traversal?.complete ? 'complete' : 'partial';
     const terminalState = traversal?.terminalState || traversal?.status?.terminalState || (stateLabel === 'complete' ? 'complete' : 'partial');
     const scopeTransitions = Array.isArray(traversal?.scopeTransitions) ? traversal.scopeTransitions : [];
-    const sourceState = latestStateRef.current || state;
     const lineageLoadReport = {
-        schema: 'tiinex.workspace.lineageLoadReport.v1',
-        selectedRecordId,
-        mode: 'loaded-workspace',
-        state: stateLabel,
-        terminalState,
-        statusLabel: traversal?.status?.label || '',
-        nodes: nodes.length,
-        rootReached: Boolean(traversal?.rootReached),
-        noParentDeclared: Boolean(traversal?.noParentDeclared),
-        hasMissing: Boolean(traversal?.hasMissing),
-        ambiguous: Boolean(traversal?.ambiguous),
-        depthLimited: Boolean(traversal?.depthLimited),
-        scopeTransitions: scopeTransitions.length,
-        generatedAt: new Date().toISOString()
-      };
-    setNotice(stateLabel === 'complete' ? 'Full loaded-workspace lineage index ready.' : 'Loaded lineage index is partial; terminal root was not proven.');
-    commit(stateWithViewPatch(sourceState, {
-      lineageQuery: '',
-      lineageLoadReport,
-      lineageAuditReport: null
-    }), 'replace');
+      schema: 'tiinex.workspace.lineageLoadReport.v1', selectedRecordId,
+      mode: recoveredParents ? 'source-assisted-loaded-workspace' : 'loaded-workspace',
+      state: stateLabel, terminalState, statusLabel: traversal?.status?.label || '', nodes: nodes.length,
+      rootReached: Boolean(traversal?.rootReached), noParentDeclared: Boolean(traversal?.noParentDeclared), hasMissing: Boolean(traversal?.hasMissing),
+      ambiguous: Boolean(traversal?.ambiguous), depthLimited: Boolean(traversal?.depthLimited), scopeTransitions: scopeTransitions.length, recoveredParents,
+      generatedAt: new Date().toISOString()
+    };
+    setNotice(recoveredParents
+      ? `Loaded ${recoveredParents} declared parent artifact${recoveredParents === 1 ? '' : 's'} from the source boundary.`
+      : stateLabel === 'complete' ? 'Full loaded-workspace lineage index ready.' : 'Loaded lineage index is partial; terminal root was not proven.');
+    commit(stateWithViewPatch(sourceState, { lineageQuery: '', lineageLoadReport, lineageAuditReport: null }), recoveredParents ? 'push' : 'replace');
   }
 
   function runLineageAudit() {

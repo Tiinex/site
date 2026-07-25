@@ -319,8 +319,19 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
     }
   }
 
-  const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
   const uniqueTargets = uniqueFileTargets(fileTargets);
+  if (uniqueTargets.length && !resolvedRef) {
+    try {
+      const resolved = await resolveGithubSourceRef(source, { fetchImpl: transportFetchImpl });
+      resolvedRef = String(resolved.ref || '').trim();
+      diagnostics.resolvedBy = resolved.resolvedBy || diagnostics.resolvedBy || 'github.repo.default_branch';
+    } catch (error) {
+      const warning = Object.assign({ surface: 'explicitFiles' }, githubDiscoveryWarning(error));
+      warnings.push(warning);
+      diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'ref-resolution' }, warning));
+    }
+  }
+  const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
   if (uniqueTargets.length) reportProgress(options, { phase: 'raw-file-load', percent: 38, loaded: 0, total: uniqueTargets.length, label: `Starting GitHub Markdown load 0/${uniqueTargets.length}` });
   const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: uniqueTargets.length }, policyInput) : null;
   let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };

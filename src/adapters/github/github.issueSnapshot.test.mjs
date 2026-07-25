@@ -87,7 +87,7 @@ const embeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://git
     state: 'open',
     user: { login: 'q' },
     created_at: '2026-07-24T00:00:00.000Z',
-    body: ['Presentation for GitHub readers.', '', '## Tiinex Boundary', '', '- Tiinex Source Artifact Path: .topics/stack/feedback.trace.md', '', '## Source Markdown', '', '~~~md', embeddedChild, '~~~'].join('\n'),
+    body: ['Presentation for GitHub readers.', '', '## Tiinex Boundary', '', '- Source Path: .topics/stack/feedback.trace.md', '', '## Source Markdown', '', '~~~md', embeddedChild, '~~~'].join('\n'),
     comments: [{ id: 5001, html_url: 'https://github.com/Tiinex/docs/issues/13#issuecomment-5001', user: { login: 'reviewer' }, body: 'plain comment' }]
   }
 });

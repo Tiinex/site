@@ -125,7 +125,11 @@ function looksLikeStandaloneTiinexArtifact(markdown = '') {
 export function sourceArtifactPathFromPublicationBody(body = '') {
   const text = normalizeNewlines(body || '').trim();
   const beforeSource = text.split(/^##\s+Source Markdown(?:\s+Excerpt|\s+Payload)?\s*$/im)[0] || '';
-  const sourcePath = beforeSource.match(/(?:^|\n)-\s+(?:Tiinex\s+)?Source(?:\s+Artifact)?\s+Path:\s*(.*)$/im)?.[1] || '';
+  const sourcePath = beforeSource.match(/(?:^|\n)-\s+(?:Tiinex\s+)?Source(?:\s+Artifact)?\s+Path:\s*(.*)$/im)?.[1]
+    || beforeSource.match(/(?:^|\n)-\s+Source\s+Artifact:\s*(.*)$/im)?.[1]
+    || beforeSource.match(/(?:^|\n)-\s+Source\s+Path:\s*(.*)$/im)?.[1]
+    || beforeSource.match(/(?:^|\n)>\s*Source\s+Path:\s*(.*)$/im)?.[1]
+    || '';
   return stripMarkdownInline(sourcePath || '').trim();
 }
 

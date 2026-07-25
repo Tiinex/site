@@ -1,20 +1,21 @@
-# Tiinex Site v235
+# Tiinex Site v236
 
-Checkpoint: `v235`
-Version: `0.2.55-v235`
-Runtime: `react-v235-transport-badge-cycle`
+Checkpoint: `v236`
+Version: `0.2.56-v236`
+Runtime: `react-v236-issue-lineage-source-recovery`
 
-## v235 focus
+## v236 focus
 
-Milestone A transport-friction closure. Restore the useful PoC behavior where the source rail transport badge shows the active transport tier and clicking it retries the same saved source surfaces through the next explicit tier in the access ladder.
+Milestone A issue-backed lineage recovery. v235 restored the PoC-like transport badge, but the latest video showed that an issue-backed artifact could still remain isolated: the issue body recovered the typed artifact, but its declared Parent Trace did not materialize the same source-backed parent hierarchy the PoC made reachable.
 
 ## What changed
 
-- Source rail transport badge now shows the active tier directly, for example `cache`, `mirror`, `proxy`, or `direct`, instead of a vague `used: ...` label.
-- Failed/unavailable transport tiers get a visible failed style instead of being buried only in the receipt.
-- Clicking a refreshable transport badge retries the saved source plan through the next transport tier.
-- Explicit transport refresh uses an exact one-tier plan, so `proxy` failure does not silently fall through to `direct`; direct remains the last fallback, not the first hidden fallback.
-- Transport refresh input construction moved to `src/app/sourceTransportRefresh.js` so the app controller does not absorb more source semantics.
+- GitHub issue publication parsing now accepts legacy/PoC boundary labels such as `Source Path` and `Source Artifact`, not only `Tiinex Source Artifact Path`.
+- Issue/comment bodies that contain embedded Tiinex Source Markdown keep the recovered artifact's source path when the publication boundary provides it.
+- `Load full lineage` can now perform source-assisted recovery for missing declared Parent Trace targets inside the same explicit GitHub source boundary.
+- Exact parent recovery fetches declared repo-relative parent files; it does not guess by basename and does not cross source boundaries.
+- Explicit file loading can resolve the repository default branch when a source was registered without a pinned ref.
+- Source-assisted lineage recovery is owned by `src/app/lineageSourceRecovery.js`, keeping `TiinexApp.jsx` below the app-controller line budget.
 
 ## Milestone A non-goals
 
@@ -22,6 +23,7 @@ Milestone A transport-friction closure. Restore the useful PoC behavior where th
 - No remote writes.
 - No fake discussion reader.
 - No background retry loop.
+- No broad recursive clone or arbitrary parent guessing.
 
 ## Supported local start
 
@@ -34,8 +36,6 @@ The dev server is Vite on `127.0.0.1:5173`.
 
 ## Validation
 
-Run:
-
 ```bash
 npm run validate
 npm run ui:shape
@@ -45,6 +45,11 @@ npm run portable:smoke
 npm run usecase:uc001
 npm run storage:scan
 npm run metrics
+```
+
+Public build still needs an environment with local Vite installed:
+
+```bash
 npm run build:public
 npm run public:check
 ```
