@@ -157,14 +157,9 @@ function uniqueFileTargets(items = []) {
 }
 
 function fileTarget(ref, surface, index, targetKind = 'github-markdown') {
+  if (ref && typeof ref === 'object') return { ref: String(ref.ref || ref.path || ref.url || '').trim(), surface: ref.surface || surface, targetKind: ref.targetKind || targetKind, inputTarget: ref.inputTarget || ref.ref || ref.path || ref.url || '', targetIndex: Number.isFinite(Number(ref.targetIndex)) ? Number(ref.targetIndex) : index };
   const clean = String(ref || '').trim();
-  return {
-    ref: clean,
-    surface,
-    targetKind,
-    inputTarget: clean,
-    targetIndex: index
-  };
+  return { ref: clean, surface, targetKind, inputTarget: clean, targetIndex: index };
 }
 
 function makeSurfaceState(requested = false, extra = {}) {

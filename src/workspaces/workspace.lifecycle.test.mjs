@@ -225,6 +225,19 @@ try {
     assert.equal(issueRecords.length, 3, 'comment-embedded issue artifacts must survive addWorkspaceSourceRecords as distinct records');
     assert(issueRecords.some((record) => record.path.endsWith('comment-001-5001-recovered-one.trace.md')), 'first comment embedded artifact path must survive canonicalization');
     assert(issueRecords.some((record) => record.path.endsWith('comment-002-5002-recovered-two.trace.md')), 'second comment embedded artifact path must survive canonicalization');
+    const outsideRoot = lifecycle.addWorkspaceSourceRecords(issueLoaded.state, issueCreated.workspace.id, issueSource.source.id, [{
+      title: 'Outside root embedded artifact',
+      path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-003-5003-recovered-outside.trace.md',
+      kind: 'tiinex.topic.v1',
+      sourceMode: 'github-comment-embedded-artifact',
+      sourceTarget: { surface: 'issueSnapshots', targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/123#issuecomment-5003', sourceArtifactPath: 'odysseus/001-1-1.trace.md' },
+      snapshot: { embedded: true, sourceArtifactPath: 'odysseus/001-1-1.trace.md' },
+      markdown: `# Continuity Context
+
+# Outside
+`
+    }]);
+    assert.equal(outsideRoot.records[0].path, 'odysseus/001-1-1.trace.md', 'embedded artifact Source Path outside discovery root must not be rewritten under rootPath');
   }
 
   console.log('✓ workspace.lifecycle tests passed');

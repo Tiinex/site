@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v240';
-export const TIINEX_SITE_VERSION = '0.2.60-v240';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v240';
-export const TIINEX_RUNTIME_ID = 'react-v240-issue-comment-record-identity-parity';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v240-issue-comment-record-identity-parity';
+export const TIINEX_SITE_CHECKPOINT = 'v242';
+export const TIINEX_SITE_VERSION = '0.2.62-v242';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v242';
+export const TIINEX_RUNTIME_ID = 'react-v242-lineage-target-resolution-parity';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v242-lineage-target-resolution-parity';
 
 
 export function tiinexBuildIdentity() {

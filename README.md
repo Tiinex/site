@@ -1,44 +1,35 @@
-# Tiinex Site v240
+# Tiinex Site v242
 
-Checkpoint: `v240`
-Version: `0.2.60-v240`
-Runtime: `react-v240-issue-comment-record-identity-parity`
+Checkpoint: `v242`
+Version: `0.2.62-v242`
+Runtime: `react-v242-lineage-target-resolution-parity`
 
-## v240 focus
+## v242 focus
 
-Milestone A issue/comment record identity parity candidate.
+Milestone A lineage target-resolution parity candidate.
 
-Browser testing of v239 showed a misleading split:
+Browser testing of v241 showed real progress: targeted parent recovery can load declared parent artifacts, Lineage can expand beyond one node for some paths, and Discovery/feed grows when recovered parents enter workspace state. The remaining mismatch was selective: some issue/comment-derived artifacts still ended in `target unavailable` even when their parent was a GitHub issue/comment publication item that was already loaded in the workspace.
 
-```txt
-Issue snapshots: 13 loaded
-Workspace/feed: 3 source-backed records
-```
+This checkpoint repairs that seam without turning Lineage into discovery:
 
-The PoC kept issue containers, comment containers, and recovered Tiinex artifacts as distinct material paths. The refactor was creating distinct records in the issue materializer, but workspace source canonicalization collapsed issue/comment-derived records back to the issue URL, so later records overwrote earlier ones.
-
-This checkpoint keeps the refactor architecture intact and focuses on the issue snapshot → workspace record seam:
-
-- embedded issue/comment artifacts now use their artifact material path for lifecycle identity;
-- plain issue snapshots still use the canonical issue URL;
-- comment URL anchors are preserved when the material is comment-scoped;
-- `sourceTarget.sourceArtifactPath` is exposed for recovered embedded artifacts;
-- duplicate Source Markdown wrapper imports are suppressed without broadening generic `<details>` parsing;
-- regression coverage proves multiple comment-embedded artifacts from one issue survive `addWorkspaceSourceRecords` as distinct workspace records.
+- lineage resolution now indexes source/provenance targets such as `sourceTarget.inputTarget`, `recoveredFromUrl`, `snapshot.sourceUrl`, and GitHub issue/comment canonical URLs;
+- GitHub issue comment URL hashes are preserved as identity, so `#issuecomment-*` targets can resolve to loaded comment artifacts instead of collapsing to the issue URL;
+- GitHub issue or issue-comment URLs are not treated as repo file refs by targeted parent-file recovery;
+- relative file parents still use exact source-boundary file recovery, while social publication-item parents resolve only if the corresponding issue/comment artifact is already loaded.
 
 ## What this does not claim
 
-This is not Milestone A closure. It is a record-identity parity candidate intended to make the next browser test decisive.
+This is not Milestone A closure. It is a targeted lineage target-resolution candidate intended to make the next browser test decisive.
 
 Still not claimed:
 
-- full lineage traversal parity;
-- full discussion support;
+- final lineage infinite-scroll/viewport polish;
+- broad issue/discussion crawling during lineage traversal;
 - remote writes;
 - artifact creation/forms/transitions;
-- broad recursive clone or global parent guessing.
+- global basename guessing.
 
-Lineage traversal remains the next product-facing parity target after issue/comment material count is browser-verified.
+Lineage recovery remains targeted: loaded provenance can bind loaded issue/comment artifacts, and exact file Parent Trace can be fetched from the source boundary. It must not become issue discovery, proxy crawling, broad repo scan, or guessed basename recovery.
 
 ## Supported local start
 
@@ -76,9 +67,11 @@ node --check .site-publish/tiinex.bundle.js
 1. Create a clean workspace.
 2. Add GitHub source Tiinex/docs.
 3. Disable repo files; keep issue snapshots enabled.
-4. Load source.
-5. Check whether Issue snapshots loaded count and visible/source record count are no longer collapsed to one record per issue.
-6. Look for recovered comment artifacts such as Silicon Valley / The American Experiment-like entries.
-7. Cycle cache → mirror → proxy only after baseline issue material count is visible.
-8. Open Awaiting response lineage only after issue materialization is correct; lineage parity is the next batch.
+4. Load source and confirm the v240/v241 recovered records are still present.
+5. Open a record that worked in v241, e.g. Evidence: The Stack Remembers, and confirm it still expands.
+6. Open previously partial records such as No next generation / Brazil / Awaiting response.
+7. Switch to Lineage mode.
+8. Confirm loaded issue/comment publication parents resolve when they are already in workspace state.
+9. Confirm exact file parents still recover and Discovery/feed grows when recovered parents are loaded.
+10. Confirm lineage traversal does not trigger broad issue discovery/proxy crawling.
 ```

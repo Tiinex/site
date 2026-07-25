@@ -1,36 +1,32 @@
-# Validation Notes v240
+# Validation Notes v242
 
 ## Root cause / scope
 
-v239 made issue transport/materialization diagnostics clearer, but Q's browser test still showed PoC parity was not met: the app reported `Issue snapshots: 13 loaded` while only three source-backed records were visible in the workspace.
+v241 repaired the first lineage parent-recovery seam: exact file parents could be loaded through targeted source-boundary recovery, and browser testing showed Discovery/feed growing when those parents were recovered. Q's test also showed a remaining selective failure: some issue/comment-derived artifacts still ended in `target unavailable` even though their parent target was a GitHub issue or issue-comment publication item already represented in the loaded workspace.
 
-PoC research points to a source identity seam, not a lineage-UX seam. PoC issue import assigns distinct material paths to issue shells, comment shells, and recovered embedded artifacts. The refactor lifecycle canonicalized all `issueSnapshots` material by `sourceTarget.inputTarget`; because URL hashes were stripped, comment-derived records from the same issue collapsed to the issue URL and overwrote each other.
+The root cause was target identity, not lineage UI. The resolver indexed file paths and Source Path values, but it did not index GitHub publication-item provenance (`sourceTarget.inputTarget`, `recoveredFromUrl`, `snapshot.sourceUrl`, issue/comment canonical URLs). URL path canonicalization also loses hash identity, so issue comment references could collapse to the parent issue instead of resolving to the loaded comment artifact.
 
-v240 repairs that seam without importing Copilot's broader lineage/UI changes.
+v242 repairs that seam while keeping discovery and traversal separate.
 
 ## Changes
 
-- `src/workspaces/workspace.lifecycle.js`
-  - embedded issue/comment artifacts now canonicalize by `sourceArtifactPath` / `record.path` instead of issue URL;
-  - plain issue snapshot evidence still canonicalizes by issue URL;
-  - comment-scoped source targets preserve `#issuecomment-*` anchors when they are the material identity;
-  - repo-file canonicalization and rootPath behavior are unchanged.
+- `src/lineage/lineage.resolve.js`
+  - adds provenance-target indexing for loaded issue/comment artifacts;
+  - indexes `sourceTarget.inputTarget`, `recoveredFromUrl`, `snapshot.sourceUrl`, `snapshot.target.canonicalUrl`, and related source URLs;
+  - preserves GitHub `#issuecomment-*` identity during resolution;
+  - resolves GitHub issue/comment URL parent targets against loaded provenance before file-path lookup.
 
-- `src/adapters/github/github.issueEmbedded.js`
-  - recovered embedded artifacts expose `sourceTarget.sourceArtifactPath` so lifecycle can use the PoC-like material path;
-  - Source Markdown wrapper blocks are not imported a second time as synthetic artifacts;
-  - conservative `<details><summary>Tiinex source payload</summary>` behavior is preserved.
+- `src/app/lineageSourceRecovery.js`
+  - refuses to convert GitHub issue/issue-comment URLs into repo file refs;
+  - keeps targeted parent-file recovery for real raw/blob/file paths only.
 
 - Tests updated:
-  - `src/adapters/github/github.issueSnapshot.test.mjs` proves one issue with two embedded comment payloads materializes distinct recovered artifact records with distinct paths and anchored provenance;
-  - `src/workspaces/workspace.lifecycle.test.mjs` proves `addWorkspaceSourceRecords` preserves multiple comment-embedded records from one issue instead of collapsing them to the issue URL;
-  - existing plain issue URL/rootPath guard now runs inside the main test body instead of after `process.exit`.
+  - `src/lineage/lineage.resolve.test.mjs` covers loaded GitHub issue and issue-comment provenance parent resolution;
+  - `src/app/lineageSourceRecovery.test.mjs` covers that GitHub issue/comment URLs are not treated as fetchable repo files.
 
 ## Validation run here
 
 ```bash
-node src/adapters/github/github.issueSnapshot.test.mjs
-node src/workspaces/workspace.lifecycle.test.mjs
 npm run validate
 npm run architecture:shape
 npm run ui:shape
@@ -49,22 +45,17 @@ npm run public:check
 node --check .site-publish/tiinex.bundle.js
 ```
 
-This sandbox source tree does not include `node_modules/.bin/vite`, so `npm run build:public` cannot run here. Verify after `npm install`/`npm ci` in the local Windows dev environment.
+This sandbox source tree does not include `node_modules/.bin/vite`, so public build/check still need Q's local Windows dev environment after `npm install`/`npm ci`.
 
 ## Known limits
 
-- This checkpoint targets issue/comment record identity, not full lineage traversal parity.
+- This checkpoint targets lineage target resolution, not final lineage scroll/visual polish.
 - GitHub API 403/rate limits remain an expected anonymous-browser limitation, not automatically a regression.
-- Mirror only succeeds when hosted issue snapshots exist at a configured/default location; otherwise it should degrade honestly.
-- Proxy/mirror must not silently fall through to direct during explicit tier tests.
+- Recovery is exact source-boundary file recovery plus loaded provenance binding only; it must not global-search basename or broad-scan repositories.
+- GitHub issue/comment URL parents resolve only when the corresponding issue/comment artifact is already loaded in workspace state.
+- Mirror/proxy must not silently fall through to direct during explicit issue transport tests.
 - Discussions remain deferred.
 
 ## Next batch
 
-Targeted lineage recovery/parity after browser confirms issue/comment records are no longer collapsed:
-
-```txt
-selected artifact → declared Parent Trace / Origin → targeted source-boundary parent-file recovery
-```
-
-It must not become issue discovery, proxy crawling, broad repo scan, or basename guessing.
+If browser testing confirms previously partial issue/comment lineage now binds to loaded publication parents, the next batch should move to lineage UX parity: viewport + buffer loading behavior, “Load full lineage” visibility, and leaf-filter correctness based on actual graph relations.

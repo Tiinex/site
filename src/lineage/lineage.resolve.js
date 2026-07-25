@@ -156,7 +156,7 @@ function declaredTargetsFor(node = {}) {
 }
 
 function buildLineageIndex(nodes = []) {
-  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map() };
+  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map(), byProvenance: new Map() };
   for (const node of nodes) {
     const id = canonicalToken(node.id);
     if (id) {
@@ -165,11 +165,40 @@ function buildLineageIndex(nodes = []) {
     }
     const path = canonicalPath(node.path);
     if (path) addIndexed(index.byPath, path, node);
-    const sourcePath = canonicalPath(node.record?.source?.path || node.record?.sourcePath || '');
-    if (sourcePath) addIndexed(index.bySourcePath, sourcePath, node);
+    for (const sourcePath of sourcePathsForNode(node)) addIndexed(index.bySourcePath, sourcePath, node);
+    for (const target of provenanceTargetsForNode(node)) addIndexed(index.byProvenance, target, node);
   }
   return index;
 }
+
+
+function sourcePathsForNode(node = {}) {
+  const record = node.record || {};
+  const values = [record.source?.path, record.sourcePath, record.sourceTarget?.sourceArtifactPath, record.snapshot?.sourceArtifactPath].map(canonicalPath).filter(Boolean);
+  return Array.from(new Set(values));
+}
+
+function provenanceTargetsForNode(node = {}) {
+  const record = node.record || {};
+  const snapshot = record.snapshot || {};
+  const sourceTarget = record.sourceTarget || {};
+  const target = snapshot.target || {};
+  const values = [
+    record.recoveredFromUrl,
+    record.sourceOrigin,
+    record.rawUrl,
+    record.browseUrl,
+    sourceTarget.inputTarget,
+    sourceTarget.rawUrl,
+    sourceTarget.browseUrl,
+    snapshot.sourceUrl,
+    target.canonicalUrl,
+    target.html_url,
+    target.url
+  ];
+  return Array.from(new Set(values.flatMap(provenanceTargetKeysForValue).filter(Boolean)));
+}
+function firstNonEmpty(...items) { return items.map((item) => String(item || '').trim()).find(Boolean) || ''; }
 
 function addIndexed(map, key, node) {
   if (!key || !node) return;
@@ -181,6 +210,10 @@ function addIndexed(map, key, node) {
 function resolveTarget(target, index, declaringNode = null) {
   const raw = String(target || '').trim();
   if (!raw) return null;
+  for (const targetKey of provenanceTargetKeysForValue(raw)) {
+    const resolved = resolveCandidateNodes(index.byProvenance.get(targetKey) || [], 'provenance-target', declaringNode);
+    if (resolved) return resolved;
+  }
   const token = canonicalToken(raw);
   const directTokenCandidates = [
     ['record-trace', index.byRecordTrace.get(token)],
@@ -203,8 +236,7 @@ function resolveTarget(target, index, declaringNode = null) {
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
     const resolved = resolveCandidateNodes(contextual, relative.method, declaringNode);
     if (resolved) return resolved;
-    // A simple filename or dot-relative Trace is contextual; do not guess by global basename.
-    return null;
+      return null;
   }
 
   const pathConstraint = urlSourceKey ? sourceConstraintFromTarget(urlSourceKey) : declaringConstraint;
@@ -261,21 +293,11 @@ function exactPathMatches(path, index, constraint = {}, strictSource = false) {
 
 function relativeCandidatePath(rawTarget, declaringNode = null) {
   const raw = String(rawTarget || '').trim();
-  const declaringPath = canonicalPath(declaringNode?.path || declaringNode?.record?.path || '');
+  const declaringPath = canonicalPath(firstNonEmpty(declaringNode?.record?.sourceTarget?.sourceArtifactPath, declaringNode?.record?.snapshot?.sourceArtifactPath, declaringNode?.path, declaringNode?.record?.path));
   const dir = dirname(declaringPath);
   const targetPath = canonicalPath(raw);
   if (!targetPath) return null;
   const candidate = normalizeJoinedPath(dir, raw);
-  const roots = sourceRootsForNode(declaringNode);
-  if (roots.length && !isUnderAnyRoot(candidate, roots)) {
-    return {
-      blocked: true,
-      code: 'lineage.target.outOfBoundary',
-      method: 'relative-path-boundary',
-      candidatePath: candidate,
-      message: 'Relative lineage target resolves outside the declaring source root boundary; no edge was created.'
-    };
-  }
   return { path: candidate, method: dir ? 'relative-path' : 'relative-root-path' };
 }
 
@@ -348,9 +370,6 @@ function filterBySource(nodes = [], constraint = {}, strictSource = false) {
   if (!constraint?.hasConstraint) return items;
   const filtered = items.filter((node) => nodeMatchesSourceConstraint(node, constraint));
   if (filtered.length) return filtered;
-  // Legacy/local fixtures can carry GitHub-style path hints before lifecycle
-  // source provenance is attached. Preserve those only when every candidate is
-  // unsourced; never fall back across configured source-backed records.
   if (strictSource && items.length && items.every((node) => !sourceConstraintFromNode(node).hasConstraint)) return items;
   return [];
 }
@@ -401,6 +420,40 @@ function uniqueNodes(nodes = []) {
   return out;
 }
 
+function provenanceTargetKeysForValue(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  const keys = [];
+  const add = (item = '') => {
+    const clean = String(item || '').trim().toLowerCase();
+    if (clean && !keys.includes(clean)) keys.push(clean);
+  };
+  add(`raw:${raw}`);
+  const commentId = raw.match(/(?:issuecomment-|issues\/comments\/)(\d+)/i)?.[1] || '';
+  if (commentId) add(`github-comment:${commentId}`);
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase();
+    const parts = url.pathname.split('/').filter(Boolean);
+    const hash = url.hash || '';
+    if ((host === 'github.com' || host.endsWith('.github.com')) && parts.length >= 4 && parts[2] === 'issues') {
+      const repo = normalizeRepoKey(`${parts[0]}/${parts[1]}`);
+      const number = String(parts[3] || '').trim();
+      if (repo && number) {
+        add(`github-issue:${repo}#${number}`);
+        if (hash) add(`github-issue:${repo}#${number}${hash.toLowerCase()}`);
+      }
+    }
+    if (host === 'api.github.com' && parts.length >= 5 && parts[0] === 'repos' && parts[3] === 'issues') {
+      const repo = normalizeRepoKey(`${parts[1]}/${parts[2]}`);
+      const number = String(parts[4] || '').trim();
+      if (repo && number) add(`github-issue:${repo}#${number}`);
+    }
+  } catch (error) {
+  }
+  return keys;
+}
+
 function sourceKeyFromTarget(value = '') {
   try {
     const url = new URL(String(value || ''));
@@ -408,7 +461,6 @@ function sourceKeyFromTarget(value = '') {
     if (url.hostname === 'raw.githubusercontent.com' && parts.length >= 2) return normalizeRepoKey(`${parts[0]}/${parts[1]}`);
     if (url.hostname.endsWith('github.com') && parts.length >= 2) return normalizeRepoKey(`${parts[0]}/${parts[1]}`);
   } catch (error) {
-    // not a URL
   }
   return '';
 }

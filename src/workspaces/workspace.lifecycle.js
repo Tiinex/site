@@ -23,7 +23,7 @@ const t = input.sourceTarget || {}, snap = input.snapshot || {}, raw = t.inputTa
 const surface = String(t.surface || '').toLowerCase(), mode = String(input.sourceMode || '').toLowerCase(), kind = String(t.targetKind || '').toLowerCase();
 const issue = surface === 'issuesnapshots' || mode.includes('issue-snapshot') || /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|discussions)\/\d+/i.test(String(raw || ''));
 if (!issue) return canonicalizeSourcePath(input.path || input.name || '', source);
-if (snap.embedded || kind.includes('embedded-artifact') || mode.includes('embedded-artifact')) return canonicalizeSourcePath(t.sourceArtifactPath || snap.sourceArtifactPath || input.path || input.name || '', source);
+if(snap.embedded||/embedded-artifact|lineage-parent/.test(kind)||mode.includes('embedded-artifact'))return canonicalizeSourcePath(t.sourceArtifactPath||snap.sourceArtifactPath||input.path||input.name||'',{});
 return canonicalizeExternalSourceTarget(raw, { preserveHash: kind.includes('comment') || /issuecomment-|discussioncomment-/i.test(String(raw || '')) });
 }
 function canonicalizeExternalSourceTarget(value = '', options = {}) {

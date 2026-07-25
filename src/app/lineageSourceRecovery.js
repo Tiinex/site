@@ -17,7 +17,9 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
       const out = await materializeGithubSource(plan.source, { fileRefs: plan.fileRefs, repoDiscovery: false, issueDiscovery: false, issueUrls: '' }, {
         fetchImpl,
         maxFiles: 32,
-        transportPolicy: buildSourceTransportPolicy({ mode: 'cache-mirror-proxy-direct', maxRequestsPerOperation: 64, now: new Date().toISOString() }),
+        allowCache: false, allowMirror: false, allowProxy: false, allowDirect: true,
+        transportOrder: ['direct'], transportOrderExact: true,
+        transportPolicy: buildSourceTransportPolicy({ mode: 'targeted-parent-file-recovery', maxRequestsPerOperation: 64, now: new Date().toISOString() }),
         workspaceConfig
       });
       if (out.okCount <= 0) continue;
@@ -48,8 +50,8 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
     if (!sourceId) continue;
     if (!grouped.has(sourceId)) grouped.set(sourceId, { sourceId, source, fileRefs: [], targets: [] });
     const entry = grouped.get(sourceId);
-    if (!entry.fileRefs.some((item) => canonicalRepoPath(item) === canonicalRepoPath(fileRef))) {
-      entry.fileRefs.push(fileRef);
+    if (!entry.fileRefs.some((item) => canonicalRepoPath(item.ref || item) === canonicalRepoPath(fileRef))) {
+      entry.fileRefs.push({ ref: fileRef, surface: 'lineageRecovery', targetKind: 'lineage-parent', inputTarget: edge.target || '', targetIndex: entry.fileRefs.length });
       entry.targets.push({ fromRecordId: declaring?.id || '', target: edge.target || '', fileRef });
     }
   }
@@ -59,12 +61,14 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
 export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {}) {
   const raw = String(target || '').trim();
   if (!raw || /^record:/i.test(raw)) return '';
+  if (isGitHubSocialTarget(raw)) return '';
   const urlPath = githubRepoRelativePathFromUrl(raw);
   if (urlPath) return urlPath;
+  if (isUrlLike(raw)) return '';
   const cleanTarget = canonicalRepoPath(raw);
   if (!cleanTarget) return '';
   if (isDotRelative(raw) || isSimpleRelative(raw)) {
-    const declaringPath = firstNonEmpty(declaringRecord?.path, declaringRecord?.sourcePath, declaringRecord?.sourceTarget?.sourceArtifactPath, declaringRecord?.snapshot?.sourceArtifactPath);
+    const declaringPath = firstNonEmpty(declaringRecord?.sourceTarget?.sourceArtifactPath, declaringRecord?.snapshot?.sourceArtifactPath, declaringRecord?.sourcePath, declaringRecord?.path);
     const dir = dirname(githubRepoRelativePathFromUrl(declaringPath) || declaringPath);
     return canonicalRepoPath(dir ? `${dir}/${raw}` : cleanTarget);
   }
@@ -76,6 +80,14 @@ function isGithubSource(source = {}) {
   return adapter.includes(GITHUB_ADAPTER_ID) || Boolean(source.repo || source.repository || source.config?.repo);
 }
 function firstNonEmpty(...items) { return items.map((item) => String(item || '').trim()).find(Boolean) || ''; }
+function isUrlLike(value = '') { return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(String(value || '').trim()); }
+function isGitHubSocialTarget(value = '') {
+  try {
+    const url = new URL(String(value || '').trim());
+    const parts = url.pathname.split('/').filter(Boolean);
+    return (url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) && parts.length >= 4 && parts[2] === 'issues';
+  } catch (_) { return false; }
+}
 function githubRepoRelativePathFromUrl(value = '') {
   try {
     const url = new URL(String(value || '').trim());

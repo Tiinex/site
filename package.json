@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.60-v240",
+  "version": "0.2.62-v242",
   "private": true,
-  "description": "Tiinex Site v240: Milestone A issue/comment record identity parity candidate.",
+  "description": "Tiinex Site v242: Milestone A lineage target-resolution parity candidate.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

@@ -104,8 +104,8 @@ const narrowRoot = { id: 'github:tiinex-docs:master:.topics-area', adapterId: 'g
 const outsideParent = leaf({ id: 'outside-parent', title: 'Outside Parent', path: '.topics/parent.trace.md', source: narrowRoot });
 const boundaryChild = leaf({ id: 'boundary-child', title: 'Boundary Child', path: '.topics/area/child.md', trace: '../parent.trace.md', source: narrowRoot });
 const boundary = resolveLineage([outsideParent, boundaryChild]);
-assert(boundary.findings.some((finding) => finding.nodeId === 'boundary-child' && finding.code === 'lineage.target.outOfBoundary'), 'relative Trace outside the configured source root should be boundary-blocked');
-assert(!boundary.edges.some((edge) => edge.from === 'outside-parent' && edge.to === 'boundary-child'), 'out-of-boundary relative Trace must not create an edge');
+assert(boundary.edges.some((edge) => edge.from === 'outside-parent' && edge.to === 'boundary-child' && edge.method === 'relative-path'), 'lineage should resolve exact relative Parent Trace inside the same source boundary even when it crosses the discovery root');
+assert(!boundary.findings.some((finding) => finding.nodeId === 'boundary-child' && finding.code === 'lineage.target.outOfBoundary'), 'source root is discovery scope, not a lineage parent-file boundary');
 
 const samePathA2 = leaf({ id: 'same-a2', title: 'Same A2', path: 'shared/topic.md', source: sourceA });
 const samePathB2 = leaf({ id: 'same-b2', title: 'Same B2', path: 'shared/topic.md', source: sourceB });
@@ -113,6 +113,36 @@ const childFromA = leaf({ id: 'child-from-a', title: 'Child From A', path: 'chil
 const sourceScoped = resolveLineage([samePathA2, samePathB2, childFromA]);
 assert(sourceScoped.edges.some((edge) => edge.from === 'same-a2' && edge.to === 'child-from-a'), 'source-backed child should resolve repo-relative targets within its own source identity');
 assert(!sourceScoped.edges.some((edge) => edge.from === 'same-b2' && edge.to === 'child-from-a'), 'source-backed child must not cross source identity for a repo-relative target');
+
+
+const githubSource = { id: 'github:tiinex/docs', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' };
+const issueRoot = Object.assign(leaf({ id: 'issue-root-9', title: 'Welcome to the Next Dimension', path: '.topics/.github/.issues/tiinex-docs-issue-9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
+  sourceTarget: {
+    inputTarget: 'https://github.com/Tiinex/docs/issues/9',
+    sourceArtifactPath: '.topics/.github/.issues/tiinex-docs-issue-9/issue-root-recovered-welcome-to-the-next-dimension.trace.md'
+  },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9', target: { canonicalUrl: 'https://github.com/Tiinex/docs/issues/9' } }
+});
+const commentArtifact = Object.assign(leaf({ id: 'comment-artifact-9-1', title: 'The American Experiment', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-001-4881780075-recovered-the-american-experiment.trace.md', trace: 'https://github.com/Tiinex/docs/issues/9', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075',
+  sourceTarget: {
+    inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075',
+    sourceArtifactPath: '.topics/.github/.issues/tiinex-docs-issue-9/comment-001-4881780075-recovered-the-american-experiment.trace.md'
+  },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075' }
+});
+const provenanceResolved = resolveLineage([issueRoot, commentArtifact]);
+assert(provenanceResolved.edges.some((edge) => edge.from === 'issue-root-9' && edge.to === 'comment-artifact-9-1' && edge.method === 'provenance-target'), 'GitHub issue URL parent targets should resolve against loaded issue provenance, not become file recovery');
+
+const commentParent = Object.assign(leaf({ id: 'comment-parent-9-1', title: 'The American Experiment', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-001-4881780075-recovered-the-american-experiment.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075' }
+});
+const commentChild = leaf({ id: 'comment-child-url', title: 'Comment Child URL', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-child.trace.md', trace: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075', source: githubSource });
+const commentProvenanceResolved = resolveLineage([commentParent, commentChild]);
+assert(commentProvenanceResolved.edges.some((edge) => edge.from === 'comment-parent-9-1' && edge.to === 'comment-child-url' && edge.method === 'provenance-target'), 'GitHub issue comment URL parent targets should preserve hash identity and resolve to the loaded comment artifact');
 
 const audit = resolveAuditLineage([parent, childByTrace]);
 assert.equal(audit.schema, 'tiinex.audit.lineage.resolve.v1', 'audit lineage result declares schema');

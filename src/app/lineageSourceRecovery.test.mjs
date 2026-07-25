@@ -37,6 +37,16 @@ const view = buildWorkspaceLineageView(workspace, { selectedRecordId: child.id }
 assert.equal(view.selectedTraversal.hasMissing, true, 'fixture should expose missing parent before recovery');
 const plan = buildLineageSourceRecoveryPlan(workspace, view);
 assert.equal(plan.length, 1, 'one GitHub source should own the missing parent recovery');
-assert.deepEqual(plan[0].fileRefs, ['.topics/parent.trace.md'], 'relative Parent Trace should become an exact repo file ref');
+assert.deepEqual(plan[0].fileRefs.map((item) => item.ref), ['.topics/parent.trace.md'], 'relative Parent Trace should become an exact repo file ref');
+assert.equal(plan[0].fileRefs[0].targetKind, 'lineage-parent', 'lineage recovery refs should be marked as targeted parent-file reads');
 assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/blob/master/.topics/root.trace.md', child), '.topics/root.trace.md', 'blob URL parent targets become repo-relative refs');
+const embeddedIssueChild = Object.assign(createRecordFromMarkdown(childMarkdown.replace('[Parent](../parent.trace.md)', '[Parent](../001-1-1.trace.md)'), { path: '.topics/.github/.issues/tiinex-docs-issue-10/comment-001-99-recovered-awaiting.trace.md', name: 'Awaiting response' }), {
+  id: 'source:github:tiinex/docs:.topics/.github/.issues/tiinex-docs-issue-10/comment-001-99-recovered-awaiting.trace.md',
+  source: { id: 'github:tiinex/docs', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' },
+  sourceTarget: { sourceArtifactPath: 'odysseus/branch/awaiting.trace.md' },
+  snapshot: { embedded: true, sourceArtifactPath: 'odysseus/branch/awaiting.trace.md' }
+});
+assert.equal(lineageRecoveryFileRefForTarget('../001-1-1.trace.md', embeddedIssueChild), 'odysseus/001-1-1.trace.md', 'embedded issue lineage recovery must resolve relative Parent Trace from Source Path, not synthetic issue path');
+assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue URL as a repo file ref');
+assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue comment URL as a repo file ref');
 console.log('lineageSourceRecovery: ok');

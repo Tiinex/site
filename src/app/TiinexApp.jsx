@@ -46,6 +46,7 @@ export function TiinexApp() {
   const [sourceContinuationId, setSourceContinuationId] = useState('');
   const viewScrollRef = useRef({});
   const latestStateRef = useRef(state);
+  const lineageAutoLoadKeysRef = useRef(new Set());
   const scrollPersistTimerRef = useRef(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
@@ -93,6 +94,8 @@ export function TiinexApp() {
     const timer = window.setTimeout(() => setNotice(''), 9000);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id || lineageLoadReportForSelected(state)) return; const lineage = buildWorkspaceLineageView(active, { records: Array.isArray(active.records) ? active.records : [], query: '', selectedRecordId: id }); const key = `${active.id}:${id}:${active.records?.length || 0}:${lineage.selectedTraversal?.missingEdges?.length || 0}`; if (lineage.selectedTraversal?.hasMissing && !lineageAutoLoadKeysRef.current.has(key)) { lineageAutoLoadKeysRef.current.add(key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
 
   function commit(nextState, mode = 'push') {
     const sourceState = latestStateRef.current || state;
