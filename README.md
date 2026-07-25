@@ -1,41 +1,44 @@
-# Tiinex Site v238
+# Tiinex Site v240
 
-Checkpoint: `v238`
-Version: `0.2.58-v238`
-Runtime: `react-v238-issue-transport-response-fix`
+Checkpoint: `v240`
+Version: `0.2.60-v240`
+Runtime: `react-v240-issue-comment-record-identity-parity`
 
-## v238 focus
+## v240 focus
 
-Milestone A transport hardening for GitHub issue snapshots. v237 restored the PoC-like cache → mirror → proxy → direct transport badge and added issue mirror/proxy branches, but browser testing showed mirror/proxy issue loads still behaved as unavailable while cache/direct were the only useful paths.
+Milestone A issue/comment record identity parity candidate.
 
-## Root cause
+Browser testing of v239 showed a misleading split:
 
-The issue-surface mirror/proxy fetch wrappers tried to tag native Fetch `Response` objects by creating a shell with `Object.create(Response.prototype)`. Native response fields such as `.ok`, `.status`, `.json()`, and `.text()` are brand-checked; reading them from that shell can fail or behave like an invalid response in real browsers. The tests used plain fake response objects, so v237 passed while browser mirror/proxy issue loading degraded.
+```txt
+Issue snapshots: 13 loaded
+Workspace/feed: 3 source-backed records
+```
 
-## What changed
+The PoC kept issue containers, comment containers, and recovered Tiinex artifacts as distinct material paths. The refactor was creating distinct records in the issue materializer, but workspace source canonicalization collapsed issue/comment-derived records back to the issue URL, so later records overwrote earlier ones.
 
-- `src/adapters/github/github.issueSurface.js` now wraps native responses with an ordinary delegating transport response object.
-- Proxy issue API responses and hosted mirror responses preserve:
-  - `ok`
-  - `status`
-  - `statusText`
-  - `url`
-  - `headers.get()`
-  - `text()`
-  - `json()`
-  - `clone()`
-  - `transportTier`
-- Transport events now include the issue URL/resource for proxy and mirror issue attempts/success/failure.
-- Tests now cover native `Response` objects, not only fake enumerable response doubles.
-- Architecture guard blocks reintroducing the native `Response.prototype` shell wrapper.
+This checkpoint keeps the refactor architecture intact and focuses on the issue snapshot → workspace record seam:
 
-## Milestone A non-goals
+- embedded issue/comment artifacts now use their artifact material path for lifecycle identity;
+- plain issue snapshots still use the canonical issue URL;
+- comment URL anchors are preserved when the material is comment-scoped;
+- `sourceTarget.sourceArtifactPath` is exposed for recovered embedded artifacts;
+- duplicate Source Markdown wrapper imports are suppressed without broadening generic `<details>` parsing;
+- regression coverage proves multiple comment-embedded artifacts from one issue survive `addWorkspaceSourceRecords` as distinct workspace records.
 
-- No artifact creation, transitions, or forms.
-- No remote writes.
-- No fake discussion reader.
-- No background retry loop.
-- No broad recursive clone or arbitrary parent guessing.
+## What this does not claim
+
+This is not Milestone A closure. It is a record-identity parity candidate intended to make the next browser test decisive.
+
+Still not claimed:
+
+- full lineage traversal parity;
+- full discussion support;
+- remote writes;
+- artifact creation/forms/transitions;
+- broad recursive clone or global parent guessing.
+
+Lineage traversal remains the next product-facing parity target after issue/comment material count is browser-verified.
 
 ## Supported local start
 
@@ -48,15 +51,15 @@ The dev server is Vite on `127.0.0.1:5173`.
 
 ## Validation
 
+Run locally after unpacking:
+
 ```bash
 npm run validate
-npm run ui:shape
 npm run architecture:shape
-npm run typecheck
-npm run portable:smoke
-npm run usecase:uc001
-npm run storage:scan
+npm run ui:shape
 npm run metrics
+npm run storage:scan
+npm run typecheck
 ```
 
 Public build still needs an environment with local Vite installed:
@@ -64,4 +67,18 @@ Public build still needs an environment with local Vite installed:
 ```bash
 npm run build:public
 npm run public:check
+node --check .site-publish/tiinex.bundle.js
+```
+
+## Manual browser test focus
+
+```txt
+1. Create a clean workspace.
+2. Add GitHub source Tiinex/docs.
+3. Disable repo files; keep issue snapshots enabled.
+4. Load source.
+5. Check whether Issue snapshots loaded count and visible/source record count are no longer collapsed to one record per issue.
+6. Look for recovered comment artifacts such as Silicon Valley / The American Experiment-like entries.
+7. Cycle cache → mirror → proxy only after baseline issue material count is visible.
+8. Open Awaiting response lineage only after issue materialization is correct; lineage parity is the next batch.
 ```

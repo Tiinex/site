@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildGithubTransportPlan, createGithubTransportFetch, hydrateGithubRecordFromSourceCache } from './github.transport.js';
+import { buildGithubTransportPlan, clearGithubSourceTextCacheForSource, createGithubTransportFetch, hydrateGithubRecordFromSourceCache } from './github.transport.js';
 
 function makeResponse(body, options = {}) {
   const text = typeof body === 'string' ? body : JSON.stringify(body || {});
@@ -37,6 +37,14 @@ const secondRes = await second.fetch('https://raw.githubusercontent.com/owner/re
 assert.equal(await secondRes.text(), '# cached document');
 assert.equal(calls.length, 1, 'second read should hit source cache before direct');
 assert(second.events.some((event) => event.code === 'github.transport.cache.hit'), 'cache hit should be diagnosable');
+
+cache['tiinex.source-cache.v1:api-json:https://api.github.com/repos/owner/repo/issues/1'] = { body: '{"number":1}', contentType: 'application/json' };
+const clearedCount = clearGithubSourceTextCacheForSource({ repo: 'owner/repo' }, { sourceCache: cache });
+assert.equal(clearedCount, 2, 'source cache should clear raw markdown and GitHub issue API entries for the matching repository');
+const afterClear = createGithubTransportFetch({ id: 'gh', repo: 'owner/repo' }, { fetchImpl: directFetch, allowMirror: false, allowProxy: false, sourceCache: cache });
+const afterClearRes = await afterClear.fetch('https://raw.githubusercontent.com/owner/repo/main/.topics/a.md', {});
+assert.equal(await afterClearRes.text(), '# cached document');
+assert.equal(calls.length, 2, 'cleared source cache should force a fresh direct fetch on next read');
 
 const mirrorCalls = [];
 const mirrorFetchImpl = async (url) => {

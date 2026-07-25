@@ -69,7 +69,23 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   warnings.push(...(result.warnings || []).map((warning) => Object.assign({ surface: 'issueSnapshots' }, warning)));
   errors.push(...(result.errors || []).map((error) => Object.assign({ surface: 'issueSnapshots' }, error)));
   diagnostics.issueSnapshotRecords = result.records.length;
-  Object.assign(surface, { loaded: result.records.length, failed: Math.max(0, Number(result.counts?.targets || 0) - Number(result.records.length || 0)), records: result.records.map((record) => record.id).filter(Boolean) });
+  diagnostics.issueSnapshotTargetResults = Array.isArray(result.targetResults) ? result.targetResults : [];
+  diagnostics.issueSnapshotMaterialization = {
+    targets: Number(result.counts?.targets || 0),
+    records: Number(result.records?.length || 0),
+    loadedTargets: Number(result.counts?.loadedTargets || 0),
+    failedTargets: Number(result.counts?.failedTargets || 0),
+    deferredTargets: Number(result.counts?.deferredTargets || 0),
+    warnings: Number(result.counts?.warnings || 0),
+    errors: Number(result.counts?.errors || 0)
+  };
+  Object.assign(surface, {
+    loaded: result.records.length,
+    loadedTargets: Number(result.counts?.loadedTargets || 0),
+    failed: Number(result.counts?.failedTargets ?? Math.max(0, Number(result.counts?.targets || 0) - Number(result.records.length || 0))),
+    deferred: Number(result.counts?.deferredTargets || 0),
+    records: result.records.map((record) => record.id).filter(Boolean)
+  });
   if (!result.records.length && parsed.counts.targets && !surface.skipped) surface.unavailable = true;
   for (const record of result.records || []) record.sourceTarget = Object.assign({ schema: 'tiinex.source.material.target.v1', surface: 'issueSnapshots', targetKind: 'github-issue-snapshot', loaded: true }, record.sourceTarget || {});
   return { records: result.records || [], warnings, errors, diagnostics, surface, counts: result.counts || {} };

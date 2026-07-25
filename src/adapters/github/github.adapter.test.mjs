@@ -227,6 +227,21 @@ assert.equal(mirrorIssueLoaded.records[0].summary, 'Mirror body from hosted snap
 assert(mirrorIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.mirror.ok' && event.url === mirrorMetaUrl), 'mirror metadata fetch should be exposed as mirror transport evidence');
 assert(!mirrorIssueCalls.some((url) => url.includes('api.github.com')), 'explicit mirror issue refresh must not call live GitHub API');
 
+const mirrorPartialCommentCalls = [];
+const mirrorPartialCommentLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  {
+    fetchImpl: makeFetch(Object.assign({}, mirrorMap, { [mirrorCommentBodyUrl]: { ok: false, status: 404, statusText: 'Not Found', json: { message: 'missing comment body' } } }), mirrorPartialCommentCalls),
+    preferredTransports: ['mirror'],
+    transportOrderExact: true,
+    hostedIssueSnapshotBaseUrls: [mirrorBase]
+  }
+);
+assert.equal(mirrorPartialCommentLoaded.records.length, 1, 'mirror issue body should still materialize when one hosted comment payload is unavailable');
+assert(mirrorPartialCommentLoaded.warnings.some((warning) => warning.code === 'github.issue.mirror.comment-fetch-failed'), 'mirror comment fetch degradation should be explicit');
+assert.equal(mirrorPartialCommentLoaded.diagnostics.issueSnapshotMaterialization.loadedTargets, 1, 'mirror target diagnostics should count the issue target loaded despite partial comments');
+
 
 const nativeMirrorIssueCalls = [];
 const nativeMirrorIssueLoaded = await materializeGithubSource(

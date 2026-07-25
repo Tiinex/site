@@ -11,7 +11,7 @@ import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
-import { githubTransportOrderFromTier, nextGithubTransportTier, normalizeGithubTransportTier } from '../sources/github/github.transport.js';
+import { clearGithubSourceTextCacheForSource, githubTransportOrderFromTier, nextGithubTransportTier, normalizeGithubTransportTier } from '../sources/github/github.transport.js';
 import { sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
 import { recoverMissingLineageParentsFromSource } from './lineageSourceRecovery.js';
 import { buildExportPackageBundle } from '../export/package.builder.js';
@@ -256,6 +256,7 @@ export function TiinexApp() {
       setGithubRequestPending(false);
       return;
     }
+    clearGithubSourceTextCacheForSource({ repo: repository });
     const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
     const ref = String(input.ref || '').trim();
     const label = input.label || repository;
@@ -438,6 +439,7 @@ export function TiinexApp() {
     const refresh = sourceTransportRefreshInputForSource(source, currentTier);
     if (refresh.reason === 'last-tier') return setNotice(`${source.label || 'Source'} is already using the last transport tier (direct).`);
     if (refresh.reason === 'no-surfaces') return openAddToWorkspace(source.id || sourceId);
+    clearGithubSourceTextCacheForSource(source);
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
     await addGitHubSource(refresh.input);
   }
@@ -560,6 +562,8 @@ export function TiinexApp() {
   }
 
   function closeSource(sourceId) {
+    const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || '')) || null;
+    if (source) clearGithubSourceTextCacheForSource(source);
     const result = runtime().lifecycle?.closeWorkspaceSource?.(state, active?.id, sourceId);
     if (!result?.ok) {
       setNotice('Local source stays pinned.');

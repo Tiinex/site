@@ -101,9 +101,10 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
   const records = [];
   const warnings = [];
   const errors = [...parsed.errors];
+  const targetResults = [];
   if (!fetchImpl) {
     if (parsed.counts.targets) warnings.push(finding('warning', 'github.issue.reader.unavailable', 'Issue snapshot targets were parsed, but no fetch implementation is available.', { surface: 'issueSnapshots', targetCount: parsed.counts.targets }));
-    return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, counts: { targets: parsed.counts.targets, records: 0, warnings: warnings.length, errors: errors.length } };
+    return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults) };
   }
   const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
   for (const target of parsed.targets) {
@@ -111,18 +112,22 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
     const normalized = target.ok ? target : parseGithubIssueSnapshotTarget(target.canonicalUrl || target.html_url || target.url || '');
     if (!normalized.ok) {
       errors.push({ ref: target.input || target.url || '', error: normalized.error || 'invalid issue target' });
+      targetResults.push(issueTargetResult(target, { status: 'failed', warningCode: 'invalid-issue-target', message: normalized.error || 'invalid issue target' }));
       continue;
     }
     if (normalized.kind === 'discussion') {
-      warnings.push(finding('warning', 'github.discussion.reader.deferred', 'GitHub Discussion snapshots are not available through the browser REST reader yet; this target remains deferred.', { surface: 'issueSnapshots', url: normalized.canonicalUrl }));
+      const warning = finding('warning', 'github.discussion.reader.deferred', 'GitHub Discussion snapshots are not available through the browser REST reader yet; this target remains deferred.', { surface: 'issueSnapshots', url: normalized.canonicalUrl });
+      warnings.push(warning);
+      targetResults.push(issueTargetResult(normalized, { status: 'deferred', warningCode: warning.code, records: 0 }));
       continue;
     }
     try {
       const issue = target.issue || await fetchJson(normalized.apiUrl, fetchImpl);
-      const comments = maxComments && Number(issue.comments || 0) > 0
+      const commentResult = maxComments && Number(issue.comments || 0) > 0
         ? await fetchCommentsForIssue(normalized, fetchImpl, maxComments)
-        : [];
-      const issueRecords = createGithubIssueSnapshotRecords(Object.assign({}, issue, { target: normalized, comments, method: 'github-browser-issue-reader' }), options);
+        : { comments: [], warnings: [] };
+      warnings.push(...commentResult.warnings);
+      const issueRecords = createGithubIssueSnapshotRecords(Object.assign({}, issue, { target: normalized, comments: commentResult.comments, method: 'github-browser-issue-reader' }), options);
       for (const record of issueRecords) {
         record.sourceTarget = Object.assign({
           schema: 'tiinex.source.material.target.v1',
@@ -134,8 +139,11 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
         }, record.sourceTarget || {});
         records.push(record);
       }
+      targetResults.push(issueTargetResult(normalized, { status: 'loaded', records: issueRecords.length, transportTier: issue.transportTier || '' }));
     } catch (error) {
-      warnings.push(githubIssueFetchWarning(error, 'github.issue.snapshot.fetch-failed', `Could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl }));
+      const warning = githubIssueFetchWarning(error, 'github.issue.snapshot.fetch-failed', `Could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl });
+      warnings.push(warning);
+      targetResults.push(issueTargetResult(normalized, { status: 'failed', warningCode: warning.code, message: warning.message, records: 0 }));
     }
   }
   return {
@@ -143,7 +151,8 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
     records,
     warnings,
     errors,
-    counts: { targets: parsed.counts.targets, records: records.length, warnings: warnings.length, errors: errors.length }
+    targetResults,
+    counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults)
   };
 }
 
@@ -164,7 +173,7 @@ export function createGithubIssueSnapshotRecords(snapshot = {}, options = {}) {
   const comments = Array.isArray(snapshot.comments) ? snapshot.comments : [];
   comments.forEach((comment, index) => {
     for (const embedded of extractEmbeddedTiinexMarkdownBlocks(comment.body || '')) {
-      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, sourceArtifactPath: sourceArtifactPathFromPublicationBody(comment.body || ''), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
     }
   });
   return records;
@@ -283,6 +292,37 @@ export function materializeGithubIssueSnapshotFixtures(issueUrls = '', fixtures 
 
 
 
+
+function issueTargetResult(target = {}, patch = {}) {
+  const number = Number(target.number || 0);
+  const canonicalUrl = target.canonicalUrl || target.html_url || target.url || target.input || '';
+  return Object.assign({
+    schema: 'tiinex.github.issueSnapshot.targetResult.v1',
+    repository: target.repository || (target.owner && target.repo ? `${target.owner}/${target.repo}` : ''),
+    kind: target.kind || 'issue',
+    number: Number.isFinite(number) ? number : 0,
+    url: canonicalUrl,
+    status: 'pending',
+    records: 0,
+    transportTier: '',
+    warningCode: '',
+    message: ''
+  }, patch || {});
+}
+
+function issueMaterializationCounts(targets = 0, records = 0, warnings = 0, errors = 0, targetResults = []) {
+  const results = Array.isArray(targetResults) ? targetResults : [];
+  return {
+    targets,
+    records,
+    warnings,
+    errors,
+    loadedTargets: results.filter((item) => item.status === 'loaded').length,
+    failedTargets: results.filter((item) => item.status === 'failed').length,
+    deferredTargets: results.filter((item) => item.status === 'deferred').length
+  };
+}
+
 function issueSnapshotSummary({ body = '', title = '', target = {} } = {}) {
   const excerpt = plainExcerpt(body, 140);
   if (excerpt) return excerpt;
@@ -315,9 +355,12 @@ async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {
   const commentsUrl = `https://api.github.com/repos/${target.owner}/${target.repo}/issues/${target.number}/comments?per_page=${encodeURIComponent(String(maxComments))}`;
   try {
     const comments = await fetchJson(commentsUrl, fetchImpl);
-    return Array.isArray(comments) ? comments.slice(0, maxComments) : [];
-  } catch (_) {
-    return [];
+    return { comments: Array.isArray(comments) ? comments.slice(0, maxComments) : [], warnings: [] };
+  } catch (error) {
+    return {
+      comments: [],
+      warnings: [githubIssueFetchWarning(error, 'github.issue.comments.fetch-failed', `Could not fetch comments for ${target.canonicalUrl}; issue body still loaded without comments.`, { url: commentsUrl, targetUrl: target.canonicalUrl })]
+    };
   }
 }
 
@@ -342,7 +385,7 @@ async function fetchJson(url, fetchImpl) {
   return body;
 }
 
-function githubIssueFetchWarning(error, code = 'github.issue.fetch-failed', message = '', extra = {}) {
+export function githubIssueFetchWarning(error, code = 'github.issue.fetch-failed', message = '', extra = {}) {
   return finding('warning', code, message || 'GitHub issue reader could not fetch the requested issue material.', Object.assign({ surface: 'issueSnapshots', status: error?.status || 0, url: error?.url || '' }, extra));
 }
 

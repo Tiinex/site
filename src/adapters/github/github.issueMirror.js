@@ -1,4 +1,4 @@
-import { createGithubIssueSnapshotRecords, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { createGithubIssueSnapshotRecords, githubIssueFetchWarning, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 
 export async function discoverGithubIssueSnapshotTargetsViaHostedMirror(source = {}, options = {}) {
   const repo = String(source.repo || source.repository || '').replace(/^\/+|\/+$/g, '');
@@ -36,6 +36,7 @@ export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOr
   const records = [];
   const warnings = [];
   const errors = [...parsed.errors];
+  const targetResults = [];
   const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
   const indexCache = new Map();
   for (const target of parsed.targets) {
@@ -43,15 +44,19 @@ export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOr
     const normalized = target.ok ? target : parseGithubIssueSnapshotTarget(target.canonicalUrl || target.html_url || target.url || '');
     if (!normalized.ok) {
       errors.push({ ref: target.input || target.url || '', error: normalized.error || 'invalid issue target' });
+      targetResults.push(issueTargetResult(target, { status: 'failed', warningCode: 'invalid-issue-target', message: normalized.error || 'invalid issue target' }));
       continue;
     }
     if (normalized.kind === 'discussion') {
-      warnings.push(finding('warning', 'github.discussion.reader.deferred', 'GitHub Discussion snapshots are not available through the hosted issue mirror yet; this target remains deferred.', { surface: 'issueSnapshots', url: normalized.canonicalUrl }));
+      const warning = finding('warning', 'github.discussion.reader.deferred', 'GitHub Discussion snapshots are not available through the hosted issue mirror yet; this target remains deferred.', { surface: 'issueSnapshots', url: normalized.canonicalUrl });
+      warnings.push(warning);
+      targetResults.push(issueTargetResult(normalized, { status: 'deferred', warningCode: warning.code }));
       continue;
     }
     try {
       const hosted = await loadHostedIssueSnapshotIndex(normalized.repository, Object.assign({}, options, { indexCache, preferredMetadataUrl: target.hostedSnapshot?.metadataUrl }));
       const snapshot = await loadHostedIssueSnapshotThread(hosted, normalized, Object.assign({}, options, { maxComments }));
+      warnings.push(...(snapshot.warnings || []));
       const issueRecords = createGithubIssueSnapshotRecords(Object.assign({}, snapshot.issue, { target: normalized, comments: snapshot.comments, method: 'site-issue-snapshot' }), options);
       for (const record of issueRecords) {
         record.sourceTarget = Object.assign({
@@ -64,11 +69,45 @@ export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOr
         }, record.sourceTarget || {});
         records.push(record);
       }
+      targetResults.push(issueTargetResult(normalized, { status: 'loaded', records: issueRecords.length, transportTier: 'mirror' }));
     } catch (error) {
-      warnings.push(githubIssueFetchWarning(error, 'github.issue.mirror.fetch-failed', `Hosted issue mirror could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl }));
+      const warning = githubIssueFetchWarning(error, 'github.issue.mirror.fetch-failed', `Hosted issue mirror could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl });
+      warnings.push(warning);
+      targetResults.push(issueTargetResult(normalized, { status: 'failed', warningCode: warning.code, message: warning.message }));
     }
   }
-  return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, counts: { targets: parsed.counts.targets, records: records.length, warnings: warnings.length, errors: errors.length }, transportTier: 'mirror' };
+  return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults), transportTier: 'mirror' };
+}
+
+
+function issueTargetResult(target = {}, patch = {}) {
+  const number = Number(target.number || 0);
+  const canonicalUrl = target.canonicalUrl || target.html_url || target.url || target.input || '';
+  return Object.assign({
+    schema: 'tiinex.github.issueSnapshot.targetResult.v1',
+    repository: target.repository || (target.owner && target.repo ? `${target.owner}/${target.repo}` : ''),
+    kind: target.kind || 'issue',
+    number: Number.isFinite(number) ? number : 0,
+    url: canonicalUrl,
+    status: 'pending',
+    records: 0,
+    transportTier: '',
+    warningCode: '',
+    message: ''
+  }, patch || {});
+}
+
+function issueMaterializationCounts(targets = 0, records = 0, warnings = 0, errors = 0, targetResults = []) {
+  const results = Array.isArray(targetResults) ? targetResults : [];
+  return {
+    targets,
+    records,
+    warnings,
+    errors,
+    loadedTargets: results.filter((item) => item.status === 'loaded').length,
+    failedTargets: results.filter((item) => item.status === 'failed').length,
+    deferredTargets: results.filter((item) => item.status === 'deferred').length
+  };
 }
 
 function hostedUnavailable(code, message) {
@@ -122,16 +161,21 @@ async function loadHostedIssueSnapshotThread(hosted = {}, target = {}, options =
   const issueMeta = await hostedFetchJson(issueJsonUrl, options);
   const issueBody = await hostedFetchText(issueBodyUrl, options);
   const comments = [];
+  const warnings = [];
   const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
   const refs = Array.isArray(issueMeta.comments) ? issueMeta.comments.slice(0, maxComments) : [];
   for (const ref of refs) {
     const commentJsonUrl = hostedResolve(issueJsonUrl, ref.json || `comments/${ref.id}.json`);
     const commentBodyUrl = hostedResolve(issueJsonUrl, ref.path || `comments/${ref.id}.md`);
-    const commentMeta = await hostedFetchJson(commentJsonUrl, options);
-    const commentBody = await hostedFetchText(commentBodyUrl, options);
-    comments.push(Object.assign({}, commentMeta, { body: commentBody, html_url: commentMeta.html_url || ref.html_url || '' }));
+    try {
+      const commentMeta = await hostedFetchJson(commentJsonUrl, options);
+      const commentBody = await hostedFetchText(commentBodyUrl, options);
+      comments.push(Object.assign({}, commentMeta, { body: commentBody, html_url: commentMeta.html_url || ref.html_url || '' }));
+    } catch (error) {
+      warnings.push(githubIssueFetchWarning(error, 'github.issue.mirror.comment-fetch-failed', `Hosted issue mirror could not fetch a comment for ${target.canonicalUrl}; issue body still loaded.`, { url: error?.url || commentJsonUrl, targetUrl: target.canonicalUrl }));
+    }
   }
-  return { issue: Object.assign({}, issueMeta, { body: issueBody, html_url: issueMeta.html_url || target.canonicalUrl }), comments };
+  return { issue: Object.assign({}, issueMeta, { body: issueBody, html_url: issueMeta.html_url || target.canonicalUrl }), comments, warnings };
 }
 
 function hostedIssueSnapshotMetadataUrlCandidates(repo = '', options = {}) {
@@ -200,13 +244,13 @@ function hostedResolveDirectory(baseUrl = '', rel = '') {
 }
 
 async function hostedFetchJson(url, options = {}) {
-  const res = await options.fetchImpl(url, { headers: { Accept: 'application/json,*/*' } });
+  const res = await options.fetchImpl(url, { cache: 'no-cache', headers: { Accept: 'application/json,*/*', 'Cache-Control': 'no-cache' } });
   if (!res?.ok) throw Object.assign(new Error(`Hosted issue snapshot ${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, url });
   return await res.json();
 }
 
 async function hostedFetchText(url, options = {}) {
-  const res = await options.fetchImpl(url, { headers: { Accept: 'text/markdown,text/plain,*/*' } });
+  const res = await options.fetchImpl(url, { cache: 'no-cache', headers: { Accept: 'text/markdown,text/plain,*/*', 'Cache-Control': 'no-cache' } });
   if (!res?.ok) throw Object.assign(new Error(`Hosted issue snapshot ${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, url });
   return await res.text();
 }

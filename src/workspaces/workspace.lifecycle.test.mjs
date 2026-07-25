@@ -82,6 +82,31 @@ try {
   if (foundSource.discoveryState !== 'loaded') fail('configured source must become loaded after source records are inserted');
   if (addSrcRes.workspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
 
+  const stateWithSourceMaterial = JSON.parse(JSON.stringify(addSrcRes.state));
+  stateWithSourceMaterial.view = Object.assign({}, stateWithSourceMaterial.view || {}, { selectedRecordId: inserted.id, lineageLoadReport: { selectedRecordId: inserted.id }, lineageAuditReport: { selectedRecordId: inserted.id } });
+  const materialWorkspace = stateWithSourceMaterial.workspaces.find((item) => item.id === ws.id);
+  materialWorkspace.assets = [
+    { id: 'source-asset', path: 'source.png', source: { id: sourceId } },
+    { id: 'local-asset', path: 'local.png', source: { id: 'local' } }
+  ];
+  materialWorkspace.workspaceMergeCandidates = [
+    { id: 'source-candidate', path: 'source.workspace.md', source: { id: sourceId } },
+    { id: 'local-candidate', path: 'local.workspace.md', source: { id: 'local' } }
+  ];
+  materialWorkspace.discoveryProgress = { sourceId, step: 'materializing' };
+  const closeSourceRes = lifecycle.closeWorkspaceSource(stateWithSourceMaterial, ws.id, sourceId);
+  if (!closeSourceRes?.ok) fail('closeWorkspaceSource failed');
+  const closedWorkspace = lifecycle.activeWorkspace(closeSourceRes.state);
+  if (closedWorkspace.sources.some((s) => s.id === sourceId)) fail('closed source must be removed from workspace sources');
+  if (closedWorkspace.records.some((r) => r.source && r.source.id === sourceId)) fail('closed source must remove source-backed records from the workspace');
+  if (!closedWorkspace.records.some((r) => r.source && (r.source.id === 'local' || r.source.kind === lifecycle.SESSION_SOURCE_KIND))) fail('closeWorkspaceSource must preserve local/session records');
+  if (closedWorkspace.assets.some((asset) => asset.source?.id === sourceId)) fail('closed source must remove source-backed assets');
+  if (!closedWorkspace.assets.some((asset) => asset.source?.id === 'local')) fail('closeWorkspaceSource must preserve local assets');
+  if (closedWorkspace.workspaceMergeCandidates.some((candidate) => candidate.source?.id === sourceId)) fail('closed source must remove source-backed workspace candidates');
+  if (!closedWorkspace.workspaceMergeCandidates.some((candidate) => candidate.source?.id === 'local')) fail('closeWorkspaceSource must preserve local workspace candidates');
+  if (closedWorkspace.discoveryProgress) fail('closed source must clear in-flight discovery progress');
+  if (closeSourceRes.state.view.selectedRecordId) fail('closeWorkspaceSource must clear a dangling selected source record');
+
   // 4) Unknown sourceId should fail
   const bad = lifecycle.addWorkspaceSourceRecords(addSrcRes.state, ws.id, 'nope', [srcRec]);
   if (bad?.ok) fail('addWorkspaceSourceRecords must fail for unknown source');
@@ -152,31 +177,59 @@ try {
   if (mergedAgainWorkspace.workspaceMergeCandidates.length !== 1) fail('workspace merge candidate path must upsert, not duplicate');
   if (mergedAgainWorkspace.workspaceMergeCandidates[0].title !== 'Other updated') fail('workspace merge candidate upsert should refresh metadata');
 
+
+  // 8) Issue snapshot source identity must preserve material paths instead of collapsing every issue/comment to the issue URL.
+  {
+    let issueState = lifecycle.makeEmptyAppState();
+    const issueCreated = lifecycle.createWorkspace(issueState, { name: 'Issue path guard' }, { clock: () => '2026-07-24T00:00:00.000Z' });
+    issueState = issueCreated.state;
+    const issueSource = lifecycle.addWorkspaceSource(issueState, issueCreated.workspace.id, { repository: 'Tiinex/docs', ref: 'main', rootPath: '.topics', label: 'Tiinex/docs' });
+    issueState = issueSource.state;
+    const issueLoaded = lifecycle.addWorkspaceSourceRecords(issueState, issueCreated.workspace.id, issueSource.source.id, [{
+      title: 'Issue snapshot',
+      path: 'https://github.com/Tiinex/docs/issues/123',
+      kind: 'tiinex.evidence.v1',
+      sourceMode: 'github-issue-snapshot',
+      sourceTarget: { surface: 'issueSnapshots', targetKind: 'github-issue-snapshot', inputTarget: 'https://github.com/Tiinex/docs/issues/123' },
+      markdown: `# Continuity Context
+
+# Evidence
+`
+    }, {
+      title: 'Comment artifact one',
+      path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-001-5001-recovered-one.trace.md',
+      kind: 'tiinex.topic.v1',
+      sourceMode: 'github-comment-embedded-artifact',
+      sourceTarget: { surface: 'issueSnapshots', targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/123#issuecomment-5001' },
+      snapshot: { embedded: true, sourceArtifactPath: '' },
+      markdown: `# Continuity Context
+
+# One
+`
+    }, {
+      title: 'Comment artifact two',
+      path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-002-5002-recovered-two.trace.md',
+      kind: 'tiinex.topic.v1',
+      sourceMode: 'github-comment-embedded-artifact',
+      sourceTarget: { surface: 'issueSnapshots', targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/123#issuecomment-5002' },
+      snapshot: { embedded: true, sourceArtifactPath: '' },
+      markdown: `# Continuity Context
+
+# Two
+`
+    }]);
+    assert.equal(issueLoaded.ok, true, 'issue snapshot source records should insert');
+    assert.equal(issueLoaded.records[0].path, 'https://github.com/Tiinex/docs/issues/123', 'plain issue snapshot path must not be rewritten under repo rootPath');
+    assert(!issueLoaded.records[0].id.includes('.topics/tiinex/docs/issues'), 'plain issue snapshot deterministic id must not inherit repo rootPath');
+    const issueRecords = issueLoaded.workspace.records.filter((record) => record.source?.id === issueSource.source.id);
+    assert.equal(issueRecords.length, 3, 'comment-embedded issue artifacts must survive addWorkspaceSourceRecords as distinct records');
+    assert(issueRecords.some((record) => record.path.endsWith('comment-001-5001-recovered-one.trace.md')), 'first comment embedded artifact path must survive canonicalization');
+    assert(issueRecords.some((record) => record.path.endsWith('comment-002-5002-recovered-two.trace.md')), 'second comment embedded artifact path must survive canonicalization');
+  }
+
   console.log('✓ workspace.lifecycle tests passed');
   process.exit(0);
 } catch (err) {
   console.error('workspace.lifecycle tests failed:', err && err.stack ? err.stack : err);
   process.exit(1);
-}
-
-
-
-{
-  let state = globalThis.TiinexWorkspaceLifecycle.makeEmptyAppState();
-  const created = globalThis.TiinexWorkspaceLifecycle.createWorkspace(state, { name: 'Issue path guard' }, { clock: () => '2026-07-24T00:00:00.000Z' });
-  state = created.state;
-  const source = globalThis.TiinexWorkspaceLifecycle.addWorkspaceSource(state, created.workspace.id, { repository: 'Tiinex/docs', ref: 'main', rootPath: '.topics', label: 'Tiinex/docs' });
-  state = source.state;
-  const added = globalThis.TiinexWorkspaceLifecycle.addWorkspaceSourceRecords(state, created.workspace.id, source.source.id, [{
-    id: 'adapter-record-id',
-    title: 'Issue snapshot',
-    path: 'https://github.com/Tiinex/docs/issues/123',
-    kind: 'tiinex.evidence.v1',
-    sourceMode: 'github-issue-snapshot',
-    sourceTarget: { surface: 'issueSnapshots', inputTarget: 'https://github.com/Tiinex/docs/issues/123' },
-    markdown: `# Continuity Context\n\n# Evidence\n`
-  }]);
-  assert.equal(added.ok, true, 'issue snapshot source record should insert');
-  assert.equal(added.records[0].path, 'https://github.com/Tiinex/docs/issues/123', 'issue snapshot source path must not be rewritten under repo rootPath');
-  assert(!added.records[0].id.includes('.topics/tiinex/docs/issues'), 'issue snapshot deterministic id must not inherit repo rootPath');
 }

@@ -184,11 +184,12 @@ export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
   const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
   if (!repo) return 0;
   const [owner, name] = repo.split('/');
-  const rawNeedle = `raw.githubusercontent.com/${owner}/${name}/`;
+  const needles = [`raw.githubusercontent.com/${owner}/${name}/`, `api.github.com/repos/${owner}/${name}/`];
+  const matchesSource = (key = '') => key.startsWith(SOURCE_CACHE_PREFIX) && needles.some((needle) => key.includes(needle));
   const memory = options.sourceCache || moduleMemoryCache;
   let removed = 0;
   for (const key of Object.keys(memory || {})) {
-    if (key.startsWith(SOURCE_CACHE_PREFIX) && key.includes(rawNeedle)) {
+    if (matchesSource(key)) {
       delete memory[key];
       removed += 1;
     }
@@ -198,7 +199,7 @@ export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
     const keys = [];
     for (let index = 0; index < (storage?.length || 0); index += 1) {
       const key = storage.key(index);
-      if (key && key.startsWith(SOURCE_CACHE_PREFIX) && key.includes(rawNeedle)) keys.push(key);
+      if (key && matchesSource(key)) keys.push(key);
     }
     for (const key of keys) {
       storage.removeItem(key);

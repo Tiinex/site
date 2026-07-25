@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { __testYieldToBrowserIfAvailable, materializeGithubIssueSnapshotFixtures, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { __testYieldToBrowserIfAvailable, createGithubIssueSnapshotRecords, materializeGithubIssueSnapshotFixtures, materializeGithubIssueSnapshots, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { traverseLoadedLineage } from '../../lineage/lineage.traverse.js';
 
@@ -100,6 +100,99 @@ assert.equal(embeddedRecord.trace, 'parent.trace.md', 'embedded issue source mar
 assert.equal(embeddedRecord.snapshot.embedded, true, 'embedded recovery is explicit metadata, not a generic evidence snapshot');
 assert.equal(embeddedRecord.sourceTarget.targetKind, 'github-issue-embedded-artifact', 'source target classifies embedded artifact recovery separately from raw issue snapshots');
 
+const detailsEmbeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/9', {
+  'https://github.com/Tiinex/docs/issues/9': {
+    title: 'Welcome to the Next Dimension',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-07-24T00:00:00.000Z',
+    body: [
+      'Presentation for GitHub readers.',
+      '',
+      '<details>',
+      '<summary>Tiinex source payload</summary>',
+      '',
+      '<!-- tiinex-artifact-start: presentation above is for GitHub readers; Tiinex importers recover the artifact from the Source Markdown below. -->',
+      '',
+      '## Tiinex Boundary',
+      '',
+      '- Source Path: .topics/education/next-dimension.trace.md',
+      '',
+      '# Continuity Context',
+      '',
+      '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+      '- Current',
+      '  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+      '  - Created At: 2026-07-24',
+      '  - Summary: Welcome to the Next Dimension.',
+      '',
+      '---',
+      '',
+      '# Welcome to the Next Dimension',
+      '',
+      '---',
+      '',
+      '# Continuity Integrity',
+      '',
+      '- sha256-base64url-c14n-v2',
+      '  - Towards: self',
+      '  - Value: fixture',
+      '</details>'
+    ].join('\n')
+  }
+});
+assert.equal(detailsEmbeddedMaterialized.records.length, 1, 'details-wrapped Tiinex source payload should materialize as an embedded artifact');
+assert.equal(detailsEmbeddedMaterialized.records[0].title, 'Welcome to the Next Dimension', 'details-wrapped payload should preserve the artifact title');
+assert.equal(detailsEmbeddedMaterialized.records[0].path, '.topics/education/next-dimension.trace.md', 'details-wrapped payload should preserve the embedded source path');
+
+const genericDetailsMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/8', {
+  'https://github.com/Tiinex/docs/issues/8': {
+    title: 'Plain details should stay evidence',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-07-24T00:00:00.000Z',
+    body: ['<details>', '<summary>Implementation notes</summary>', '# Continuity Context', '', '- Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)', '', '---', '', '# Not a declared source payload', '</details>'].join('\n')
+  }
+});
+assert.equal(genericDetailsMaterialized.records.length, 1, 'generic details block should not be imported as a Tiinex artifact');
+assert.equal(genericDetailsMaterialized.records[0].kind, 'tiinex.evidence.v1', 'generic details block should remain an evidence snapshot');
+
+
+const issueApiOne = 'https://api.github.com/repos/Tiinex/docs/issues/1';
+const issueCommentApiOne = 'https://api.github.com/repos/Tiinex/docs/issues/1/comments?per_page=6';
+const issueApiTwo = 'https://api.github.com/repos/Tiinex/docs/issues/2';
+const resilientCalls = [];
+const resilientMaterialized = await materializeGithubIssueSnapshots([
+  parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/issues/1'),
+  parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/issues/2')
+], {
+  fetchImpl: async (url) => {
+    resilientCalls.push(url);
+    if (url === issueApiOne) return responseJson({ html_url: 'https://github.com/Tiinex/docs/issues/1', number: 1, title: 'Issue with comment outage', state: 'open', body: 'Issue one body', user: { login: 'q' }, comments: 1 });
+    if (url === issueCommentApiOne) return responseJson({ message: 'rate limited' }, { ok: false, status: 403, statusText: 'Forbidden' });
+    if (url === issueApiTwo) return responseJson({ html_url: 'https://github.com/Tiinex/docs/issues/2', number: 2, title: 'Issue two', state: 'open', body: 'Issue two body', user: { login: 'q' }, comments: 0 });
+    return responseJson({ message: 'not found' }, { ok: false, status: 404, statusText: 'Not Found' });
+  }
+});
+assert.equal(resilientMaterialized.records.length, 2, 'issue materialization should keep loading issue bodies when comments are unavailable');
+assert.equal(resilientMaterialized.counts.loadedTargets, 2, 'target diagnostics should count loaded issue targets independently from record count');
+assert.equal(resilientMaterialized.counts.failedTargets, 0, 'comment outage should not mark the issue target failed');
+assert(resilientMaterialized.warnings.some((warning) => warning.code === 'github.issue.comments.fetch-failed'), 'comment outage should be diagnosable instead of silent');
+assert.deepEqual(resilientMaterialized.targetResults.map((target) => target.status), ['loaded', 'loaded'], 'per-target issue materialization diagnostics should preserve target status');
+
+function responseJson(json, options = {}) {
+  const body = JSON.stringify(json || {});
+  return {
+    ok: options.ok !== false,
+    status: options.status || (options.ok === false ? 500 : 200),
+    statusText: options.statusText || (options.ok === false ? 'Error' : 'OK'),
+    transportTier: options.transportTier || '',
+    json: async () => JSON.parse(body),
+    text: async () => body,
+    clone: () => responseJson(json, options)
+  };
+}
+
 const parentRecord = createRecordFromMarkdown(`# Continuity Context
 
 - Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
@@ -122,5 +215,31 @@ const parentRecord = createRecordFromMarkdown(`# Continuity Context
 const embeddedTraversal = traverseLoadedLineage([parentRecord, embeddedRecord], { selectedId: embeddedRecord.id || embeddedRecord.path, maxDepth: 2 });
 assert.equal(embeddedTraversal.stats.visitedNodes, 2, 'embedded issue artifact lineage should traverse to its loaded declared parent');
 assert.equal(embeddedTraversal.stats.missingEdges, 0, 'embedded issue artifact should not become an isolated issue adapter shell when parent is loaded');
+
+
+const commentEmbeddedOne = embeddedChild.replace('# Embedded Feedback', '# Comment One').replace('Embedded feedback recovered from issue body.', 'Comment one recovered from issue comment.');
+const commentEmbeddedTwo = embeddedChild.replace('# Embedded Feedback', '# Comment Two').replace('Embedded feedback recovered from issue body.', 'Comment two recovered from issue comment.');
+const multiCommentRecords = createGithubIssueSnapshotRecords({
+  target: parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/issues/123'),
+  title: 'Comment payload issue',
+  state: 'open',
+  user: { login: 'q' },
+  body: 'Plain issue body',
+  comments: [{
+    id: 5001,
+    html_url: 'https://github.com/Tiinex/docs/issues/123#issuecomment-5001',
+    body: ['## Source Markdown', '', '```md', commentEmbeddedOne, '```'].join('\n')
+  }, {
+    id: 5002,
+    html_url: 'https://github.com/Tiinex/docs/issues/123#issuecomment-5002',
+    body: ['## Source Markdown', '', '```md', commentEmbeddedTwo, '```'].join('\n')
+  }]
+});
+assert.equal(multiCommentRecords.length, 3, 'plain issue shell plus two embedded comment artifacts should materialize as separate records');
+const commentRecovered = multiCommentRecords.filter((record) => record.sourceMode === 'github-comment-embedded-artifact');
+assert.equal(commentRecovered.length, 2, 'both embedded comment payloads should become recovered artifact records');
+assert.notEqual(commentRecovered[0].path, commentRecovered[1].path, 'comment recovered artifacts must not share one material path');
+assert(commentRecovered.every((record) => record.sourceTarget.sourceArtifactPath && record.sourceTarget.sourceArtifactPath === record.path), 'embedded source target must expose the material path used for lifecycle identity');
+assert(commentRecovered.every((record) => /#issuecomment-500[12]$/.test(record.sourceTarget.inputTarget)), 'comment embedded records must keep comment URL anchors as provenance');
 
 console.log('github.issueSnapshot: ok');

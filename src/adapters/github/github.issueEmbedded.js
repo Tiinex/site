@@ -19,6 +19,7 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       surface: 'issueSnapshots',
       targetKind: `github-${context.sourceKind || 'issue'}-embedded-artifact`,
       inputTarget: sourceUrl,
+      sourceArtifactPath: sourcePath || recoveredPath,
       loaded: true
     },
     snapshot: {
@@ -39,13 +40,15 @@ export function extractEmbeddedTiinexMarkdownBlocks(body = '') {
   const seen = new Set();
   const push = (candidate = '') => {
     const clean = normalizeNewlines(candidate).trim();
+    if (/^##\s+Source Markdown(?:\s+Excerpt|\s+Payload)?\s*$/im.test(clean)) return;
     if (!looksLikeStandaloneTiinexArtifact(clean) || seen.has(clean)) return;
     seen.add(clean);
     out.push(clean);
   };
   for (const block of extractSourceMarkdownPayloadBlocks(text)) push(block);
   for (const block of extractMarkdownFenceBlocks(text, { languages: ['md', 'markdown', ''] })) push(block);
-  if (looksLikeStandaloneTiinexArtifact(text.trim())) push(text.trim());
+  for (const block of extractGitHubDetailsPayloadBlocks(text)) push(block);
+  if (!/<details\b/i.test(text) && looksLikeStandaloneTiinexArtifact(text.trim())) push(text.trim());
   return out;
 }
 
@@ -53,6 +56,29 @@ function stripGitHubPresentationLayerForTiinexImport(body = '') {
   let text = normalizeNewlines(body || '');
   text = text.replace(/<!--\s*tiinex-artifact-start:[\s\S]*?-->/ig, '\n');
   return text;
+}
+
+
+function extractGitHubDetailsPayloadBlocks(text = '') {
+  const source = normalizeNewlines(text || '');
+  const blocks = [];
+  const detailsRe = /<details\b[^>]*>([\s\S]*?)<\/details>/gim;
+  let match;
+  while ((match = detailsRe.exec(source))) {
+    const rawInner = normalizeNewlines(String(match[1] || ''));
+    const summary = rawInner.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/im)?.[1] || '';
+    if (!/tiinex\s+source\s+payload/i.test(stripHtml(summary))) continue;
+    const inner = rawInner
+      .replace(/<summary\b[^>]*>[\s\S]*?<\/summary>/ig, '\n')
+      .replace(/<!--\s*tiinex-artifact-start:[\s\S]*?-->/ig, '\n')
+      .replace(/<\/?[^>]+>/g, '\n')
+      .trim();
+    if (!inner) continue;
+    for (const block of extractSourceMarkdownPayloadBlocks(inner)) blocks.push(block);
+    for (const block of extractMarkdownFenceBlocks(inner, { languages: ['md', 'markdown', ''] })) blocks.push(block);
+    if (looksLikeStandaloneTiinexArtifact(inner)) blocks.push(inner);
+  }
+  return blocks;
 }
 
 function extractSourceMarkdownPayloadBlocks(text = '') {
@@ -67,8 +93,9 @@ function extractSourceMarkdownPayloadBlocks(text = '') {
     const greedy = extractOuterMarkdownFenceBlockGreedy(section, { languages: ['md', 'markdown', ''] });
     if (greedy) blocks.push(greedy);
     else {
-      for (const block of extractMarkdownFenceBlocks(section, { languages: ['md', 'markdown', ''] })) blocks.push(block || '');
-      if (looksLikeStandaloneTiinexArtifact(section)) blocks.push(section);
+      const fenced = extractMarkdownFenceBlocks(section, { languages: ['md', 'markdown', ''] });
+      for (const block of fenced) blocks.push(block || '');
+      if (!fenced.length && looksLikeStandaloneTiinexArtifact(section)) blocks.push(section);
     }
   }
   return blocks;
@@ -157,3 +184,5 @@ function stripMarkdownInline(value = '') {
 function normalizeNewlines(value = '') { return String(value || '').replace(/\r\n?/g, '\n'); }
 function escapeRegExp(value = '') { return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function slugPart(value = '') { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item'; }
+function stripHtml(value = '') { return String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); }
+function capitalize(value = '') { const text = String(value || 'item'); return text.charAt(0).toUpperCase() + text.slice(1); }
