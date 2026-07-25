@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.56-v236",
+  "version": "0.2.58-v238",
   "private": true,
-  "description": "Tiinex Site v236: Milestone A issue-backed lineage source recovery candidate.",
+  "description": "Tiinex Site v238: Milestone A issue transport response fix candidate.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

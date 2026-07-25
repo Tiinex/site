@@ -169,3 +169,71 @@ assert.equal(discoveryBudgetBlocked.records.length, 0, 'transport budget should 
 assert.equal(discoveryBudgetBlocked.diagnostics.discoveryBlockedByPolicy, true, 'repo discovery policy block must be diagnosed');
 assert.equal(discoveryBudgetCalled.length, 0, 'budget-blocked repo discovery must not call default-branch or tree fetch');
 assert(discoveryBudgetBlocked.warnings.some((warning) => warning.code === 'transport.policy.request-budget-exceeded'), 'repo discovery budget warning must be surfaced');
+
+const proxyIssueCalls = [];
+const proxyIssueLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { fetchImpl: makeFetch(map, proxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
+);
+assert.equal(proxyIssueLoaded.records.length, 1, 'explicit proxy transport should read issue snapshots through the GitHub issue API tier');
+assert(proxyIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.proxy.ok' && event.url === issueApi), 'proxy issue API success should be exposed as proxy transport evidence');
+assert(!proxyIssueLoaded.diagnostics.transportEvents.some((event) => String(event.code || '').includes('direct')), 'explicit proxy issue refresh must not silently fall through to direct');
+
+
+function makeNativeResponseFetch(map, called = []) {
+  return async function fetchImpl(url) {
+    called.push(url);
+    const hit = map[url];
+    if (!hit) return new Response(JSON.stringify({ message: 'Not Found' }), { status: 404, statusText: 'Not Found', headers: { 'content-type': 'application/json' } });
+    if (hit.ok === false) return new Response(JSON.stringify(hit.json || { message: hit.statusText || 'Error' }), { status: hit.status || 500, statusText: hit.statusText || 'Error', headers: { 'content-type': 'application/json' } });
+    if (hit.text != null) return new Response(String(hit.text), { status: 200, statusText: 'OK', headers: { 'content-type': 'text/markdown; charset=utf-8' } });
+    return new Response(JSON.stringify(hit.json || {}), { status: 200, statusText: 'OK', headers: { 'content-type': 'application/json' } });
+  };
+}
+
+const nativeProxyIssueCalls = [];
+const nativeProxyIssueLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { fetchImpl: makeNativeResponseFetch(map, nativeProxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
+);
+assert.equal(nativeProxyIssueLoaded.records.length, 1, 'explicit proxy transport should work with native Fetch Response objects');
+assert(nativeProxyIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.proxy.ok' && event.url === issueApi), 'native proxy issue API success should remain observable as proxy transport evidence');
+
+const mirrorBase = 'https://viewer.example/';
+const mirrorMetaUrl = 'https://viewer.example/issues/github.com/owner/repo.json';
+const mirrorManifestUrl = 'https://viewer.example/issues/github.com/owner/repo/manifest.json';
+const mirrorIssueJsonUrl = 'https://viewer.example/issues/github.com/owner/repo/issues/2/issue.json';
+const mirrorIssueBodyUrl = 'https://viewer.example/issues/github.com/owner/repo/issues/2/issue.md';
+const mirrorCommentJsonUrl = 'https://viewer.example/issues/github.com/owner/repo/issues/2/comments/200.json';
+const mirrorCommentBodyUrl = 'https://viewer.example/issues/github.com/owner/repo/issues/2/comments/200.md';
+const mirrorMap = {
+  [mirrorMetaUrl]: { json: { type: 'tiinex.github.issues.snapshot', repo, directory: 'repo/', manifest: 'repo/manifest.json', generatedAt: '2026-07-24T00:00:00.000Z', sourceUpdatedAt: '2026-07-24T00:00:00.000Z' } },
+  [mirrorManifestUrl]: { json: { type: 'tiinex.github.issues.snapshot.manifest.v1', repository: repo, issues: [{ number: 2, title: 'Mirror issue', state: 'open', updated_at: '2026-07-24T00:00:00.000Z', issue: 'issues/2/issue.json', body: 'issues/2/issue.md' }] } },
+  [mirrorIssueJsonUrl]: { json: { html_url: 'https://github.com/owner/repo/issues/2', number: 2, title: 'Mirror issue', state: 'open', user: { login: 'mirror' }, created_at: '2026-07-24T00:00:00.000Z', comments: [{ id: 200, json: 'comments/200.json', path: 'comments/200.md', html_url: 'https://github.com/owner/repo/issues/2#issuecomment-200' }] } },
+  [mirrorIssueBodyUrl]: { text: 'Mirror body from hosted snapshot' },
+  [mirrorCommentJsonUrl]: { json: { id: 200, user: { login: 'commenter' }, html_url: 'https://github.com/owner/repo/issues/2#issuecomment-200' } },
+  [mirrorCommentBodyUrl]: { text: 'Mirror comment from hosted snapshot' }
+};
+const mirrorIssueCalls = [];
+const mirrorIssueLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  { fetchImpl: makeFetch(mirrorMap, mirrorIssueCalls), preferredTransports: ['mirror'], transportOrderExact: true, hostedIssueSnapshotBaseUrls: [mirrorBase] }
+);
+assert.equal(mirrorIssueLoaded.records.length, 1, 'explicit mirror transport should read hosted issue snapshots');
+assert.equal(mirrorIssueLoaded.records[0].summary, 'Mirror body from hosted snapshot', 'mirror issue snapshot body should become card summary');
+assert(mirrorIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.mirror.ok' && event.url === mirrorMetaUrl), 'mirror metadata fetch should be exposed as mirror transport evidence');
+assert(!mirrorIssueCalls.some((url) => url.includes('api.github.com')), 'explicit mirror issue refresh must not call live GitHub API');
+
+
+const nativeMirrorIssueCalls = [];
+const nativeMirrorIssueLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  { fetchImpl: makeNativeResponseFetch(mirrorMap, nativeMirrorIssueCalls), preferredTransports: ['mirror'], transportOrderExact: true, hostedIssueSnapshotBaseUrls: [mirrorBase] }
+);
+assert.equal(nativeMirrorIssueLoaded.records.length, 1, 'explicit mirror transport should work with native Fetch Response objects');
+assert.equal(nativeMirrorIssueLoaded.records[0].summary, 'Mirror body from hosted snapshot', 'native mirror issue snapshot body should become card summary');
+assert(nativeMirrorIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.mirror.ok' && event.url === mirrorMetaUrl), 'native mirror metadata success should remain observable as mirror transport evidence');

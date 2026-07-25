@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v236';
-export const TIINEX_SITE_VERSION = '0.2.56-v236';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v236';
-export const TIINEX_RUNTIME_ID = 'react-v236-issue-lineage-source-recovery';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v236-issue-lineage-source-recovery';
+export const TIINEX_SITE_CHECKPOINT = 'v238';
+export const TIINEX_SITE_VERSION = '0.2.58-v238';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v238';
+export const TIINEX_RUNTIME_ID = 'react-v238-issue-transport-response-fix';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v238-issue-transport-response-fix';
 
 
 export function tiinexBuildIdentity() {

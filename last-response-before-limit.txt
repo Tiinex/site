@@ -1,0 +1,120 @@
+Du hade rätt igen: **v237 hade en browser-specifik transportbugg**, så mirror/proxy såg implementerade ut i tester men degraderade i riktig browser.
+
+## Kört: v238 Issue transport response fix
+
+## Rotorsak
+
+Issue-surface-koden försökte märka native `fetch()`-responses med transport-tier genom att göra ungefär:
+
+```js id="g4okzb"
+Object.create(Response.prototype)
+```
+
+Det är fel i browsern. Native `Response.ok`, `Response.status`, `Response.json()` och `Response.text()` är brand-checkade. Så wrappern kunde göra att en lyckad proxy/mirror-fetch blev behandlad som ogiltig/unavailable.
+
+Det förklarar varför:
+
+```txt id="nofec5"
+cache/direct typ fungerade
+men mirror/proxy för issues inte gjorde det i riktig browser
+```
+
+## Fixat
+
+```txt id="tvzxew"
+1. Issue mirror/proxy wrappers använder nu plain delegating response object.
+   Ingen Response.prototype-shell.
+
+2. Följande bevaras korrekt:
+   - ok
+   - status
+   - statusText
+   - url
+   - headers.get()
+   - text()
+   - json()
+   - clone()
+   - transportTier
+
+3. Transport events för issue mirror/proxy har nu tydligare url/resource-evidens.
+
+4. Tester använder nu native Response-objekt,
+   inte bara fake enumerable response doubles.
+
+5. Architecture guard blockerar återinförande av Response.prototype-shell.
+```
+
+## PoC-lärdom bevarad
+
+```txt id="rpgrgd"
+cache  = browser/source-material cache
+mirror = hosted issue snapshot
+proxy  = bounded GitHub issue API-tier
+direct = explicit last resort
+```
+
+Direct ska fortfarande inte användas tyst när du trycker proxy/mirror.
+
+## Viktig gräns
+
+```txt id="e3wd4a"
+Mirror fungerar bara om hosted issue snapshots faktiskt finns.
+Om mirror-snapshot saknas ska mirror faila/degradera ärligt,
+och då kan du klicka vidare till proxy/direct.
+```
+
+Proxy ska däremot nu ha en rimlig chans att fungera med riktiga browser `fetch()`-responses.
+
+## Validerat från source-clean zip
+
+Grönt:
+
+```bash id="eh28xy"
+npm run validate
+npm run ui:shape
+npm run architecture:shape
+npm run typecheck
+npm run portable:smoke
+npm run usecase:uc001
+npm run storage:scan
+npm run metrics
+npm ci --ignore-scripts --no-audit --no-fund --dry-run --os=win32 --cpu=x64
+npm ci --ignore-scripts --no-audit --no-fund --dry-run
+```
+
+Inte verifierat här:
+
+```bash id="mt1h9q"
+npm run build:public
+npm run public:check
+```
+
+Samma sandboxbegränsning med Vite.
+
+## Zip
+
+[Download v238 Issue transport response fix source zip](sandbox:/mnt/data/tiinex-site-v238-issue-transport-response-fix-source.zip)
+
+## Testa på v238
+
+```txt id="ctxp3s"
+1. Ladda Tiinex/docs med issue snapshot discovery.
+2. Klicka transport-badgen:
+   cache → mirror → proxy → direct
+
+3. Proxy:
+   - ska försöka bounded GitHub issue API
+   - ska inte säga unavailable bara p.g.a. Response-wrappern
+   - ska inte tyst hoppa till direct
+
+4. Mirror:
+   - ska fungera om hosted issue snapshots finns
+   - annars ärligt failed/degraded
+
+5. Regression:
+   - issue-backed lineage
+   - export
+   - Discovery / Tree / Audit / Display options
+```
+
+Min status: **v238 ersätter v237 helt för transporttestet.**

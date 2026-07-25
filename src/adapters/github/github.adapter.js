@@ -293,7 +293,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
     try {
-      const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
+      const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, sourceFetchImpl: options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null), transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
       issueSnapshotResult = issueSurface;
       warnings.push(...(issueSurface.warnings || []));
       errors.push(...(issueSurface.errors || []));

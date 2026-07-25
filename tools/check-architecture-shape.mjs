@@ -92,6 +92,8 @@ includes('src/app/TiinexApp.jsx', "from './runtimeState.js'", 'TiinexApp must im
 includes('src/app/TiinexApp.jsx', "from './githubMaterializationSummary.js'", 'TiinexApp must import source-summary helpers from extracted module');
 includes('src/app/sourceTransportRefresh.js', 'sourceTransportRefreshInputForSource', 'transport badge refresh input must stay outside TiinexApp controller');
 includes('src/sources/github/github.transport.js', 'transportOrderExact', 'explicit transport badge refresh must not silently fall through the full ladder');
+includes('src/adapters/github/github.issueSurface.js', 'Native Response fields are brand-checked accessors', 'issue transport wrappers must document native Response brand-safety');
+excludes('src/adapters/github/github.issueSurface.js', 'Object.create(Object.getPrototypeOf(res)', 'issue transport wrappers must not shell native Response prototypes; use plain delegating transport responses');
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
 includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
 includes('src/app/TiinexApp.jsx', 'onExportWorkspace={exportWorkspacePackage}', 'workspace export action must be wired from TiinexApp into WorkspaceColumnSurface');

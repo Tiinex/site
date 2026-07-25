@@ -289,6 +289,7 @@ function issueSnapshotSummary({ body = '', title = '', target = {} } = {}) {
   return `GitHub ${target.kind || 'issue'} snapshot for ${target.repository || 'repository'} #${target.number || ''}: ${plainExcerpt(title, 96) || 'untitled'}`.trim();
 }
 
+
 function plainExcerpt(value = '', limit = 140) {
   return String(value || '')
     .replace(/```[\s\S]*?```/g, ' ')
