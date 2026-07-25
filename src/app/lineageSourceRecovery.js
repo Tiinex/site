@@ -23,7 +23,7 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
         workspaceConfig
       });
       if (out.okCount <= 0) continue;
-      const inserted = lifecycle?.addWorkspaceSourceRecords?.(sourceState, activeWorkspace.id, plan.sourceId, out.records || [], { discoveryState: 'partial' });
+      const inserted = lifecycle?.addWorkspaceSourceRecords?.(sourceState, activeWorkspace.id, plan.sourceId, out.records || [], { discoveryState: 'partial', preserveView: true });
       if (!inserted?.ok) continue;
       sourceState = inserted.state;
       activeWorkspace = lifecycle?.activeWorkspace?.(sourceState) || inserted.workspace || activeWorkspace;
@@ -62,6 +62,8 @@ export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {
   const raw = String(target || '').trim();
   if (!raw || /^record:/i.test(raw)) return '';
   if (isGitHubSocialTarget(raw)) return '';
+  const declaredParent = declaredParentFileRef(declaringRecord);
+  if (declaredParent) return declaredParent;
   const urlPath = githubRepoRelativePathFromUrl(raw);
   if (urlPath) return urlPath;
   if (isUrlLike(raw)) return '';
@@ -75,6 +77,23 @@ export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {
   return cleanTarget;
 }
 
+
+function declaredParentFileRef(record = {}) {
+  const parent = firstNonEmpty(record?.sourceTarget?.parentRawUrl, record?.sourceTarget?.parentSourceUrl, record?.snapshot?.parentRawUrl, record?.snapshot?.parentSourceUrl, record?.sourceTarget?.parentArtifactPath, record?.snapshot?.parentArtifactPath);
+  if (!parent || isGitHubSocialTarget(parent)) return '';
+  const fromUrl = githubRepoRelativePathFromUrl(parent);
+  if (fromUrl) return fromUrl;
+  if (isUrlLike(parent)) return '';
+  const clean = canonicalRepoPath(parent);
+  if (!clean || !isRecoverableRepoPathCandidate(parent, clean)) return '';
+  return clean;
+}
+function isRecoverableRepoPathCandidate(raw = '', clean = '') {
+  const text = String(raw || '').trim().replace(/\\/g, '/');
+  if (/^\.\.?\//.test(text)) return true;
+  if (/^\.topics(?:\/|$)/.test(clean)) return true;
+  return clean.includes('/');
+}
 function isGithubSource(source = {}) {
   const adapter = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
   return adapter.includes(GITHUB_ADAPTER_ID) || Boolean(source.repo || source.repository || source.config?.repo);

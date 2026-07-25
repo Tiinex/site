@@ -49,4 +49,16 @@ const embeddedIssueChild = Object.assign(createRecordFromMarkdown(childMarkdown.
 assert.equal(lineageRecoveryFileRefForTarget('../001-1-1.trace.md', embeddedIssueChild), 'odysseus/001-1-1.trace.md', 'embedded issue lineage recovery must resolve relative Parent Trace from Source Path, not synthetic issue path');
 assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue URL as a repo file ref');
 assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue comment URL as a repo file ref');
+
+const embeddedWithDeclaredParentPath = Object.assign({}, embeddedIssueChild, {
+  sourceTarget: Object.assign({}, embeddedIssueChild.sourceTarget, { parentArtifactPath: '.topics/educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md' }),
+  snapshot: Object.assign({}, embeddedIssueChild.snapshot, { parentArtifactPath: '.topics/educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md' })
+});
+assert.equal(lineageRecoveryFileRefForTarget('../../../educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md', embeddedWithDeclaredParentPath), '.topics/educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md', 'publication Parent Artifact Path should override synthetic issue path for exact parent-file recovery');
+const embeddedWithIssueLocalParent = Object.assign({}, embeddedIssueChild, {
+  sourceTarget: Object.assign({}, embeddedIssueChild.sourceTarget, { parentArtifactPath: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md' }),
+  snapshot: Object.assign({}, embeddedIssueChild.snapshot, { parentArtifactPath: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md' })
+});
+assert.equal(lineageRecoveryFileRefForTarget('issue-root-recovered-welcome-to-the-next-dimension.trace.md', embeddedWithIssueLocalParent), 'odysseus/branch/issue-root-recovered-welcome-to-the-next-dimension.trace.md', 'simple issue-local parent aliases remain normal relative targets and are not treated as repo-root file refs');
+
 console.log('lineageSourceRecovery: ok');

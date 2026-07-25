@@ -1,6 +1,5 @@
 (function attachWorkspaceLifecycle(global) {
-'use strict';
-const WORKSPACE_NAME_MAX_LENGTH=72;
+const WORKSPACE_NAME_MAX_LENGTH=72
 const RECORD_TITLE_MAX_LENGTH = 96;
 const RECORD_SUMMARY_MAX_LENGTH = 280;
 const SESSION_SOURCE_KIND = 'local-session';
@@ -36,7 +35,6 @@ const clean = raw.replace(/\?utm_[^#]*/g, '').replace(/\/+$/g, '');
 return options.preserveHash ? clean : clean.replace(/#.*$/g, '');
 }
 }
-
 function canonicalizeSourcePath(inputPath, source = {}) {
 let p = String(inputPath || '').trim(); if (!p) return '';
 try {
@@ -54,7 +52,6 @@ if (root && p && !p.startsWith(root + '/') && p !== root) p = root + '/' + p; el
 }
 return p.replace(/\/+$/, '');
 }
-
 function makeWorkspaceId(name, createdAt) {
 const slug = normalizeWorkspaceName(name)
 .toLowerCase()
@@ -112,7 +109,6 @@ next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, workspace, state: next };
 }
-
 function addWorkspaceRecord(state, workspaceId, input = {}, options = {}) {
 const title = normalizeRecordTitle(input.title || input.name);
 if (!title) return { ok: false, error: 'record.title.required', state };
@@ -311,7 +307,7 @@ discoveryState: normalizeSourceDiscoveryState(options.discoveryState || 'loaded'
 workspace.sources = ensureWorkspaceSources(workspace);
 upsertSource(workspace, materializedSource);
 next.activeWorkspaceId = workspace.id;
-next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
+if (!options.preserveView) next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 const finalWorkspace = activeWorkspace(next);
 return { ok: true, records: added, workspace: finalWorkspace, state: next };
 }

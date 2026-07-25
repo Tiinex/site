@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v242';
-export const TIINEX_SITE_VERSION = '0.2.62-v242';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v242';
-export const TIINEX_RUNTIME_ID = 'react-v242-lineage-target-resolution-parity';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v242-lineage-target-resolution-parity';
+export const TIINEX_SITE_CHECKPOINT = 'v245';
+export const TIINEX_SITE_VERSION = '0.2.65-v245';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v245';
+export const TIINEX_RUNTIME_ID = 'react-v245-lineage-traversal-parent-first';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v245-lineage-traversal-parent-first';
 
 
 export function tiinexBuildIdentity() {

@@ -82,6 +82,13 @@ try {
   if (foundSource.discoveryState !== 'loaded') fail('configured source must become loaded after source records are inserted');
   if (addSrcRes.workspace.discoveryProgress) fail('discoveryProgress must remain untouched/null by insertion');
 
+  const preserveViewState = JSON.parse(JSON.stringify(addSrcRes.state));
+  preserveViewState.view = Object.assign({}, preserveViewState.view || {}, { workspaceVerse: 'lineage', selectedRecordId: inserted.id });
+  const preserveViewInsert = lifecycle.addWorkspaceSourceRecords(preserveViewState, ws.id, sourceId, [createRecordFromMarkdown('# Preserve\n\nbody', { path: '.topics/preserve.md', name: 'preserve.md', sourceMode: 'source' })], { discoveryState: 'partial', preserveView: true });
+  if (!preserveViewInsert?.ok) fail('addWorkspaceSourceRecords preserveView insert failed');
+  if (preserveViewInsert.state.view.workspaceVerse !== 'lineage') fail('source parent recovery inserts must preserve active workspace verse');
+  if (preserveViewInsert.state.view.selectedRecordId !== inserted.id) fail('source parent recovery inserts must preserve selected record');
+
   const stateWithSourceMaterial = JSON.parse(JSON.stringify(addSrcRes.state));
   stateWithSourceMaterial.view = Object.assign({}, stateWithSourceMaterial.view || {}, { selectedRecordId: inserted.id, lineageLoadReport: { selectedRecordId: inserted.id }, lineageAuditReport: { selectedRecordId: inserted.id } });
   const materialWorkspace = stateWithSourceMaterial.workspaces.find((item) => item.id === ws.id);

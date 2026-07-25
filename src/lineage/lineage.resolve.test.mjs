@@ -144,6 +144,34 @@ const commentChild = leaf({ id: 'comment-child-url', title: 'Comment Child URL',
 const commentProvenanceResolved = resolveLineage([commentParent, commentChild]);
 assert(commentProvenanceResolved.edges.some((edge) => edge.from === 'comment-parent-9-1' && edge.to === 'comment-child-url' && edge.method === 'provenance-target'), 'GitHub issue comment URL parent targets should preserve hash identity and resolve to the loaded comment artifact');
 
+
+const issueRootByPath = Object.assign(leaf({ id: 'issue-root-path-9', title: 'Welcome Root Path', path: '.topics/.github/.issues/tiinex-docs-issue-9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9' }
+});
+const commentWithContainerOnlyPath = Object.assign(leaf({ id: 'comment-container-path-9', title: 'Brazil', path: 'https://github.com/Tiinex/docs/issues/9', trace: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1234',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1234' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1234' }
+});
+const issueLocalRelativeResolved = resolveLineage([issueRootByPath, commentWithContainerOnlyPath]);
+assert(issueLocalRelativeResolved.edges.some((edge) => edge.from === 'issue-root-path-9' && edge.to === 'comment-container-path-9' && edge.method === 'issue-local-relative-path'), 'issue-local relative parent targets should resolve within the same GitHub issue container even when the declaring record path is only the publication URL');
+
+
+const issueRootByTitleAlias = Object.assign(leaf({ id: 'issue-root-title-alias-9', title: 'Welcome to the Next Dimension', path: 'Tiinex/docs/issues/9', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9' }
+});
+const brazilCommentAlias = Object.assign(leaf({ id: 'comment-container-alias-9', title: 'Brazil', path: 'Tiinex/docs/issues/9', trace: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-9999',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-9999' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-9999' }
+});
+const issueLocalTitleAliasResolved = resolveLineage([issueRootByTitleAlias, brazilCommentAlias]);
+assert(issueLocalTitleAliasResolved.edges.some((edge) => edge.from === 'issue-root-title-alias-9' && edge.to === 'comment-container-alias-9' && edge.method === 'issue-local-relative-path'), 'issue-root-recovered title aliases should bind within the same GitHub issue even when the root record path is only the issue container');
+
 const audit = resolveAuditLineage([parent, childByTrace]);
 assert.equal(audit.schema, 'tiinex.audit.lineage.resolve.v1', 'audit lineage result declares schema');
 assert(audit.edges.length >= 1, 'audit lineage should reuse resolver edges');

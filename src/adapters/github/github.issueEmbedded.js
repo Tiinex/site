@@ -4,6 +4,7 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
   const item = context.item || {};
   const sourceUrl = context.sourceUrl || target.canonicalUrl || item.html_url || '';
   const sourcePath = context.sourceArtifactPath || embeddedSourceArtifactPath(markdown);
+  const parentBinding = publicationParentBindingFromBody(item.body || '');
   const recoveredPath = sourcePath || githubRecoveredEmbeddedArtifactPath(target, item, context.ordinal || 0, markdown, context.sourceKind || 'issue');
   const record = createRecordFromMarkdown(markdown, {
     path: recoveredPath,
@@ -20,6 +21,9 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       targetKind: `github-${context.sourceKind || 'issue'}-embedded-artifact`,
       inputTarget: sourceUrl,
       sourceArtifactPath: sourcePath || recoveredPath,
+      parentArtifactPath: parentBinding.artifactPath || '',
+      parentRawUrl: parentBinding.rawUrl || '',
+      parentSourceUrl: parentBinding.sourceUrl || '',
       loaded: true
     },
     snapshot: {
@@ -29,7 +33,10 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       sourceKind: context.sourceKind || 'issue',
       sourceUrl,
       method: context.method || 'github-explicit-snapshot-fixture',
-      sourceArtifactPath: sourcePath || ''
+      sourceArtifactPath: sourcePath || '',
+      parentArtifactPath: parentBinding.artifactPath || '',
+      parentRawUrl: parentBinding.rawUrl || '',
+      parentSourceUrl: parentBinding.sourceUrl || ''
     }
   });
 }
@@ -147,6 +154,17 @@ function extractOuterMarkdownFenceBlockGreedy(section = '', options = {}) {
 function looksLikeStandaloneTiinexArtifact(markdown = '') {
   const text = normalizeNewlines(markdown || '').trim();
   return /^#\s+Continuity Context\s*$/im.test(text) && /Current Schema\s*:/i.test(text) && /^---\s*$/m.test(text);
+}
+
+
+export function publicationParentBindingFromBody(body = '') {
+  const text = normalizeNewlines(body || '').trim();
+  const beforeSource = text.split(/^##\s+Source Markdown(?:\s+Excerpt|\s+Payload)?\s*$/im)[0] || '';
+  return {
+    artifactPath: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Artifact\s+Path:\s*(.*)$/im)?.[1] || '').trim(),
+    rawUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Raw\s+URL:\s*(.*)$/im)?.[1] || '').trim(),
+    sourceUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Source\s+URL:\s*(.*)$/im)?.[1] || '').trim()
+  };
 }
 
 export function sourceArtifactPathFromPublicationBody(body = '') {

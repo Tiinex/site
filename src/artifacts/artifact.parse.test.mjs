@@ -111,4 +111,26 @@ const relativeChild = parseArtifactMarkdown(CHILD_WITH_RELATIVE_PARENT_LINK);
 assert.equal(relativeChild.envelope.parent.trace, '../001.trace.md', 'Parent Trace link href is the resolution target');
 assert.equal(relativeChild.envelope.parent.traceLabel, '001.trace.md', 'Parent Trace label remains available for display');
 
+
+const CHILD_WITH_LABELLED_PARENT_ORIGIN = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Parent
+  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Trace: [001.trace.md](001.trace.md)
+  - Origin:
+    - relative: 001.trace.md
+    - [github git file](https://github.com/Tiinex/docs/blob/main/.topics/area/001.trace.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Created At: 2026-07-25T00:00:00.000Z
+  - Summary: Child with labelled nested origin.
+
+---
+
+# Child With Labelled Origin
+`;
+const labelledOriginChild = parseArtifactMarkdown(CHILD_WITH_LABELLED_PARENT_ORIGIN);
+assert.equal(labelledOriginChild.envelope.parent.origin, '001.trace.md', 'labelled nested Parent Origin should expose the value, not the label prefix');
+
 console.log('✓ artifact parser Parent-block regression guards passed');

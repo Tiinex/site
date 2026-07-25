@@ -92,7 +92,16 @@ function firstNestedListValue(lines, start, parentIndent) {
     const indent = leadingSpaces(line);
     if (/^\s*-\s+\S/.test(line) && indent <= parentIndent) return '';
     const item = line.match(/^\s*-\s+(.+?)\s*$/);
-    if (item) return item[1].trim();
+    if (!item) continue;
+    const raw = item[1].trim();
+    // Origin blocks commonly use labelled nested entries, e.g.
+    //   - relative: ../parent.trace.md
+    //   - [github git file](https://github.com/...)
+    // Returning the value portion keeps parent/origin resolution from treating
+    // the label as part of the path while still preserving markdown links for
+    // normalizeFieldValue(..., { preferLinkTarget: true }).
+    const labelled = raw.match(/^([A-Za-z][A-Za-z0-9 _+-]{0,40}):\s*(.+)$/);
+    return (labelled ? labelled[2] : raw).trim();
   }
   return '';
 }

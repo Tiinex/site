@@ -82,9 +82,16 @@ export function traverseLoadedLineage(artifacts = [], options = {}) {
 }
 
 function edgesForDirection({ incoming, outgoing, id, direction }) {
-  if (direction === 'ancestors') return incoming.get(id) || [];
+  if (direction === 'ancestors') return ancestorEdges(incoming.get(id) || []);
   if (direction === 'descendants') return outgoing.get(id) || [];
-  return [...(incoming.get(id) || []), ...(outgoing.get(id) || [])];
+  return [...ancestorEdges(incoming.get(id) || []), ...(outgoing.get(id) || [])];
+}
+
+function ancestorEdges(edges = []) {
+  const list = Array.isArray(edges) ? edges : [];
+  const parentEdges = list.filter((edge) => edge.kind === 'parent');
+  if (parentEdges.length) return parentEdges;
+  return list;
 }
 
 function normalizeStartIds(value, nodes = []) {

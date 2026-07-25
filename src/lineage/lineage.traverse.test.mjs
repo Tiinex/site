@@ -55,6 +55,14 @@ assert.equal(missingTraversal.nodes.length, 1, 'missing target traversal keeps l
 assert.equal(missingTraversal.missingEdges.length, 1, 'missing target edge is represented');
 assert(missingTraversal.findings.some((finding) => finding.code === 'lineage.traversal.missingTarget'), 'missing target finding exists');
 
+
+
+const alternateOrigin = leaf({ id: 'alternate-origin', title: 'Alternate Origin', path: 'topics/alternate-origin.md' });
+const parentWinsChild = leaf({ id: 'parent-wins-child', title: 'Parent Wins Child', trace: 'record:root', origin: 'topics/alternate-origin.md', path: 'topics/parent-wins-child.md' });
+const parentWins = traverseLoadedLineage([root, alternateOrigin, parentWinsChild], { startId: 'parent-wins-child', direction: 'ancestors', maxDepth: 3 });
+assert.deepEqual(parentWins.nodes.map((node) => node.id), ['parent-wins-child', 'root'], 'ancestor traversal must follow resolved Parent Trace instead of branching through Origin hints');
+assert(!parentWins.nodes.some((node) => node.id === 'alternate-origin'), 'origin hint must not mix a separate lineage when a parent edge is present');
+
 const missingStart = traverseLoadedLineage(records, { startId: 'not-in-workspace', direction: 'ancestors' });
 assert.equal(missingStart.nodes.length, 0, 'missing start returns empty traversal');
 assert(missingStart.findings.some((finding) => finding.code === 'lineage.traversal.start.missing'), 'missing start finding exists');

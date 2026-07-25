@@ -87,7 +87,7 @@ const embeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://git
     state: 'open',
     user: { login: 'q' },
     created_at: '2026-07-24T00:00:00.000Z',
-    body: ['Presentation for GitHub readers.', '', '## Tiinex Boundary', '', '- Source Path: .topics/stack/feedback.trace.md', '', '## Source Markdown', '', '~~~md', embeddedChild, '~~~'].join('\n'),
+    body: ['Presentation for GitHub readers.', '', '## Tiinex Boundary', '', '- Source Path: .topics/stack/feedback.trace.md', '- Tiinex Parent Artifact Path: .topics/stack/parent.trace.md', '', '## Source Markdown', '', '~~~md', embeddedChild, '~~~'].join('\n'),
     comments: [{ id: 5001, html_url: 'https://github.com/Tiinex/docs/issues/13#issuecomment-5001', user: { login: 'reviewer' }, body: 'plain comment' }]
   }
 });
@@ -99,6 +99,7 @@ assert.equal(embeddedRecord.path, '.topics/stack/feedback.trace.md', 'embedded i
 assert.equal(embeddedRecord.trace, 'parent.trace.md', 'embedded issue source markdown preserves declared Parent Trace target for lineage resolution');
 assert.equal(embeddedRecord.snapshot.embedded, true, 'embedded recovery is explicit metadata, not a generic evidence snapshot');
 assert.equal(embeddedRecord.sourceTarget.targetKind, 'github-issue-embedded-artifact', 'source target classifies embedded artifact recovery separately from raw issue snapshots');
+assert.equal(embeddedRecord.sourceTarget.parentArtifactPath, '.topics/stack/parent.trace.md', 'embedded issue recovery preserves publication Parent Artifact Path as recovery metadata');
 
 const detailsEmbeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/9', {
   'https://github.com/Tiinex/docs/issues/9': {

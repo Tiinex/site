@@ -1,24 +1,21 @@
 import { createLineageEdge, createLineageFinding, createLineageNode, LINEAGE_VIEW_MODEL_SCHEMA_ID, LineageEdgeKind, LineageResolutionStatus } from './lineage.model.js';
-
+import { issueLocalPathKeysForNode, issueLocalPathMatches } from './lineage.githubIssueLocal.js';
 export function resolveLineage(artifacts = [], options = {}) {
   const records = Array.isArray(artifacts) ? artifacts : [];
   const nodes = records.map((record, index) => createLineageNode(record, index));
   const index = buildLineageIndex(nodes);
   const edges = [];
   const findings = [];
-
   for (const node of nodes) {
     const targets = declaredTargetsFor(node);
     if (!targets.length) {
       findings.push(createLineageFinding('lineage.root', 'No declared parent trace/origin; artifact is treated as a lineage root in the loaded set.', 'info', { nodeId: node.id }));
       continue;
     }
-
     const traceTarget = targets.find((target) => target.kind === LineageEdgeKind.parent);
     const originTarget = targets.find((target) => target.kind === LineageEdgeKind.origin);
     const parentMatch = traceTarget ? resolveTarget(traceTarget.value, index, node) : null;
     const originMatch = originTarget ? resolveTarget(originTarget.value, index, node) : null;
-
     if (parentMatch?.selfReference) {
       findings.push(createLineageFinding('lineage.parent.selfReference', 'Declared Parent Trace resolves to the declaring artifact itself; no parent edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value }));
       if (originMatch?.ambiguous) {
@@ -38,7 +35,6 @@ export function resolveLineage(artifacts = [], options = {}) {
       }
       continue;
     }
-
     if (parentMatch?.blocked) {
       findings.push(createLineageFinding(parentMatch.code || 'lineage.target.outOfBoundary', parentMatch.message || 'Declared lineage target resolves outside this source boundary; no edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value }));
       if (originMatch?.ambiguous) {
@@ -58,7 +54,6 @@ export function resolveLineage(artifacts = [], options = {}) {
       }
       continue;
     }
-
     if (parentMatch?.ambiguous) {
       findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Parent Trace matches multiple loaded targets; no edge was created.', 'warning', { nodeId: node.id, target: traceTarget.value, candidates: parentMatch.candidates.map((candidate) => candidate.id).join(', ') }));
       if (originMatch?.ambiguous) {
@@ -70,7 +65,6 @@ export function resolveLineage(artifacts = [], options = {}) {
       }
       continue;
     }
-
     if (parentMatch) {
       edges.push(createLineageEdge(parentMatch.id, node.id, LineageEdgeKind.parent, {
         target: traceTarget.value,
@@ -92,7 +86,6 @@ export function resolveLineage(artifacts = [], options = {}) {
       }
       continue;
     }
-
     if (traceTarget) {
       edges.push(createLineageEdge('', node.id, LineageEdgeKind.parent, {
         status: LineageResolutionStatus.missing,
@@ -102,17 +95,14 @@ export function resolveLineage(artifacts = [], options = {}) {
       }));
       findings.push(createLineageFinding('lineage.parent.missing', 'Parent Trace is declared but the target is not loaded.', 'warning', { nodeId: node.id, target: traceTarget.value }));
     }
-
     if (originMatch?.ambiguous) {
       findings.push(createLineageFinding('lineage.target.ambiguous', 'Declared Origin matches multiple loaded targets; no recovery edge was created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
       continue;
     }
-
     if (originMatch?.blocked) {
       findings.push(createLineageFinding(originMatch.code || 'lineage.target.outOfBoundary', originMatch.message || 'Declared Origin resolves outside this source boundary; no edge was created.', 'warning', { nodeId: node.id, target: originTarget.value }));
       continue;
     }
-
     if (originTarget && originMatch) {
       edges.push(createLineageEdge(originMatch.id, node.id, LineageEdgeKind.origin, {
         target: originTarget.value,
@@ -125,12 +115,10 @@ export function resolveLineage(artifacts = [], options = {}) {
       }
       continue;
     }
-
     if (originTarget) {
       findings.push(createLineageFinding('lineage.origin.unresolved', 'Origin is declared but not present in the loaded material.', traceTarget ? 'info' : 'warning', { nodeId: node.id, target: originTarget.value }));
     }
   }
-
   return {
     schema: LINEAGE_VIEW_MODEL_SCHEMA_ID,
     nodes,
@@ -147,16 +135,14 @@ export function resolveLineage(artifacts = [], options = {}) {
     options: { depth: options.depth || 'loaded' }
   };
 }
-
 function declaredTargetsFor(node = {}) {
   const targets = [];
   if (node.trace) targets.push({ kind: LineageEdgeKind.parent, value: node.trace });
   if (node.origin) targets.push({ kind: LineageEdgeKind.origin, value: node.origin });
   return targets;
 }
-
 function buildLineageIndex(nodes = []) {
-  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map(), byProvenance: new Map() };
+  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map(), byProvenance: new Map(), byIssueLocalPath: new Map() };
   for (const node of nodes) {
     const id = canonicalToken(node.id);
     if (id) {
@@ -167,17 +153,15 @@ function buildLineageIndex(nodes = []) {
     if (path) addIndexed(index.byPath, path, node);
     for (const sourcePath of sourcePathsForNode(node)) addIndexed(index.bySourcePath, sourcePath, node);
     for (const target of provenanceTargetsForNode(node)) addIndexed(index.byProvenance, target, node);
+    for (const issueLocalPath of issueLocalPathKeysForNode(node)) addIndexed(index.byIssueLocalPath, issueLocalPath, node);
   }
   return index;
 }
-
-
 function sourcePathsForNode(node = {}) {
   const record = node.record || {};
   const values = [record.source?.path, record.sourcePath, record.sourceTarget?.sourceArtifactPath, record.snapshot?.sourceArtifactPath].map(canonicalPath).filter(Boolean);
   return Array.from(new Set(values));
 }
-
 function provenanceTargetsForNode(node = {}) {
   const record = node.record || {};
   const snapshot = record.snapshot || {};
@@ -199,14 +183,12 @@ function provenanceTargetsForNode(node = {}) {
   return Array.from(new Set(values.flatMap(provenanceTargetKeysForValue).filter(Boolean)));
 }
 function firstNonEmpty(...items) { return items.map((item) => String(item || '').trim()).find(Boolean) || ''; }
-
 function addIndexed(map, key, node) {
   if (!key || !node) return;
   const existing = map.get(key);
   if (!existing) map.set(key, [node]);
   else existing.push(node);
 }
-
 function resolveTarget(target, index, declaringNode = null) {
   const raw = String(target || '').trim();
   if (!raw) return null;
@@ -223,27 +205,26 @@ function resolveTarget(target, index, declaringNode = null) {
     const resolved = resolveCandidateNodes(nodes || [], method, declaringNode);
     if (resolved) return resolved;
   }
-
   const path = canonicalPath(raw);
   const urlSourceKey = sourceKeyFromTarget(raw);
   const declaringConstraint = sourceConstraintFromNode(declaringNode);
   const relative = relativeCandidatePath(raw, declaringNode);
   const simpleRelative = isSimpleRelativeReference(raw);
   const dotRelative = isDotRelativeReference(raw);
-
   if ((simpleRelative || dotRelative) && relative) {
     if (relative.blocked) return relative;
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
     const resolved = resolveCandidateNodes(contextual, relative.method, declaringNode);
     if (resolved) return resolved;
-      return null;
+    const issueLocal = issueLocalPathMatches(raw, index, declaringNode);
+    const resolvedIssueLocal = resolveCandidateNodes(issueLocal, 'issue-local-relative-path', declaringNode);
+    if (resolvedIssueLocal) return resolvedIssueLocal;
+    return null;
   }
-
   const pathConstraint = urlSourceKey ? sourceConstraintFromTarget(urlSourceKey) : declaringConstraint;
   const exact = exactPathMatches(path, index, pathConstraint, Boolean(pathConstraint.hasConstraint));
   const resolvedExact = resolveCandidateNodes(exact, 'path', declaringNode);
   if (resolvedExact) return resolvedExact;
-
   if (dotRelative && relative) {
     if (relative.blocked) return relative;
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
@@ -251,7 +232,6 @@ function resolveTarget(target, index, declaringNode = null) {
     if (resolved) return resolved;
     return null;
   }
-
   const suffixConstraint = urlSourceKey ? sourceConstraintFromTarget(urlSourceKey) : declaringConstraint;
   const suffixCandidates = [
     ['path-suffix', findPathSuffixMatches(path, index.byPath, suffixConstraint, Boolean(urlSourceKey))],
@@ -263,8 +243,6 @@ function resolveTarget(target, index, declaringNode = null) {
   }
   return null;
 }
-
-
 function resolveCandidateNodes(nodes = [], method = 'unknown', declaringNode = null) {
   const unique = uniqueNodes(nodes || []);
   if (!unique.length) return null;
@@ -273,12 +251,11 @@ function resolveCandidateNodes(nodes = [], method = 'unknown', declaringNode = n
   if (withoutSelf.length === 1) return Object.assign({ method }, withoutSelf[0]);
   return { ambiguous: true, method, candidates: withoutSelf };
 }
-
 function sameLineageNode(candidate = {}, declaringNode = null) {
   if (!candidate || !declaringNode) return false;
   const candidateId = String(candidate.id || '').trim();
   const declaringId = String(declaringNode.id || '').trim();
-  if (candidateId && declaringId && candidateId === declaringId) return true;
+  if (candidateId && declaringId) return candidateId === declaringId;
   const candidatePath = canonicalPath(candidate.path || candidate.record?.path || '');
   const declaringPath = canonicalPath(declaringNode.path || declaringNode.record?.path || '');
   return Boolean(candidatePath && declaringPath && candidatePath === declaringPath);
@@ -290,7 +267,6 @@ function exactPathMatches(path, index, constraint = {}, strictSource = false) {
   const filtered = filterBySource(source, constraint, strictSource);
   return uniqueNodes(filtered);
 }
-
 function relativeCandidatePath(rawTarget, declaringNode = null) {
   const raw = String(rawTarget || '').trim();
   const declaringPath = canonicalPath(firstNonEmpty(declaringNode?.record?.sourceTarget?.sourceArtifactPath, declaringNode?.record?.snapshot?.sourceArtifactPath, declaringNode?.path, declaringNode?.record?.path));
@@ -300,50 +276,30 @@ function relativeCandidatePath(rawTarget, declaringNode = null) {
   const candidate = normalizeJoinedPath(dir, raw);
   return { path: candidate, method: dir ? 'relative-path' : 'relative-root-path' };
 }
-
 function isSimpleRelativeReference(value = '') {
   const raw = String(value || '').trim();
   if (!raw || isUrlLike(raw) || /^record:/i.test(raw)) return false;
   const path = canonicalPath(raw);
   return Boolean(path && !path.includes('/'));
 }
-
 function isDotRelativeReference(value = '') {
   const raw = String(value || '').trim();
   return /^\.\.?(?:\/|$)/.test(raw.replace(/\\/g, '/'));
 }
-
 function isUrlLike(value = '') {
   return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(String(value || '').trim());
 }
-
 function dirname(path = '') {
   const clean = canonicalPath(path);
   const parts = clean.split('/').filter(Boolean);
   parts.pop();
   return parts.join('/');
 }
-
 function normalizeJoinedPath(base = '', target = '') {
   const text = String(target || '').replace(/\\/g, '/');
   const raw = text.startsWith('/') ? text : [base, text].filter(Boolean).join('/');
   return canonicalPath(raw);
 }
-
-function sourceRootsForNode(node = {}) {
-  const source = node?.record?.source || {};
-  return String(source.rootPath || source.config?.rootPath || '')
-    .split(/\r?\n|,/)
-    .map((item) => canonicalPath(item.trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '')))
-    .filter((item) => item && item !== '.');
-}
-
-function isUnderAnyRoot(path = '', roots = []) {
-  const clean = canonicalPath(path);
-  if (!roots.length) return true;
-  return roots.some((root) => clean === root || clean.startsWith(`${root}/`));
-}
-
 function findPathSuffixMatches(targetPath, pathIndex = new Map(), constraint = {}, strictSource = false) {
   const path = canonicalPath(targetPath);
   if (!path || !path.includes('/')) return [];
@@ -364,7 +320,6 @@ function findPathSuffixMatches(targetPath, pathIndex = new Map(), constraint = {
   }
   return uniqueNodes(matches);
 }
-
 function filterBySource(nodes = [], constraint = {}, strictSource = false) {
   const items = Array.isArray(nodes) ? nodes : [];
   if (!constraint?.hasConstraint) return items;
@@ -373,7 +328,6 @@ function filterBySource(nodes = [], constraint = {}, strictSource = false) {
   if (strictSource && items.length && items.every((node) => !sourceConstraintFromNode(node).hasConstraint)) return items;
   return [];
 }
-
 function nodeMatchesSourceConstraint(node = {}, constraint = {}) {
   const candidate = sourceConstraintFromNode(node);
   if (constraint.sourceId && candidate.sourceId && constraint.sourceId !== candidate.sourceId) return false;
@@ -384,7 +338,6 @@ function nodeMatchesSourceConstraint(node = {}, constraint = {}) {
   if (constraint.adapterId && !candidate.adapterId) return false;
   return true;
 }
-
 function sourceConstraintFromNode(node = {}) {
   const source = node?.record?.source || {};
   const adapterId = String(source.adapterId || '').trim().toLowerCase();
@@ -402,12 +355,10 @@ function sourceConstraintFromNode(node = {}) {
     adapterId
   };
 }
-
 function sourceConstraintFromTarget(repo = '') {
   const key = normalizeRepoKey(repo);
   return { hasConstraint: Boolean(key), repo: key, sourceId: '', ref: '', adapterId: 'github' };
 }
-
 function uniqueNodes(nodes = []) {
   const seen = new Set();
   const out = [];
@@ -419,7 +370,6 @@ function uniqueNodes(nodes = []) {
   }
   return out;
 }
-
 function provenanceTargetKeysForValue(value = '') {
   const raw = String(value || '').trim();
   if (!raw) return [];
@@ -453,7 +403,6 @@ function provenanceTargetKeysForValue(value = '') {
   }
   return keys;
 }
-
 function sourceKeyFromTarget(value = '') {
   try {
     const url = new URL(String(value || ''));
@@ -464,20 +413,16 @@ function sourceKeyFromTarget(value = '') {
   }
   return '';
 }
-
 function normalizeRepoKey(value = '') {
   const parts = String(value || '').trim().toLowerCase().split('/').filter(Boolean);
   return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : '';
 }
-
 function normalizeRef(value = '') {
   return String(value || '').trim().toLowerCase();
 }
-
 function canonicalToken(value = '') {
   return String(value || '').trim().replace(/^record:/i, 'record:').replace(/\s+/g, '');
 }
-
 function canonicalPath(value = '') {
   let raw = String(value || '').trim();
   if (!raw) return '';
