@@ -1,25 +1,10 @@
 import { inferRecordMaterialRole, MaterialRole } from './workspace.materialRole.js';
+import { recordLogicalPath, normalizeWorkspacePath } from './workspace.recordPaths.js';
 
 const ITEM_TYPE_ORDER = { record: 0, workspace: 1, asset: 2 };
 
 export function normalizeTreePath(value = '') {
-  const raw = String(value || '').replace(/\\/g, '/').trim();
-  if (!raw) return '';
-  const safe = raw
-    .replace(/^file:\/\/+/, '')
-    .replace(/^https?:\/\//i, '')
-    .replace(/[#?].*$/, '');
-  const parts = [];
-  for (const part of safe.split('/')) {
-    const clean = part.trim();
-    if (!clean || clean === '.') continue;
-    if (clean === '..') {
-      if (parts.length) parts.pop();
-      continue;
-    }
-    parts.push(clean);
-  }
-  return parts.join('/');
+  return normalizeWorkspacePath(value);
 }
 
 export function buildWorkspacePathTree(input = {}) {
@@ -52,7 +37,7 @@ export function buildWorkspacePathTree(input = {}) {
 }
 
 function makeTreeItem(type, source = {}) {
-  const path = normalizeTreePath(source.path || source.name || source.title || type);
+  const path = normalizeTreePath(type === 'record' ? recordLogicalPath(source) : (source.path || source.name || source.title || type));
   const fallbackName = type === 'workspace' ? 'Workspace candidate' : type === 'asset' ? 'Asset' : 'Artifact';
   const name = basename(path) || source.title || source.name || fallbackName;
   return {

@@ -29,7 +29,7 @@ function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
 function lineageControlsReadyForTraversal(traversal = null) {
   if (!traversal) return false;
   const state = String(traversal.terminalState || traversal.status?.terminalState || '').trim();
-  if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent'].includes(state)) return true;
+  if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent', 'integrity-mismatch'].includes(state)) return true;
   return traversal.complete === true;
 }
 

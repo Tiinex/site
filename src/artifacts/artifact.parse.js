@@ -60,9 +60,46 @@ export function parseBody(bodyText = '') {
 }
 
 export function parseIntegrity(integrityText = '') {
-  const methods = [...integrityText.matchAll(/^-\s+([^\n]+)\n(?:\s+-\s+[^\n]+\n?)*/gm)].map((match) => match[1].trim());
-  const values = [...integrityText.matchAll(/^\s*-\s*Value:\s*(.+)$/gm)].map((match) => match[1].trim());
-  return { methods, values, text: integrityText };
+  const entries = parseIntegrityEntries(integrityText);
+  const methods = entries.flatMap((entry) => [entry.method, entry.declaredMethod]).filter(Boolean);
+  const values = entries.map((entry) => entry.value).filter(Boolean);
+  return { methods, values, entries, text: integrityText };
+}
+
+function parseIntegrityEntries(integrityText = '') {
+  const lines = String(integrityText || '').split('\n');
+  const entries = [];
+  let current = null;
+  const flush = () => {
+    if (!current) return;
+    const method = current.label || '';
+    const declaredMethod = current.fields.Method || '';
+    entries.push({
+      method: stripMarkdown(method),
+      declaredMethod: stripMarkdown(declaredMethod),
+      methodRaw: method,
+      towards: normalizeFieldValue(current.fields.Towards || '', { preferLinkTarget: true }),
+      towardsLabel: normalizeFieldValue(current.fields.Towards || ''),
+      value: stripMarkdown(current.fields.Value || ''),
+      raw: current.lines.join('\n')
+    });
+    current = null;
+  };
+  for (const line of lines) {
+    const top = line.match(/^-\s+(.+?)\s*$/);
+    if (top) {
+      flush();
+      current = { label: top[1].trim(), fields: {}, lines: [line] };
+      continue;
+    }
+    if (!current) continue;
+    current.lines.push(line);
+    const field = line.match(/^\s+-\s*([A-Za-z][A-Za-z0-9 _+-]{0,40}):\s*(.+?)\s*$/);
+    if (!field) continue;
+    current.fields[field[1].trim()] = field[2].trim();
+  }
+  flush();
+  return entries.filter((entry) => entry.method || entry.value || entry.towards);
 }
 
 function extractSchemaField(text, label) {

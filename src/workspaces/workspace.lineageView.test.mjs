@@ -88,4 +88,40 @@ assert.equal(scopeTransition.selectedTraversal.complete, true, 'scope transition
 assert.equal(scopeTransition.selectedTraversal.scopeTransitions.length, 1, 'lineage should expose explicit source scope transition');
 assert.equal(scopeTransition.selectedTraversal.terminalState, 'root-reached-scope-transition', 'scope transition should be reflected in terminal state');
 
+
+function integrityRecord({ id, title, path, trace = '', parentHash = '', selfHash = '' }) {
+  const markdown = [
+    '# Continuity Context',
+    '',
+    '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+    trace ? '- Parent' : '',
+    trace ? '  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)' : '',
+    trace ? `  - Trace: [${trace}](${trace})` : '',
+    '- Current',
+    '  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+    `  - Summary: ${title}`,
+    '',
+    '---',
+    '',
+    `# ${title}`,
+    '',
+    '# Continuity Integrity',
+    '',
+    parentHash ? '- [sha256-base64url-c14n-v2](validator.md)' : '',
+    parentHash ? `  - Towards: [${trace}](${trace})` : '',
+    parentHash ? `  - Value: ${parentHash}` : '',
+    selfHash ? '- [sha256-base64url-c14n-v2](validator.md)' : '',
+    selfHash ? '  - Towards: self' : '',
+    selfHash ? `  - Value: ${selfHash}` : ''
+  ].filter(Boolean).join('\n');
+  return Object.assign(createRecordFromMarkdown(markdown, { path }), { id });
+}
+const mismatchParent = integrityRecord({ id: 'mismatch-parent', title: 'Mismatch Parent', path: 'topics/mismatch/001.trace.md', selfHash: 'new-parent-hash' });
+const mismatchChild = integrityRecord({ id: 'mismatch-child', title: 'Mismatch Child', path: 'topics/mismatch/child.trace.md', trace: '001.trace.md', parentHash: 'old-parent-hash', selfHash: 'child-hash' });
+const mismatchView = buildWorkspaceLineageView({ id: 'w3', title: 'Mismatch Demo', records: [mismatchParent, mismatchChild] }, { selectedRecordId: 'mismatch-child' });
+assert.equal(mismatchView.selectedTraversal.terminalState, 'integrity-mismatch', 'loaded but stale parent should become explicit integrity-mismatch terminal state');
+assert.equal(mismatchView.selectedTraversal.hasMismatch, true, 'selected traversal should expose mismatch flag');
+assert.equal(mismatchView.selectedTraversal.complete, false, 'mismatch lineage is navigable but not complete/healthy');
+assert(mismatchView.selectedTraversal.edges.some((edge) => edge.status === 'mismatch'), 'selected traversal should include the mismatch edge for diagnostics');
+
 console.log('✓ workspace.lineageView tests passed');

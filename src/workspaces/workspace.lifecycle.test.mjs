@@ -226,12 +226,12 @@ try {
 `
     }]);
     assert.equal(issueLoaded.ok, true, 'issue snapshot source records should insert');
-    assert.equal(issueLoaded.records[0].path, 'https://github.com/Tiinex/docs/issues/123', 'plain issue snapshot path must not be rewritten under repo rootPath');
+    assert.equal(issueLoaded.records[0].path, '.topics/.issues/github/tiinex-docs/123/issue-snapshot.trace.md', 'plain issue snapshot path should use logical .topics/.issues scope, not a GitHub URL pseudo-tree');
     assert(!issueLoaded.records[0].id.includes('.topics/tiinex/docs/issues'), 'plain issue snapshot deterministic id must not inherit repo rootPath');
     const issueRecords = issueLoaded.workspace.records.filter((record) => record.source?.id === issueSource.source.id);
     assert.equal(issueRecords.length, 3, 'comment-embedded issue artifacts must survive addWorkspaceSourceRecords as distinct records');
-    assert(issueRecords.some((record) => record.path.endsWith('comment-001-5001-recovered-one.trace.md')), 'first comment embedded artifact path must survive canonicalization');
-    assert(issueRecords.some((record) => record.path.endsWith('comment-002-5002-recovered-two.trace.md')), 'second comment embedded artifact path must survive canonicalization');
+    assert(issueRecords.some((record) => record.path === '.topics/.issues/github/tiinex-docs/123/comment-001-5001-recovered-one.trace.md'), 'first comment embedded artifact path should normalize to logical issue scope');
+    assert(issueRecords.some((record) => record.path === '.topics/.issues/github/tiinex-docs/123/comment-002-5002-recovered-two.trace.md'), 'second comment embedded artifact path should normalize to logical issue scope');
     const outsideRoot = lifecycle.addWorkspaceSourceRecords(issueLoaded.state, issueCreated.workspace.id, issueSource.source.id, [{
       title: 'Outside root embedded artifact',
       path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-003-5003-recovered-outside.trace.md',

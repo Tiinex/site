@@ -1,5 +1,5 @@
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
-import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks, sourceArtifactPathFromPublicationBody } from './github.issueEmbedded.js';
+import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks, githubIssueSyntheticFolder, sourceArtifactPathFromPublicationBody } from './github.issueEmbedded.js';
 
 export const GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID = 'tiinex.github.issueSnapshot.v1';
 const TARGET_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(issues|pull|discussions)\/(\d+)(?:[#?].*)?$/i;
@@ -251,7 +251,7 @@ function createGithubIssueSnapshotEvidenceRecord(snapshot = {}, options = {}) {
     `  - Method: ${method}`,
     `  - Value: ${target.canonicalUrl}`
   ].filter(Boolean).join('\n');
-  const record = createRecordFromMarkdown(markdown, { path: target.canonicalUrl, name: title, sourceMode: 'github-issue-snapshot' });
+  const record = createRecordFromMarkdown(markdown, { path: `${githubIssueSyntheticFolder(target)}/issue-snapshot.trace.md`, name: title, sourceMode: 'github-issue-snapshot' });
   return Object.assign({}, record, {
     snapshot: {
       schema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID,

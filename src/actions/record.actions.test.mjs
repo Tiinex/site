@@ -51,8 +51,44 @@ const githubRecord = {
 const href = sourceHrefForRecord(githubRecord);
 assert(href === 'https://github.com/Tiinex/docs/blob/master/.topics/README.md', 'github record source href must be deterministic');
 const githubActions = presentRecordActions(githubRecord);
-assert(githubActions.some((action) => action.id === RecordActionKind.source && action.href === href), 'github record must expose source action with href');
+assert(githubActions.some((action) => action.id === RecordActionKind.source && action.href === href && action.label === 'Open source'), 'github record must expose Open source action with href');
 assert(githubActions.every(actionIsRenderable), 'all presented actions must be renderable, not decorative no-ops');
+
+const issueBackedRecord = {
+  id: 'source:github:tiinex/docs:https://github.com/Tiinex/docs/issues/9#issuecomment-1',
+  title: 'Issue-backed',
+  path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-001-recovered.trace.md',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'master' },
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1' },
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1'
+};
+assert.equal(sourceHrefForRecord(issueBackedRecord), 'https://github.com/Tiinex/docs/issues/9#issuecomment-1', 'issue-backed records should open their GitHub issue/comment source instead of synthetic repo path');
+const rawParentRecord = {
+  id: 'source:github:tiinex/docs:.topics/odysseus/001-1.trace.md',
+  title: 'Parent file',
+  path: '.topics/odysseus/001-1.trace.md',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'master' },
+  sourceTarget: { rawUrl: 'https://raw.githubusercontent.com/Tiinex/docs/master/.topics/odysseus/001-1.trace.md' }
+};
+assert.equal(sourceHrefForRecord(rawParentRecord), 'https://github.com/Tiinex/docs/blob/master/.topics/odysseus/001-1.trace.md', 'raw source-backed parent files should expose a browser GitHub source URL');
+
+const recoveredParentWithoutRef = {
+  id: 'source:github:tiinex/docs:recovered-parent',
+  title: 'Recovered parent',
+  path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-parent.trace.md',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: '' },
+  sourceTarget: { rawUrl: 'https://raw.githubusercontent.com/Tiinex/docs/f8b37239f17bc48180cfc8f93f812c6ffc6edc1f/.topics/odysseus/001-1-1.trace.md' }
+};
+assert.equal(sourceHrefForRecord(recoveredParentWithoutRef), 'https://github.com/Tiinex/docs/blob/f8b37239f17bc48180cfc8f93f812c6ffc6edc1f/.topics/odysseus/001-1-1.trace.md', 'recovered source files should expose Open source from raw URL even when route shell has no ref');
+
+const syntheticIssueOnlyRecord = {
+  id: 'source:github:tiinex/docs:synthetic-only',
+  title: 'Synthetic only',
+  path: '.topics/.issues/github/tiinex-docs/9/issue-snapshot.trace.md',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: '' }
+};
+assert.equal(sourceHrefForRecord(syntheticIssueOnlyRecord), '', 'synthetic issue display paths must not be treated as GitHub blob source URLs');
+
 const githubAvailability = actionAvailabilityForRecord(githubRecord);
 assert.equal(githubAvailability.continue.enabled, false, 'source-backed records still need a concrete schema transition before Continue is rendered');
 assert.equal(githubAvailability.reference.enabled, false, 'source-backed records still need a concrete schema transition before preserve/reference is rendered');

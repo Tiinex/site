@@ -6,7 +6,7 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
-import { actionClassName, actionLabel, compactPath, compactRecordDate, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
+import { actionClassName, actionLabel, compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
 
 export function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   return (
@@ -47,6 +47,7 @@ export function AssetCard({ asset, onOpenAsset }) {
 
 export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
   const lineageContext = context === 'lineage';
+  const displayPath = recordDisplayPath(record);
   const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference);
   const actions = lineageContext
     ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
@@ -72,7 +73,7 @@ export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLinea
       </div>
       <h3>{record.title || 'Untitled'}</h3>
       <p>{record.summary || 'No summary available yet.'}</p>
-      {record.path ? <div className="tx-card-pathline" title={record.path}><Icon name="folderOpen" />{compactPath(record.path)}</div> : null}
+      {displayPath ? <div className="tx-card-pathline" title={displayPath}><Icon name="folderOpen" />{compactPath(displayPath)}</div> : null}
       {lineageContext && expanded ? (
         <div className="tx-record-card-read-preview" onClick={(event) => event.stopPropagation()}>
           <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp />

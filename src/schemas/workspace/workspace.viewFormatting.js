@@ -1,4 +1,5 @@
 import { RecordActionKind } from '../../actions/record.actions.js';
+import { recordLogicalPath } from '../../workspaces/workspace.recordPaths.js';
 
 export function compactPath(path = '') {
   const value = String(path || '').trim();
@@ -6,6 +7,11 @@ export function compactPath(path = '') {
   const parts = value.split('/').filter(Boolean);
   if (parts.length <= 2) return `…${value.slice(-41)}`;
   return `${parts[0]}/…/${parts.slice(-2).join('/')}`;
+}
+
+
+export function recordDisplayPath(record = {}) {
+  return recordLogicalPath(record);
 }
 
 export function compactRecordDate(record = {}) {

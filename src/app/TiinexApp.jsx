@@ -380,7 +380,7 @@ export function TiinexApp() {
           }
         }
         if (out.okCount > 0) {
-          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || []);
+          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || [], { preserveView: Boolean(input.preserveView) });
           if (ins?.ok) finalState = ins.state;
         }
         await yieldForVisibleSourceProgress();
@@ -444,7 +444,7 @@ export function TiinexApp() {
     if (refresh.reason === 'no-surfaces') return openAddToWorkspace(source.id || sourceId);
     clearGithubSourceTextCacheForSource(source);
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
-    await addGitHubSource(refresh.input);
+    await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true }));
   }
 
   function openRecord(recordId) {
@@ -596,7 +596,7 @@ export function TiinexApp() {
   function lineageControlsReadyForTraversal(traversal = null) {
     if (!traversal) return false;
     const terminalState = String(traversal.terminalState || traversal.status?.terminalState || '').trim();
-    if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent'].includes(terminalState)) return true;
+    if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent', 'integrity-mismatch'].includes(terminalState)) return true;
     return traversal.complete === true;
   }
 
@@ -621,7 +621,7 @@ export function TiinexApp() {
       mode: recoveredParents ? 'source-assisted-loaded-workspace' : 'loaded-workspace',
       state: stateLabel, terminalState, statusLabel: traversal?.status?.label || '', nodes: nodes.length,
       rootReached: Boolean(traversal?.rootReached), noParentDeclared: Boolean(traversal?.noParentDeclared), hasMissing: Boolean(traversal?.hasMissing),
-      ambiguous: Boolean(traversal?.ambiguous), depthLimited: Boolean(traversal?.depthLimited), scopeTransitions: scopeTransitions.length, recoveredParents,
+      hasMismatch: Boolean(traversal?.hasMismatch), ambiguous: Boolean(traversal?.ambiguous), depthLimited: Boolean(traversal?.depthLimited), scopeTransitions: scopeTransitions.length, recoveredParents,
       generatedAt: new Date().toISOString()
     };
     setNotice(recoveredParents
@@ -666,6 +666,7 @@ export function TiinexApp() {
       rootReached: Boolean(lineage.selectedTraversal?.rootReached),
       noParentDeclared: Boolean(lineage.selectedTraversal?.noParentDeclared),
       hasMissing: Boolean(lineage.selectedTraversal?.hasMissing),
+      hasMismatch: Boolean(lineage.selectedTraversal?.hasMismatch),
       ambiguous: Boolean(lineage.selectedTraversal?.ambiguous),
       depthLimited: Boolean(lineage.selectedTraversal?.depthLimited),
       scopeTransitions: Array.isArray(lineage.selectedTraversal?.scopeTransitions) ? lineage.selectedTraversal.scopeTransitions.length : 0

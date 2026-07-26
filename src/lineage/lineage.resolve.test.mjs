@@ -76,7 +76,7 @@ const nestedOriginMarkdown = [
 const childByNestedOriginUrl = Object.assign(createRecordFromMarkdown(nestedOriginMarkdown, { path: 'topics/child-url.md' }), { id: 'child-url' });
 const urlResult = resolveLineage([parent, childByNestedOriginUrl]);
 assert.equal(childByNestedOriginUrl.origin, 'https://github.com/Tiinex/docs/blob/abcdef/topics/parent.md', 'parser should preserve nested Origin link target');
-assert(urlResult.edges.some((edge) => edge.from === 'parent-1' && edge.to === 'child-url' && edge.kind === 'origin' && edge.method === 'path-suffix'), 'origin URL should resolve loaded parent by explicit path suffix');
+assert(urlResult.edges.some((edge) => edge.from === 'parent-1' && edge.to === 'child-url' && edge.kind === 'origin' && edge.method === 'path'), 'origin URL should resolve loaded parent by explicit GitHub file path');
 
 
 
@@ -144,6 +144,29 @@ const commentChild = leaf({ id: 'comment-child-url', title: 'Comment Child URL',
 const commentProvenanceResolved = resolveLineage([commentParent, commentChild]);
 assert(commentProvenanceResolved.edges.some((edge) => edge.from === 'comment-parent-9-1' && edge.to === 'comment-child-url' && edge.method === 'provenance-target'), 'GitHub issue comment URL parent targets should preserve hash identity and resolve to the loaded comment artifact');
 
+const commentParentEmbedded = Object.assign(leaf({ id: 'comment-parent-4881782365-embedded', title: 'Silicon Valley', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-003-4881782365-recovered-silicon-valley.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365',
+  sourceMode: 'github-comment-embedded-artifact',
+  recoveryKind: 'github-comment-embedded-tiinex-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' }
+});
+const commentParentShell = Object.assign(leaf({ id: 'comment-parent-4881782365-shell', title: 'GitHub Comment Shell', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-003-4881782365.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365',
+  sourceMode: 'github-comment-shell',
+  sourceTarget: { targetKind: 'github-comment-shell', inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' }
+});
+const commentChildByLegacyPath = Object.assign(leaf({ id: 'comment-child-4930310346', title: 'Re-watch Silicon Valley', path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-004-4930310346-recovered-re-watch-silicon-valley.trace.md', trace: 'comment-003-4881782365-recovered-continuity-context.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4930310346',
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4930310346' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4930310346' }
+});
+const commentIdAliasResolved = resolveLineage([commentParentShell, commentParentEmbedded, commentChildByLegacyPath]);
+assert(commentIdAliasResolved.edges.some((edge) => edge.from === 'comment-parent-4881782365-embedded' && edge.to === 'comment-child-4930310346' && edge.kind === 'parent'), 'issue-comment parent paths carrying a comment id should bind to the embedded parent artifact even when old generated slugs differ');
+assert(!commentIdAliasResolved.edges.some((edge) => edge.from === 'comment-parent-4881782365-shell' && edge.to === 'comment-child-4930310346'), 'comment-id parent binding should prefer embedded Tiinex artifact material over the publication shell');
+
 
 const issueRootByPath = Object.assign(leaf({ id: 'issue-root-path-9', title: 'Welcome Root Path', path: '.topics/.github/.issues/tiinex-docs-issue-9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
   recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
@@ -171,6 +194,127 @@ const brazilCommentAlias = Object.assign(leaf({ id: 'comment-container-alias-9',
 });
 const issueLocalTitleAliasResolved = resolveLineage([issueRootByTitleAlias, brazilCommentAlias]);
 assert(issueLocalTitleAliasResolved.edges.some((edge) => edge.from === 'issue-root-title-alias-9' && edge.to === 'comment-container-alias-9' && edge.method === 'issue-local-relative-path'), 'issue-root-recovered title aliases should bind within the same GitHub issue even when the root record path is only the issue container');
+
+
+const odysseusRoot = leaf({ id: 'odysseus-root', title: 'Odysseus / Provenance review', path: '.topics/odysseus/001.trace.md', source: sourceA });
+const odysseusReduction = Object.assign(leaf({ id: 'odysseus-reduction', title: 'Odysseus / Context Reduction And Compaction Review', path: '.topics/odysseus/001-1.trace.md', trace: '001.trace.md', source: sourceA }), {
+  sourceTarget: { surface: 'lineageRecovery', targetKind: 'lineage-parent', sourceArtifactPath: '.topics/educational/memes/magic-the-gathering/001-1.trace.md' }
+});
+const magicRootForRegression = leaf({ id: 'magic-regression-root', title: 'Magic: The Gathering Memes', path: '.topics/educational/memes/magic-the-gathering/001.trace.md', source: sourceA });
+const odysseusOwnContext = resolveLineage([odysseusRoot, odysseusReduction, magicRootForRegression]);
+assert(odysseusOwnContext.edges.some((edge) => edge.from === 'odysseus-root' && edge.to === 'odysseus-reduction' && edge.method === 'relative-path'), 'loaded source file lineage must resolve relative Parent Trace from the file path itself');
+assert(!odysseusOwnContext.edges.some((edge) => edge.from === 'magic-regression-root' && edge.to === 'odysseus-reduction'), 'loaded source file lineage must not jump to another folder with the same basename via stale sourceArtifactPath');
+
+
+const odysseusRootFromBlobUrl = leaf({ id: 'odysseus-root-blob', title: 'Odysseus / Provenance review', path: 'https://raw.githubusercontent.com/Tiinex/docs/6bbbeb9757a9d44d951877753b6f729ab3eb8f0b/.topics/odysseus/001.trace.md', source: sourceA });
+const magicRootFromBlobUrl = leaf({ id: 'magic-root-blob', title: 'Magic: The Gathering Memes', path: 'https://raw.githubusercontent.com/Tiinex/docs/91006b375a6af721bf41e829773dd44378863e78/.topics/educational/memes/magic-the-gathering/001.trace.md', source: sourceA });
+const odysseusChildFromBlobUrl = leaf({ id: 'odysseus-child-blob', title: 'Odysseus / Context Reduction', path: 'https://raw.githubusercontent.com/Tiinex/docs/25c3d5380e7fa98427dc4d0b128ccbeb5e46a72a/.topics/odysseus/001-1.trace.md', trace: '001.trace.md', origin: 'https://github.com/Tiinex/docs/blob/6bbbeb9757a9d44d951877753b6f729ab3eb8f0b/.topics/odysseus/001.trace.md', source: sourceA });
+const blobPathContext = resolveLineage([odysseusRootFromBlobUrl, magicRootFromBlobUrl, odysseusChildFromBlobUrl]);
+assert(blobPathContext.edges.some((edge) => edge.from === 'odysseus-root-blob' && edge.to === 'odysseus-child-blob' && edge.kind === 'parent'), 'raw/blob source file paths must resolve relative Parent Trace from the repo file path, not the raw URL commit prefix');
+assert(!blobPathContext.edges.some((edge) => edge.from === 'magic-root-blob' && edge.to === 'odysseus-child-blob'), 'raw/blob source file paths must not jump to another lineage with the same basename');
+
+
+const issueRootNewLogicalPath = Object.assign(leaf({ id: 'issue-root-logical-9', title: 'Welcome to the Next Dimension', path: '.topics/.issues/github/tiinex-docs/9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9' }
+});
+const brazilLogicalIssuePath = Object.assign(leaf({ id: 'comment-logical-alias-9', title: 'Brazil', path: '.topics/.issues/github/tiinex-docs/9/comment-002-4881782365-recovered-brazil.trace.md', trace: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365',
+  sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' },
+  snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' }
+});
+const issueLocalLogicalPathResolved = resolveLineage([issueRootNewLogicalPath, brazilLogicalIssuePath]);
+assert(issueLocalLogicalPathResolved.edges.some((edge) => edge.from === 'issue-root-logical-9' && edge.to === 'comment-logical-alias-9' ), 'logical .topics/.issues paths should preserve issue-local parent binding');
+
+const odysseusExactParent = leaf({ id: 'odysseus-exact-parent-10', title: 'Odysseus / Awaiting Parent', path: '.topics/odysseus/001-1-1.trace.md', source: githubSource });
+const awaitingSyntheticIssue = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10', title: 'Awaiting response', path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/10',
+  sourceMode: 'github-issue-embedded-artifact',
+  sourceTarget: {
+    targetKind: 'github-issue-embedded-artifact',
+    inputTarget: 'https://github.com/Tiinex/docs/issues/10',
+    parentArtifactPath: '.topics/odysseus/001-1-1.trace.md'
+  },
+  snapshot: {
+    embedded: true,
+    sourceUrl: 'https://github.com/Tiinex/docs/issues/10',
+    parentArtifactPath: '.topics/odysseus/001-1-1.trace.md'
+  }
+});
+const syntheticDeclaredParentResolved = resolveLineage([odysseusExactParent, awaitingSyntheticIssue]);
+assert(syntheticDeclaredParentResolved.edges.some((edge) => edge.from === 'odysseus-exact-parent-10' && edge.to === 'awaiting-synthetic-issue-10' && edge.method === 'declared-parent-path'), 'synthetic issue artifacts must bind recovered exact Parent Artifact Path after cwd-relative lookup fails');
+assert(!syntheticDeclaredParentResolved.findings.some((finding) => finding.nodeId === 'awaiting-synthetic-issue-10' && finding.code === 'lineage.parent.missing'), 'synthetic issue exact parent binding should not remain target unavailable after recovery');
+
+const awaitingSyntheticIssueWithoutExplicitParent = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10-suffix', title: 'Awaiting response', path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/10',
+  sourceMode: 'github-issue-embedded-artifact',
+  sourceTarget: { targetKind: 'github-issue-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/10' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinex/docs/issues/10' }
+});
+const syntheticSuffixParentResolved = resolveLineage([odysseusExactParent, awaitingSyntheticIssueWithoutExplicitParent]);
+assert(syntheticSuffixParentResolved.edges.some((edge) => edge.from === 'odysseus-exact-parent-10' && edge.to === 'awaiting-synthetic-issue-10-suffix' && edge.method === 'synthetic-parent-path-suffix'), 'multi-segment synthetic issue Parent Trace should use safe suffix recovery after synthetic cwd fails');
+
+
+const odysseusRootRecoveredWithGenericInput = Object.assign(leaf({ id: 'odysseus-root-generic-input', title: 'Odysseus / Provenance review', path: '.topics/odysseus/001.trace.md', source: sourceA }), {
+  sourceTarget: { surface: 'lineageRecovery', targetKind: 'lineage-parent', inputTarget: '001.trace.md' }
+});
+const magicRootRecoveredWithGenericInput = Object.assign(leaf({ id: 'magic-root-generic-input', title: 'Magic: The Gathering Memes', path: '.topics/educational/memes/magic-the-gathering/001.trace.md', source: sourceA }), {
+  sourceTarget: { surface: 'lineageRecovery', targetKind: 'lineage-parent', inputTarget: '001.trace.md' }
+});
+const stackEvidenceRelativeParent = leaf({ id: 'stack-evidence-relative-parent', title: 'Evidence: The Stack Remembers', path: '.topics/educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md', trace: '001.trace.md', source: sourceA });
+const genericInputTargetResolved = resolveLineage([odysseusRootRecoveredWithGenericInput, magicRootRecoveredWithGenericInput, stackEvidenceRelativeParent]);
+assert(genericInputTargetResolved.edges.some((edge) => edge.from === 'magic-root-generic-input' && edge.to === 'stack-evidence-relative-parent' && edge.method === 'relative-path'), 'simple Parent Trace must resolve relative to the declaring file path before any generic sourceTarget.inputTarget provenance');
+assert(!genericInputTargetResolved.edges.some((edge) => edge.from === 'odysseus-root-generic-input' && edge.to === 'stack-evidence-relative-parent'), 'generic lineage recovery inputTarget values such as 001.trace.md must not cross-bind unrelated folders');
+
+
+function integrityLeaf({ id, title, path, trace = '', parentHash = '', selfHash = '', source = sourceA }) {
+  const markdown = [
+    '# Continuity Context',
+    '',
+    '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+    trace ? '- Parent' : '',
+    trace ? '  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)' : '',
+    trace ? `  - Trace: [${trace}](${trace})` : '',
+    '- Current',
+    '  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+    '  - Created At: 2026-07-26T00:00:00.000Z',
+    `  - Summary: ${title}`,
+    '',
+    '---',
+    '',
+    `# ${title}`,
+    '',
+    '# Continuity Integrity',
+    '',
+    parentHash ? '- [sha256-base64url-c14n-v2](validator.md)' : '',
+    parentHash ? `  - Towards: [${trace}](${trace})` : '',
+    parentHash ? `  - Value: ${parentHash}` : '',
+    parentHash ? '' : '',
+    selfHash ? '- [sha256-base64url-c14n-v2](validator.md)' : '',
+    selfHash ? '  - Towards: self' : '',
+    selfHash ? `  - Value: ${selfHash}` : ''
+  ].filter(Boolean).join('\n');
+  return Object.assign(createRecordFromMarkdown(markdown, { path }), { id, source });
+}
+
+const checksumParentA = integrityLeaf({ id: 'checksum-parent-a', title: 'Checksum Parent A', path: '.topics/a/001.trace.md', selfHash: 'hash-parent-a' });
+const checksumParentB = integrityLeaf({ id: 'checksum-parent-b', title: 'Checksum Parent B', path: '.topics/b/001.trace.md', selfHash: 'hash-parent-b' });
+const checksumChild = integrityLeaf({ id: 'checksum-child', title: 'Checksum Child', path: '.topics/b/child.trace.md', trace: '001.trace.md', parentHash: 'hash-parent-a', selfHash: 'hash-child' });
+const checksumFirst = resolveLineage([checksumParentA, checksumParentB, checksumChild]);
+assert(checksumFirst.edges.some((edge) => edge.from === 'checksum-parent-a' && edge.to === 'checksum-child' && edge.status === 'verified' && edge.method === 'integrity-self-hash'), 'matching parent integrity must bind before path aliases when available');
+assert(!checksumFirst.edges.some((edge) => edge.from === 'checksum-parent-b' && edge.to === 'checksum-child'), 'path candidate must not override a matching parent checksum');
+
+const changedParent = integrityLeaf({ id: 'changed-parent', title: 'Changed Parent', path: '.topics/changed/001.trace.md', selfHash: 'new-parent-hash' });
+const staleChild = integrityLeaf({ id: 'stale-child', title: 'Stale Child', path: '.topics/changed/child.trace.md', trace: '001.trace.md', parentHash: 'old-parent-hash', selfHash: 'stale-child-hash' });
+const mismatchFallback = resolveLineage([changedParent, staleChild]);
+assert(mismatchFallback.edges.some((edge) => edge.from === 'changed-parent' && edge.to === 'stale-child' && edge.status === 'mismatch' && edge.method === 'relative-path'), 'checksum mismatch should still bind by stable relative parent path but mark the edge mismatch');
+assert(mismatchFallback.findings.some((finding) => finding.code === 'lineage.parent.integrityMismatch' && finding.severity === 'error'), 'checksum mismatch must be surfaced as a strong lineage finding');
+
+const unsealedParent = integrityLeaf({ id: 'unsealed-parent', title: 'Unsealed Parent', path: '.topics/unsealed/001.trace.md' });
+const proofSeekingChild = integrityLeaf({ id: 'proof-seeking-child', title: 'Proof Seeking Child', path: '.topics/unsealed/child.trace.md', trace: '001.trace.md', parentHash: 'expected-parent-hash', selfHash: 'proof-child-hash' });
+const probableFallback = resolveLineage([unsealedParent, proofSeekingChild]);
+assert(probableFallback.edges.some((edge) => edge.from === 'unsealed-parent' && edge.to === 'proof-seeking-child' && edge.status === 'probable' && edge.method === 'relative-path'), 'missing parent self-integrity should keep the stable path edge navigable as probable');
 
 const audit = resolveAuditLineage([parent, childByTrace]);
 assert.equal(audit.schema, 'tiinex.audit.lineage.resolve.v1', 'audit lineage result declares schema');

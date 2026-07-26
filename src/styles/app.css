@@ -7559,3 +7559,74 @@ pre { white-space: pre-wrap; overflow:auto; }
   color: rgba(255,228,230,.96);
   box-shadow: 0 0 0 1px rgba(251,113,133,.15), 0 0 12px rgba(127,29,29,.20);
 }
+
+/* v254: desktop dialog scale and source-action polish.
+   Dialog ownership stays in the primitive; surfaces only declare size classes. */
+@media (min-width: 900px) {
+  .tx-dialog-backdrop {
+    padding: clamp(1.1rem, 2.2vh, 2rem);
+  }
+  .tx-add-flow-modal,
+  .tx-add-mode-modal {
+    width: min(94vw, 68rem) !important;
+  }
+  .tx-dialog-record-detail {
+    width: min(94vw, 70rem) !important;
+  }
+  .tx-dialog-record-markdown {
+    width: min(95vw, 78rem) !important;
+  }
+  .tx-dialog-display-options {
+    width: min(92vw, 44rem) !important;
+  }
+  .tx-dialog-body {
+    max-height: calc(100vh - 8.5rem) !important;
+  }
+  .tx-add-mode-modal .tx-dialog-body,
+  .tx-dialog-record-detail .tx-dialog-body,
+  .tx-dialog-record-markdown .tx-dialog-body {
+    max-height: calc(100vh - 7.4rem) !important;
+  }
+  .tx-github-source-plan-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .62rem .72rem;
+  }
+  .tx-github-source-plan-form > .tx-source-continuation-banner,
+  .tx-github-source-plan-form > .tx-github-boundary-panel,
+  .tx-github-source-plan-form > .tx-github-source-field-grid,
+  .tx-github-source-plan-form > .tx-github-operation-receipt,
+  .tx-github-source-plan-form > .tx-transport-contract-panel,
+  .tx-github-source-plan-form > .tx-form-error,
+  .tx-github-source-plan-form > .tx-github-dialog-actions {
+    grid-column: 1 / -1;
+  }
+  .tx-github-source-plan-form > .tx-github-discovery-surfaces {
+    grid-column: 1 / -1;
+  }
+  .tx-github-source-plan-form .tx-textarea-field textarea {
+    min-height: 4.1rem;
+  }
+  .tx-dialog-record-markdown .tx-full-markdown-preview {
+    max-height: calc(100vh - 13rem);
+    min-height: min(52vh, 34rem);
+  }
+}
+.tx-old-like-record-card .tx-legacy-action[title="Open source"],
+.tx-old-like-record-card .tx-legacy-action[aria-label="Open source"] {
+  width: 2.05rem;
+  min-width: 2.05rem;
+  padding-inline: 0;
+  border-color: rgba(189,115,255,.33);
+  background: rgba(189,115,255,.075);
+  color: #dec0ff;
+}
+.tx-old-like-record-card .tx-legacy-action[title="Open source"] strong,
+.tx-old-like-record-card .tx-legacy-action[aria-label="Open source"] strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

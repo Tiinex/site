@@ -186,13 +186,30 @@ function embeddedSourceArtifactPath(markdown = '') {
 }
 
 function githubRecoveredEmbeddedArtifactPath(target = {}, item = {}, ordinal = 0, markdown = '', sourceKind = 'issue') {
-  const folder = `.topics/.github/.issues/${slugPart(target.owner || 'owner')}-${slugPart(target.repo || 'repo')}-issue-${target.number || 'target'}`;
+  const folder = githubIssueSyntheticFolder(target);
   const id = String(item?.id || ordinal || sourceKind || 'source').replace(/[^A-Za-z0-9_.-]+/g, '-');
-  const parsedTitle = String(markdown.match(/^#\s+(.+)\s*$/m)?.[1] || item.title || `${sourceKind} artifact`).trim();
+  const parsedTitle = embeddedArtifactTitle(markdown) || item.title || `${sourceKind} artifact`;
   const slug = slugPart(parsedTitle).slice(0, 52) || 'artifact';
   const extension = /Current Schema:\s*\[[^\]]*workspace/i.test(markdown) || /Current Schema:\s*tiinex\.workspace\.v1/i.test(markdown) ? '.workspace.md' : '.trace.md';
   if (sourceKind === 'issue') return `${folder}/issue-root-recovered-${slug}${extension}`;
   return `${folder}/comment-${String(ordinal || 1).padStart(3, '0')}-${id}-recovered-${slug}${extension}`;
+}
+
+export function githubIssueSyntheticFolder(target = {}) {
+  const repoSlug = `${slugPart(target.owner || 'owner')}-${slugPart(target.repo || 'repo')}`;
+  const number = String(target.number || 'target').replace(/[^A-Za-z0-9_.-]+/g, '-') || 'target';
+  return `.topics/.issues/github/${repoSlug}/${number}`;
+}
+
+function embeddedArtifactTitle(markdown = '') {
+  const text = normalizeNewlines(markdown || '').trim();
+  if (!text) return '';
+  const afterEnvelope = text.split(/^---\s*$/m).slice(1).join('\n---\n') || text;
+  const match = afterEnvelope.match(/^#\s+(.+)\s*$/m);
+  const title = String(match?.[1] || '').trim();
+  if (title && !/^Continuity\s+Context$/i.test(title) && !/^Continuity\s+Integrity$/i.test(title)) return title;
+  const fallback = text.match(/^#\s+(.+)\s*$/gm)?.map((line) => line.replace(/^#\s+/, '').trim()).find((item) => item && !/^Continuity\s+Context$/i.test(item) && !/^Continuity\s+Integrity$/i.test(item));
+  return fallback || '';
 }
 
 function stripMarkdownInline(value = '') {

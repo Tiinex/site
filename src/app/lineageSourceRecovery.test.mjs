@@ -61,4 +61,28 @@ const embeddedWithIssueLocalParent = Object.assign({}, embeddedIssueChild, {
 });
 assert.equal(lineageRecoveryFileRefForTarget('issue-root-recovered-welcome-to-the-next-dimension.trace.md', embeddedWithIssueLocalParent), 'odysseus/branch/issue-root-recovered-welcome-to-the-next-dimension.trace.md', 'simple issue-local parent aliases remain normal relative targets and are not treated as repo-root file refs');
 
+
+const recoveredSourceFileWithStaleSourcePath = Object.assign(createRecordFromMarkdown(childMarkdown.replace('[Parent](../parent.trace.md)', '[Parent](001.trace.md)'), { path: '.topics/odysseus/001-1.trace.md', name: 'Odysseus / Context Reduction And Compaction Review' }), {
+  id: 'source:github:tiinex/docs:.topics/odysseus/001-1.trace.md',
+  source: { id: 'github:tiinex/docs', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' },
+  sourceTarget: { surface: 'lineageRecovery', targetKind: 'lineage-parent', sourceArtifactPath: '.topics/educational/memes/magic-the-gathering/001-1.trace.md' }
+});
+assert.equal(lineageRecoveryFileRefForTarget('001.trace.md', recoveredSourceFileWithStaleSourcePath), '.topics/odysseus/001.trace.md', 'lineage recovery for an already loaded source file must respect the file path, not stale issue/sourceArtifactPath context');
+
+
+const recoveredSourceFileWithParentOrigin = Object.assign(createRecordFromMarkdown(childMarkdown.replace('[Parent](../parent.trace.md)', '[Parent](001.trace.md)'), { path: 'https://raw.githubusercontent.com/Tiinex/docs/25c3d5380e7fa98427dc4d0b128ccbeb5e46a72a/.topics/odysseus/001-1.trace.md', name: 'Odysseus / Context Reduction And Compaction Review' }), {
+  id: 'source:github:tiinex/docs:.topics/odysseus/001-1.trace.md',
+  source: { id: 'github:tiinex/docs', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' },
+  origin: 'https://github.com/Tiinex/docs/blob/6bbbeb9757a9d44d951877753b6f729ab3eb8f0b/.topics/odysseus/001.trace.md'
+});
+assert.equal(lineageRecoveryFileRefForTarget('001.trace.md', recoveredSourceFileWithParentOrigin), '.topics/odysseus/001.trace.md', 'lineage recovery should prefer an explicit parent Origin file URL over current source ref guessing');
+
+
+const recoveredSourceFileWithRelativeOrigin = Object.assign(createRecordFromMarkdown(childMarkdown.replace('[Parent](../parent.trace.md)', '[Parent](001.trace.md)'), { path: '.topics/odysseus/001-1.trace.md', name: 'Odysseus / Context Reduction And Compaction Review' }), {
+  id: 'source:github:tiinex/docs:.topics/odysseus/001-1.trace.md:relative-origin',
+  source: { id: 'github:tiinex/docs', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' },
+  origin: '001.trace.md'
+});
+assert.equal(lineageRecoveryFileRefForTarget('001.trace.md', recoveredSourceFileWithRelativeOrigin), '.topics/odysseus/001.trace.md', 'relative Parent Origin on a real source file must not override cwd-relative parent recovery');
+
 console.log('lineageSourceRecovery: ok');

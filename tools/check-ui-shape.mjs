@@ -97,7 +97,7 @@ has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-me
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
 has('src/schemas/workspace/workspace.add.views.jsx', 'tx-github-discovery-card', 'GitHub repo discovery must be a visible checkbox surface, not a hidden operation mode');
 has('src/schemas/workspace/workspace.add.views.jsx', 'continuation defaults preserve', 'source continuation must preserve selected discovery surfaces across F5/hash restore');
-has('src/schemas/workspace/workspace.add.views.jsx', 'const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : false)', 'issue discovery must default from requested source state, not only incomplete state');
+has('src/schemas/workspace/workspace.add.views.jsx', 'const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : true)', 'new GitHub sources must default issue snapshots on while continuations preserve requested source state');
 has('src/schemas/workspace/workspace.add.views.jsx', 'Register only', 'GitHub source Add must preserve explicit register-only/no-loading action');
 has('src/schemas/workspace/workspace.add.views.jsx', 'Discover repo Markdown', 'GitHub source Add must expose a clear repo discovery submit action');
 has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema module must be in registry');

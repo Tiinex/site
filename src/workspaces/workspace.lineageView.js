@@ -65,12 +65,13 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
   const rootNodeIds = new Set(resolvedTraversalFindings.filter((finding) => finding.code === 'lineage.root').map((finding) => finding.nodeId));
   const ambiguous = Boolean(resolvedTraversalFindings.some((finding) => finding.code === 'lineage.target.ambiguous') || (traversal.findings || []).some((finding) => finding.code === 'lineage.target.ambiguous'));
   const hasMissing = Boolean((traversal.missingEdges || []).length || (traversal.findings || []).some((finding) => finding.code === 'lineage.traversal.missingTarget'));
+  const hasMismatch = Boolean((traversal.edges || []).some((edge) => edge.status === 'mismatch') || resolvedTraversalFindings.some((finding) => finding.code === 'lineage.parent.integrityMismatch'));
   const depthLimited = Boolean(traversal.stats?.stoppedAtDepth);
   const terminalRootReached = terminalNodes.some((node) => rootNodeIds.has(node.id) || isRootLikeLineageNode(node, nodesById));
   const rootReached = Boolean(!hasMissing && !ambiguous && !depthLimited && terminalRootReached);
   const noParentDeclared = Boolean(!hasMissing && !ambiguous && !depthLimited && (traversal.nodes || []).length === 1 && terminalNodes.some((node) => rootNodeIds.has(node.id)));
   const scopeTransitions = buildScopeTransitions(traversal.nodes || [], nodesById);
-  const status = traversalStatus({ rootReached, noParentDeclared, ambiguous, hasMissing, depthLimited, scopeTransitions, traversal });
+  const status = traversalStatus({ rootReached, noParentDeclared, ambiguous, hasMissing, hasMismatch, depthLimited, scopeTransitions, traversal });
   const secondaryFindings = resolvedTraversalFindings.filter((finding) => finding.code !== 'lineage.root' && finding.code !== 'lineage.parent.missing' && finding.code !== 'lineage.target.ambiguous');
   return {
     schema: traversal.schema,
@@ -104,6 +105,7 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
     noParentDeclared,
     ambiguous,
     hasMissing,
+    hasMismatch,
     depthLimited,
     complete: status.complete,
     completeness: status.complete ? 'complete' : 'partial',
@@ -111,7 +113,7 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
     scopeTransitions,
     terminalNodeIds: terminalNodes.map((node) => node.id),
     status,
-    stats: Object.assign({}, traversal.stats || {}, { rootReached, noParentDeclared, ambiguous, hasMissing, depthLimited, complete: status.complete, scopeTransitions: scopeTransitions.length })
+    stats: Object.assign({}, traversal.stats || {}, { rootReached, noParentDeclared, ambiguous, hasMissing, hasMismatch, depthLimited, complete: status.complete, scopeTransitions: scopeTransitions.length })
   };
 }
 
@@ -224,9 +226,10 @@ function sourceSignature(node = {}) {
   return { id, ref, boundary, label: ref ? `${label}@${ref}` : label, key };
 }
 
-function traversalStatus({ rootReached = false, noParentDeclared = false, ambiguous = false, hasMissing = false, depthLimited = false, scopeTransitions = [], traversal = {} } = {}) {
+function traversalStatus({ rootReached = false, noParentDeclared = false, ambiguous = false, hasMissing = false, hasMismatch = false, depthLimited = false, scopeTransitions = [], traversal = {} } = {}) {
   if (ambiguous) return { label: 'ambiguous parent', tone: 'mismatch', terminalState: 'ambiguous-parent', complete: false, message: 'Selected lineage has an ambiguous declared target; no guessed edge was created.' };
   if (hasMissing) return { label: 'target unavailable', tone: 'mismatch', terminalState: 'target-unavailable', complete: false, message: 'Selected lineage stops because a declared parent target is not loaded.' };
+  if (hasMismatch) return { label: 'integrity mismatch', tone: 'mismatch', terminalState: 'integrity-mismatch', complete: false, message: 'Selected lineage remains navigable, but at least one parent edge has changed or does not match the child integrity declaration.' };
   if (depthLimited) return { label: 'partial lineage', tone: 'open', terminalState: 'depth-limited', complete: false, message: 'Selected lineage reached the current traversal limit before a terminal root was proven.' };
   if (noParentDeclared) return { label: 'no parent declared', tone: 'ok', terminalState: 'no-parent-declared', complete: true, message: 'Selected artifact declares no Parent Trace and is terminal in the loaded workspace graph.' };
   if (rootReached && scopeTransitions.length) return { label: 'root reached · scope transition', tone: 'ok', terminalState: 'root-reached-scope-transition', complete: true, message: 'Selected Parent Trace chain reaches a loaded root and crosses explicit source scope.' };

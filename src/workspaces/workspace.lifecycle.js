@@ -1,42 +1,14 @@
+import{githubIssueLogicalPathForRecord as issuePath}from'./workspace.recordPaths.js';
 (function attachWorkspaceLifecycle(global) {
-const WORKSPACE_NAME_MAX_LENGTH=72
-const RECORD_TITLE_MAX_LENGTH = 96;
-const RECORD_SUMMARY_MAX_LENGTH = 280;
-const SESSION_SOURCE_KIND = 'local-session';
-const CONFIGURED_SOURCE_KIND = 'github-tree';
-const GITHUB_ADAPTER_ID = 'github';
-const GITHUB_REPO_SOURCE_KIND = 'github.repo';
-const SOURCE_STATES = new Set(['not-started', 'deferred', 'loading', 'loaded', 'partial', 'failed', 'unavailable']);
+const WORKSPACE_NAME_MAX_LENGTH=72,RECORD_TITLE_MAX_LENGTH=96,RECORD_SUMMARY_MAX_LENGTH=280,SESSION_SOURCE_KIND='local-session',CONFIGURED_SOURCE_KIND='github-tree',GITHUB_ADAPTER_ID='github',GITHUB_REPO_SOURCE_KIND='github.repo',SOURCE_STATES=new Set(['not-started','deferred','loading','loaded','partial','failed','unavailable']);
 function nowIso(clock){return typeof clock==='function'?clock():new Date().toISOString();}
-function normalizeWorkspaceName(value) {
-return String(value || '').replace(/\s+/g, ' ').trim().slice(0, WORKSPACE_NAME_MAX_LENGTH);
-}
-function normalizeRecordTitle(value) {
-return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_TITLE_MAX_LENGTH);
-}
-function normalizeRecordSummary(value) {
-return String(value || '').replace(/\s+/g, ' ').trim().slice(0, RECORD_SUMMARY_MAX_LENGTH);
-}
-function canonicalizeSourceRecordPath(input = {}, source = {}) {
-const t = input.sourceTarget || {}, snap = input.snapshot || {}, raw = t.inputTarget || t.url || input.path || input.name || '';
-const surface = String(t.surface || '').toLowerCase(), mode = String(input.sourceMode || '').toLowerCase(), kind = String(t.targetKind || '').toLowerCase();
-const issue = surface === 'issuesnapshots' || mode.includes('issue-snapshot') || /^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|discussions)\/\d+/i.test(String(raw || ''));
-if (!issue) return canonicalizeSourcePath(input.path || input.name || '', source);
-if(snap.embedded||/embedded-artifact|lineage-parent/.test(kind)||mode.includes('embedded-artifact'))return canonicalizeSourcePath(t.sourceArtifactPath||snap.sourceArtifactPath||input.path||input.name||'',{});
-return canonicalizeExternalSourceTarget(raw, { preserveHash: kind.includes('comment') || /issuecomment-|discussioncomment-/i.test(String(raw || '')) });
-}
-function canonicalizeExternalSourceTarget(value = '', options = {}) {
-const raw = String(value || '').trim(); if (!raw) return '';
-try {
-const u = new URL(raw), h = String(u.hostname || '').toLowerCase(), path = u.pathname.replace(/\/+$/g, ''), hash = options.preserveHash ? String(u.hash || '') : '';
-return `${(h === 'github.com' || h.endsWith('.github.com')) ? 'https://github.com' : u.origin}${path}${hash}`;
-} catch (_) {
-const clean = raw.replace(/\?utm_[^#]*/g, '').replace(/\/+$/g, '');
-return options.preserveHash ? clean : clean.replace(/#.*$/g, '');
-}
-}
-function canonicalizeSourcePath(inputPath, source = {}) {
-let p = String(inputPath || '').trim(); if (!p) return '';
+function normalizeWorkspaceName(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,WORKSPACE_NAME_MAX_LENGTH);}
+function normalizeRecordTitle(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,RECORD_TITLE_MAX_LENGTH);}
+function normalizeRecordSummary(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,RECORD_SUMMARY_MAX_LENGTH);}
+function canonicalizeSourceRecordPath(input={},source={}){const t=input.sourceTarget||{},s=input.snapshot||{},raw=t.inputTarget||t.url||s.sourceUrl||s.target?.canonicalUrl||input.recoveredFromUrl||input.path||input.name||'',surface=String(t.surface||'').toLowerCase(),mode=String(input.sourceMode||'').toLowerCase(),kind=String(t.targetKind||'').toLowerCase(),issue=surface==='issuesnapshots'||mode.includes('issue-snapshot')||mode.includes('github-issue')||mode.includes('github-comment')||/^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|discussions|pull)\/\d+/i.test(String(raw||input.path||''));if(!issue)return canonicalizeSourcePath(input.path||input.name||'',source);const p=issuePath(input);if(s.embedded||/embedded-artifact|lineage-parent/.test(kind)||mode.includes('embedded-artifact'))return canonicalizeSourcePath(t.sourceArtifactPath||s.sourceArtifactPath||p||input.path||input.name||'',{});return p?canonicalizeSourcePath(p,{}):canonicalizeExternalSourceTarget(raw,{preserveHash:kind.includes('comment')||/issuecomment-|discussioncomment-/i.test(String(raw||''))});}
+function canonicalizeExternalSourceTarget(value='',options={}){const raw=String(value||'').trim();if(!raw)return'';try{const u=new URL(raw),h=String(u.hostname||'').toLowerCase(),path=u.pathname.replace(/\/+$/g,''),hash=options.preserveHash?String(u.hash||''):'';return`${(h==='github.com'||h.endsWith('.github.com'))?'https://github.com':u.origin}${path}${hash}`;}catch(_){const clean=raw.replace(/\?utm_[^#]*/g,'').replace(/\/+$/g,'');return options.preserveHash?clean:clean.replace(/#.*$/g,'');}}
+function canonicalizeSourcePath(inputPath,source={}){
+let p=String(inputPath||'').trim();if(!p)return'';
 try {
 const u = new URL(p), h = String(u.hostname || '').toLowerCase(), parts = u.pathname.split('/').filter(Boolean), bi = parts.indexOf('blob');
 p = h === 'raw.githubusercontent.com' ? (parts.length >= 4 ? parts.slice(3).join('/') : parts.join('/')) : h.endsWith('github.com') ? ((bi >= 0 && parts.length > bi + 2) ? parts.slice(bi + 2).join('/') : parts.join('/')) : u.pathname.replace(/^\/+/, '');
@@ -52,7 +24,7 @@ if (root && p && !p.startsWith(root + '/') && p !== root) p = root + '/' + p; el
 }
 return p.replace(/\/+$/, '');
 }
-function makeWorkspaceId(name, createdAt) {
+function makeWorkspaceId(name,createdAt){
 const slug = normalizeWorkspaceName(name)
 .toLowerCase()
 .replace(/[^a-z0-9]+/g, '-')
@@ -60,7 +32,7 @@ const slug = normalizeWorkspaceName(name)
 const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
 return `local-${slug}-${stamp}`;
 }
-function canonicalizeLocalPath(inputPath) {
+function canonicalizeLocalPath(inputPath){
 let p = String(inputPath || '').trim();
 if (!p) return '';
 p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
@@ -75,12 +47,12 @@ out.push(part);
 }
 return out.join('/');
 }
-function makeLocalRecordId(workspaceId, path) {
+function makeLocalRecordId(workspaceId,path){
 const canonicalPath = canonicalizeLocalPath(path);
 if (!canonicalPath) return '';
 return `local:${workspaceId || 'workspace'}:${canonicalPath}`;
 }
-function makeRecordId(workspaceId, title, createdAt) {
+function makeRecordId(workspaceId,title,createdAt){
 const slug = normalizeRecordTitle(title)
 .toLowerCase()
 .replace(/[^a-z0-9]+/g, '-')
@@ -98,7 +70,7 @@ workspaces: [],
 audit: null
 };
 }
-function createWorkspace(state, input = {}, options = {}) {
+function createWorkspace(state,input={},options={}){
 const name = normalizeWorkspaceName(input.name);
 if (!name) return { ok: false, error: 'workspace.name.required', state };
 const createdAt = nowIso(options.clock), id = input.id || makeWorkspaceId(name, createdAt);
@@ -109,7 +81,7 @@ next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, workspace, state: next };
 }
-function addWorkspaceRecord(state, workspaceId, input = {}, options = {}) {
+function addWorkspaceRecord(state,workspaceId,input={},options={}){
 const title = normalizeRecordTitle(input.title || input.name);
 if (!title) return { ok: false, error: 'record.title.required', state };
 const next = cloneState(state);
@@ -148,7 +120,7 @@ next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, record, workspace, state: next };
 }
-function addWorkspaceRecords(state, workspaceId, inputs = [], options = {}) {
+function addWorkspaceRecords(state,workspaceId,inputs=[],options={}){
 const records = Array.isArray(inputs) ? inputs : [];
 let next = cloneState(state);
 const added = [];

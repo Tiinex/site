@@ -242,5 +242,23 @@ assert.equal(commentRecovered.length, 2, 'both embedded comment payloads should 
 assert.notEqual(commentRecovered[0].path, commentRecovered[1].path, 'comment recovered artifacts must not share one material path');
 assert(commentRecovered.every((record) => record.sourceTarget.sourceArtifactPath && record.sourceTarget.sourceArtifactPath === record.path), 'embedded source target must expose the material path used for lifecycle identity');
 assert(commentRecovered.every((record) => /#issuecomment-500[12]$/.test(record.sourceTarget.inputTarget)), 'comment embedded records must keep comment URL anchors as provenance');
+assert(commentRecovered.some((record) => /recovered-comment-one\.trace\.md$/.test(record.path)), 'comment recovered material path should use the embedded artifact title, not the envelope heading');
+assert(commentRecovered.some((record) => /recovered-comment-two\.trace\.md$/.test(record.path)), 'each comment recovered material path should remain title-addressable for issue-local lineage aliases');
+
+
+const syntheticIssuePaths = createGithubIssueSnapshotRecords({
+  target: parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/issues/9'),
+  title: 'Welcome to the Next Dimension',
+  state: 'open',
+  user: { login: 'q' },
+  body: 'Plain issue body',
+  comments: [{
+    id: 4881782365,
+    html_url: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365',
+    body: ['## Source Markdown', '', '```md', commentEmbeddedOne.replace('# Comment One', '# Silicon Valley'), '```'].join('\n')
+  }]
+});
+assert(syntheticIssuePaths.every((record) => String(record.path || '').startsWith('.topics/.issues/github/tiinex-docs/9/')), 'issue/comment material without an explicit Source Path should live under the logical .topics/.issues scope');
+assert(syntheticIssuePaths.some((record) => /comment-001-4881782365-recovered-silicon-valley\.trace\.md$/.test(record.path)), 'comment recovered artifacts should preserve comment id and title under the logical issue scope');
 
 console.log('github.issueSnapshot: ok');

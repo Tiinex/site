@@ -1,14 +1,8 @@
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
-
-const sandbox = { window: {}, globalThis: {} };
-sandbox.globalThis = sandbox.window;
-vm.createContext(sandbox);
-vm.runInContext(readFileSync(new URL('../sources/source.identity.js', import.meta.url), 'utf8'), sandbox);
-vm.runInContext(readFileSync(new URL('./workspace.lifecycle.js', import.meta.url), 'utf8'), sandbox);
-vm.runInContext(readFileSync(new URL('./workspace.route.js', import.meta.url), 'utf8'), sandbox);
-const lifecycle = sandbox.window.TiinexWorkspaceLifecycle;
-const route = sandbox.window.TiinexWorkspaceRoute;
+await import('../sources/source.identity.js');
+await import('./workspace.lifecycle.js');
+await import('./workspace.route.js');
+const lifecycle = globalThis.TiinexWorkspaceLifecycle;
+const route = globalThis.TiinexWorkspaceRoute;
 
 const created = lifecycle.createWorkspace(lifecycle.makeEmptyAppState(), { name: 'Route Test' }, { clock: () => '2026-07-19T22:00:00.000Z' }).state;
 created.view.workspaceVerse = 'audit';

@@ -133,4 +133,36 @@ const CHILD_WITH_LABELLED_PARENT_ORIGIN = `# Continuity Context
 const labelledOriginChild = parseArtifactMarkdown(CHILD_WITH_LABELLED_PARENT_ORIGIN);
 assert.equal(labelledOriginChild.envelope.parent.origin, '001.trace.md', 'labelled nested Parent Origin should expose the value, not the label prefix');
 
+
+const INTEGRITY_WITH_TOWARDS = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Parent
+  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Trace: [001.trace.md](001.trace.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Summary: Integrity entries
+
+---
+
+# Integrity Entries
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](validator.md)
+  - Towards: [001.trace.md](001.trace.md)
+  - Value: parent-hash
+
+- [sha256-base64url-c14n-v2](validator.md)
+  - Towards: self
+  - Value: self-hash
+`;
+const integrityEntries = parseArtifactMarkdown(INTEGRITY_WITH_TOWARDS).integrity.entries;
+assert.equal(integrityEntries.length, 2, 'integrity parser should expose structured entries');
+assert.equal(integrityEntries[0].towards, '001.trace.md', 'integrity Towards should prefer link target');
+assert.equal(integrityEntries[0].value, 'parent-hash', 'integrity parent Value should parse');
+assert.equal(integrityEntries[1].towards, 'self', 'integrity self Towards should parse');
+assert.equal(integrityEntries[1].value, 'self-hash', 'integrity self Value should parse');
+
 console.log('✓ artifact parser Parent-block regression guards passed');

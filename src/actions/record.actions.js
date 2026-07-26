@@ -29,7 +29,7 @@ export function presentRecordActions(record = {}, options = {}) {
     {
       id: RecordActionKind.markdown,
       label: 'Show markdown',
-      icon: 'open',
+      icon: 'markdown',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
       capabilityStatus: 'implemented'
@@ -62,7 +62,7 @@ export function presentRecordActions(record = {}, options = {}) {
   if (sourceHref) {
     actions.push({
       id: RecordActionKind.source,
-      label: 'Source',
+      label: 'Open source',
       icon: 'source',
       enabled: true,
       href: sourceHref,
@@ -113,13 +113,73 @@ function recordSchemaId(record = {}) {
 export function sourceHrefForRecord(record = {}) {
   const source = record.source || {};
   const adapterId = String(source.adapterId || '').trim();
+  if (adapterId !== 'github') return '';
+  const sourceUrl = firstGithubBrowseHref(
+    record.sourceTarget?.browseUrl,
+    record.sourceTarget?.sourceUrl,
+    record.sourceTarget?.rawUrl,
+    record.snapshot?.sourceUrl,
+    record.snapshot?.rawUrl,
+    record.snapshot?.target?.canonicalUrl,
+    record.recoveredFromUrl,
+    record.browseUrl,
+    record.sourceUrl,
+    record.rawUrl
+  );
+  if (sourceUrl) return sourceUrl;
+  const socialHref = firstGithubSocialHref(record.sourceTarget?.inputTarget, record.snapshot?.target?.canonicalUrl);
+  if (socialHref) return socialHref;
   const repo = String(source.repo || source.config?.repo || '').trim();
-  const ref = String(source.ref || source.config?.ref || source.resolvedRef || source.commit || '').trim();
-  const path = String(record.path || '').trim();
-  if (adapterId !== 'github' || !repo || !ref || !path) return '';
-  const cleanPath = path.replace(/^\/+/, '');
-  if (!cleanPath) return '';
+  const ref = String(source.ref || source.config?.ref || source.resolvedRef || source.commit || record.sourceTarget?.ref || record.snapshot?.target?.ref || '').trim();
+  const path = firstNonEmpty(record.sourceTarget?.sourceArtifactPath, record.snapshot?.sourceArtifactPath, record.sourcePath, record.path);
+  if (!repo || !ref || !path) return '';
+  const cleanPath = githubRepoPathFromUrl(path) || String(path || '').trim().replace(/^\/+/, '');
+  if (!cleanPath || isGithubSocialUrl(path) || isSyntheticIssuePath(cleanPath)) return '';
   return `https://github.com/${repo}/blob/${ref}/${cleanPath}`;
+}
+
+function firstNonEmpty(...items) { return items.map((item) => String(item || '').trim()).find(Boolean) || ''; }
+function firstGithubBrowseHref(...items) {
+  for (const item of items) {
+    const href = githubBrowseHrefFromUrl(item);
+    if (href) return href;
+  }
+  return '';
+}
+function firstGithubSocialHref(...items) { return items.map((item) => String(item || '').trim()).find(isGithubSocialUrl) || ''; }
+function isGithubSocialUrl(value = '') {
+  try {
+    const url = new URL(String(value || '').trim());
+    const parts = url.pathname.split('/').filter(Boolean);
+    return (url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) && parts.length >= 4 && (parts[2] === 'issues' || parts[2] === 'discussions' || parts[2] === 'pull');
+  } catch (_) { return false; }
+}
+function githubBrowseHrefFromUrl(value = '') {
+  const raw = String(value || '').trim();
+  if (!/^https:\/\//i.test(raw)) return '';
+  try {
+    const url = new URL(raw);
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (isGithubSocialUrl(raw)) return raw;
+    if ((url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) && parts.length >= 5 && parts[2] === 'blob') return raw;
+    if (url.hostname === 'raw.githubusercontent.com' && parts.length >= 4) {
+      const [owner, repo, ref, ...pathParts] = parts;
+      if (owner && repo && ref && pathParts.length) return `https://github.com/${owner}/${repo}/blob/${ref}/${pathParts.join('/')}`;
+    }
+  } catch (_) {}
+  return raw;
+}
+function githubRepoPathFromUrl(value = '') {
+  try {
+    const url = new URL(String(value || '').trim());
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (url.hostname === 'raw.githubusercontent.com' && parts.length >= 4) return parts.slice(3).join('/');
+    if ((url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) && parts.length >= 5 && parts[2] === 'blob') return parts.slice(4).join('/');
+  } catch (_) {}
+  return '';
+}
+function isSyntheticIssuePath(value = '') {
+  return String(value || '').replace(/^\/+/, '').startsWith('.topics/.issues/');
 }
 
 export function actionIsRenderable(action = {}) {

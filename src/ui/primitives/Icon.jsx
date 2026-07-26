@@ -11,6 +11,7 @@ import {
   faCodeBranch,
   faCompass,
   faFileArrowUp,
+  faFileCode,
   faFolder,
   faFolderOpen,
   faFolderPlus,
@@ -24,6 +25,7 @@ import {
   faShareNodes,
   faSitemap,
   faTriangleExclamation,
+  faUpRightFromSquare,
   faXmark
 } from '@fortawesome/free-solid-svg-icons';
 import { faCircle, faFileLines } from '@fortawesome/free-regular-svg-icons';
@@ -50,6 +52,7 @@ const ICONS = {
   home: faHouse,
   lineage: faCodeBranch,
   local: faFolder,
+  markdown: faFileCode,
   manualFiles: faFileLines,
   multiverse: faCompass,
   next: faArrowRight,
@@ -60,7 +63,7 @@ const ICONS = {
   search: faMagnifyingGlass,
   share: faShareNodes,
   shareNodes: faShareNodes,
-  source: faLink,
+  source: faUpRightFromSquare,
   tree: faSitemap,
   upload: faArrowUpFromBracket,
   warning: faTriangleExclamation,

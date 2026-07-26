@@ -20,6 +20,8 @@ export function issueLocalPathMatches(target = '', index = {}, declaringNode = n
   const targetPath = canonicalPath(target);
   if (!targetPath) return [];
   const keys = [issueLocalKey(issue, targetPath), issueLocalKey(issue, basename(targetPath))].filter(Boolean);
+  const commentId = githubIssueCommentIdFromValue(target);
+  if (commentId) keys.push(issueLocalKey(issue, `comment-id-${commentId}`));
   const out = [];
   for (const key of keys) out.push(...(index.byIssueLocalPath?.get(key) || []));
   return uniqueNodes(out);
@@ -45,6 +47,17 @@ function issueLocalAliasesForNode(node = {}) {
     add(`issue-root-recovered-${slug}.trace.md`);
     add(`issue-root-recovered-${slug}.workspace.md`);
   }
+  const commentId = githubIssueCommentIdFromValue(recovered || node.path || record.path || sourceTarget.inputTarget || record.snapshot?.sourceUrl || '');
+  if (commentId) {
+    add(`comment-id-${commentId}`);
+    if (title) {
+      const slug = slugPart(title).slice(0, 52) || 'artifact';
+      add(`comment-${commentId}-recovered-${slug}.trace.md`);
+      add(`comment-${commentId}-recovered-${slug}.workspace.md`);
+      add(`issuecomment-${commentId}-recovered-${slug}.trace.md`);
+      add(`issuecomment-${commentId}-recovered-${slug}.workspace.md`);
+    }
+  }
   return aliases;
 }
 
@@ -60,6 +73,18 @@ function githubIssueContextForNode(node = {}) {
   }
   if (target.repository && target.number) return { repo: target.repository, number: target.number };
   return null;
+}
+
+function githubIssueCommentIdFromValue(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const direct = raw.match(/(?:issuecomment-|issues\/comments\/|comment-(?:\d+-)?)(\d{4,})/i)?.[1] || '';
+  if (direct) return direct;
+  try {
+    const url = new URL(raw);
+    return url.hash.match(/issuecomment-(\d+)/i)?.[1] || '';
+  } catch (_) {}
+  return '';
 }
 
 function githubIssueContextFromValue(value = '') {
@@ -81,6 +106,13 @@ function githubIssueContextFromValue(value = '') {
     }
   } catch (error) {}
   const pathParts = canonicalPath(raw).split('/').filter(Boolean);
+  const dotIssuesIndex = pathParts.findIndex((part) => part.toLowerCase() === '.issues');
+  if (dotIssuesIndex >= 0 && pathParts[dotIssuesIndex + 1]?.toLowerCase() === 'github') {
+    const repoToken = String(pathParts[dotIssuesIndex + 2] || '').trim();
+    const number = String(pathParts[dotIssuesIndex + 3] || '').trim();
+    const repo = normalizeSyntheticRepoToken(repoToken);
+    if (repo && /^\d+$/.test(number)) return { repo, number };
+  }
   const issueIndex = pathParts.findIndex((part) => part.toLowerCase() === 'issues');
   if (issueIndex >= 2 && pathParts.length > issueIndex + 1) {
     const repo = normalizeRepoKey(`${pathParts[issueIndex - 2]}/${pathParts[issueIndex - 1]}`);
@@ -99,6 +131,14 @@ function issueLocalKey(issue = {}, path = '') {
 function basename(path = '') { return canonicalPath(path).split('/').filter(Boolean).pop() || ''; }
 function uniqueNodes(nodes = []) { const seen = new Set(); const out = []; for (const node of Array.isArray(nodes) ? nodes : []) { const key = node?.id || node?.path || JSON.stringify(node || {}); if (!key || seen.has(key)) continue; seen.add(key); out.push(node); } return out; }
 function normalizeRepoKey(value = '') { const parts = String(value || '').trim().toLowerCase().split('/').filter(Boolean); return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : ''; }
+function normalizeSyntheticRepoToken(value = '') {
+  const token = String(value || '').trim().toLowerCase();
+  const parts = token.split('-').filter(Boolean);
+  if (parts.length < 2) return '';
+  const owner = parts.shift();
+  const repo = parts.join('-');
+  return owner && repo ? `${owner}/${repo}` : '';
+}
 function canonicalPath(value = '') {
   let raw = String(value || '').trim();
   if (!raw) return '';

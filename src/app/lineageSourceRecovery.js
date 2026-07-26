@@ -1,6 +1,7 @@
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
+import { lineageBasePathForRecord } from '../lineage/lineage.pathBasis.js';
 
 const GITHUB_ADAPTER_ID = 'github';
 
@@ -62,7 +63,7 @@ export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {
   const raw = String(target || '').trim();
   if (!raw || /^record:/i.test(raw)) return '';
   if (isGitHubSocialTarget(raw)) return '';
-  const declaredParent = declaredParentFileRef(declaringRecord);
+  const declaredParent = declaredParentFileRef(declaringRecord, raw);
   if (declaredParent) return declaredParent;
   const urlPath = githubRepoRelativePathFromUrl(raw);
   if (urlPath) return urlPath;
@@ -70,7 +71,7 @@ export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {
   const cleanTarget = canonicalRepoPath(raw);
   if (!cleanTarget) return '';
   if (isDotRelative(raw) || isSimpleRelative(raw)) {
-    const declaringPath = firstNonEmpty(declaringRecord?.sourceTarget?.sourceArtifactPath, declaringRecord?.snapshot?.sourceArtifactPath, declaringRecord?.sourcePath, declaringRecord?.path);
+    const declaringPath = lineageBasePathForRecord(declaringRecord);
     const dir = dirname(githubRepoRelativePathFromUrl(declaringPath) || declaringPath);
     return canonicalRepoPath(dir ? `${dir}/${raw}` : cleanTarget);
   }
@@ -78,21 +79,53 @@ export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {
 }
 
 
-function declaredParentFileRef(record = {}) {
-  const parent = firstNonEmpty(record?.sourceTarget?.parentRawUrl, record?.sourceTarget?.parentSourceUrl, record?.snapshot?.parentRawUrl, record?.snapshot?.parentSourceUrl, record?.sourceTarget?.parentArtifactPath, record?.snapshot?.parentArtifactPath);
+
+function declaredParentFileRef(record = {}, target = '') {
+  const explicitParent = firstNonEmpty(record?.sourceTarget?.parentRawUrl, record?.sourceTarget?.parentSourceUrl, record?.snapshot?.parentRawUrl, record?.snapshot?.parentSourceUrl, record?.sourceTarget?.parentArtifactPath, record?.snapshot?.parentArtifactPath);
+  const explicit = recoverableParentFileRef(explicitParent, target, { allowRelative: isSyntheticPublicationRecord(record) });
+  if (explicit) return explicit;
+  const origin = recoverableParentFileRef(record?.origin || record?.parentOrigin || '', target, { allowRelative: false });
+  if (origin) return origin;
+  return '';
+}
+function recoverableParentFileRef(parent = '', target = '', options = {}) {
   if (!parent || isGitHubSocialTarget(parent)) return '';
   const fromUrl = githubRepoRelativePathFromUrl(parent);
-  if (fromUrl) return fromUrl;
+  if (fromUrl && originMatchesTarget(fromUrl, target)) return fromUrl;
   if (isUrlLike(parent)) return '';
   const clean = canonicalRepoPath(parent);
-  if (!clean || !isRecoverableRepoPathCandidate(parent, clean)) return '';
+  if (!clean || !isRecoverableRepoPathCandidate(parent, clean, options) || !originMatchesTarget(clean, target)) return '';
   return clean;
 }
-function isRecoverableRepoPathCandidate(raw = '', clean = '') {
+function originMatchesTarget(originPath = '', target = '') {
+  const origin = canonicalRepoPath(originPath);
+  const cleanTarget = canonicalRepoPath(target);
+  if (!origin) return false;
+  if (!cleanTarget) return true;
+  if (origin === cleanTarget || origin.endsWith('/' + cleanTarget)) return true;
+  const originBase = basename(origin);
+  const targetBase = basename(cleanTarget);
+  return Boolean(originBase && targetBase && originBase === targetBase);
+}
+function isRecoverableRepoPathCandidate(raw = '', clean = '', options = {}) {
   const text = String(raw || '').trim().replace(/\\/g, '/');
-  if (/^\.\.?\//.test(text)) return true;
   if (/^\.topics(?:\/|$)/.test(clean)) return true;
-  return clean.includes('/');
+  if (options.allowRelative && /^\.\.?\//.test(text)) return true;
+  if (options.allowRelative && clean.includes('/')) return true;
+  return false;
+}
+function isSyntheticPublicationRecord(record = {}) {
+  const mode = String(record.sourceMode || record.recoveryKind || '').toLowerCase();
+  const targetKind = String(record.sourceTarget?.targetKind || record.snapshot?.sourceKind || '').toLowerCase();
+  const path = canonicalRepoPath(record.path || '');
+  return Boolean(
+    mode.includes('github-issue') ||
+    mode.includes('github-comment') ||
+    targetKind.includes('github-issue') ||
+    targetKind.includes('github-comment') ||
+    path.includes('/.issues/') ||
+    path.includes('/.github/.issues/')
+  );
 }
 function isGithubSource(source = {}) {
   const adapter = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();

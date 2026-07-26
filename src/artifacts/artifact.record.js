@@ -28,6 +28,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     sourceMode: meta.sourceMode || 'local-manual',
     hasContinuityContext: parsed.hasContinuityContext,
     hasIntegrity: parsed.hasIntegrity,
+    integrity: parsed.integrity || { methods: [], values: [], entries: [], text: '' },
     parentSchemaId: parent.schema?.id || '',
     parentCreatedAt: parent.createdAt || '',
     trace: parent.trace || '',

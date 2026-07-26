@@ -9,6 +9,10 @@ export const LineageEdgeKind = Object.freeze({
 export const LineageResolutionStatus = Object.freeze({
   root: 'root',
   resolved: 'resolved',
+  verified: 'verified',
+  probable: 'probable',
+  mismatch: 'mismatch',
+  ambiguous: 'ambiguous',
   missing: 'missing',
   degraded: 'degraded'
 });

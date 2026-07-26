@@ -36,4 +36,36 @@ assert.equal(artifacts.items[0].type, 'record');
 const workspaces = tree.folders.find((folder) => folder.name === '.workspaces');
 assert.equal(workspaces.items[0].type, 'workspace');
 
+
+const issueTree = buildWorkspacePathTree({
+  records: [{
+    id: 'issue-record',
+    title: 'Issue snapshot',
+    path: 'https://github.com/Tiinex/docs/issues/9',
+    sourceMode: 'github-issue-snapshot',
+    source: { adapterId: 'github', repo: 'Tiinex/docs' },
+    sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9' }
+  }, {
+    id: 'legacy-comment',
+    title: 'Legacy comment',
+    path: '.topics/.github/.issues/tiinex-docs-issue-9/comment-001-4881780075-recovered-legacy.trace.md',
+    sourceMode: 'github-comment-embedded-artifact',
+    source: { adapterId: 'github', repo: 'Tiinex/docs' },
+    sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075' }
+  }]
+});
+const topicsFolder = issueTree.folders.find((folder) => folder.name === '.topics');
+assert(topicsFolder, 'issue records should display under .topics');
+const issuesFolder = topicsFolder.folders.find((folder) => folder.name === '.issues');
+assert(issuesFolder, 'issue records should use logical .topics/.issues scope');
+assert(!topicsFolder.folders.some((folder) => folder.name === '.github'), 'legacy .topics/.github issue paths should not leak into the display tree');
+const issueLeafPaths = [];
+function collectItemPaths(folder) {
+  for (const item of folder.items || []) issueLeafPaths.push(item.path);
+  for (const child of folder.folders || []) collectItemPaths(child);
+}
+collectItemPaths(issuesFolder);
+assert(issueLeafPaths.includes('.topics/.issues/github/tiinex-docs/9/issue-snapshot.trace.md'), 'GitHub issue URL records should get a logical display path');
+assert(issueLeafPaths.includes('.topics/.issues/github/tiinex-docs/9/comment-001-4881780075-recovered-legacy.trace.md'), 'legacy issue paths should normalize to the logical issue scope');
+
 console.log('✓ workspace.pathTree tests passed');

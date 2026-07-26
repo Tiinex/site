@@ -81,7 +81,7 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   // v232: continuation defaults preserve the user's/source's selected surfaces across F5/hash restore.
   // Incomplete-state still belongs in the receipt summary; it must not silently uncheck issue discovery.
   const [repoDiscovery, setRepoDiscovery] = useState(continuation ? repoRequested : true);
-  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : false);
+  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : true);
   const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '');
   const [fileRefs, setFileRefs] = useState('');
   const [error, setError] = useState('');

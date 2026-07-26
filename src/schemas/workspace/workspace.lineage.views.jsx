@@ -216,6 +216,7 @@ function lineageTerminalLabel(terminalState = '', fallback = '') {
   if (state === 'no-parent-declared') return 'no parent declared';
   if (state === 'target-unavailable') return 'target unavailable';
   if (state === 'ambiguous-parent') return 'ambiguous parent';
+  if (state === 'integrity-mismatch') return 'integrity mismatch';
   if (state === 'depth-limited') return 'partial lineage · depth limit';
   if (state === 'not-exhausted') return 'partial lineage';
   if (state === 'not-loaded') return 'lineage not loaded';

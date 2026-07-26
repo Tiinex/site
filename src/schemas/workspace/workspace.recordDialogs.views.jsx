@@ -6,10 +6,11 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { createRecordActionResult, RecordActionKind } from '../../actions/record.actions.js';
 import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
 import { SchemaReadView } from './workspace.read.views.jsx';
-import { recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
+import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
 
 export function RecordDetailDialog({ record, onDismiss, onShare }) {
   const source = record?.source || {};
+  const displayPath = recordDisplayPath(record || {});
   const isSourceBacked = Boolean(source.adapterId && source.adapterId !== 'local');
   return (
     <Modal title={record?.title || 'Artifact'} onDismiss={onDismiss} className="tx-dialog-record-detail">
@@ -25,7 +26,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
           <summary>Provenance / envelope</summary>
           <dl className="tx-record-meta">
             <div><dt>Boundary</dt><dd>{isSourceBacked ? (source.boundary || 'Explicit source boundary') : 'Browser-local session material; no GitHub provenance inferred.'}</dd></div>
-            {record?.path ? <div><dt>Path</dt><dd>{record.path}</dd></div> : null}
+            {displayPath ? <div><dt>Path</dt><dd>{displayPath}</dd></div> : null}
             {source.label ? <div><dt>Source</dt><dd>{source.label}</dd></div> : null}
             {source.adapterId ? <div><dt>Adapter</dt><dd>{source.adapterId} · {source.sourceKind || source.kind || 'source'}</dd></div> : null}
             {record?.envelopeSchemaId ? <div><dt>Envelope</dt><dd>{record.envelopeSchemaId}</dd></div> : null}
@@ -53,7 +54,7 @@ export function RecordMarkdownDialog({ record, onDismiss }) {
       <div className="tx-record-detail">
         <div className="tx-card-badges">
           <Badge>{record?.kind || 'artifact'}</Badge>
-          <Badge>{record?.path || 'no path'}</Badge>
+          <Badge>{recordDisplayPath(record || {}) || 'no path'}</Badge>
         </div>
         {record?.markdown ? <pre className="tx-record-markdown-preview tx-full-markdown-preview">{String(record.markdown)}</pre> : <p className="tx-muted">Markdown is not available in this route/session shell. Source boundary and path are preserved.</p>}
         <div className="tx-dialog-actions">
