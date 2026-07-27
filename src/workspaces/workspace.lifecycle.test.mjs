@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
+import { stateWithSourceMaterialCleared } from './workspace.sourceMaterial.js';
 
 // Load the lifecycle to attach to globalThis
 await import('../sources/source.identity.js');
@@ -25,6 +26,12 @@ try {
   const create = lifecycle.createWorkspace(base, { name: 'Test' });
   if (!create?.ok) fail('createWorkspace failed');
   const ws = create.workspace;
+  const renamed = lifecycle.renameWorkspace(create.state, ws.id, 'Renamed Test');
+  if (!renamed?.ok) fail('renameWorkspace failed');
+  if (renamed.workspace.id !== ws.id) fail('renameWorkspace must preserve stable workspace id');
+  if (renamed.workspace.title !== 'Renamed Test' || renamed.workspace.name !== 'Renamed Test') fail('renameWorkspace must update visible workspace title/name');
+  const blankRename = lifecycle.renameWorkspace(renamed.state, ws.id, '   ');
+  if (blankRename?.ok || blankRename?.error !== 'workspace.name.required') fail('renameWorkspace must reject empty names');
   const addLocal = lifecycle.addWorkspaceRecords(create.state, ws.id, [rec]);
   if (!addLocal?.ok) fail('addWorkspaceRecords failed');
   const added = addLocal.records[0];
@@ -113,6 +120,33 @@ try {
   if (!closedWorkspace.workspaceMergeCandidates.some((candidate) => candidate.source?.id === 'local')) fail('closeWorkspaceSource must preserve local workspace candidates');
   if (closedWorkspace.discoveryProgress) fail('closed source must clear in-flight discovery progress');
   if (closeSourceRes.state.view.selectedRecordId) fail('closeWorkspaceSource must clear a dangling selected source record');
+
+  const clearSourceState = JSON.parse(JSON.stringify(addSrcRes.state));
+  clearSourceState.view = Object.assign({}, clearSourceState.view || {}, { workspaceVerse: 'lineage', selectedRecordId: inserted.id });
+  const clearWorkspace = clearSourceState.workspaces.find((item) => item.id === ws.id);
+  clearWorkspace.assets = [{ id: 'source-asset-2', path: 'source-2.png', source: { id: sourceId } }, { id: 'local-asset-2', path: 'local-2.png', source: { id: 'local' } }];
+  const clearMaterialRes = stateWithSourceMaterialCleared(clearSourceState, ws.id, sourceId, { discoveryState: 'deferred' });
+  if (!clearMaterialRes?.ok) fail('clearWorkspaceSourceMaterial failed');
+  const clearedMaterialWorkspace = lifecycle.activeWorkspace(clearMaterialRes.state);
+  if (!clearedMaterialWorkspace.sources.some((s) => s.id === sourceId)) fail('clearing material must keep the configured source boundary pinned');
+  if (clearedMaterialWorkspace.records.some((r) => r.source?.id === sourceId)) fail('clearing material must remove source-backed records');
+  if (clearedMaterialWorkspace.assets.some((asset) => asset.source?.id === sourceId)) fail('clearing material must remove source-backed assets');
+  if (!clearedMaterialWorkspace.assets.some((asset) => asset.source?.id === 'local')) fail('clearing material must preserve local assets');
+  if (clearMaterialRes.state.view.workspaceVerse !== 'lineage') fail('clearing material during transport refresh must not reset the workspace verse');
+  if (clearMaterialRes.state.view.selectedRecordId) fail('clearing material must clear a dangling selected source record');
+  if (Number(clearedMaterialWorkspace.sources.find((s) => s.id === sourceId)?.count ?? -1) !== 0) fail('cleared source boundary count must reset to zero');
+
+
+  const surfaceClearState = JSON.parse(JSON.stringify(addSource.state));
+  const repoSurfaceRec = Object.assign(createRecordFromMarkdown('# Repo file\n\nbody', { path: '.topics/repo.md', name: 'repo.md', sourceMode: 'source' }), { sourceTarget: { surface: 'repoFiles', transportTier: 'mirror' } });
+  const issueSurfaceRec = Object.assign(createRecordFromMarkdown('# Issue\n\nbody', { path: '.topics/.issues/1.md', name: '1.md', sourceMode: 'source' }), { sourceTarget: { surface: 'issueSnapshots', transportTier: 'proxy' } });
+  let surfaceState = lifecycle.addWorkspaceSourceRecords(surfaceClearState, ws.id, sourceId, [repoSurfaceRec, issueSurfaceRec]).state;
+  const surfaceClearRes = stateWithSourceMaterialCleared(surfaceState, ws.id, sourceId, { discoveryState: 'loading', surfaces: ['issueSnapshots'] });
+  if (!surfaceClearRes?.ok) fail('surface-scoped clear failed');
+  const surfaceClearedWorkspace = lifecycle.activeWorkspace(surfaceClearRes.state);
+  if (!surfaceClearedWorkspace.records.some((r) => r.source?.id === sourceId && r.sourceTarget?.surface === 'repoFiles')) fail('surface-scoped clear must preserve other surface records');
+  if (surfaceClearedWorkspace.records.some((r) => r.source?.id === sourceId && r.sourceTarget?.surface === 'issueSnapshots')) fail('surface-scoped clear must remove selected surface records');
+  if (Number(surfaceClearedWorkspace.sources.find((s) => s.id === sourceId)?.count ?? -1) !== 1) fail('surface-scoped clear must keep source count for preserved records');
 
   // 4) Unknown sourceId should fail
   const bad = lifecycle.addWorkspaceSourceRecords(addSrcRes.state, ws.id, 'nope', [srcRec]);

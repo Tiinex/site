@@ -1,4 +1,5 @@
 import { createGithubIssueSnapshotRecords, githubIssueFetchWarning, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { readGithubSourceCacheEntry, writeGithubSourceCacheEntry, makeGithubSourceCacheResponse } from '../../sources/github/github.transport.js';
 
 export async function discoverGithubIssueSnapshotTargetsViaHostedMirror(source = {}, options = {}) {
   const repo = String(source.repo || source.repository || '').replace(/^\/+|\/+$/g, '');
@@ -30,6 +31,7 @@ export async function discoverGithubIssueSnapshotTargetsViaHostedMirror(source =
 }
 
 export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOrTargets = '', options = {}) {
+  const surfaceTransportTier = String(options.transportTier || 'mirror').trim() || 'mirror';
   const parsed = Array.isArray(issueUrlsOrTargets)
     ? { targets: issueUrlsOrTargets, errors: [], counts: { targets: issueUrlsOrTargets.length, errors: 0 } }
     : parseGithubIssueSnapshotTargets(issueUrlsOrTargets);
@@ -64,19 +66,19 @@ export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOr
           surface: 'issueSnapshots',
           targetKind: record.snapshot?.embedded ? `github-${normalized.kind}-embedded-artifact` : `github-${normalized.kind}-snapshot`,
           inputTarget: record.snapshot?.sourceUrl || normalized.canonicalUrl,
-          transportTier: 'mirror',
+          transportTier: surfaceTransportTier,
           loaded: true
         }, record.sourceTarget || {});
         records.push(record);
       }
-      targetResults.push(issueTargetResult(normalized, { status: 'loaded', records: issueRecords.length, transportTier: 'mirror' }));
+      targetResults.push(issueTargetResult(normalized, { status: 'loaded', records: issueRecords.length, transportTier: surfaceTransportTier }));
     } catch (error) {
       const warning = githubIssueFetchWarning(error, 'github.issue.mirror.fetch-failed', `Hosted issue mirror could not fetch ${normalized.canonicalUrl}; snapshot remains unavailable.`, { url: normalized.canonicalUrl });
       warnings.push(warning);
       targetResults.push(issueTargetResult(normalized, { status: 'failed', warningCode: warning.code, message: warning.message }));
     }
   }
-  return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults), transportTier: 'mirror' };
+  return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults), transportTier: surfaceTransportTier };
 }
 
 
@@ -244,16 +246,50 @@ function hostedResolveDirectory(baseUrl = '', rel = '') {
 }
 
 async function hostedFetchJson(url, options = {}) {
-  const res = await options.fetchImpl(url, { cache: 'no-cache', headers: { Accept: 'application/json,*/*', 'Cache-Control': 'no-cache' } });
+  const res = await hostedFetchWithSourceCache(url, Object.assign({}, options, { resource: 'api-json', accept: 'application/json,*/*' }));
   if (!res?.ok) throw Object.assign(new Error(`Hosted issue snapshot ${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, url });
   return await res.json();
 }
 
 async function hostedFetchText(url, options = {}) {
-  const res = await options.fetchImpl(url, { cache: 'no-cache', headers: { Accept: 'text/markdown,text/plain,*/*', 'Cache-Control': 'no-cache' } });
+  const res = await hostedFetchWithSourceCache(url, Object.assign({}, options, { resource: 'raw-markdown', accept: 'text/markdown,text/plain,*/*' }));
   if (!res?.ok) throw Object.assign(new Error(`Hosted issue snapshot ${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, url });
   return await res.text();
 }
+
+async function hostedFetchWithSourceCache(url, options = {}) {
+  const resource = options.resource || 'source-resource';
+  const cacheMode = String(options.cacheMode || '').trim().toLowerCase();
+  const cached = readGithubSourceCacheEntry(url, resource, options);
+  if (cached?.body != null && cacheMode !== 'refresh') {
+    options.onTransportEvent?.({ tier: options.transportTier || 'cache', code: 'github.transport.cache.hit', severity: 'info', url, resource, status: 200 });
+    return makeGithubSourceCacheResponse(cached.body, { url, tier: options.transportTier || 'cache', contentType: cached.contentType || '' });
+  }
+  if (cacheMode === 'cache-only') {
+    options.onTransportEvent?.({ tier: options.transportTier || 'cache', code: 'github.transport.cache.miss', severity: 'info', url, resource, status: 404 });
+    return makeGithubSourceCacheResponse('', { url, tier: options.transportTier || 'cache', status: 404, statusText: 'Source cache miss', contentType: resource === 'api-json' ? 'application/json' : 'text/plain' });
+  }
+  const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  if (!fetchImpl) return makeGithubSourceCacheResponse('', { url, tier: options.transportTier || 'mirror', status: 503, statusText: 'Fetch unavailable', contentType: resource === 'api-json' ? 'application/json' : 'text/plain' });
+  const res = await fetchImpl(url, { cache: 'no-cache', headers: { Accept: options.accept || '*/*' } });
+  if (res?.ok) {
+    const text = await responseTextForCache(res, resource);
+    await writeGithubSourceCacheEntry(url, text, res.headers?.get?.('content-type') || (resource === 'api-json' ? 'application/json' : 'text/plain'), resource, options);
+    return makeGithubSourceCacheResponse(text, { url, tier: options.transportTier || 'mirror', status: res.status || 200, statusText: res.statusText || 'OK', contentType: res.headers?.get?.('content-type') || (resource === 'api-json' ? 'application/json' : 'text/plain') });
+  }
+  return res;
+}
+
+async function responseTextForCache(res, resource = '') {
+  if (typeof res?.text === 'function') {
+    const text = await res.text();
+    if (text != null) return String(text);
+  }
+  if (typeof res?.json === 'function') return JSON.stringify(await res.json());
+  if (res?.body != null) return String(res.body);
+  return resource === 'api-json' ? '{}' : '';
+}
+
 
 function yieldToBrowserIfAvailable() {
   if (typeof window === 'undefined') return Promise.resolve();

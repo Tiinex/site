@@ -6,14 +6,14 @@ export function summarizeGithubMaterialization(sourceLabel, out = {}) {
   const firstWarning = warnings[0];
   const firstError = errors[0];
   if (okCount > 0 && failCount === 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
+    return `Loaded ${okCount} source-backed record${okCount === 1 ? '' : 's'}${warnings.length ? `; ${warnings.length} warning${warnings.length === 1 ? '' : 's'}` : ''}${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
   }
   if (okCount > 0) {
-    return `Loaded ${okCount} source file${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
+    return `Loaded ${okCount} source-backed record${okCount === 1 ? '' : 's'}; ${failCount} failed/deferred${githubSurfaceSummary(out) ? ` · ${githubSurfaceSummary(out)}` : ''}.`;
   }
   if (firstWarning?.message) return `${sourceLabel} source registered. ${firstWarning.message}`;
   if (firstError?.error) return `${sourceLabel} source registered; source loading failed: ${firstError.error}.`;
-  return `${sourceLabel} source registered; no source files loaded.`;
+  return `${sourceLabel} source registered; no source-backed records loaded.`;
 }
 
 export function githubSurfaceSummary(out = {}) {

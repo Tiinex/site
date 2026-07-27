@@ -1,7 +1,16 @@
 import { authorizeSourceTransport } from '../../sources/transport.policy.js';
-import { normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
+import { buildGithubTransportPlan, normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
 import { discoverGithubIssueSnapshotTargets, materializeGithubIssueSnapshotFixtures, materializeGithubIssueSnapshots, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { discoverGithubIssueSnapshotTargetsViaHostedMirror, materializeGithubIssueSnapshotsViaHostedMirror } from './github.issueMirror.js';
+import { directIssueDiscoveryUnavailable, issueApiFetchForTier, issueDirectFetchForTier, issueMirrorFetchForTier, materializeDirectIssueTargets } from './github.issueTransport.js';
+
+const ISSUE_TRANSPORT_FALLBACKS = Object.freeze({
+  default: Object.freeze(['cache', 'mirror', 'proxy', 'direct']),
+  cache: Object.freeze(['cache', 'mirror', 'proxy', 'direct']),
+  mirror: Object.freeze(['mirror', 'proxy', 'direct']),
+  proxy: Object.freeze(['proxy']),
+  direct: Object.freeze(['direct'])
+});
 
 export async function materializeGithubIssueSurface(source = {}, input = {}, options = {}) {
   const adapterId = options.adapterId || 'github';
@@ -12,9 +21,8 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   const errors = [];
   const diagnostics = { transportEvents: [] };
   const requestedTier = requestedIssueTransportTier(options);
+  const issueTiers = issueTransportFallbackTiers(requestedTier);
   const sourceFetchImpl = options.sourceFetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
-  const issueApiFetchImpl = issueApiFetchForTier(source, requestedTier, sourceFetchImpl, diagnostics);
-  const mirrorFetchImpl = issueMirrorFetchForTier(source, requestedTier, sourceFetchImpl, diagnostics);
   const surface = { attempted: true, requested: true, requestedCount: 0, discovered: 0, loaded: 0, failed: 0, records: [] };
   let result = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   let parsed = parseGithubIssueSnapshotTargets(input.issueUrls || []);
@@ -31,13 +39,11 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
         diagnostics.transportEvents.push(Object.assign({ resultKind: 'issue-discovery-policy' }, warning));
       }
     } else {
-      const discovered = requestedTier === 'mirror'
-        ? await discoverGithubIssueSnapshotTargetsViaHostedMirror(source, Object.assign({}, options, { fetchImpl: mirrorFetchImpl, onTransportEvent: pushIssueTransportEvent(diagnostics, source, 'mirror') }))
-        : await discoverGithubIssueSnapshotTargets(source, Object.assign({}, options, { fetchImpl: requestedTier === 'proxy' || requestedTier === 'direct' ? issueApiFetchImpl : fetchImpl }));
+      const discovered = await discoverIssueTargetsForTiers(source, Object.assign({}, options, { fetchImpl, sourceFetchImpl }), issueTiers, diagnostics);
       warnings.push(...(discovered.warnings || []).map((warning) => Object.assign({ surface: 'issueSnapshots' }, warning)));
       errors.push(...(discovered.errors || []).map((error) => Object.assign({ surface: 'issueSnapshots' }, error)));
       parsed = { targets: discovered.targets || [], errors: [], counts: { targets: discovered.targets?.length || 0, errors: 0 } };
-      diagnostics.issueSnapshotDiscovery = { status: discovered.status, url: discovered.url || '', discovered: discovered.counts?.discovered || 0 };
+      diagnostics.issueSnapshotDiscovery = { status: discovered.status, url: discovered.url || '', discovered: discovered.counts?.discovered || 0, transportTier: discovered.transportTier || '' };
       surface.discovered = parsed.counts.targets;
     }
   }
@@ -59,8 +65,7 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
       diagnostics.transportEvents.push(Object.assign({ resultKind: 'issue-snapshot-load-policy' }, warning));
     }
   } else if (options.issueSnapshotFixtures && parsed.counts.targets && input.issueUrls) result = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
-  else if (parsed.counts.targets && requestedTier === 'mirror') result = await materializeGithubIssueSnapshotsViaHostedMirror(parsed.targets, Object.assign({}, options, { fetchImpl: mirrorFetchImpl, maxComments, onTransportEvent: pushIssueTransportEvent(diagnostics, source, 'mirror') }));
-  else if (parsed.counts.targets) result = await materializeGithubIssueSnapshots(parsed.targets, Object.assign({}, options, { fetchImpl: requestedTier === 'proxy' || requestedTier === 'direct' ? issueApiFetchImpl : fetchImpl, maxComments }));
+  else if (parsed.counts.targets) result = await materializeIssueTargetsForTiers(parsed.targets, source, Object.assign({}, options, { fetchImpl, sourceFetchImpl, maxComments }), issueTiers, diagnostics);
   else if (!surface.skipped) {
     warnings.push({ code: 'github.issue.discovery.no-targets', severity: 'warning', surface: 'issueSnapshots', requested: true, attempted: true, unavailable: true, targetCount: 0, message: 'Issue snapshot discovery was selected, but no issue targets were discovered or provided.' });
     Object.assign(surface, { unavailable: true, skipped: true });
@@ -84,7 +89,9 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
     loadedTargets: Number(result.counts?.loadedTargets || 0),
     failed: Number(result.counts?.failedTargets ?? Math.max(0, Number(result.counts?.targets || 0) - Number(result.records.length || 0))),
     deferred: Number(result.counts?.deferredTargets || 0),
-    records: result.records.map((record) => record.id).filter(Boolean)
+    records: result.records.map((record) => record.id).filter(Boolean),
+    transportTier: result.transportTier || '',
+    attemptedTiers: issueTiers.slice()
   });
   if (!result.records.length && parsed.counts.targets && !surface.skipped) surface.unavailable = true;
   for (const record of result.records || []) record.sourceTarget = Object.assign({ schema: 'tiinex.source.material.target.v1', surface: 'issueSnapshots', targetKind: 'github-issue-snapshot', loaded: true }, record.sourceTarget || {});
@@ -92,102 +99,68 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
 }
 
 
+function issueTransportFallbackTiers(tier = '') {
+  const normalized = normalizeGithubTransportTier(tier);
+  return Array.from(normalized ? (ISSUE_TRANSPORT_FALLBACKS[normalized] || [normalized]) : ISSUE_TRANSPORT_FALLBACKS.default);
+}
+
+async function discoverIssueTargetsForTiers(source = {}, options = {}, tiers = [''], diagnostics = {}) {
+  let last = null;
+  for (let index = 0; index < tiers.length; index += 1) {
+    const tier = tiers[index];
+    const discovered = tier === 'cache'
+      ? await discoverGithubIssueSnapshotTargetsViaHostedMirror(source, Object.assign({}, options, { fetchImpl: issueMirrorFetchForTier(source, tier, options.sourceFetchImpl, diagnostics), cacheMode: 'cache-only', transportTier: 'cache', onTransportEvent: pushIssueTransportEvent(diagnostics, source, tier) }))
+      : tier === 'mirror'
+        ? await discoverGithubIssueSnapshotTargetsViaHostedMirror(source, Object.assign({}, options, { fetchImpl: issueMirrorFetchForTier(source, tier, options.sourceFetchImpl, diagnostics), cacheMode: 'refresh', transportTier: 'mirror', onTransportEvent: pushIssueTransportEvent(diagnostics, source, tier) }))
+      : tier === 'proxy'
+        ? await discoverGithubIssueSnapshotTargets(source, Object.assign({}, options, { fetchImpl: issueApiFetchForTier(source, tier, options.sourceFetchImpl, diagnostics, options) }))
+        : directIssueDiscoveryUnavailable(source, diagnostics);
+    last = Object.assign({ transportTier: tier }, discovered || {});
+    if (Array.isArray(last.targets) && last.targets.length) return last;
+    if (last.status === 'ready' && tier !== 'mirror') return last;
+    const nextTier = tiers[index + 1] || '';
+    if (nextTier) emitIssueFallback(diagnostics, source, tier, nextTier, 'discovery');
+  }
+  return last || { schema: 'tiinex.github.issueSnapshot.discovery.v1', status: 'unavailable', targets: [], warnings: [], errors: [], counts: { discovered: 0, targets: 0, warnings: 0, errors: 0 }, transportTier: '' };
+}
+
+async function materializeIssueTargetsForTiers(targets = [], source = {}, options = {}, tiers = [''], diagnostics = {}) {
+  let last = null;
+  for (let index = 0; index < tiers.length; index += 1) {
+    const tier = tiers[index];
+    const result = tier === 'cache'
+      ? await materializeGithubIssueSnapshotsViaHostedMirror(targets, Object.assign({}, options, { fetchImpl: issueMirrorFetchForTier(source, tier, options.sourceFetchImpl, diagnostics), cacheMode: 'cache-only', transportTier: 'cache', onTransportEvent: pushIssueTransportEvent(diagnostics, source, tier) }))
+      : tier === 'mirror'
+        ? await materializeGithubIssueSnapshotsViaHostedMirror(targets, Object.assign({}, options, { fetchImpl: issueMirrorFetchForTier(source, tier, options.sourceFetchImpl, diagnostics), cacheMode: 'refresh', transportTier: 'mirror', onTransportEvent: pushIssueTransportEvent(diagnostics, source, tier) }))
+      : tier === 'proxy'
+        ? await materializeGithubIssueSnapshots(targets, Object.assign({}, options, { fetchImpl: issueApiFetchForTier(source, tier, options.sourceFetchImpl, diagnostics, options), maxComments: options.maxComments }))
+        : await materializeDirectIssueTargets(targets, source, Object.assign({}, options, { fetchImpl: issueDirectFetchForTier(source, options.sourceFetchImpl, diagnostics) }), diagnostics);
+    last = Object.assign({ transportTier: tier }, result || {});
+    if (Array.isArray(last.records) && last.records.length) return last;
+    const nextTier = tiers[index + 1] || '';
+    if (nextTier) emitIssueFallback(diagnostics, source, tier, nextTier, 'materialization');
+    else return last;
+  }
+  return last || { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 }, targetResults: [] };
+}
+
+function emitIssueFallback(diagnostics = {}, source = {}, fromTier = '', toTier = '', phase = '') {
+  diagnostics.transportEvents?.push?.({
+    adapterId: 'github',
+    sourceId: source?.id || '',
+    repo: source?.repo || source?.repository || '',
+    tier: fromTier,
+    resource: 'api-json',
+    code: 'github.issue.transport.surface-fallback',
+    severity: 'info',
+    phase,
+    message: `Issue snapshots skipped ${fromTier} and tried ${toTier} because the selected transport did not materialize this surface.`
+  });
+}
+
 function requestedIssueTransportTier(options = {}) {
   const fromOrder = options.transportOrderExact === true && Array.isArray(options.preferredTransports) ? options.preferredTransports[0] : '';
   return normalizeGithubTransportTier(options.transportRefreshTier || options.transportPolicy?.requestedTier || fromOrder || '');
-}
-
-function issueApiFetchForTier(source = {}, tier = '', fetchImpl, diagnostics = {}) {
-  const normalized = normalizeGithubTransportTier(tier);
-  if (normalized !== 'proxy' && normalized !== 'direct') return fetchImpl;
-  return async (url, init = {}) => {
-    const emit = (event) => diagnostics.transportEvents?.push?.(Object.assign({ adapterId: 'github', sourceId: source?.id || '', repo: source?.repo || source?.repository || '', tier: normalized, resource: 'api-json', url }, event));
-    if (!fetchImpl) {
-      emit({ code: `github.transport.${normalized}.unavailable`, severity: 'warning', message: `${normalized} issue API reader is unavailable in this runtime.` });
-      return responseWithTransport(null, normalized);
-    }
-    emit({ code: `github.transport.${normalized}.try`, severity: 'info', url, resource: 'api-json' });
-    try {
-      const res = await fetchImpl(url, init);
-      if (res?.ok) emit({ code: `github.transport.${normalized}.ok`, severity: 'info', url, resource: 'api-json', status: res.status || 200 });
-      else emit({ code: `github.transport.${normalized}.failed`, severity: 'warning', url, resource: 'api-json', status: res?.status || 0, message: res?.statusText || '' });
-      return responseWithTransport(res, normalized);
-    } catch (error) {
-      emit({ code: `github.transport.${normalized}.exception`, severity: 'warning', message: error?.message || String(error || '') });
-      throw error;
-    }
-  };
-}
-
-function issueMirrorFetchForTier(source = {}, tier = '', fetchImpl, diagnostics = {}) {
-  const normalized = normalizeGithubTransportTier(tier);
-  if (normalized !== 'mirror') return fetchImpl;
-  return async (url, init = {}) => {
-    const emit = (event) => diagnostics.transportEvents?.push?.(Object.assign({ adapterId: 'github', sourceId: source?.id || '', repo: source?.repo || source?.repository || '', tier: 'mirror', resource: 'api-json', url }, event));
-    if (!fetchImpl) {
-      emit({ code: 'github.transport.mirror.unavailable', severity: 'warning', message: 'Hosted issue snapshot mirror fetch is unavailable in this runtime.' });
-      return responseWithTransport(null, 'mirror');
-    }
-    emit({ code: 'github.transport.mirror.try', severity: 'info', url, resource: 'api-json' });
-    try {
-      const res = await fetchImpl(url, init);
-      if (res?.ok) emit({ code: 'github.transport.mirror.ok', severity: 'info', url, resource: 'api-json', status: res.status || 200 });
-      else emit({ code: 'github.transport.mirror.failed', severity: 'warning', url, resource: 'api-json', status: res?.status || 0, message: res?.statusText || '' });
-      return responseWithTransport(res, 'mirror');
-    } catch (error) {
-      emit({ code: 'github.transport.mirror.exception', severity: 'warning', message: error?.message || String(error || '') });
-      throw error;
-    }
-  };
-}
-
-function responseWithTransport(res, tier = '') {
-  if (!res) return makeTransportResponse('', { ok: false, status: 503, statusText: 'Transport unavailable', tier, contentType: 'application/json' });
-  if (res.transportTier) return res;
-  const status = Number(res.status || 0) || (res.ok ? 200 : 500);
-  const ok = res.ok !== false && status >= 200 && status < 300;
-  const headers = res.headers || { get: () => null };
-  // Native Response fields are brand-checked accessors, not plain enumerable
-  // properties. Do not wrap native responses with Object.create(Response.prototype):
-  // browsers throw when later code reads .ok/.status/.json() from that shell.
-  // Keep an ordinary delegating object instead so mirror/proxy issue readers work
-  // with real Fetch responses as well as test doubles.
-  return Object.freeze({
-    ok,
-    status,
-    statusText: res.statusText || (ok ? 'OK' : 'Error'),
-    url: res.url || '',
-    transportTier: tier,
-    headers: { get: (name) => headers.get?.(name) ?? null },
-    text: async () => {
-      if (typeof res.clone === 'function') return res.clone().text();
-      if (typeof res.text === 'function') return res.text();
-      return String(res.body || '');
-    },
-    json: async () => {
-      if (typeof res.clone === 'function') return res.clone().json();
-      if (typeof res.json === 'function') return res.json();
-      return JSON.parse(String(res.body || '{}'));
-    },
-    clone: () => responseWithTransport(typeof res.clone === 'function' ? res.clone() : res, tier)
-  });
-}
-
-function makeTransportResponse(body = '', options = {}) {
-  const text = String(body || '');
-  const status = Number(options.status || 0) || (options.ok === false ? 503 : 200);
-  const ok = options.ok !== false && status >= 200 && status < 300;
-  return Object.freeze({
-    ok,
-    status,
-    statusText: options.statusText || (ok ? 'OK' : 'Error'),
-    url: options.url || '',
-    transportTier: options.tier || '',
-    headers: { get: (name) => String(name || '').toLowerCase() === 'content-type' ? (options.contentType || 'application/json') : null },
-    text: async () => text,
-    json: async () => JSON.parse(text || '{}'),
-    clone: () => makeTransportResponse(text, options)
-  });
 }
 
 function pushIssueTransportEvent(diagnostics = {}, source = {}, tier = '') {

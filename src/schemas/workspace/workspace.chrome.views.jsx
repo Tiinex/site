@@ -4,7 +4,8 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { displayOptionsHiddenCount } from '../../workspaces/workspace.displayOptions.js';
 import { recordSourceClass } from '../../workspaces/workspace.displayFilters.js';
 import { shouldShowWorkspaceSummary } from '../../workspaces/workspace.summary.js';
-import { nextGithubTransportTier, normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
+import { normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
+import { sourceTransportBadgesForSource } from '../../app/sourceTransportRefresh.js';
 
 export function WorkspaceBoundaryKicker({ workspace = {} }) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -47,7 +48,13 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
               <strong>{source.label || source.id || 'Source'}</strong>
               <small>{source.count || 0}</small>
-              {transport.label ? (transport.refreshable ? <button type="button" className={`tx-source-transport tx-source-transport-button ${transport.className}`} title={transport.title} aria-label={transport.title} onClick={() => onSourceTransportRefresh?.(source.id, transport.tier)}>{transport.label}</button> : <span className={`tx-source-transport ${transport.className}`} title={transport.title}>{transport.label}</span>) : null}
+              {transport.badges?.length ? <span className={`tx-source-transport-group ${transport.mixed ? 'is-mixed' : ''}`} aria-label={transport.mixed ? 'Surface transports' : 'Source transport'}>
+                {transport.badges.map((badge) => badge.refreshable ? (
+                  <button key={badge.key} type="button" className={`tx-source-transport tx-source-transport-button ${badge.className}`} title={badge.title} aria-label={badge.title} onClick={() => onSourceTransportRefresh?.(source.id, badge.refreshTier || badge.tier, badge.surfaceKeys || [])}>{badge.label}</button>
+                ) : (
+                  <span key={badge.key} className={`tx-source-transport ${badge.className}`} title={badge.title}>{badge.label}</span>
+                ))}
+              </span> : null}
               {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
@@ -60,37 +67,39 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
 
 function sourceTransportSummary(source = {}) {
   const plan = String(source.transportLabel || source.transport || 'cache → mirror → proxy → direct').replace(/\s*→\s*/g, ' → ');
-  const outcome = source.transportOutcome || {};
-  const tiers = source.transportTiers || {};
-  const winning = Array.isArray(outcome.winningTiers) && outcome.winningTiers.length
-    ? outcome.winningTiers
-    : ['cache', 'mirror', 'proxy', 'direct'].filter((tier) => Number(tiers[tier] || 0) > 0);
-  const attempted = Array.isArray(outcome.attemptedTiers) ? outcome.attemptedTiers : [];
-  const skipped = Array.isArray(outcome.skipped) ? outcome.skipped : [];
-  const failed = Array.isArray(outcome.failed) ? outcome.failed : [];
-  const activeTier = normalizeGithubTransportTier(outcome.activeTier || source.transportRefreshTier || winning[winning.length - 1] || attempted[attempted.length - 1] || '');
-  const activeStatus = String(outcome.activeStatus || (failed.length && !winning.length ? 'failed' : winning.length ? 'ok' : '')).toLowerCase();
-  const hasObservedTransport = Boolean(activeTier || winning.length || attempted.length || skipped.length || failed.length);
-  if (!hasObservedTransport) return { label: '', title: '' };
-  const configured = outcome.configured || source.transportPlan?.configured || {};
-  const nextTier = nextGithubTransportTier(activeTier || 'cache', configured);
-  const refreshable = Boolean(nextTier && activeTier !== 'direct');
-  const titleParts = [
-    `Active transport: ${activeTier || 'unknown'}${activeStatus ? ` (${activeStatus})` : ''}`,
-    `Configured plan: ${plan}`,
-    attempted.length ? `Attempted: ${attempted.join(' → ')}` : '',
-    winning.length ? `Delivered by: ${winning.join(', ')}` : 'Delivered by: none recorded',
-    skipped.length ? `Skipped/unavailable: ${skipped.map((item) => `${item.tier}${item.message ? ` (${item.message})` : ''}`).join(', ')}` : '',
-    failed.length ? `Failed attempts: ${failed.map((item) => `${item.tier}${item.status ? ` ${item.status}` : ''}`).join(', ')}` : '',
-    refreshable ? `Click: try ${nextTier}` : 'Direct is the last fallback tier.'
-  ].filter(Boolean);
-  return {
-    label: activeTier || 'transport',
-    tier: activeTier,
-    refreshable,
-    title: titleParts.join(' · '),
-    className: [`tx-transport-tier-${activeTier || 'unknown'}`, activeStatus === 'failed' || activeStatus === 'unavailable' ? 'is-transport-failed' : activeStatus === 'ok' ? 'is-transport-ok' : ''].filter(Boolean).join(' ')
-  };
+  const pendingTier = normalizeGithubTransportTier(source.transportOutcome?.pendingTier || '');
+  const badges = sourceTransportBadgesForSource(source).map((badge) => {
+    const pending = Boolean(badge.pendingTier || (pendingTier && (!Array.isArray(source.transportOutcome?.pendingSurfaces) || source.transportOutcome.pendingSurfaces.includes(badge.key))));
+    const tier = normalizeGithubTransportTier(badge.pendingTier || badge.tier || pendingTier || '') || 'cache';
+    const refreshTier = tier;
+    const status = String(badge.status || '').toLowerCase();
+    const titleParts = [
+      badge.mixed ? `${badge.label}: ${tier}` : `Source transport: ${tier}`,
+      badge.surfaceKeys?.length && badge.key !== 'all' ? `Surface: ${badge.surfaceKeys.join(', ')}` : '',
+      pending ? `Trying ${tier} now` : '',
+      Number(badge.loaded || 0) ? `${Number(badge.loaded || 0)} loaded` : '',
+      badge.unavailable ? 'Unavailable/skipped' : '',
+      badge.failed ? 'Failed' : '',
+      `Configured plan: ${plan}`,
+      badge.refreshable ? `Click: try ${badge.nextTier}` : 'Direct is the last fallback tier.'
+    ].filter(Boolean);
+    const text = badge.mixed && badge.shortLabel ? `${badge.shortLabel} ${tier}${pending ? '…' : ''}` : `${tier}${pending ? '…' : ''}`;
+    return Object.assign({}, badge, {
+      label: text,
+      tier,
+      refreshTier,
+      refreshable: Boolean(badge.refreshable && !pending),
+      title: titleParts.join(' · '),
+      className: [
+        `tx-transport-tier-${tier}`,
+        badge.mixed ? 'is-transport-surface' : '',
+        pending ? 'is-transport-pending' : '',
+        status === 'failed' || status === 'unavailable' || badge.unavailable || badge.failed ? 'is-transport-failed' : '',
+        status === 'ok' || Number(badge.loaded || 0) ? 'is-transport-ok' : ''
+      ].filter(Boolean).join(' ')
+    });
+  });
+  return { badges, mixed: badges.length > 1 };
 }
 
 export function WorkspaceMaterialSummary({ summary }) {
@@ -135,6 +144,8 @@ function SourceReceiptDetails({ latest }) {
     if (Number(item.requestedCount || 0) && key !== 'repoFiles') bits.push(`${Number(item.requestedCount || 0)} targets`);
     if (Number(item.loaded || 0)) bits.push(`${Number(item.loaded || 0)} loaded`);
     if (Number(item.failed || 0)) bits.push(`${Number(item.failed || 0)} failed`);
+    const surfaceTiers = Array.isArray(item.transportTiers) && item.transportTiers.length ? item.transportTiers.join(' + ') : String(item.transportTier || '').trim();
+    if (surfaceTiers) bits.push(`via ${surfaceTiers}`);
     if (item.deferred) bits.push('deferred');
     if (item.unavailable) bits.push('unavailable');
     if (item.skipped) bits.push('skipped');

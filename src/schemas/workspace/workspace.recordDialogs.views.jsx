@@ -199,6 +199,28 @@ export function CreateWorkspaceDialog({ error, onSubmit, onDismiss }) {
   );
 }
 
+export function RenameWorkspaceDialog({ workspace, onDismiss, onSubmit }) {
+  const [name, setName] = useState(workspace?.title || workspace?.name || '');
+  const [error, setError] = useState('');
+  function submit(event) {
+    event.preventDefault();
+    const ok = onSubmit?.(name);
+    if (ok === false) setError('Workspace name is required.');
+  }
+  return (
+    <Modal title="Rename workspace" onDismiss={onDismiss} initialFocus="workspaceRenameName">
+      <form className="tx-form" onSubmit={submit} data-form="rename-workspace-form">
+        <TextField id="workspaceRenameName" label="Workspace name" value={name} onChange={setName} required error={error} autoFocus />
+        <p className="tx-muted">Renaming changes the local workspace label only. Source boundaries and loaded material stay untouched.</p>
+        <div className="tx-dialog-actions">
+          <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
+          <Button type="submit" variant="primary" icon="edit">Save name</Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export function CloseWorkspaceDialog({ workspace, onDismiss, onConfirm }) {
   return (
     <Modal title={`Close ${workspace.title || workspace.name}?`} onDismiss={onDismiss}>

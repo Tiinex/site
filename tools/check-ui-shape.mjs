@@ -99,6 +99,10 @@ has('src/schemas/workspace/workspace.add.views.jsx', 'tx-github-discovery-card',
 has('src/schemas/workspace/workspace.add.views.jsx', 'continuation defaults preserve', 'source continuation must preserve selected discovery surfaces across F5/hash restore');
 has('src/schemas/workspace/workspace.add.views.jsx', 'const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : true)', 'new GitHub sources must default issue snapshots on while continuations preserve requested source state');
 has('src/schemas/workspace/workspace.add.views.jsx', 'Register only', 'GitHub source Add must preserve explicit register-only/no-loading action');
+has('src/schemas/workspace/workspace.add.views.jsx', 'Save source', 'GitHub source continuation/edit must expose an explicit Save source action');
+has('src/schemas/workspace/workspace.views.jsx', 'Rename workspace', 'workspace header must expose rename without changing source/material boundaries');
+has('src/schemas/workspace/workspace.views.jsx', 'tx-workspace-title-rename-button', 'workspace title itself must expose reachable rename affordance');
+has('src/styles/app.css', '.tx-workspace-title-rename-button', 'workspace title rename affordance needs CSS ownership');
 has('src/schemas/workspace/workspace.add.views.jsx', 'Discover repo Markdown', 'GitHub source Add must expose a clear repo discovery submit action');
 has('src/schemas/registry.js', 'workspaceSchemaModule', 'workspace schema module must be in registry');
 has('src/styles/app.css', '.tx-button .tx-icon', 'button icon spacing must be centralized');
@@ -110,6 +114,8 @@ has('src/styles/app.css', '.tx-compact-column-window', 'created workspace must k
 has('src/styles/app.css', '.tx-discovery-record-list', 'Discovery feed cards need a dedicated list wrapper CSS owner');
 has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
+has('src/styles/app.css', '.tx-add-mode-modal .tx-github-dialog-actions', 'GitHub source edit footer must stay visible in tall desktop dialogs');
+has('src/styles/app.css', 'position: sticky;', 'GitHub source edit footer must be sticky rather than hidden below the modal viewport');
 has('src/schemas/companion.js', 'readState,', 'schema read presentation must expose readState contract');
 has('src/schemas/companion.js', 'schemaCoverage,', 'schema read presentation must expose schemaCoverage contract');
 if (!combo(...workspaceViewModules).includes('tx-read-state-chips')) failures.push('Root fallback/read-state chips must be rendered through workspace views');

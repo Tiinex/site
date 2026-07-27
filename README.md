@@ -1,21 +1,25 @@
-# Tiinex Site v254
+# Tiinex Site v266
 
-Checkpoint: `v254`
-Version: `0.2.74-v254`
-Runtime: `react-v254-desktop-dialog-source-action-polish`
+Checkpoint: `v266`
+Version: `0.2.86-v266`
+Runtime: `react-v266-repo-proxy-mirror-parity`
 
-## v254 focus
+## v266 focus
 
-Milestone A cosmetic/polish candidate after the v253 lineage regression fixes. The video showed the lineage regressions mostly cleared, which made the remaining desktop UX friction visible: small add/details/markdown dialogs, Open source only appearing on some source-backed cards, text-labeled Open source actions, and GitHub source intake not loading both repo files and issues by default.
+Repo-file transport parity after v265 proved F5/cache restore but still fell straight to direct for repo files.
 
-## Changed in v254
+## Changed in v266
 
-- Desktop add-source, details, and Markdown dialogs are wider and use more viewport height before scrolling.
-- GitHub add-source form defaults to both repo files and issue snapshots for new sources. Continuation dialogs still preserve the source's existing surface selection.
-- Open source uses an icon-only action on cards instead of a labeled pill.
-- Open source URL derivation now uses preserved GitHub browse/raw/source metadata before trying repo/ref/path fallback, so recovered traversed parents can expose source links too.
-- Markdown action has a separate icon from details; source uses an external-link style icon.
-- Lineage resolver guards from v250-v253 remain unchanged.
+- Repo-file proxy now has a real browser Git runtime path instead of being hard-coded unavailable.
+- The browser Git runtime is shipped as a public runtime bridge and only used by the repo-file proxy transport.
+- Repo-file proxy reads repository Markdown through the Git proxy/runtime, writes raw markdown + discovery manifest to Tiinex source cache, and reports `proxy` as the repo-files surface transport.
+- Repo-file proxy unavailable remains explicit when the runtime or proxy URL is missing; it still does not silently fall through to direct during exact proxy tests.
+- Hosted repo mirror candidate discovery now checks both `.mirrors/github.com/...` and `mirrors/github.com/...` metadata locations to match source/dev and public mirror layouts.
+- Existing issue transport/badge behavior from v264/v265 is preserved.
+
+## Validation
+
+See `VALIDATION_NOTES.md`.
 
 ## Supported local start
 
@@ -24,11 +28,7 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL printed by the dev server.
-
-## Local validation
-
-Run:
+Common validation commands:
 
 ```bash
 npm run validate
@@ -38,5 +38,3 @@ npm run metrics
 npm run storage:scan
 npm run typecheck
 ```
-
-Public build remains environment-sensitive in the sandbox; run `npm run build:public && npm run public:check` locally before public deploy.

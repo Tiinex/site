@@ -7560,6 +7560,13 @@ pre { white-space: pre-wrap; overflow:auto; }
   box-shadow: 0 0 0 1px rgba(251,113,133,.15), 0 0 12px rgba(127,29,29,.20);
 }
 
+.tx-source-pill .tx-source-transport.is-transport-pending {
+  border-color: rgba(45,212,191,.46);
+  background: rgba(13,148,136,.16);
+  color: rgba(204,251,241,.96);
+  box-shadow: 0 0 0 1px rgba(45,212,191,.12), 0 0 12px rgba(13,148,136,.14);
+}
+
 /* v254: desktop dialog scale and source-action polish.
    Dialog ownership stays in the primitive; surfaces only declare size classes. */
 @media (min-width: 900px) {
@@ -7628,5 +7635,92 @@ pre { white-space: pre-wrap; overflow:auto; }
   height: 1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* v257: source edit footer stays visible while the tall source plan scrolls.
+   Save/register owns boundary updates; reload remains a separate materialization action. */
+.tx-add-mode-modal .tx-github-dialog-actions {
+  position: sticky;
+  bottom: -0.72rem;
+  z-index: 2;
+  margin: 0.15rem -0.72rem -0.72rem;
+  padding: 0.72rem;
+  border-top: 1px solid rgba(101,242,231,0.18);
+  background: linear-gradient(180deg, rgba(6,8,15,0.74), rgba(6,8,15,0.98) 32%, rgba(6,8,15,0.99));
+  backdrop-filter: blur(8px);
+}
+@media (min-width: 900px) {
+  .tx-add-mode-modal .tx-github-dialog-actions {
+    bottom: -1rem;
+    margin: 0.2rem -1rem -1rem;
+    padding: 0.82rem 1rem;
+  }
+}
+
+/* v260: source edit actions must remain pressable in the scrolled Add/Edit source body. */
+.tx-add-mode-modal .tx-dialog-body {
+  padding-bottom: 0;
+}
+.tx-add-mode-modal .tx-github-source-plan-form[data-operation="source-edit"] > .tx-github-dialog-actions,
+.tx-add-mode-modal .tx-github-source-plan-form[data-operation="source-plan"] > .tx-github-dialog-actions {
+  bottom: 0;
+  margin: 0.2rem -1rem 0;
+  padding: 0.82rem 1rem calc(0.82rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 0 0 1.1rem 1.1rem;
+}
+@media (min-width: 900px) {
+  .tx-add-mode-modal .tx-github-source-plan-form[data-operation="source-edit"] > .tx-github-dialog-actions,
+  .tx-add-mode-modal .tx-github-source-plan-form[data-operation="source-plan"] > .tx-github-dialog-actions {
+    bottom: 0;
+    margin: 0.2rem -1rem 0;
+  }
+}
+
+/* v261: workspace title rename affordance must be reachable from the title, not only a distant icon. */
+.tx-workspace-title-rename-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  max-width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+.tx-workspace-title-rename-button .tx-icon {
+  opacity: 0.62;
+  font-size: 0.72em;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.tx-workspace-title-rename-button:hover .tx-icon,
+.tx-workspace-title-rename-button:focus-visible .tx-icon {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+.tx-workspace-title-rename-button:focus-visible {
+  outline: 2px solid rgba(98,255,238,0.7);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* v263: surface-scoped transport badges collapse when all active surfaces agree. */
+.tx-source-transport-group {
+  display: inline-flex;
+  align-items: center;
+  gap: .22rem;
+  flex-wrap: wrap;
+}
+.tx-source-transport-group.is-mixed .tx-source-transport {
+  font-size: .61rem;
+  padding-inline: .36rem;
+}
+.tx-source-pill .tx-source-transport.is-transport-surface {
+  max-width: 6.8rem;
   white-space: nowrap;
 }

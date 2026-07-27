@@ -19,7 +19,7 @@ export function githubTransportOrderFromTier(tier = '') {
   const normalized = normalizeGithubTransportTier(tier);
   return normalized ? [normalized] : Array.from(DEFAULT_ORDER);
 }
-const SOURCE_CACHE_PREFIX = 'tiinex.source-cache.v1:';
+export const SOURCE_CACHE_PREFIX = 'tiinex.source-cache.v1:';
 
 export function normalizeGithubRepoIdentity(repo = '') {
   const value = String(repo || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '');
@@ -136,6 +136,66 @@ export function createGithubTransportFetch(source = {}, options = {}) {
 }
 
 
+export function githubSourceCacheResourceForUrl(url = '', init = {}) {
+  return classifyGithubResource(url, init);
+}
+
+export function githubSourceCacheKeyForUrl(url = '', resource = '') {
+  return cacheKeyFor(url, resource || classifyGithubResource(url));
+}
+
+export function readGithubSourceCacheEntry(url = '', resource = '', options = {}) {
+  const key = cacheKeyFor(url, resource || classifyGithubResource(url));
+  const memory = options.sourceCache || moduleMemoryCache;
+  const storage = options.storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  const mem = readObject(memory, key);
+  if (mem?.body != null) return Object.assign({ key, cache: 'memory' }, mem);
+  try {
+    const raw = storage?.getItem?.(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.body != null) {
+      writeObject(memory, key, parsed);
+      return Object.assign({ key, cache: 'localStorage' }, parsed);
+    }
+  } catch (_) {}
+  return null;
+}
+
+export async function writeGithubSourceCacheEntry(url = '', body = '', contentType = '', resource = '', options = {}) {
+  const text = String(body || '');
+  if (!text) return false;
+  const maxChars = Math.max(0, Number(options.maxCacheEntryChars || 750000));
+  if (maxChars && text.length > maxChars) return false;
+  const key = cacheKeyFor(url, resource || classifyGithubResource(url));
+  const entry = { body: text, contentType: contentType || contentTypeFor(resource || classifyGithubResource(url)), cachedAt: new Date().toISOString() };
+  const memory = options.sourceCache || moduleMemoryCache;
+  const storage = options.storage || (typeof window !== 'undefined' ? window.localStorage : null);
+  writeObject(memory, key, entry);
+  try { storage?.setItem?.(key, JSON.stringify(entry)); } catch (_) {}
+  return true;
+}
+
+export function makeGithubSourceCacheResponse(body = '', options = {}) {
+  return makeResponse(String(body || ''), {
+    url: options.url || '',
+    tier: options.tier || 'cache',
+    status: options.status || 200,
+    statusText: options.statusText || 'OK',
+    contentType: options.contentType || contentTypeFor(options.resource || 'source-resource')
+  });
+}
+
+export function createGithubCacheOnlyFetch(options = {}) {
+  return async function githubCacheOnlyFetch(url, init = {}) {
+    const resource = options.resource || classifyGithubResource(url, init);
+    const cached = readGithubSourceCacheEntry(url, resource, options);
+    if (cached?.body != null) return makeResponse(cached.body, { url, tier: 'cache', contentType: cached.contentType || contentTypeFor(resource) });
+    return makeResponse('', { ok: false, status: 404, statusText: 'Source cache miss', url, tier: 'cache', contentType: contentTypeFor(resource) });
+  };
+}
+
+
 export function githubRawUrlForSourcePath(source = {}, path = '') {
   const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
   const ref = String(source.ref || source.config?.ref || '').trim();
@@ -184,8 +244,17 @@ export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
   const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
   if (!repo) return 0;
   const [owner, name] = repo.split('/');
-  const needles = [`raw.githubusercontent.com/${owner}/${name}/`, `api.github.com/repos/${owner}/${name}/`];
-  const matchesSource = (key = '') => key.startsWith(SOURCE_CACHE_PREFIX) && needles.some((needle) => key.includes(needle));
+  const needles = [
+    `raw.githubusercontent.com/${owner}/${name}/`,
+    `api.github.com/repos/${owner}/${name}/`,
+    `issues/github.com/${owner}/${name}`,
+    `mirrors/github.com/${owner}/${name}`,
+    `github-repo-discovery/${owner}/${name}`
+  ];
+  const matchesSource = (key = '') => {
+    const lower = String(key || '').toLowerCase();
+    return lower.startsWith(SOURCE_CACHE_PREFIX) && needles.some((needle) => lower.includes(String(needle || '').toLowerCase()));
+  };
   const memory = options.sourceCache || moduleMemoryCache;
   let removed = 0;
   for (const key of Object.keys(memory || {})) {

@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.74-v254",
+  "version": "0.2.86-v266",
   "private": true,
-  "description": "Tiinex Site v254: desktop dialog and source-action polish candidate.",
+  "description": "Tiinex Site v266: repo-file proxy transport and mirror candidate parity.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

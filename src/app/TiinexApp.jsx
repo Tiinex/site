@@ -10,9 +10,11 @@ import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
 import { applyLocalAdapterResultToWorkspace, appendImportSummary } from '../workspaces/workspace.import.js';
 import { setWorkspaceDiscoveryProgress, clearWorkspaceDiscoveryProgress } from '../workspaces/workspace.discoveryProgress.js';
+import { stateWithSourceMaterialCleared } from '../workspaces/workspace.sourceMaterial.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { clearGithubSourceTextCacheForSource, githubTransportOrderFromTier, nextGithubTransportTier, normalizeGithubTransportTier } from '../sources/github/github.transport.js';
-import { sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
+import { sourceTransportPendingUpdateInputForSource, sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
+import { githubRequestedSurfaces, githubSourceFormState, mergeGithubRequestedSurfaces, mergeGithubSurfaceStates } from './githubSourceInput.js';
 import { recoverMissingLineageParentsFromSource } from './lineageSourceRecovery.js';
 import { buildExportPackageBundle } from '../export/package.builder.js';
 import { exportPackageZipBlob } from '../export/package.zip.js';
@@ -179,6 +181,8 @@ export function TiinexApp() {
     return true;
   }
 
+  function renameWorkspace(name) { const result = runtime().lifecycle?.renameWorkspace?.(state, active?.id, name); if (!result?.ok) return false; setDialog(null); setNotice('Workspace renamed.'); commit(result.state, 'replace'); return true; }
+
   function closeWorkspace(workspaceId) {
     const result = runtime().lifecycle?.closeWorkspace?.(state, workspaceId || state.activeWorkspaceId);
     if (!result?.ok) return;
@@ -253,51 +257,39 @@ export function TiinexApp() {
       return;
     }
     setGithubRequestPending(true);
-    const repository = normalizeRepository(input.repository || input.repo || '');
+    const { repository, existingSource, sourceId, rootPath, ref, label } = githubSourceFormState(input, active?.sources || [], normalizeRepository);
     if (!repository) {
       setNotice('Repo URL or owner/name is required.');
       setGithubRequestPending(false);
       return;
     }
-    clearGithubSourceTextCacheForSource({ repo: repository });
-    const rootPath = String(input.rootPath || input.root || '.topics').trim() || '.topics';
-    const ref = String(input.ref || '').trim();
-    const label = input.label || repository;
+    const registerOnly = input.operation === 'register';
+    let sourceCacheCleared = 0;
     const transportRefreshTier = normalizeGithubTransportTier(input.transportRefreshTier || input.preferredTransportTier || '');
     const preferredTransports = transportRefreshTier ? githubTransportOrderFromTier(transportRefreshTier) : null;
     const transportLabel = preferredTransports ? preferredTransports.join(' → ') : 'cache → mirror → proxy → direct';
     const fileRefs = Array.isArray(input.fileRefs) ? input.fileRefs : String(input.fileRefs || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-    const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, {
-      kind: input.sourceKind || input.kind || 'github-tree',
-      label,
-      repository,
-      ref,
-      rootPath,
-      count: 0,
-      repoDiscovery: Boolean(input.repoDiscovery),
-      issueDiscovery: Boolean(input.issueDiscovery),
-      issueUrls: input.issueUrls || '',
-      transportLabel,
-      transportRefreshTier,
-      requestedSurfaces: {
-        repoFiles: { requested: Boolean(input.repoDiscovery) },
-        explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
-        issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
-      }
-    });
+    const selectedTransportSurfaces = Array.isArray(input.transportRefreshSurfaces) ? input.transportRefreshSurfaces.filter(Boolean) : [];
+    const requestedSurfacesForInput = selectedTransportSurfaces.length ? mergeGithubRequestedSurfaces(existingSource?.requestedSurfaces || {}, githubRequestedSurfaces(input, fileRefs), selectedTransportSurfaces) : githubRequestedSurfaces(input, fileRefs);
+    const preservedSourceState = registerOnly && existingSource ? { count: Number(existingSource.count || 0), discoveryState: existingSource.discoveryState, surfaces: existingSource.surfaces, transportOutcome: existingSource.transportOutcome, transportPlan: existingSource.transportPlan, transportTiers: existingSource.transportTiers } : {};
+    const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, Object.assign({
+      id: sourceId, kind: input.sourceKind || input.kind || 'github-tree', label, repository, ref, rootPath,
+      repoDiscovery: Boolean(input.repoDiscovery), issueDiscovery: Boolean(input.issueDiscovery), issueUrls: input.issueUrls || '',
+      transportLabel, transportRefreshTier, requestedSurfaces: requestedSurfacesForInput
+    }, preservedSourceState));
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
       setGithubRequestPending(false);
       return;
     }
-        const wantsMaterialization = Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
-    const selectedOperations = [
-      input.repoDiscovery ? 'repo files discovery' : '',
-      fileRefs.length ? 'explicit file loading' : '',
-      input.issueDiscovery || input.issueUrls ? 'issue snapshot loading' : ''
-    ].filter(Boolean);
+    const wantsMaterialization = !registerOnly && Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
+    if (wantsMaterialization && input.resetSourceCache !== false && input.allowSourceCache !== true) sourceCacheCleared = clearGithubSourceTextCacheForSource({ repo: repository });
+    let sourceRegistrationState = result.state;
+    const cleared = wantsMaterialization && input.resetSourceMaterial !== false ? stateWithSourceMaterialCleared(sourceRegistrationState, active?.id, result.source.id, { discoveryState: 'loading', surfaces: selectedTransportSurfaces }) : null;
+    if (cleared?.ok) sourceRegistrationState = cleared.state;
+    const selectedOperations = [input.repoDiscovery ? 'repo files discovery' : '', fileRefs.length ? 'explicit file loading' : '', input.issueDiscovery || input.issueUrls ? 'issue snapshot loading' : ''].filter(Boolean);
     const operationLabel = selectedOperations.length ? selectedOperations.join(' + ') : 'boundary registration';
-    let finalState = result.state;
+    let finalState = sourceRegistrationState;
     let materializationSourceId = result.source.id;
     let materializationSourceLabel = result.source.label;
     let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
@@ -353,10 +345,11 @@ export function TiinexApp() {
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports) });
+        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache !== false, sourceCacheCleared });
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
+            id: materializationSourceId,
             repository: result.source.repo || repository,
             repo: result.source.repo || repository,
             ref: resolvedRef,
@@ -367,11 +360,7 @@ export function TiinexApp() {
             issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
             issueUrls: input.issueUrls || '',
             transportRefreshTier,
-            requestedSurfaces: {
-              repoFiles: { requested: Boolean(input.repoDiscovery) },
-              explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
-              issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
-            }
+            requestedSurfaces: requestedSurfacesForInput
           }));
           if (pinned?.ok) {
             finalState = pinned.state;
@@ -394,17 +383,17 @@ export function TiinexApp() {
         const updatedSource = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
           id: materializationSourceId,
           label: materializationSourceLabel,
+          repository,
+          repo: repository,
+          ref: resolvedRef || ref,
+          rootPath,
           count: Number(totalSourceRecordCount || out.okCount || 0),
           discoveryState: sourceState,
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
           issueUrls: input.issueUrls || '',
-          requestedSurfaces: {
-            repoFiles: { requested: Boolean(input.repoDiscovery) },
-            explicitFiles: { requested: Boolean(fileRefs.length), requestedCount: fileRefs.length },
-            issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) }
-          },
-          surfaces: out.diagnostics?.surfaces || {},
+          requestedSurfaces: requestedSurfacesForInput,
+          surfaces: mergeGithubSurfaceStates(existingSource?.surfaces || result.source?.surfaces || {}, out.diagnostics?.surfaces || {}, selectedTransportSurfaces),
           sourcePlan: out.diagnostics?.sourcePlan || {},
           recordAttribution: out.diagnostics?.recordAttribution || [],
           transportTiers: out.diagnostics?.transportTiers || {},
@@ -436,15 +425,18 @@ export function TiinexApp() {
     commit(finalState, 'push');
   }
 
-  async function refreshSourceTransport(sourceId, currentTier = '') {
+  async function refreshSourceTransport(sourceId, currentTier = '', surfaceKeys = []) {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
     if (!source) return setNotice('Source not found.');
-    const refresh = sourceTransportRefreshInputForSource(source, currentTier);
+    const refresh = sourceTransportRefreshInputForSource(source, currentTier, surfaceKeys);
+    if (refresh.reason === 'pending') return setNotice(`${source.label || 'Source'} is already trying ${refresh.pendingTier} transport.`);
     if (refresh.reason === 'last-tier') return setNotice(`${source.label || 'Source'} is already using the last transport tier (direct).`);
     if (refresh.reason === 'no-surfaces') return openAddToWorkspace(source.id || sourceId);
     clearGithubSourceTextCacheForSource(source);
+    const pendingSource = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, sourceTransportPendingUpdateInputForSource(source, refresh));
+    if (pendingSource?.ok) commit(pendingSource.state, 'replace');
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
-    await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true }));
+    await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true, resetSourceMaterial: true, resetSourceCache: false }));
   }
 
   function openRecord(recordId) {
@@ -794,6 +786,7 @@ export function TiinexApp() {
           workspace={active}
           state={state}
           onClose={() => setDialog('close-workspace')}
+          onRenameWorkspace={() => setDialog('rename-workspace')}
           onVerse={setVerse}
           onQuery={setQuery}
           onOpenDisplayOptions={() => setDialog('display-options')}
@@ -827,6 +820,7 @@ export function TiinexApp() {
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
 
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
+      {dialog === 'rename-workspace' && active ? <RenameWorkspaceDialog workspace={active} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}

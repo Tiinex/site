@@ -15,6 +15,16 @@ function makeFetch(map, called = []) {
         text: async () => hit.text || ''
       };
     }
+    if (hit.buffer != null) {
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        arrayBuffer: async () => toArrayBuffer(hit.buffer),
+        json: async () => hit.json,
+        text: async () => hit.text || ''
+      };
+    }
     return {
       ok: true,
       status: 200,
@@ -113,7 +123,8 @@ assert.equal(issueLoaded.diagnostics.surfaces.repoFiles.loaded, 0, 'issue target
 assert.equal(issueLoaded.diagnostics.recordAttribution[0].surface, 'issueSnapshots', 'issue targets must claim issueSnapshots attribution');
 assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'normalized source plan should preserve requested issue surface');
 assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.attempted, true, 'normalized source plan should preserve attempted issue surface');
-assert(issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.direct.ok'), 'issue reader should use shared transport events');
+assert(issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.proxy.ok'), 'default issue reader should expose GitHub API issue reads as the proxy tier');
+assert(!issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.direct.ok'), 'default issue reader must not label GitHub API reads as direct');
 
 const issueUrlAsExplicitFile = await materializeGithubSource(source, { repoDiscovery: false, fileRefs: ['https://github.com/owner/repo/issues/1'], issueDiscovery: false, issueUrls: '' }, { fetchImpl });
 assert.equal(issueUrlAsExplicitFile.okCount, 0, 'issue URL in explicit file surface must not become a repo file');
@@ -137,6 +148,7 @@ const repoWideIssueLoaded = await materializeGithubSource(source, { issueDiscove
 assert.equal(repoWideIssueLoaded.records.length, 1, 'repo-wide issue discovery should materialize bounded public issue snapshots');
 assert.equal(repoWideIssueLoaded.diagnostics.issueSnapshotDiscovery.discovered, 1, 'repo-wide issue discovery should report discovered targets');
 assert.equal(repoWideIssueLoaded.diagnostics.surfaces.issueSnapshots.loaded, 1, 'issue surface should report loaded repo-wide issue snapshots');
+assert.equal(repoWideIssueLoaded.diagnostics.transportOutcome.sequenceTier, 'proxy', 'repo-wide issue discovery via GitHub API should display proxy, not cache or direct');
 
 const issueSnapshot = await materializeGithubSource(source, { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' }, { fetchImpl, issueSnapshotFixtures: { 'https://github.com/owner/repo/issues/1': { title: 'Fixture issue', state: 'open', body: 'Issue body', user: { login: 'q' }, created_at: '2026-07-21T00:00:00.000Z' } } });
 assert.equal(issueSnapshot.records.length, 1, 'fixture-backed issue snapshot should materialize one evidence record');
@@ -174,7 +186,7 @@ const proxyIssueCalls = [];
 const proxyIssueLoaded = await materializeGithubSource(
   source,
   { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
-  { fetchImpl: makeFetch(map, proxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
+  { fetchImpl: async () => { throw new Error('direct fetch must not run for configured proxy issue test'); }, proxyFetchImpl: makeFetch(map, proxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
 );
 assert.equal(proxyIssueLoaded.records.length, 1, 'explicit proxy transport should read issue snapshots through the GitHub issue API tier');
 assert(proxyIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.proxy.ok' && event.url === issueApi), 'proxy issue API success should be exposed as proxy transport evidence');
@@ -196,7 +208,7 @@ const nativeProxyIssueCalls = [];
 const nativeProxyIssueLoaded = await materializeGithubSource(
   source,
   { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
-  { fetchImpl: makeNativeResponseFetch(map, nativeProxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
+  { fetchImpl: async () => { throw new Error('direct fetch must not run for configured native proxy issue test'); }, proxyFetchImpl: makeNativeResponseFetch(map, nativeProxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
 );
 assert.equal(nativeProxyIssueLoaded.records.length, 1, 'explicit proxy transport should work with native Fetch Response objects');
 assert(nativeProxyIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.proxy.ok' && event.url === issueApi), 'native proxy issue API success should remain observable as proxy transport evidence');
@@ -252,3 +264,196 @@ const nativeMirrorIssueLoaded = await materializeGithubSource(
 assert.equal(nativeMirrorIssueLoaded.records.length, 1, 'explicit mirror transport should work with native Fetch Response objects');
 assert.equal(nativeMirrorIssueLoaded.records[0].summary, 'Mirror body from hosted snapshot', 'native mirror issue snapshot body should become card summary');
 assert(nativeMirrorIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.mirror.ok' && event.url === mirrorMetaUrl), 'native mirror metadata success should remain observable as mirror transport evidence');
+
+const defaultMirrorIssueCalls = [];
+const defaultMirrorIssueLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  { fetchImpl: makeFetch(mirrorMap, defaultMirrorIssueCalls), hostedIssueSnapshotBaseUrls: [mirrorBase] }
+);
+assert.equal(defaultMirrorIssueLoaded.records.length, 1, 'default issue materialization should try hosted mirror before live API');
+assert(defaultMirrorIssueLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.cache.hit' && event.url === mirrorMetaUrl), 'default issue materialization should restore from Tiinex source cache after a hosted mirror load');
+assert(!defaultMirrorIssueCalls.some((url) => url.includes('api.github.com')), 'source-cache issue restore should not call live GitHub API during default issue loading');
+assert.equal(defaultMirrorIssueLoaded.diagnostics.transportOutcome.sequenceTier, 'cache', 'source-cache issue restore should make cache the visible transport tier after F5/route restore');
+
+
+const directDiscoveryCalls = [];
+const directDiscoveryOnly = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: '' },
+  { fetchImpl: makeFetch(map, directDiscoveryCalls), preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(directDiscoveryOnly.records.length, 0, 'direct issue transport must not perform repository-wide issue discovery');
+assert.equal(directDiscoveryCalls.length, 0, 'direct issue discovery must not call GitHub API or raw URLs without explicit targets');
+assert(directDiscoveryOnly.warnings.some((warning) => warning.code === 'github.issue.direct.discovery-unavailable'), 'direct issue discovery should explain that explicit issue URLs are required');
+
+const directIssuePage = 'https://github.com/owner/repo/issues/1';
+const directExplicitCalls = [];
+const directExplicitLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: directIssuePage },
+  { fetchImpl: makeFetch({ [directIssuePage]: { text: 'Direct raw issue body' } }, directExplicitCalls), preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(directExplicitLoaded.records.length, 1, 'direct issue transport may read explicitly provided issue URLs as raw/browser-readable material');
+assert(directExplicitCalls.includes(directIssuePage), 'direct explicit issue load should fetch the canonical issue URL');
+assert(!directExplicitCalls.some((url) => url.includes('api.github.com')), 'direct explicit issue load must not call GitHub API');
+assert.equal(directExplicitLoaded.diagnostics.transportOutcome.sequenceTier, 'direct', 'direct explicit issue load should leave the visible transport sequence at direct');
+
+const mirrorIssueFallbackCalls = [];
+const mirrorIssueFallbackLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { fetchImpl: makeFetch(map, mirrorIssueFallbackCalls), preferredTransports: ['mirror'], transportOrderExact: true, hostedIssueSnapshotBaseUrls: ['https://viewer.example/missing/'] }
+);
+assert.equal(mirrorIssueFallbackLoaded.records.length, 1, 'issue snapshots should fall back from hosted mirror to the next issue transport');
+assert(mirrorIssueFallbackLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.issue.transport.surface-fallback'), 'issue surface fallback must be diagnosable');
+assert(mirrorIssueFallbackLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.proxy.ok' && event.url === issueApi), 'fallback issue load should expose GitHub issue API as proxy after hosted mirror is unavailable');
+assert(!mirrorIssueFallbackLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.transport.direct.ok' && String(event.url || '').includes('api.github.com')), 'issue direct tier must not call GitHub API during mirror fallback');
+
+
+const repoMirrorRepo = 'mirror-owner/mirror-repo';
+const repoMirrorSource = { id: 'github:mirror-owner/mirror-repo:.topics', repo: repoMirrorRepo, ref: '', rootPath: '.topics' };
+const repoMirrorMetaUrl = 'https://viewer.example/mirrors/github.com/mirror-owner/mirror-repo.json';
+const repoMirrorArchiveUrl = 'https://viewer.example/mirrors/github.com/mirror-owner/mirror/repo.zip';
+const repoMirrorZip = storedZip([
+  { name: 'mirror-repo-main/.topics/mirror.md', data: '# Repo Mirror\n\nMirror file body' },
+  { name: 'mirror-repo-main/README.md', data: '# Ignored' }
+]);
+const repoMirrorCalls = [];
+const repoMirrorLoaded = await materializeGithubSource(
+  repoMirrorSource,
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    fetchImpl: makeFetch({
+      [repoMirrorMetaUrl]: { json: { type: 'tiinex.repository.snapshot', repository: repoMirrorRepo, commit: 'abc123', archive: 'mirror/repo.zip' } },
+      [repoMirrorArchiveUrl]: { buffer: repoMirrorZip }
+    }, repoMirrorCalls),
+    preferredTransports: ['mirror'],
+    transportOrderExact: true,
+    hostedRepoMirrorBaseUrls: [mirrorBase]
+  }
+);
+assert.equal(repoMirrorLoaded.records.length, 1, 'explicit repo-file mirror transport should read hosted repository snapshot archives');
+assert.equal(repoMirrorLoaded.records[0].path, 'https://raw.githubusercontent.com/mirror-owner/mirror-repo/abc123/.topics/mirror.md', 'repo mirror records should preserve source raw URL path identity');
+assert.equal(repoMirrorLoaded.records[0].sourceTarget.transportTier, 'mirror', 'repo mirror records should disclose mirror transport');
+assert(!repoMirrorCalls.some((url) => url.includes('api.github.com')), 'repo mirror transport must not call GitHub API tree discovery');
+assert.equal(repoMirrorLoaded.diagnostics.surfaces.repoFiles.transportTier, 'mirror', 'repo mirror success should set repoFiles surface transport to mirror');
+
+const repoCacheCalls = [];
+const repoCacheLoaded = await materializeGithubSource(
+  Object.assign({}, repoMirrorSource, { ref: 'abc123' }),
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch({}, repoCacheCalls), hostedRepoMirrorBaseUrls: [mirrorBase] }
+);
+assert.equal(repoCacheLoaded.records.length, 1, 'repo-file source cache should restore after a mirror load without network materialization');
+assert.equal(repoCacheLoaded.records[0].sourceTarget.transportTier, 'cache', 'repo-file source-cache restore should disclose cache transport');
+assert.equal(repoCacheCalls.length, 0, 'repo-file cache restore should not call mirror, proxy, direct, or GitHub API');
+assert.equal(repoCacheLoaded.diagnostics.surfaces.repoFiles.transportTier, 'cache', 'repo-file cache restore should set repoFiles surface transport to cache');
+
+const repoProxyCalls = [];
+const repoProxyExact = await materializeGithubSource(
+  repoMirrorSource,
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(map, repoProxyCalls), preferredTransports: ['proxy'], transportOrderExact: true }
+);
+assert.equal(repoProxyExact.records.length, 0, 'repo-file proxy should not silently fall through to direct when the browser Git runtime is unavailable');
+assert.equal(repoProxyCalls.length, 0, 'repo-file proxy unavailable should not call GitHub API through direct fetch');
+assert(repoProxyExact.warnings.some((warning) => warning.code === 'github.repo.proxy.unavailable'), 'repo-file proxy unavailability should be explicit');
+
+const fakeGitProxyRuntime = {
+  acquireSnapshot: async (options = {}) => ({
+    ok: true,
+    repo: options.repo,
+    ref: 'main',
+    commit: 'def456',
+    networkOperation: 'git-proxy-snapshot',
+    networkOperationSucceeded: true,
+    candidates: ['.topics/proxy.md', 'README.md']
+  }),
+  ensureRuntime: async () => ({ ok: true }),
+  readGitText: async (_runtime, path) => (path === '.topics/proxy.md' ? '# Repo Proxy\n\nProxy file body' : '')
+};
+const repoProxyLoaded = await materializeGithubSource(
+  repoMirrorSource,
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    fetchImpl: async () => { throw new Error('direct fetch must not run for repo-file proxy'); },
+    gitNativeRuntime: fakeGitProxyRuntime,
+    workspaceConfig: { repositoryTransports: [{ kind: 'git-proxy', match: 'github.com/*', proxy: 'https://cors.isomorphic-git.org' }] },
+    preferredTransports: ['proxy'],
+    transportOrderExact: true
+  }
+);
+assert.equal(repoProxyLoaded.records.length, 1, 'repo-file proxy should materialize Markdown through the browser Git runtime when configured');
+assert.equal(repoProxyLoaded.records[0].sourceTarget.transportTier, 'proxy', 'repo-file proxy records should disclose proxy transport');
+assert.equal(repoProxyLoaded.diagnostics.surfaces.repoFiles.transportTier, 'proxy', 'repo-file proxy success should set repoFiles surface transport to proxy');
+assert(repoProxyLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.repo.proxy.ok'), 'repo-file proxy success should be diagnosable');
+
+function toArrayBuffer(value) {
+  const buffer = value instanceof Uint8Array ? value : Buffer.from(value);
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+}
+
+function storedZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, 'utf8');
+    const data = Buffer.from(entry.data);
+    const crc = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt16LE(0, 10);
+    local.writeUInt16LE(0, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+    localParts.push(local, name, data);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x0800, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt16LE(0, 12);
+    central.writeUInt16LE(0, 14);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt16LE(0, 30);
+    central.writeUInt16LE(0, 32);
+    central.writeUInt16LE(0, 34);
+    central.writeUInt16LE(0, 36);
+    central.writeUInt32LE(0, 38);
+    central.writeUInt32LE(offset, 42);
+    centralParts.push(central, name);
+    offset += local.length + name.length + data.length;
+  }
+  const centralDirectory = Buffer.concat(centralParts);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0, 4);
+  end.writeUInt16LE(0, 6);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(centralDirectory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  end.writeUInt16LE(0, 20);
+  return Buffer.concat([...localParts, centralDirectory, end]);
+}
+
+function crc32(buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let i = 0; i < 8; i += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}

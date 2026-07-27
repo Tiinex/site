@@ -103,14 +103,15 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
       setError('Choose at least one discovery surface, add explicit paths, or use Register only.');
       return;
     }
+    const saveOnly = registerOnly && Boolean(continuation);
     onSubmit({
       repository,
       ref,
       rootPath,
       operation: registerOnly ? 'register' : 'materialize',
-      repoDiscovery: wantsLoad && repoDiscovery,
-      issueDiscovery: shouldLoadIssues,
-      issueUrls: shouldLoadIssues ? issueUrls : '',
+      repoDiscovery: saveOnly ? repoDiscovery : wantsLoad && repoDiscovery,
+      issueDiscovery: saveOnly ? (issueDiscovery || Boolean(explicitIssues)) : shouldLoadIssues,
+      issueUrls: saveOnly || shouldLoadIssues ? issueUrls : '',
       label: repository,
       fileRefs: wantsLoad ? fileRefs : '',
       sourceId: continuation?.id || ''
@@ -132,12 +133,14 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const primaryLabel = activeSurfaces.length === 0
     ? 'Choose material to load'
     : activeSurfaces.length === 1 && activeSurfaces[0] === 'repo files'
-      ? 'Discover repo Markdown'
-      : `Load ${activeSurfaces.length} selected surface${activeSurfaces.length === 1 ? '' : 's'}`;
+      ? (continuation ? 'Reload repo Markdown' : 'Discover repo Markdown')
+      : `${continuation ? 'Reload' : 'Load'} ${activeSurfaces.length} selected surface${activeSurfaces.length === 1 ? '' : 's'}`;
   const sourceLabel = continuation?.label || repository || 'GitHub source';
+  const backLabel = continuation ? 'Cancel' : 'Back';
+  const saveLabel = continuation ? 'Save source' : 'Register only';
 
   return (
-    <form className="tx-add-source-form tx-github-source-form tx-github-source-plan-form" onSubmit={submit} data-operation="source-plan">
+    <form className="tx-add-source-form tx-github-source-form tx-github-source-plan-form" onSubmit={submit} data-operation={continuation ? "source-edit" : "source-plan"}>
       {continuation ? (
         <div className="tx-source-continuation-banner" role="status">
           <Icon name="source" />
@@ -185,9 +188,9 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
       </div>
       {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
       <div className="tx-dialog-actions tx-github-dialog-actions">
-        <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
-        <Button type="button" variant="ghost" icon="source" disabled={busy} onClick={() => send('register')}>Register only</Button>
-        <Button type="submit" variant="primary" icon="github" disabled={busy || activeSurfaces.length === 0}>{busy ? 'GitHub operation running…' : primaryLabel}</Button>
+        <Button type="button" variant="ghost" icon="previous" onClick={onBack}>{backLabel}</Button>
+        <Button type="button" variant={continuation ? 'primary' : 'ghost'} icon="source" disabled={busy} onClick={() => send('register')}>{saveLabel}</Button>
+        <Button type="submit" variant={continuation ? 'ghost' : 'primary'} icon="github" disabled={busy || activeSurfaces.length === 0}>{busy ? 'GitHub operation running…' : primaryLabel}</Button>
       </div>
     </form>
   );

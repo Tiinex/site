@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { buildGithubTransportPlan, clearGithubSourceTextCacheForSource, createGithubTransportFetch, hydrateGithubRecordFromSourceCache } from './github.transport.js';
+import { sourceTransportRefreshInputForSource } from '../../app/sourceTransportRefresh.js';
 
 function makeResponse(body, options = {}) {
   const text = typeof body === 'string' ? body : JSON.stringify(body || {});
@@ -84,6 +85,49 @@ const hydrated = hydrateGithubRecordFromSourceCache({
 assert.equal(hydrated.markdown, '# cached document', 'source-backed record shells should hydrate readable Markdown from the source text cache');
 assert.equal(hydrated.materialAvailability, 'available', 'cache-hydrated source record should become readable in detail/markdown views');
 
+
+const refreshAfterIssueMirrorFallback = sourceTransportRefreshInputForSource({
+  id: 'gh',
+  repo: 'owner/repo',
+  rootPath: '.topics',
+  transportRefreshTier: 'mirror',
+  transportOutcome: { activeTier: 'direct' },
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { issueSnapshots: { requested: true } }
+});
+assert.equal(refreshAfterIssueMirrorFallback.nextTier, 'proxy', 'transport refresh should advance from requested mirror, not skip to direct because issue fallback delivered via direct');
+assert.equal(refreshAfterIssueMirrorFallback.input.transportRefreshTier, 'proxy', 'transport refresh input should carry the selected next tier');
+
+const refreshFromRouteRestoredSource = sourceTransportRefreshInputForSource({
+  id: 'gh',
+  repo: 'owner/repo',
+  transportOutcome: { activeTier: 'direct' },
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { issueSnapshots: { requested: true } }
+});
+assert.equal(refreshFromRouteRestoredSource.nextTier, 'mirror', 'route-restored sources must restart transport sequencing from cache/mirror, not from stale direct outcome');
+
+const refreshFromSelectedProxyEvenWhenActiveProxy = sourceTransportRefreshInputForSource({
+  id: 'gh',
+  repo: 'owner/repo',
+  transportRefreshTier: 'proxy',
+  transportOutcome: { activeTier: 'proxy', activeStatus: 'unavailable' },
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { issueSnapshots: { requested: true } }
+});
+assert.equal(refreshFromSelectedProxyEvenWhenActiveProxy.nextTier, 'direct', 'badge clicks should advance from selected sequence position even if proxy failed too quickly to see pending UI');
+
+const refreshWhilePending = sourceTransportRefreshInputForSource({
+  id: 'gh',
+  repo: 'owner/repo',
+  transportRefreshTier: 'proxy',
+  transportOutcome: { pendingTier: 'direct' },
+  requestedSurfaces: { issueSnapshots: { requested: true } }
+});
+assert.equal(refreshWhilePending.ok, false, 'transport badge clicks should not start a second reload while a tier is pending');
+assert.equal(refreshWhilePending.reason, 'pending', 'pending tier should be exposed instead of repeating the same transport action');
+assert.equal(refreshWhilePending.pendingTier, 'direct', 'pending tier should show the next transport already being tried');
+
 console.log('github transport ladder: ok');
 
 const proxyOnlyEvents = [];
@@ -100,3 +144,53 @@ assert.equal(proxyOnlyRuntime.plan.label, 'proxy', 'explicit transport refresh s
 assert.equal(proxyOnlyRes.transportTier, 'none', 'unavailable explicit tier should degrade without falling through to direct');
 assert(proxyOnlyEvents.some((event) => event.code === 'github.transport.proxy.configured-unavailable'), 'explicit proxy refresh should expose proxy unavailability');
 assert(!proxyOnlyEvents.some((event) => String(event.code || '').includes('direct')), 'explicit proxy refresh must not silently fall through to direct');
+
+const sameSurfaceBadges = (await import('../../app/sourceTransportRefresh.js')).sourceTransportBadgesForSource({
+  id: 'gh', repo: 'owner/repo', repoDiscovery: true, issueDiscovery: true,
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { repoFiles: { requested: true }, issueSnapshots: { requested: true } },
+  surfaces: {
+    repoFiles: { requested: true, loaded: 2, transportTiers: ['mirror'] },
+    issueSnapshots: { requested: true, loaded: 8, transportTier: 'mirror' }
+  }
+});
+assert.equal(sameSurfaceBadges.length, 1, 'same surface transport outcomes should collapse to one badge');
+assert.equal(sameSurfaceBadges[0].tier, 'mirror', 'collapsed badge should show shared actual transport');
+assert.deepEqual(sameSurfaceBadges[0].surfaceKeys.sort(), ['issueSnapshots', 'repoFiles'].sort(), 'collapsed badge should carry all active surfaces');
+
+
+const staleRefreshActualTransport = (await import('../../app/sourceTransportRefresh.js')).sourceTransportBadgesForSource({
+  id: 'gh', repo: 'owner/repo', issueDiscovery: true,
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { issueSnapshots: { requested: true } },
+  surfaces: {
+    issueSnapshots: { requested: true, loaded: 8, transportTier: 'mirror', transportRefreshTier: 'cache' }
+  }
+});
+assert.equal(staleRefreshActualTransport.length, 1, 'single issue surface should still render one badge');
+assert.equal(staleRefreshActualTransport[0].tier, 'mirror', 'actual loaded surface transport must win over stale refresh cursor');
+const mirrorBadgeRefresh = sourceTransportRefreshInputForSource({
+  id: 'gh', repo: 'owner/repo', issueDiscovery: true,
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { issueSnapshots: { requested: true } },
+  surfaces: { issueSnapshots: { requested: true, loaded: 8, transportTier: 'mirror' } }
+}, staleRefreshActualTransport[0].tier, staleRefreshActualTransport[0].surfaceKeys);
+assert.equal(mirrorBadgeRefresh.input.transportRefreshTier, 'proxy', 'badge click should advance from visible actual tier to next tier once, not double-advance');
+
+const mixedSource = {
+  id: 'gh', repo: 'owner/repo', repoDiscovery: true, issueDiscovery: true,
+  transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  requestedSurfaces: { repoFiles: { requested: true }, issueSnapshots: { requested: true } },
+  surfaces: {
+    repoFiles: { requested: true, loaded: 2, transportTiers: ['mirror'] },
+    issueSnapshots: { requested: true, loaded: 8, transportTier: 'proxy' }
+  }
+};
+const mixedSurfaceBadges = (await import('../../app/sourceTransportRefresh.js')).sourceTransportBadgesForSource(mixedSource);
+assert.equal(mixedSurfaceBadges.length, 2, 'mixed surface transport outcomes should render separate badges');
+assert(mixedSurfaceBadges.some((badge) => badge.key === 'repoFiles' && badge.tier === 'mirror'), 'repo files badge should preserve mirror outcome');
+assert(mixedSurfaceBadges.some((badge) => badge.key === 'issueSnapshots' && badge.tier === 'proxy'), 'issues badge should preserve proxy outcome');
+const issueOnlyRefresh = sourceTransportRefreshInputForSource(mixedSource, 'proxy', ['issueSnapshots']);
+assert.equal(issueOnlyRefresh.input.repoDiscovery, false, 'surface badge refresh should not reload repo files when clicking issues');
+assert.equal(issueOnlyRefresh.input.issueDiscovery, true, 'surface badge refresh should reload only issue snapshots');
+assert.deepEqual(issueOnlyRefresh.input.transportRefreshSurfaces, ['issueSnapshots'], 'surface-specific refresh input should carry selected surfaces');

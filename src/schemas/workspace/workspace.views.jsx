@@ -14,7 +14,7 @@ import { WorkspaceAuditState } from './workspace.audit.views.jsx';
 import { WorkspaceLineageState } from './workspace.lineage.views.jsx';
 
 export { AssetDetailDialog } from './workspace.cards.views.jsx';
-export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
+export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
 
 function auditIndexForWorkspace(workspace = {}, records = []) {
   const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
@@ -33,7 +33,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
+export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -81,7 +81,12 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
     <section className="tx-workspace-window tx-column-window tx-uc001-created-workspace tx-schema-workspace-surface tx-compact-column-window" aria-label="Tiinex workspace window" data-schema-id="tiinex.workspace.v1" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer) onDropFiles?.(event.dataTransfer, { sourceMode: 'workspace-drop', fromDataTransfer: true }); }}>
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">
         <div className="tx-window-title-block">
-          <h1>{presentation.title}</h1>
+          <h1>
+            <button type="button" className="tx-workspace-title-rename-button" title="Rename workspace" aria-label={`Rename workspace ${presentation.title || ''}`.trim()} onClick={onRenameWorkspace}>
+              <span>{presentation.title}</span>
+              <Icon name="edit" />
+            </button>
+          </h1>
           <WorkspaceBoundaryKicker workspace={workspace} />
         </div>
         <div className="tx-window-actions tx-compact-window-actions" aria-label="Workspace actions">
@@ -90,6 +95,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onVerse, onQ
           <span className="tx-stat-pill" title="Workspace candidates"><Icon name="workspace" />{allWorkspaceCandidates.length}</span>
           <span className="tx-stat-pill" title="Sources"><Icon name="source" />{sources.length}</span>
           <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} />
+          <Button icon="edit" variant="ghost" shape="round" aria-label="Rename workspace" title="Rename workspace" onClick={onRenameWorkspace} />
           <Button icon="download" variant="ghost" shape="round" aria-label="Export workspace package" title="Export workspace package" onClick={onExportWorkspace} />
           <Button icon="close" variant="ghost" shape="round" aria-label="Close workspace" title="Close workspace" onClick={onClose} />
         </div>

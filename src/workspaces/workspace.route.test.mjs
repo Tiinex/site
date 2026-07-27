@@ -24,8 +24,9 @@ const stateWithSourceRecord = {
   workspaces: [{
     id: 'w-route-source',
     name: 'Route Source',
-    sources: [{ id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary', repoDiscovery: true, issueDiscovery: true, requestedSurfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } }, surfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } } }],
+    sources: [{ id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary', repoDiscovery: true, issueDiscovery: true, transportRefreshTier: 'proxy', transportOutcome: { activeTier: 'direct' }, transportTiers: { direct: 3 }, transportPlan: { configured: { direct: true } }, requestedSurfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } }, surfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } } }],
     sourceOrder: ['github:tiinex-docs'],
+    discoveryProgress: { sourceId: 'github:tiinex-docs', phase: 'source-materialization', label: 'trying proxy transport', active: true },
     records: [{
       id: 'source:github:tiinex-docs:topics/source.md',
       title: 'Source backed shell',
@@ -37,9 +38,11 @@ const stateWithSourceRecord = {
   }]
 };
 const sourceRoute = route.makeRouteState(stateWithSourceRecord);
+if (sourceRoute.workspaces[0].discoveryProgress) throw new Error('route hash must not preserve transient source discovery/transport progress');
 const sourceRecordShell = sourceRoute.workspaces[0].records[0];
 if (sourceRoute.workspaces[0].sources[0].issueDiscovery !== true) throw new Error('route source shell must preserve issue discovery selection');
 if (sourceRoute.workspaces[0].sources[0].requestedSurfaces.issueSnapshots.requested !== true) throw new Error('route source shell must preserve requested issue surface across F5');
+if (sourceRoute.workspaces[0].sources[0].transportRefreshTier || sourceRoute.workspaces[0].sources[0].transportOutcome || sourceRoute.workspaces[0].sources[0].transportPlan || sourceRoute.workspaces[0].sources[0].transportTiers) throw new Error('route hash must not preserve volatile transport state');
 if (sourceRecordShell.source.adapterId !== 'github') throw new Error('route shell must preserve source adapter');
 if (sourceRecordShell.sourceMode !== 'source-backed') throw new Error('route shell must preserve source mode');
 if (sourceRecordShell.path !== 'topics/source.md') throw new Error('route shell must preserve path');

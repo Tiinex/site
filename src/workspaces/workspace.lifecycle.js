@@ -1,29 +1,10 @@
-import{githubIssueLogicalPathForRecord as issuePath}from'./workspace.recordPaths.js';
+import{canonicalizeSourceRecordPath}from'./workspace.sourceRecordPath.js';
 (function attachWorkspaceLifecycle(global) {
 const WORKSPACE_NAME_MAX_LENGTH=72,RECORD_TITLE_MAX_LENGTH=96,RECORD_SUMMARY_MAX_LENGTH=280,SESSION_SOURCE_KIND='local-session',CONFIGURED_SOURCE_KIND='github-tree',GITHUB_ADAPTER_ID='github',GITHUB_REPO_SOURCE_KIND='github.repo',SOURCE_STATES=new Set(['not-started','deferred','loading','loaded','partial','failed','unavailable']);
 function nowIso(clock){return typeof clock==='function'?clock():new Date().toISOString();}
 function normalizeWorkspaceName(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,WORKSPACE_NAME_MAX_LENGTH);}
 function normalizeRecordTitle(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,RECORD_TITLE_MAX_LENGTH);}
 function normalizeRecordSummary(value){return String(value||'').replace(/\s+/g,' ').trim().slice(0,RECORD_SUMMARY_MAX_LENGTH);}
-function canonicalizeSourceRecordPath(input={},source={}){const t=input.sourceTarget||{},s=input.snapshot||{},raw=t.inputTarget||t.url||s.sourceUrl||s.target?.canonicalUrl||input.recoveredFromUrl||input.path||input.name||'',surface=String(t.surface||'').toLowerCase(),mode=String(input.sourceMode||'').toLowerCase(),kind=String(t.targetKind||'').toLowerCase(),issue=surface==='issuesnapshots'||mode.includes('issue-snapshot')||mode.includes('github-issue')||mode.includes('github-comment')||/^https?:\/\/github\.com\/[^/]+\/[^/]+\/(issues|discussions|pull)\/\d+/i.test(String(raw||input.path||''));if(!issue)return canonicalizeSourcePath(input.path||input.name||'',source);const p=issuePath(input);if(s.embedded||/embedded-artifact|lineage-parent/.test(kind)||mode.includes('embedded-artifact'))return canonicalizeSourcePath(t.sourceArtifactPath||s.sourceArtifactPath||p||input.path||input.name||'',{});return p?canonicalizeSourcePath(p,{}):canonicalizeExternalSourceTarget(raw,{preserveHash:kind.includes('comment')||/issuecomment-|discussioncomment-/i.test(String(raw||''))});}
-function canonicalizeExternalSourceTarget(value='',options={}){const raw=String(value||'').trim();if(!raw)return'';try{const u=new URL(raw),h=String(u.hostname||'').toLowerCase(),path=u.pathname.replace(/\/+$/g,''),hash=options.preserveHash?String(u.hash||''):'';return`${(h==='github.com'||h.endsWith('.github.com'))?'https://github.com':u.origin}${path}${hash}`;}catch(_){const clean=raw.replace(/\?utm_[^#]*/g,'').replace(/\/+$/g,'');return options.preserveHash?clean:clean.replace(/#.*$/g,'');}}
-function canonicalizeSourcePath(inputPath,source={}){
-let p=String(inputPath||'').trim();if(!p)return'';
-try {
-const u = new URL(p), h = String(u.hostname || '').toLowerCase(), parts = u.pathname.split('/').filter(Boolean), bi = parts.indexOf('blob');
-p = h === 'raw.githubusercontent.com' ? (parts.length >= 4 ? parts.slice(3).join('/') : parts.join('/')) : h.endsWith('github.com') ? ((bi >= 0 && parts.length > bi + 2) ? parts.slice(bi + 2).join('/') : parts.join('/')) : u.pathname.replace(/^\/+/, '');
-} catch (_) {}
-p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/');
-const out = [];
-for (const part of p.split('/')) { if (!part || part === '.') continue; if (part === '..') out.pop(); else out.push(part); }
-p = out.join('/');
-const roots = String(source.rootPath || '').split(/\r?\n|,/).map((item) => item.trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '')).filter((item) => item && item !== '.');
-if (roots.length) {
-const root = roots.find((item) => p === item || p.startsWith(item + '/')) || roots[0];
-if (root && p && !p.startsWith(root + '/') && p !== root) p = root + '/' + p; else if (root && !p) p = root;
-}
-return p.replace(/\/+$/, '');
-}
 function makeWorkspaceId(name,createdAt){
 const slug = normalizeWorkspaceName(name)
 .toLowerCase()
@@ -310,6 +291,7 @@ if(workspace.discoveryProgress?.sourceId===cleanId)workspace.discoveryProgress=n
 if(selected&&!workspace.records.some((record)=>String(record?.id||'')===selected))next.view=Object.assign(next.view||{},{selectedRecordId:''});
 return { ok: true, workspace, state: next };
 }
+function renameWorkspace(state,workspaceId,name){const next=cloneState(state),workspace=next.workspaces.find((item)=>item.id===(workspaceId||next.activeWorkspaceId));if(!workspace)return{ok:false,error:'workspace.not.found',state};const cleanName=normalizeWorkspaceName(name);if(!cleanName)return{ok:false,error:'workspace.name.required',state};workspace.name=cleanName;workspace.title=cleanName;workspace.renamedAt=nowIso();next.activeWorkspaceId=workspace.id;return{ok:true,workspace,state:next};}
 function closeWorkspace(state, workspaceId) {
 const next = cloneState(state);
 const targetId = workspaceId || next.activeWorkspaceId;
@@ -382,6 +364,7 @@ countLocalRecords,
 closeWorkspace,
 closeWorkspaceSource,
 createWorkspace,
+renameWorkspace,
 makeEmptyAppState,
 makeConfiguredSource,
 makeLocalSource,

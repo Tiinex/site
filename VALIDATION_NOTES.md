@@ -1,24 +1,17 @@
-# Validation Notes v254
+# Validation Notes v266
 
-## v254 desktop dialog and source-action polish
+## v266 repo-file proxy/mirror parity
 
-Video evidence after v253 showed the lineage regressions were no longer the main issue. UX friction was concentrated in desktop dialog scale and action availability/presentation:
+Changed in v266:
 
-- Add source, details, and Markdown dialogs were too small for desktop work.
-- Open source appeared on issue-derived cards but was missing from some traversed source-backed parent cards.
-- Open source was visually heavier than the other icon actions.
-- New GitHub sources required manually enabling issue discovery even though current Milestone A testing depends on both repo files and issue snapshots.
+- Repo files keep cache-first restore from v265, but proxy is no longer only an unavailable placeholder.
+- Repo-file proxy uses the browser Git runtime bridge plus configured git-proxy/CORS proxy to acquire a repository snapshot and read Markdown without GitHub tree API discovery.
+- Repo-file proxy success writes source cache entries and a repo discovery manifest so later F5/default restore can use `cache` without network materialization.
+- Repo-file proxy unavailable is still explicit when runtime/proxy configuration is missing and exact proxy reload does not fall through to direct.
+- Hosted repo mirrors now try both `.mirrors/github.com/<owner>/<repo>.json` and `mirrors/github.com/<owner>/<repo>.json` candidates.
+- Regression tests cover repo mirror, repo cache restore, proxy unavailable, and proxy success via a fake browser Git runtime.
 
-Changed in v254:
-
-- widened desktop dialog classes and increased dialog body height budgets;
-- made the GitHub source form default both repo files and issue snapshots for new sources;
-- kept continuation-source defaults bound to the existing source state;
-- made source action icon-only on old-like cards;
-- widened source href derivation to use GitHub browse/raw/source metadata before repo/ref/path fallback;
-- added record action guards for recovered raw parent links without a route-shell ref and for synthetic issue display paths not becoming fake GitHub blob URLs.
-
-Validation commands run for this checkpoint:
+Validated locally in the sandbox:
 
 ```bash
 npm run validate
@@ -29,7 +22,7 @@ npm run storage:scan
 npm run typecheck
 ```
 
-Not verified in this sandbox:
+Follow-up validation still needed outside the sandbox:
 
 ```bash
 npm run build:public

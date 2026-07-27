@@ -3,11 +3,14 @@ import { loadGithubFilesForSource } from '../../sources/github/github.loader.js'
 import { materializeGithubIssueSurface } from './github.issueSurface.js';
 import { authorizeSourceTransport } from '../../sources/transport.policy.js';
 import { collectSourceAssetReferences } from '../../sources/source.assetReferences.js';
-import { createGithubTransportFetch } from '../../sources/github/github.transport.js';
+import { createGithubTransportFetch, normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
+import { summarizeTransportOutcome, summarizeTransportTiers } from './github.transportDiagnostics.js';
+import { writeGithubRepoDiscoveryCache } from './github.repoMirror.js';
+import { preMaterializeGithubRepoFiles, requestedRepoTransportTier } from './github.repoSurface.js';
+import { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
+export { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
 
 export const GITHUB_ADAPTER_ID = 'github';
-const MARKDOWN_EXTENSIONS = /\.(md|markdown|trace\.md|schema\.md|validator\.md|workspace\.md)$/i;
-
 export function createGithubAdapter() {
   return makeAdapterDefinition({
     id: GITHUB_ADAPTER_ID,
@@ -31,110 +34,6 @@ export function createGithubAdapter() {
     boundary: 'explicit GitHub source boundary; public tree/raw/blob file reads only in browser viewer',
     notes: ['Repo tree discovery is public/read-only and bounded. Issue/discussion snapshots require explicit targets and are materialized only from supplied fixtures or a future reader slice.']
   });
-}
-
-function repoParts(source = {}) {
-  const repo = String(source.repo || source.repository || '').trim();
-  const parts = repo.split('/').filter(Boolean);
-  if (parts.length < 2) throw new Error('source.repo missing or invalid');
-  return { repo: `${parts[0]}/${parts[1]}`, owner: parts[0], name: parts[1] };
-}
-
-function rootPaths(source = {}) {
-  return String(source.rootPath || '')
-    .split(/\r?\n|,/)
-    .map((item) => item.trim().replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, ''))
-    .filter((item) => item && item !== '.');
-}
-
-function underRoots(path, roots) {
-  if (!roots.length) return true;
-  return roots.some((root) => path === root || path.startsWith(root + '/'));
-}
-
-function isMarkdownPath(path) {
-  return MARKDOWN_EXTENSIONS.test(String(path || ''));
-}
-
-async function fetchJson(url, fetchImpl) {
-  const res = await fetchImpl(url, { headers: { Accept: 'application/vnd.github+json' } });
-  if (!res || !res.ok) {
-    const status = res?.status || 'ERR';
-    const statusText = res?.statusText || '';
-    let bodyMessage = '';
-    try {
-      const body = await res.json();
-      bodyMessage = body?.message ? String(body.message) : '';
-    } catch (error) {
-      bodyMessage = '';
-    }
-    const message = [String(status), statusText, bodyMessage].filter(Boolean).join(' ').trim();
-    const err = new Error(message || 'GitHub API request failed');
-    err.status = status;
-    err.statusText = statusText;
-    err.url = url;
-    return Promise.reject(err);
-  }
-  return res.json();
-}
-
-function githubDiscoveryWarning(error) {
-  const status = error?.status || null;
-  const base = status ? `GitHub API ${status}` : 'GitHub API';
-  let message = `${base} prevented repo discovery. Registering the source is still safe; use explicit file refs/raw URLs or try discovery later.`;
-  let code = 'github.repo.discovery.unavailable';
-  if (Number(status) === 403) {
-    code = 'github.repo.discovery.rate-limited-or-forbidden';
-    message = 'GitHub repo discovery is unavailable right now (API 403/rate-limit). Source was registered; add explicit file refs/raw URLs or try later.';
-  } else if (Number(status) === 404) {
-    code = 'github.repo.discovery.not-found';
-    message = 'GitHub repo discovery did not find that repo/ref. Source was registered; verify repo/ref or use explicit raw/blob URLs.';
-  }
-  return {
-    code,
-    severity: 'warning',
-    message,
-    status,
-    url: error?.url || ''
-  };
-}
-
-export async function resolveGithubSourceRef(source, options = {}) {
-  const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
-  if (!fetchImpl) throw new Error('fetchImpl not available');
-  const explicit = String(source?.ref || '').trim();
-  if (explicit) return { ref: explicit, resolvedBy: 'source.ref' };
-  const { owner, name } = repoParts(source);
-  const data = await fetchJson(`https://api.github.com/repos/${owner}/${name}`, fetchImpl);
-  const ref = String(data.default_branch || '').trim();
-  if (!ref) throw new Error('default branch unavailable');
-  return { ref, resolvedBy: 'github.repo.default_branch' };
-}
-
-export async function discoverGithubMarkdownRefs(source, options = {}) {
-  const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
-  if (!fetchImpl) throw new Error('fetchImpl not available');
-  const maxFiles = Math.max(1, Number(options.maxFiles || 500));
-  const { owner, name } = repoParts(source);
-  const resolved = await resolveGithubSourceRef(source, { fetchImpl });
-  const treeUrl = `https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(resolved.ref)}?recursive=1`;
-  const tree = await fetchJson(treeUrl, fetchImpl);
-  const roots = rootPaths(source);
-  const refs = [];
-  const warnings = [];
-  for (const item of Array.isArray(tree.tree) ? tree.tree : []) {
-    const path = String(item.path || '').replace(/^\/+/, '');
-    if (item.type !== 'blob') continue;
-    if (!underRoots(path, roots)) continue;
-    if (!isMarkdownPath(path)) continue;
-    refs.push(path);
-    if (refs.length >= maxFiles) break;
-  }
-  refs.sort((a, b) => a.localeCompare(b));
-  if (tree.truncated) warnings.push({ code: 'github.tree.truncated', message: 'GitHub tree response was truncated.' });
-  const totalMarkdown = (Array.isArray(tree.tree) ? tree.tree : []).filter((item) => item.type === 'blob' && underRoots(String(item.path || ''), roots) && isMarkdownPath(item.path)).length;
-  if (totalMarkdown > refs.length) warnings.push({ code: 'github.discovery.bounded', message: `Loaded first ${refs.length} of ${totalMarkdown} markdown files.` });
-  return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown };
 }
 
 
@@ -209,18 +108,43 @@ function markSurface(plan, name, patch = {}) {
 
 function summarizeSurfaceCountsFromTargets(result = {}) {
   const counts = {};
-  const bump = (surface, key, amount = 1) => {
+  const ensure = (surface) => {
     const name = surface || 'unknown';
-    counts[name] ||= { loaded: 0, failed: 0, records: [] };
-    counts[name][key] = Number(counts[name][key] || 0) + amount;
+    counts[name] ||= { loaded: 0, failed: 0, records: [], transportTiers: [] };
+    return counts[name];
+  };
+  const bump = (surface, key, amount = 1) => {
+    const item = ensure(surface);
+    item[key] = Number(item[key] || 0) + amount;
   };
   for (const record of result.records || []) {
     const target = record.sourceTarget || {};
-    bump(target.surface || 'unknown', 'loaded', 1);
-    if (record.id) counts[target.surface || 'unknown'].records.push(record.id);
+    const item = ensure(target.surface || 'unknown');
+    item.loaded = Number(item.loaded || 0) + 1;
+    if (record.id) item.records.push(record.id);
+    const tier = normalizeGithubTransportTier(target.transportTier || '');
+    if (tier && !item.transportTiers.includes(tier)) item.transportTiers.push(tier);
   }
   for (const error of result.errors || []) bump(error.surface || 'unknown', 'failed', 1);
   return counts;
+}
+
+
+
+
+function githubDiscoveryWarning(error) {
+  const status = error?.status || null;
+  const base = status ? `GitHub API ${status}` : 'GitHub API';
+  let message = `${base} prevented repo discovery. Registering the source is still safe; use explicit file refs/raw URLs or try discovery later.`;
+  let code = 'github.repo.discovery.unavailable';
+  if (Number(status) === 403) {
+    code = 'github.repo.discovery.rate-limited-or-forbidden';
+    message = 'GitHub repo discovery is unavailable right now (API 403/rate-limit). Source was registered; add explicit file refs/raw URLs or try later.';
+  } else if (Number(status) === 404) {
+    code = 'github.repo.discovery.not-found';
+    message = 'GitHub repo discovery did not find that repo/ref. Source was registered; verify repo/ref or use explicit raw/blob URLs.';
+  }
+  return { code, severity: 'warning', message, status, url: error?.url || '' };
 }
 
 export async function materializeGithubSource(source, input = {}, options = {}) {
@@ -243,6 +167,8 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   };
   const warnings = [];
   const errors = [];
+  let preloadedRepoResult = { records: [], warnings: [], errors: [], counts: {}, diagnostics: { transportEvents: [] } };
+  let repoDiscoveryHandledBySurfaceTransport = false;
 
   const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
 
@@ -262,7 +188,21 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         diagnostics.transportEvents.push(Object.assign({ resultKind: 'repo-discovery-policy' }, warning));
       }
     } else {
-      try {
+      preloadedRepoResult = await preMaterializeGithubRepoFiles(source, options);
+      diagnostics.transportEvents.push(...(preloadedRepoResult.diagnostics?.transportEvents || []));
+      warnings.push(...(preloadedRepoResult.warnings || []).map((warning) => Object.assign({ surface: 'repoFiles' }, warning)));
+      errors.push(...(preloadedRepoResult.errors || []).map((error) => Object.assign({ surface: 'repoFiles' }, error)));
+      if (preloadedRepoResult.records?.length) {
+        repoDiscoveryHandledBySurfaceTransport = true;
+        resolvedRef = preloadedRepoResult.ref || resolvedRef;
+        diagnostics.discoveredFileRefs = Number(preloadedRepoResult.counts?.discovered || preloadedRepoResult.records.length || 0);
+        markSurface(sourcePlan, 'repoFiles', { discovered: diagnostics.discoveredFileRefs, requestedCount: diagnostics.discoveredFileRefs, loaded: preloadedRepoResult.records.length, records: preloadedRepoResult.records.map((record) => record.id).filter(Boolean), transportTier: preloadedRepoResult.transportTier || '', transportTiers: [preloadedRepoResult.transportTier || ''].filter(Boolean) });
+        reportProgress(options, { phase: 'repo-discovery', percent: 34, total: preloadedRepoResult.records.length, label: `Loaded ${preloadedRepoResult.records.length} repo file${preloadedRepoResult.records.length === 1 ? '' : 's'} from ${preloadedRepoResult.transportTier || 'surface'} transport` });
+      } else if (options.transportOrderExact === true && requestedRepoTransportTier(options)) {
+        repoDiscoveryHandledBySurfaceTransport = true;
+        markSurface(sourcePlan, 'repoFiles', { failed: 1, unavailable: true, transportTier: preloadedRepoResult.transportTier || requestedRepoTransportTier(options), transportTiers: [preloadedRepoResult.transportTier || requestedRepoTransportTier(options)].filter(Boolean) });
+      }
+      if (!repoDiscoveryHandledBySurfaceTransport) try {
         reportProgress(options, { phase: 'repo-discovery', percent: 18, label: 'Resolving GitHub ref and scanning repo tree' });
         const discovered = await discoverGithubMarkdownRefs(source, Object.assign({}, options, { fetchImpl: transportFetchImpl }));
         const discoveredTargets = discovered.refs.map((ref, index) => fileTarget(ref, 'repoFiles', index, 'repo-markdown'));
@@ -288,7 +228,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   let issueSnapshotResult = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
   if (input.issueDiscovery || input.issueUrls) {
     try {
-      const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, sourceFetchImpl: options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null), transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
+      const issueSurface = await materializeGithubIssueSurface(source, input, Object.assign({}, options, { fetchImpl: transportFetchImpl, sourceFetchImpl: options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null), transportPlan: transportRuntime.plan, transportPolicy: policyInput, adapterId: GITHUB_ADAPTER_ID }));
       issueSnapshotResult = issueSurface;
       warnings.push(...(issueSurface.warnings || []));
       errors.push(...(issueSurface.errors || []));
@@ -340,6 +280,22 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   } else {
     result = uniqueTargets.length ? await loadGithubFilesForSource(sourceForLoad, uniqueTargets, Object.assign({}, options, { fetchImpl: transportFetchImpl })) : result;
   }
+  if (preloadedRepoResult.records?.length) {
+    result = {
+      records: (preloadedRepoResult.records || []).concat(result.records || []),
+      errors: (preloadedRepoResult.errors || []).concat(result.errors || []),
+      okCount: Number(preloadedRepoResult.records?.length || 0) + Number(result.okCount || 0),
+      failCount: Number(preloadedRepoResult.errors?.length || 0) + Number(result.failCount || 0),
+      diagnostics: {
+        requests: Number(result.diagnostics?.requests || 0),
+        transportEvents: (preloadedRepoResult.diagnostics?.transportEvents || []).concat(result.diagnostics?.transportEvents || [])
+      }
+    };
+  }
+  if (result.records?.length) {
+    const repoRefs = result.records.filter((record) => record.sourceTarget?.surface === 'repoFiles').map((record) => record.sourceTarget?.sourceArtifactPath || record.sourceTarget?.inputTarget || '').filter(Boolean);
+    await writeGithubRepoDiscoveryCache(sourceForLoad, repoRefs, options);
+  }
   if (uniqueTargets.length || issueSnapshotResult.records?.length) reportProgress(options, { phase: 'source-promote', percent: 94, loaded: (result.okCount || 0) + (issueSnapshotResult.records?.length || 0), total: uniqueTargets.length + (issueSnapshotResult.counts?.targets || 0), label: `Promoting ${(result.okCount || 0) + (issueSnapshotResult.records?.length || 0)} source-backed records` });
 
   const surfaceCounts = summarizeSurfaceCountsFromTargets(result);
@@ -348,12 +304,13 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
     surface.loaded = Number(counts.loaded || 0);
     surface.failed = Number(counts.failed || 0);
     surface.records = counts.records || [];
+    surface.transportTiers = Array.isArray(counts.transportTiers) ? counts.transportTiers.slice() : [];
   }
 
   diagnostics.requests = Number(result.diagnostics?.requests || 0);
   diagnostics.transportEvents = diagnostics.transportEvents.concat(transportRuntime.events || [], result.diagnostics?.transportEvents || []);
   diagnostics.transportTiers = summarizeTransportTiers(diagnostics.transportEvents);
-  diagnostics.transportOutcome = summarizeTransportOutcome(diagnostics.transportEvents, transportRuntime.plan);
+  diagnostics.transportOutcome = summarizeTransportOutcome(diagnostics.transportEvents, transportRuntime.plan, options);
   const records = result.records.concat(issueSnapshotResult.records || []);
   diagnostics.recordAttribution = records.map((record) => ({
     recordId: record.id || '',
@@ -405,63 +362,6 @@ function nonFatalIssueSurfaceWarning(error, source = {}) {
   };
 }
 
-function summarizeTransportTiers(events = []) {
-  const counts = { cache: 0, mirror: 0, proxy: 0, direct: 0, skipped: 0, failed: 0 };
-  for (const event of Array.isArray(events) ? events : []) {
-    const tier = String(event.tier || '').toLowerCase();
-    if (counts[tier] != null && /\.ok$|\.hit$/u.test(String(event.code || ''))) counts[tier] += 1;
-    if (/configured-unavailable|unavailable/u.test(String(event.code || ''))) counts.skipped += 1;
-    if (/failed|exception|exhausted/u.test(String(event.code || ''))) counts.failed += 1;
-  }
-  return counts;
-}
-
-
-function summarizeTransportOutcome(events = [], plan = {}) {
-  const attempted = new Set();
-  const winning = new Set();
-  const skipped = [];
-  const failed = [];
-  let activeTier = '';
-  let activeStatus = 'idle';
-  for (const event of Array.isArray(events) ? events : []) {
-    const tier = String(event.tier || '').toLowerCase();
-    const code = String(event.code || '');
-    if (tier && ['cache', 'mirror', 'proxy', 'direct'].includes(tier)) {
-      if (/\.try$|\.miss$|\.hit$|\.ok$|configured-unavailable|unavailable|failed|exception/u.test(code)) {
-        attempted.add(tier);
-        activeTier = tier;
-        activeStatus = 'attempted';
-      }
-      if (/\.ok$|\.hit$/u.test(code)) {
-        winning.add(tier);
-        activeTier = tier;
-        activeStatus = 'ok';
-      }
-      if (/configured-unavailable|unavailable/u.test(code)) {
-        skipped.push({ tier, code, resource: event.resource || '', message: event.message || '' });
-        activeTier = tier;
-        activeStatus = 'unavailable';
-      }
-      if (/failed|exception|exhausted/u.test(code)) {
-        failed.push({ tier, code, resource: event.resource || '', status: event.status || 0, message: event.message || '' });
-        activeTier = tier;
-        activeStatus = 'failed';
-      }
-    }
-  }
-  return {
-    schema: 'tiinex.github.transport.outcome.v1',
-    configuredPlan: Array.isArray(plan.tiers) ? plan.tiers.slice() : [],
-    configured: plan.configured ? Object.assign({}, plan.configured) : {},
-    activeTier,
-    activeStatus,
-    attemptedTiers: Array.from(attempted),
-    winningTiers: Array.from(winning),
-    skipped,
-    failed
-  };
-}
 export async function materializeGithubFiles(source, fileRefs = [], options = {}) {
   return materializeGithubSource(source, { fileRefs, repoDiscovery: false }, options);
 }
