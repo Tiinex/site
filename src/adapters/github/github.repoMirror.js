@@ -54,6 +54,9 @@ export async function materializeGithubRepoFilesViaHostedMirror(source = {}, opt
       const sourceForRaw = Object.assign({}, source, { ref });
       const roots = rootPaths(source);
       const governanceRootFiles = governanceRootFilesFromMirrorEntries(imported.entries || [], sourceForRaw, meta);
+      for (const file of governanceRootFiles) {
+        if (file?.url && file?.text) await writeGithubSourceCacheEntry(file.url, file.text, 'text/markdown; charset=utf-8', 'raw-markdown', options);
+      }
       const governanceBoundary = governanceBoundaryFromRootFiles(sourceForRaw, governanceRootFiles, { rootChecked: true, discoveredFrom: 'repo-mirror-archive' });
       const records = [];
       const refs = [];

@@ -24,7 +24,7 @@ export function WorkspaceBoundaryKicker({ workspace = {} }) {
   return <span className={`tx-window-kicker tx-boundary-workspace-kicker tx-${label}`} title={title}><Icon name={sourceCount ? 'source' : 'workspace'} /><span>{label}</span></span>;
 }
 
-export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSourceTransportRefresh }) {
+export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSourceTransportRefresh, onOpenGovernance }) {
   const sources = (Array.isArray(workspace.sources) ? workspace.sources : []).filter((source) => {
     const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
     const isLocal = kind.includes('local');
@@ -56,7 +56,7 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
                   <span key={badge.key} className={`tx-source-transport ${badge.className}`} title={badge.title}>{badge.label}</span>
                 ))}
               </span> : null}
-              <SourceGovernanceBadge source={source} />
+              <SourceGovernanceBadge source={source} onOpenGovernance={onOpenGovernance} />
               {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
@@ -67,7 +67,7 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
   );
 }
 
-function SourceGovernanceBadge({ source = {} }) {
+function SourceGovernanceBadge({ source = {}, onOpenGovernance }) {
   const sourceKind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
   const repo = String(source.repo || source.repository || source.config?.repo || '').trim();
   const explicitBoundary = source.governanceBoundary && typeof source.governanceBoundary === 'object' && source.governanceBoundary.schema === GOVERNANCE_BOUNDARY_SCHEMA_ID
@@ -87,8 +87,12 @@ function SourceGovernanceBadge({ source = {} }) {
       : status === 'missing'
         ? 'no policy'
         : 'policy ?';
-  const title = boundary.note || boundary.boundary || 'Source governance boundary';
-  return <span className={`tx-source-governance tx-governance-${status}`} title={title} aria-label={`Governance boundary: ${label}`}><Icon name={status === 'missing' ? 'warning' : 'audit'} /><span>{label}</span></span>;
+  const title = `${boundary.note || boundary.boundary || 'Source governance boundary'} · Click to read governance context.`;
+  const className = `tx-source-governance tx-governance-${status}`;
+  if (typeof onOpenGovernance === 'function') {
+    return <button type="button" className={className} title={title} aria-label={`Open governance boundary: ${label}`} onClick={() => onOpenGovernance(source.id)}><Icon name={status === 'missing' ? 'warning' : 'audit'} /><span>{label}</span></button>;
+  }
+  return <span className={className} title={title} aria-label={`Governance boundary: ${label}`}><Icon name={status === 'missing' ? 'warning' : 'audit'} /><span>{label}</span></span>;
 }
 
 function sourceTransportSummary(source = {}) {

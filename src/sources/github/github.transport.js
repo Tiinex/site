@@ -242,6 +242,19 @@ export function hydrateGithubRecordFromSourceCache(record = {}, options = {}) {
   });
 }
 
+export function hydrateGithubWorkspaceFromSourceCache(workspace = {}, options = {}) {
+  if (!workspace || typeof workspace !== 'object') return workspace;
+  const records = Array.isArray(workspace.records) ? workspace.records : [];
+  if (!records.length) return workspace;
+  let changed = false;
+  const hydratedRecords = records.map((record) => {
+    const hydrated = hydrateGithubRecordFromSourceCache(record, options);
+    if (hydrated !== record) changed = true;
+    return hydrated;
+  });
+  return changed ? Object.assign({}, workspace, { records: hydratedRecords }) : workspace;
+}
+
 export function clearGithubSourceTextCacheForSource(source = {}, options = {}) {
   const repo = normalizeGithubRepoIdentity(source.repo || source.repository || source.config?.repo || '');
   if (!repo) return 0;

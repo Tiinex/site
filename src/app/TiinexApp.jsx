@@ -4,7 +4,7 @@ import { activeWorkspace, CLEAN_URL_BOUNDARY, defaultState, initialState, runtim
 import { shouldPageWorkspaces, useViewportWidth } from './viewport.js';
 import { summarizeGithubAdapterResult, summarizeGithubMaterialization, normalizeRepository } from './githubMaterializationSummary.js';
 import { buildDisplayOptionCounts } from './workspaceDisplayCounts.js';
-import { hydrateUiRecord } from './recordUi.js';
+import { hydrateUiRecord, hydrateUiWorkspace } from './recordUi.js';
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
@@ -16,26 +16,21 @@ import { clearGithubSourceTextCacheForSource, githubTransportOrderFromTier, next
 import { sourceTransportPendingUpdateInputForSource, sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
 import { githubRequestedSurfaces, githubSourceFormState, mergeGithubRequestedSurfaces, mergeGithubSurfaceStates } from './githubSourceInput.js';
 import { recoverMissingLineageParentsFromSource } from './lineageSourceRecovery.js';
+import { sourceGovernanceDialogData } from './governanceDialogData.js';
 import { buildExportPackageBundle } from '../export/package.builder.js';
 import { exportPackageZipBlob } from '../export/package.zip.js';
 import { buildWorkspaceAuditView } from '../workspaces/workspace.auditView.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { mergeWorkspaceCandidate as mergeStagedWorkspaceCandidate, openWorkspaceCandidate as openStagedWorkspaceCandidate } from '../workspaces/workspace.candidates.js';
-import {
-  AssetDetailDialog,
-  CloseWorkspaceDialog,
-  CreateWorkspaceDialog,
-  RecordActionDialog,
-  RecordDetailDialog,
-  WorkspaceColumnSurface
-} from '../schemas/workspace/workspace.views.jsx';
+import { AssetDetailDialog, CloseWorkspaceDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, RecordActionDialog, RecordDetailDialog, GovernanceBoundaryDialog, WorkspaceColumnSurface } from '../schemas/workspace/workspace.views.jsx';
 import { normalizeWorkspaceDisplayOptions } from '../workspaces/workspace.displayOptions.js';
 import { AddToWorkspaceDialog } from '../schemas/workspace/workspace.add.views.jsx';
 import { DisplayOptionsDialog } from '../schemas/workspace/workspace.displayOptions.views.jsx';
 import { schemaRegistry } from '../schemas/registry.js';
 import { workspaceViewScrollKeyFor, stateWithViewPatch, stateWithViewUpdate, stateWithCapturedViewScroll } from './viewState.js';
 import { shouldCommitGithubProgress, yieldForVisibleSourceProgress } from './githubProgress.js';
-
+import { TIINEX_RUNTIME_ID } from '../build.identity.js';
+import { installVisualDormancy, visualDormancySummary } from './visualDormancy.js';
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -51,6 +46,7 @@ export function TiinexApp() {
   const scrollPersistTimerRef = useRef(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
+  const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
   const pagerVisible = shouldPageWorkspaces(state.workspaces.length, viewportWidth);
 
@@ -72,13 +68,13 @@ export function TiinexApp() {
     };
   }, []);
 
-  useEffect(() => {
-    document.title = workspaceConfig?.viewerIdentity?.browserTitle || 'Tiinex';
-  }, [workspaceConfig]);
+  useEffect(() => { document.title = workspaceConfig?.viewerIdentity?.browserTitle || 'Tiinex'; }, [workspaceConfig]);
 
   useEffect(() => {
     latestStateRef.current = state;
   }, [state]);
+
+  useEffect(() => installVisualDormancy({ getSummary: () => visualDormancySummary(latestStateRef.current || state) }), []);
 
   useEffect(() => () => {
     if (scrollPersistTimerRef.current) window.clearTimeout(scrollPersistTimerRef.current);
@@ -96,7 +92,7 @@ export function TiinexApp() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id || lineageLoadReportForSelected(state)) return; const lineage = buildWorkspaceLineageView(active, { records: Array.isArray(active.records) ? active.records : [], query: '', selectedRecordId: id }); const key = `${active.id}:${id}:${active.records?.length || 0}:${lineage.selectedTraversal?.missingEdges?.length || 0}`; if (lineage.selectedTraversal?.hasMissing && !lineageAutoLoadKeysRef.current.has(key)) { lineageAutoLoadKeysRef.current.add(key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
+  useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id || lineageLoadReportForSelected(state)) return; const lineage = buildWorkspaceLineageView(activeUi || active, { records: Array.isArray((activeUi || active)?.records) ? (activeUi || active).records : [], query: '', selectedRecordId: id }); const key = `${active.id}:${id}:${(activeUi || active).records?.length || 0}:${lineage.selectedTraversal?.missingEdges?.length || 0}`; if (lineage.selectedTraversal?.hasMissing && !lineageAutoLoadKeysRef.current.has(key)) { lineageAutoLoadKeysRef.current.add(key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
 
   function commit(nextState, mode = 'push') {
     const sourceState = latestStateRef.current || state;
@@ -161,6 +157,13 @@ export function TiinexApp() {
   function openAddToWorkspace(sourceId = '') {
     setSourceContinuationId(String(sourceId || ''));
     setDialog('add-to-workspace');
+  }
+
+  function openGovernanceBoundary(sourceId = '') {
+    const id = String(sourceId || '').trim();
+    if (!id) return;
+    setSourceContinuationId(id);
+    setDialog('source-governance');
   }
 
   function dismissDialog() {
@@ -757,9 +760,13 @@ export function TiinexApp() {
     commit(defaultState(), 'push');
   }
 
-  const activeRecord = activeRecordId && active?.records ? hydrateUiRecord(active.records.find((record) => record.id === activeRecordId)) : null;
-  const activeAsset = activeAssetId && active?.assets ? active.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
-  const actionRecord = recordAction?.recordId && active?.records ? hydrateUiRecord(active.records.find((record) => record.id === recordAction.recordId)) : null;
+  const activeRecord = activeRecordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === activeRecordId)) : null;
+  const activeAsset = activeAssetId && activeUi?.assets ? activeUi.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
+  const actionRecord = recordAction?.recordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === recordAction.recordId)) : null;
+  const governanceDialogSource = dialog === 'source-governance' && activeUi?.sources
+    ? activeUi.sources.find((source) => source.id === sourceContinuationId) || null
+    : null;
+  const governanceDialogData = governanceDialogSource ? sourceGovernanceDialogData(governanceDialogSource, activeUi) : null;
 
   const shellClasses = [
     'tx-react-runtime',
@@ -773,7 +780,7 @@ export function TiinexApp() {
   ].join(' ');
 
   return (
-    <main className={shellClasses} data-runtime="react-v189-lineage-viewer-readability" data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -789,7 +796,7 @@ export function TiinexApp() {
 
       {active ? (
         <WorkspaceColumnSurface
-          workspace={active}
+          workspace={activeUi || active}
           state={state}
           onClose={() => setDialog('close-workspace')}
           onRenameWorkspace={() => setDialog('rename-workspace')}
@@ -809,6 +816,7 @@ export function TiinexApp() {
           onRecordAction={openRecordAction}
           onToggleTreeFolder={toggleTreeFolder}
           onSourceTransportRefresh={refreshSourceTransport}
+          onOpenGovernance={openGovernanceBoundary}
           onViewScroll={noteViewScroll}
           stageScrollTop={currentStageScrollTop()}
           expandedLineageRecordIds={state.view?.expandedLineageRecordIds || []}
@@ -826,25 +834,17 @@ export function TiinexApp() {
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
 
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
-      {dialog === 'rename-workspace' && active ? <RenameWorkspaceDialog workspace={active} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
-      {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
+      {dialog === 'rename-workspace' && active ? <RenameWorkspaceDialog workspace={activeUi || active} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
+      {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={activeUi || active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
       {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
-      {dialog === 'display-options' && active ? (
-        <DisplayOptionsDialog
-          options={state.view?.displayOptions}
-          counts={buildDisplayOptionCounts(active)}
-          scope={state.view?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'}
-          onSubmit={setDisplayOptions}
-          onDismiss={dismissDialog}
-        />
-      ) : null}
+      {dialog === 'display-options' && active ? <DisplayOptionsDialog options={state.view?.displayOptions} counts={buildDisplayOptionCounts(activeUi || active)} scope={state.view?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog
-          workspace={active}
+          workspace={activeUi || active}
           workspaceConfig={workspaceConfig}
-          sourceContinuation={active.sources?.find((source) => source.id === sourceContinuationId) || null}
+          sourceContinuation={(activeUi || active).sources?.find((source) => source.id === sourceContinuationId) || null}
           onDismiss={dismissDialog}
           onAddFiles={addLocalFiles}
           onAddGitHubSource={addGitHubSource}
@@ -852,8 +852,8 @@ export function TiinexApp() {
           githubBusy={githubRequestPending}
         />
       ) : null}
+      {governanceDialogSource && governanceDialogData ? <GovernanceBoundaryDialog source={governanceDialogSource} boundary={governanceDialogData.boundary} documents={governanceDialogData.documents} onDismiss={dismissDialog} /> : null}
       {dialog === 'help' ? <HelpDialog workspaceConfig={workspaceConfig} onDismiss={dismissDialog} /> : null}
     </main>
   );
 }
-

@@ -1,19 +1,25 @@
-# Tiinex Site v272
+# Tiinex Site v275
 
-Checkpoint: `v272`
-Version: `0.2.92-v272`
-Runtime: `react-v272-governance-badge-visibility`
+Checkpoint: `v275`
+Version: `0.2.95-v275`
+Runtime: `react-v275-visual-dormancy`
 
-## v272 focus
+## v275 focus
 
-Follow-up to v271 after browser video: make governance boundary state visible even when a bounded mirror materialization cannot prove the repository root files.
+PoC-informed visual dormancy for tab/app switches. Heavy workspace rendering is parked into a lightweight workspace preview when the page is hidden/blurred on constrained viewports or large workspaces.
 
-## Changed in v272
+## Changed in v275
 
-- GitHub sources with no persisted governance boundary now render an explicit `policy ?` source-rail badge instead of silently omitting governance state.
-- Detected boundaries from `LINEAGE_POLICY`, `LINEAGE_LICENSE`, `LICENSE`, `POLICY`, and `NOTICE` still win when available.
-- The fallback badge is advisory/unknown only. It does not fetch extra GitHub API/root material and does not claim a license was found.
-- Mirror remains the primary practical transport for large public repo material; shared browser Git proxy remains manual/explicit.
+- Added a visual dormancy owner in `src/app/visualDormancy.js`.
+- On `visibilitychange`, `pagehide`, and window blur, large/constrained workspaces park the heavy workspace tree with `content-visibility:hidden`, containment, hidden visibility, and a lightweight preview card.
+- On focus/visible/user interaction, the heavy workspace tree restores after a short delay so tab/app switch snapshots can paint the preview first.
+- Dormancy is direct-DOM lifecycle work and does not serialize full workspace state on app switch.
+- Added a small `window.TiinexVisualDormancyReport()` diagnostic.
+- Added regression coverage for large-workspace eligibility and preview summary rendering.
+
+## Validation
+
+See `VALIDATION_NOTES.md`.
 
 ## Supported local start
 

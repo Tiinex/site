@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v272';
-export const TIINEX_SITE_VERSION = '0.2.92-v272';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v272';
-export const TIINEX_RUNTIME_ID = 'react-v272-governance-badge-visibility';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v272-governance-badge-visibility';
+export const TIINEX_SITE_CHECKPOINT = 'v275';
+export const TIINEX_SITE_VERSION = '0.2.95-v275';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v275';
+export const TIINEX_RUNTIME_ID = 'react-v275-visual-dormancy';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v275-visual-dormancy';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

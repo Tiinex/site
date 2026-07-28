@@ -24,7 +24,7 @@ const stateWithSourceRecord = {
   workspaces: [{
     id: 'w-route-source',
     name: 'Route Source',
-    sources: [{ id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary', repoDiscovery: true, issueDiscovery: true, transportRefreshTier: 'proxy', transportOutcome: { activeTier: 'direct' }, transportTiers: { direct: 3 }, transportPlan: { configured: { direct: true } }, requestedSurfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } }, surfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } } }],
+    sources: [{ id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary', repoDiscovery: true, issueDiscovery: true, transportRefreshTier: 'proxy', transportOutcome: { activeTier: 'direct' }, transportTiers: { direct: 3 }, transportPlan: { configured: { direct: true } }, governanceBoundary: { schema: 'tiinex.governance.boundary.v1', status: 'found', scope: { kind: 'github-repo-root', repo: 'Tiinex/docs', ref: 'abcdef', root: '/' }, policy: { kind: 'LINEAGE_POLICY.md', path: 'LINEAGE_POLICY.md', url: 'https://raw.githubusercontent.com/Tiinex/docs/abcdef/LINEAGE_POLICY.md', contentAvailable: true }, rootChecked: true, discoveredFrom: 'repo-mirror-archive' }, requestedSurfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } }, surfaces: { repoFiles: { requested: true, loaded: 2 }, issueSnapshots: { requested: true, loaded: 1 } } }],
     sourceOrder: ['github:tiinex-docs'],
     discoveryProgress: { sourceId: 'github:tiinex-docs', phase: 'source-materialization', label: 'trying proxy transport', active: true },
     records: [{
@@ -43,10 +43,12 @@ const sourceRecordShell = sourceRoute.workspaces[0].records[0];
 if (sourceRoute.workspaces[0].sources[0].issueDiscovery !== true) throw new Error('route source shell must preserve issue discovery selection');
 if (sourceRoute.workspaces[0].sources[0].requestedSurfaces.issueSnapshots.requested !== true) throw new Error('route source shell must preserve requested issue surface across F5');
 if (sourceRoute.workspaces[0].sources[0].transportRefreshTier || sourceRoute.workspaces[0].sources[0].transportOutcome || sourceRoute.workspaces[0].sources[0].transportPlan || sourceRoute.workspaces[0].sources[0].transportTiers) throw new Error('route hash must not preserve volatile transport state');
+if (sourceRoute.workspaces[0].sources[0].governanceBoundary?.policy?.path !== 'LINEAGE_POLICY.md') throw new Error('route source shell must preserve persisted governance boundary metadata');
 if (sourceRecordShell.source.adapterId !== 'github') throw new Error('route shell must preserve source adapter');
 if (sourceRecordShell.sourceMode !== 'source-backed') throw new Error('route shell must preserve source mode');
 if (sourceRecordShell.path !== 'topics/source.md') throw new Error('route shell must preserve path');
 const normalizedSourceRoute = route.normalizeRouteState(sourceRoute, lifecycle);
+if (normalizedSourceRoute.workspaces[0].sources[0].governanceBoundary?.status !== 'found') throw new Error('normalized route must preserve source governance boundary after F5');
 const normalizedRecord = normalizedSourceRoute.workspaces[0].records[0];
 if (normalizedRecord.source.adapterId !== 'github') throw new Error('normalized route must not turn source-backed record local');
 if (normalizedRecord.materialAvailability !== 'material-unavailable') throw new Error('route-only record should disclose unavailable material');

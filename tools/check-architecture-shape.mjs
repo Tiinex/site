@@ -97,6 +97,9 @@ excludes('src/adapters/github/github.issueTransport.js', 'Object.create(Object.g
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
 includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
 includes('src/app/TiinexApp.jsx', 'onExportWorkspace={exportWorkspacePackage}', 'workspace export action must be wired from TiinexApp into WorkspaceColumnSurface');
+includes('src/app/TiinexApp.jsx', 'RenameWorkspaceDialog,', 'Rename workspace dialog must be imported when rendered by TiinexApp');
+includes('src/app/TiinexApp.jsx', "import { TIINEX_RUNTIME_ID } from '../build.identity.js';", 'TiinexApp runtime badge must use build identity, not stale hard-coded runtime');
+includes('src/app/TiinexApp.jsx', 'data-runtime={TIINEX_RUNTIME_ID}', 'TiinexApp DOM runtime identity must stay tied to src/build.identity.js');
 
 excludes('src/schemas/workspace/workspace.views.jsx', 'function normalizeDisplayFilterValue', 'workspace.views must not own display filter normalization');
 excludes('src/schemas/workspace/workspace.views.jsx', 'function displayRecordIncluded', 'workspace.views must not own record display membership');

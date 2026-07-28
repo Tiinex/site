@@ -1,27 +1,25 @@
-# Validation Notes v272
+# Validation Notes v275
 
-## v272 governance badge visibility
+## v275 visual dormancy
 
-Browser evidence from the v271 test video showed the main transport behavior working:
+Root cause hypothesis:
 
-- mirror loaded `333` source-backed records for `Tiinex/docs`
-- issue snapshot mirror paths returned `200 OK`
-- explicit proxy no longer defaulted during initial mirror load
-- explicit proxy could load issue snapshots while the repo-file git proxy run was cancelled/aborted
+- Large Tiinex/docs workspaces can make browser tab/app switches expensive because the visible workspace tree remains fully paintable during hide/show and app-switch snapshots.
+- The PoC avoided this on mobile by parking the heavy visual tree and showing a lightweight workspace preview while hidden.
 
-Remaining visible gap:
+Changed in v275:
 
-- the source rail did not show any governance badge, even though v271 introduced governance-boundary metadata.
-
-Changed in v272:
-
-- `SourceGovernanceBadge` now renders `policy ?` for GitHub sources when no boundary object has been persisted yet.
-- This makes unchecked governance visible instead of silently absent.
-- It does not add network requests, root probes, or policy/license claims.
+- Ported the PoC behavior as a React-era owner: `src/app/visualDormancy.js`.
+- The owner does not call React state setters during hide/pagehide/blur.
+- It hides the heavy `.tx-workspace-window` with `content-visibility:hidden`, containment, hidden visibility, and disabled pointer events.
+- It shows a lightweight preview card with workspace title, source, view, and counts.
+- It restores on visible/focus/user interaction after a short delay.
+- Desktop large workspaces are eligible too, not only coarse/mobile viewports.
 
 Validated locally in the sandbox:
 
 ```bash
+node src/app/visualDormancy.test.mjs
 npm run validate
 npm run architecture:shape
 npm run ui:shape

@@ -8,6 +8,7 @@ import { createContinuationDraft, createReferenceDraft, listContinuationTargets 
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
 
+
 export function RecordDetailDialog({ record, onDismiss, onShare }) {
   const source = record?.source || {};
   const displayPath = recordDisplayPath(record || {});

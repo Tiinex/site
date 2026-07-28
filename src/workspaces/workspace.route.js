@@ -69,9 +69,34 @@
       issueUrls: source.issueUrls || config.issueUrls || '',
       requestedSurfaces: compactSurfaceMap(source.requestedSurfaces || {}),
       surfaces: compactSurfaceMap(source.surfaces || {}),
+      governanceBoundary: compactGovernanceBoundary(source.governanceBoundary || null),
       closeable: Boolean(source.closeable),
       config
     };
+  }
+
+
+  function compactGovernanceBoundary(boundary = null) {
+    if (!boundary || typeof boundary !== 'object') return undefined;
+    const copyFile = (file = null) => {
+      if (!file || typeof file !== 'object') return null;
+      const out = {};
+      for (const key of ['status', 'kind', 'path', 'url', 'contentAvailable', 'note']) {
+        if (file[key] != null && file[key] !== '') out[key] = file[key];
+      }
+      return Object.keys(out).length ? out : null;
+    };
+    const out = {};
+    for (const key of ['schema', 'status', 'rootChecked', 'discoveredFrom', 'note', 'boundary']) {
+      if (boundary[key] != null && boundary[key] !== '') out[key] = boundary[key];
+    }
+    if (boundary.scope && typeof boundary.scope === 'object') out.scope = Object.assign({}, boundary.scope);
+    const policy = copyFile(boundary.policy || null);
+    if (policy) out.policy = policy;
+    const notice = copyFile(boundary.notice || null);
+    if (notice) out.notice = notice;
+    if (boundary.candidates && typeof boundary.candidates === 'object') out.candidates = Object.assign({}, boundary.candidates);
+    return Object.keys(out).length ? out : undefined;
   }
 
   function compactAsset(asset = {}) {

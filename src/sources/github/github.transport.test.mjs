@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildGithubTransportPlan, clearGithubSourceTextCacheForSource, createGithubTransportFetch, hydrateGithubRecordFromSourceCache } from './github.transport.js';
+import { buildGithubTransportPlan, clearGithubSourceTextCacheForSource, createGithubTransportFetch, hydrateGithubRecordFromSourceCache, hydrateGithubWorkspaceFromSourceCache, writeGithubSourceCacheEntry } from './github.transport.js';
 import { sourceTransportRefreshInputForSource } from '../../app/sourceTransportRefresh.js';
 
 function makeResponse(body, options = {}) {
@@ -94,6 +94,22 @@ const hydrated = hydrateGithubRecordFromSourceCache({
 }, { sourceCache: cache });
 assert.equal(hydrated.markdown, '# cached document', 'source-backed record shells should hydrate readable Markdown from the source text cache');
 assert.equal(hydrated.materialAvailability, 'available', 'cache-hydrated source record should become readable in detail/markdown views');
+
+const routeShellCache = Object.create(null);
+await writeGithubSourceCacheEntry('https://raw.githubusercontent.com/owner/repo/main/.topics/b.md', '# B from source cache', 'text/markdown; charset=utf-8', 'raw-markdown', { sourceCache: routeShellCache });
+const hydratedWorkspace = hydrateGithubWorkspaceFromSourceCache({
+  id: 'w-cache-restore',
+  records: [{
+    id: 'source:gh:.topics/b.md',
+    title: 'B',
+    path: '.topics/b.md',
+    sourceMode: 'source-backed',
+    materialAvailability: 'material-unavailable',
+    source: { id: 'gh', adapterId: 'github', repo: 'owner/repo', ref: 'main', rootPath: '.topics' }
+  }]
+}, { sourceCache: routeShellCache });
+assert.equal(hydratedWorkspace.records[0].markdown, '# B from source cache', 'route-restored repo-file shells should hydrate for Feed/Tree from source text cache');
+assert.equal(hydratedWorkspace.records[0].materialAvailability, 'available', 'workspace hydration should make cached route-shell records visible to UI read models');
 
 
 const refreshAfterIssueMirrorFallback = sourceTransportRefreshInputForSource({
