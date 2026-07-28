@@ -1,20 +1,20 @@
-# Tiinex Site v285
+# Tiinex Site v286
 
-Checkpoint: `v285`
-Version: `0.2.105-v285`
-Runtime: `react-v285-deferred-view-route-persistence`
+Checkpoint: `v286`
+Version: `0.2.106-v286`
+Runtime: `react-v286-disable-return-settle-jank`
 
-## v285 focus
+## v286 focus
 
-Mobile interaction latency follow-up after v284. Large Tiinex/docs workspaces made simple mobile actions feel delayed because view-only interactions synchronously persisted large route/session state into URL hash + local storage.
+Mobile/foreground interaction latency follow-up after v285. The browser video showed `body.tx-return-settle` active while interacting with a large Tiinex/docs workspace. That class used broad descendant selectors over cards, dialogs, rows, dock, and runtime shell, which can invalidate styles for the whole mounted app during foreground or DevTools/mobile-emulation focus changes.
 
-## Changed in v285
+## Changed in v286
 
-- View-only commits update React state immediately but defer route/hash/session persistence to idle time.
-- Workspace/material/source commits still persist synchronously for recoverability.
-- Share and beforeunload flush pending deferred route state.
-- Added `window.TiinexStatePersistenceReport()` diagnostics.
-- Added `src/app/statePersistenceScheduler.js` as the owner for deferred route persistence.
+- The global return-settle class is disabled by default.
+- Visual dormancy still supports the coarse-pointer/mobile parked preview.
+- Tab/app lifecycle diagnostics remain available through `window.TiinexVisualDormancyReport()`.
+- Diagnostics now report `returnSettleEnabled: false` and record `return-settle-skip` instead of toggling `body.tx-return-settle`.
+- No route/hash persistence semantics were changed in this batch.
 
 ## Validation
 

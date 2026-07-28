@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.105-v285",
+  "version": "0.2.106-v286",
   "private": true,
-  "description": "Tiinex Site v285: deferred view route persistence for mobile interaction latency.",
+  "description": "Tiinex Site v286: disables broad return-settle selectors that caused mobile foreground interaction jank.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
