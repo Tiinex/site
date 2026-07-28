@@ -8143,3 +8143,102 @@ body.tx-return-settle .tx-react-runtime {
     padding-top: 0.58rem;
   }
 }
+
+/* v288: mobile read-sheet and tap-response polish.
+   Keep source/material semantics unchanged; make touch feedback immediate and defer
+   heavy read projection until the sheet shell is visible. */
+.tx-clickable-record-card,
+.tx-legacy-action,
+.tx-action-chip,
+.tx-button,
+.tx-add-choice-card {
+  touch-action: manipulation;
+}
+.tx-clickable-record-card {
+  -webkit-tap-highlight-color: rgba(101,242,231,.12);
+}
+.tx-clickable-record-card:active,
+.tx-legacy-action:active,
+.tx-add-choice-card:active {
+  transform: translateY(1px);
+  background-color: rgba(101,242,231,.045);
+}
+.tx-schema-read-deferred {
+  min-height: 8.5rem;
+  display: grid;
+  place-items: stretch;
+}
+.tx-schema-read-skeleton {
+  display: grid;
+  gap: .4rem;
+  align-content: center;
+  min-height: 7.5rem;
+  border: 1px solid rgba(101,242,231,.14);
+  border-radius: .9rem;
+  padding: 1rem;
+  background: linear-gradient(90deg, rgba(255,255,255,.035), rgba(101,242,231,.045), rgba(255,255,255,.035));
+}
+.tx-schema-read-skeleton strong {
+  color: rgba(247,248,251,.92);
+  overflow-wrap: anywhere;
+}
+.tx-schema-read-skeleton span {
+  color: rgba(210,255,244,.74);
+  font-size: .82rem;
+}
+.tx-app-config-source-form .tx-transport-contract-panel {
+  margin-top: .25rem;
+}
+@media (pointer: coarse) and (max-width: 760px) {
+  .tx-dialog-backdrop {
+    background: rgba(4,2,9,.68);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .tx-dialog-record-detail {
+    width: min(100%, 27.5rem);
+    max-height: calc(100dvh - .35rem);
+  }
+  .tx-dialog-record-detail .tx-dialog-body {
+    padding: .62rem .62rem max(.7rem, env(safe-area-inset-bottom, 0px));
+  }
+  .tx-record-read-detail {
+    gap: .55rem;
+  }
+  .tx-record-read-detail > .tx-card-badges {
+    gap: .28rem;
+    max-height: 3.2rem;
+    overflow: hidden;
+  }
+  .tx-record-read-detail .tx-dialog-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: .2rem -.62rem 0;
+    padding: .62rem .62rem calc(.68rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(101,242,231,.16);
+    background: linear-gradient(180deg, rgba(6,8,15,.74), rgba(6,8,15,.98) 30%, rgba(6,8,15,1));
+  }
+  .tx-record-read-detail .tx-dialog-actions .tx-button {
+    width: 100%;
+    justify-content: center;
+    min-height: 2.45rem;
+  }
+  .tx-record-read-detail .tx-record-provenance-details {
+    order: 8;
+  }
+  .tx-schema-read-skeleton {
+    min-height: 6.25rem;
+  }
+  .tx-add-choice-grid {
+    gap: .52rem;
+  }
+  .tx-add-choice-card {
+    min-height: 4.3rem;
+  }
+  .tx-app-config-source-form .tx-transport-contract-panel {
+    grid-template-columns: 1fr;
+  }
+}

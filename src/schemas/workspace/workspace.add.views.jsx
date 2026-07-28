@@ -6,7 +6,7 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { TiinexAdapterRegistry } from '../../adapters/registry.js';
 import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.adapter.js';
 
-export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinuation = null, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, githubBusy = false }) {
+export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinuation = null, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, onAddTiinexAppConfig, githubBusy = false }) {
   const [mode, setMode] = useState(sourceContinuation ? 'git' : '');
   const [stagedFiles, setStagedFiles] = useState([]);
   const title = `Add to ${workspace.title || workspace.name || 'workspace'}`;
@@ -22,6 +22,9 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinu
       ) : null}
       {mode === 'urls' ? (
         <ExplicitUrlsForm onBack={() => setMode('')} onSubmit={onAddUrls} />
+      ) : null}
+      {mode === 'app-config' ? (
+        <TiinexAppConfigForm onBack={() => setMode('')} onSubmit={onAddTiinexAppConfig} busy={githubBusy} />
       ) : null}
       {mode === 'drop' ? (
         <DropMode stagedFiles={stagedFiles} setStagedFiles={setStagedFiles} onBack={() => setMode('')} onSubmit={() => onAddFiles(stagedFiles, { sourceMode: 'drop' })} />
@@ -56,6 +59,11 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
         <button type="button" className="tx-add-choice-card" onClick={() => onMode('urls')}>
           <span className="tx-add-choice-icon"><Icon name="source" /></span>
           <span className="tx-add-choice-copy"><strong>Explicit URLs</strong><small>Raw / blob URLs</small></span>
+          <Icon name="source" />
+        </button>
+        <button type="button" className="tx-add-choice-card" onClick={() => onMode('app-config')}>
+          <span className="tx-add-choice-icon"><Icon name="source" /></span>
+          <span className="tx-add-choice-copy"><strong>Tiinex app config</strong><small>Fetch hosted source plan</small></span>
           <Icon name="source" />
         </button>
         <button type="button" className="tx-add-choice-card tx-desktop-only-choice" onClick={() => onMode('drop')}>
@@ -229,6 +237,36 @@ function ExplicitUrlsForm({ onBack, onSubmit }) {
   );
 }
 
+function TiinexAppConfigForm({ onBack, onSubmit, busy = false }) {
+  const [target, setTarget] = useState('');
+  const [error, setError] = useState('');
+  function submit(event) {
+    event.preventDefault();
+    const value = String(target || '').trim();
+    if (!value) return setError('Enter a Tiinex app URL, e.g. https://tiinex.dev/.');
+    setError('');
+    onSubmit?.(value);
+  }
+  return (
+    <form className="tx-add-source-form tx-app-config-source-form" onSubmit={submit}>
+      <section className="tx-github-boundary-panel" aria-label="Tiinex app config source">
+        <strong>Fetch hosted app config</strong>
+        <small>Reads a Tiinex web app's declared workspace config and loads its first source entrypoint. The target app must expose config through Tiinex web conventions and browser-readable CORS.</small>
+      </section>
+      <TextField id="tiinex-app-config-url" label="Tiinex app URL" value={target} onChange={setTarget} placeholder="https://tiinex.dev/" />
+      {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
+      <div className="tx-transport-contract-panel" aria-label="Config source contract">
+        <span><strong>Convention</strong><small>HTML link/meta or /.well-known/tiinex/workspace.md, tiinex.workspace.md, viewer.workspace.md</small></span>
+        <span><strong>Boundary</strong><small>Config fetch only chooses the source plan; material still loads through normal source transport.</small></span>
+      </div>
+      <div className="tx-dialog-actions">
+        <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
+        <Button type="submit" variant="primary" icon="source" disabled={busy}>{busy ? 'Source operation running…' : 'Fetch config source'}</Button>
+      </div>
+    </form>
+  );
+}
+
 function DropMode({ stagedFiles, setStagedFiles, onBack, onSubmit }) {
   const inputRef = useRef(null);
   const count = stagedFiles.length;
@@ -271,6 +309,7 @@ function modeTitle(mode, title) {
   if (mode === 'git') return 'GitHub source';
   if (mode === 'urls') return 'Explicit URLs';
   if (mode === 'drop') return 'Drag and drop';
+  if (mode === 'app-config') return 'Tiinex app config';
   return title;
 }
 

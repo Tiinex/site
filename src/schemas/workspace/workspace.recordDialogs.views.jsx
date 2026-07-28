@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { TextField } from '../../ui/primitives/Field.jsx';
@@ -22,7 +22,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
           <Badge>{recordSchemaBadge(record)}</Badge>
           <Badge>{isSourceBacked ? 'source-backed' : 'local/session'}</Badge>
         </div>
-        <SchemaReadView record={record} />
+        <DeferredSchemaReadView record={record} />
         <details className="tx-record-provenance-details">
           <summary>Provenance / envelope</summary>
           <dl className="tx-record-meta">
@@ -47,6 +47,23 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
       </div>
     </Modal>
   );
+}
+
+function DeferredSchemaReadView({ record }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(false);
+    const raf = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, [record?.id]);
+  if (!ready) {
+    return (
+      <section className="tx-schema-read-view tx-schema-read-deferred" aria-label="Artifact read view loading">
+        <div className="tx-schema-read-skeleton"><strong>{record?.title || 'Artifact'}</strong><span>Opening read view…</span></div>
+      </section>
+    );
+  }
+  return <SchemaReadView record={record} />;
 }
 
 export function RecordMarkdownDialog({ record, onDismiss }) {

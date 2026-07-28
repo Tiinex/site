@@ -33,6 +33,7 @@ import { TIINEX_RUNTIME_ID } from '../build.identity.js';
 import { installVisualDormancy, visualDormancySummary } from './visualDormancy.js';
 import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScrollPersist } from './scrollPersistence.js';
 import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
+import { resolveTiinexAppConfigGithubInput } from './tiinexAppConfigSource.js';
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -243,6 +244,12 @@ export function TiinexApp() {
     setDialog(null);
     setNotice(`Added ${result.records.length} URL artifact${result.records.length === 1 ? '' : 's'}${adapterResult.errors?.length ? `; ${adapterResult.errors.length} failed` : ''}.`);
     commit(result.state, 'push');
+  }
+  async function addTiinexAppConfig(targetUrl) {
+    const resolved = await resolveTiinexAppConfigGithubInput(targetUrl, { fetchImpl: fetch, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig });
+    if (!resolved?.ok) return setNotice(resolved?.message || 'Could not read Tiinex app config source.');
+    setNotice(`Config source found: ${resolved.configUrl || resolved.targetUrl}; loading ${resolved.input.repository}.`);
+    await addGitHubSource(resolved.input);
   }
 
   async function addGitHubSource(input = {}) {
@@ -842,6 +849,7 @@ export function TiinexApp() {
           onAddFiles={addLocalFiles}
           onAddGitHubSource={addGitHubSource}
           onAddUrls={addExplicitUrls}
+          onAddTiinexAppConfig={addTiinexAppConfig}
           githubBusy={githubRequestPending}
         />
       ) : null}

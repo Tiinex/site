@@ -1,20 +1,23 @@
-# Tiinex Site v287
+# Tiinex Site v288
 
-Checkpoint: `v287`
-Version: `0.2.107-v287`
-Runtime: `react-v287-render-index-memoization`
+Checkpoint: `v288`
+Version: `0.2.108-v288`
+Runtime: `react-v288-mobile-read-sheet-config-source`
 
-## v287 focus
+## v288 focus
 
-Mobile interaction latency follow-up after v286 + RC12. The remaining lag looks like whole-workspace render work after Tiinex/docs is loaded, not transport, route persistence, or return-settle CSS. This checkpoint keeps the v286 return-settle fix and adds render-index memoization around large workspace views.
+Mobile interaction follow-up after v287. Desktop and most mobile lockups are resolved, but record opening on mobile can still feel like a small delay because the read projection is built in the same commit as the dialog shell. This checkpoint makes the mobile read sheet respond first, then mounts the heavier schema read view on the next animation frame.
 
-## Changed in v287
+It also adds a first Tiinex-hosted app config intake: paste a Tiinex app URL and the viewer resolves its declared workspace config through Tiinex web conventions, then loads the first configured source entrypoint through the normal source transport path.
 
-- Discovery material indexes are reusable across query/filter passes instead of rebuilding lineage/path membership every time.
-- `WorkspaceColumnSurface` is memoized so dialog-only state changes do not rerender the full workspace surface.
-- Tree path-model building is memoized for stable record/query inputs.
-- Discovery cards, asset cards, and workspace candidate cards skip rerendering when their material props are unchanged.
-- Progressive render/search/filter truth from v281-v283 is preserved: filtering still runs over the full dataset; only mounted card DOM is bounded.
+## Changed in v288
+
+- Record detail dialogs now show a lightweight read-shell immediately and defer `SchemaReadView` by one animation frame.
+- Touch targets use `touch-action: manipulation` and visible pressed feedback on coarse/mobile viewports.
+- Mobile record detail actions are sticky and sheet-like without reusing the broader return-settle/dormancy paths.
+- Add flow includes `Tiinex app config` as a config-source semantic.
+- Config-source intake detects HTML link/meta declarations and conventional config paths such as `/.well-known/tiinex/workspace.md`, `tiinex.workspace.md`, `viewer.workspace.md`, and `.topics/.workspaces/viewer.workspace.md`.
+- A resolved config maps to a GitHub source input; actual material still loads through normal source transports and boundaries.
 
 ## Validation
 
