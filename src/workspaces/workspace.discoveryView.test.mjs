@@ -106,6 +106,12 @@ assert.equal(view.hiddenReasonsById.get(metadataOnlyAdapter.id), 'hidden-support
 assert.equal(view.hiddenReasonsById.get(routeShell.id), 'hidden-supporting', 'route-only unavailable shell is hidden from Leaves only');
 
 const index = buildDiscoveryMaterialIndex(records);
+const viewWithReusedIndex = buildWorkspaceDiscoveryView(workspace, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
+  query: 'expert',
+  materialIndex: index
+});
+assert.equal(viewWithReusedIndex.materialIndex, index, 'Discovery view can reuse a stable material index across query/filter changes');
 assert.equal(isDiscoveryLeafRecord(educationalRoot, index), false, 'path branch roots are not Discovery leaves');
 assert.equal(isDiscoveryLeafRecord(socialsRoot, index), false, 'same-folder 001.trace.md roots are not Discovery leaves when they have child work records');
 assert.equal(isDiscoveryLeafRecord(socialsTask, index), true, 'terminal same-folder child remains a Discovery leaf');

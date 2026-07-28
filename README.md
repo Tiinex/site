@@ -1,20 +1,20 @@
-# Tiinex Site v286
+# Tiinex Site v287
 
-Checkpoint: `v286`
-Version: `0.2.106-v286`
-Runtime: `react-v286-disable-return-settle-jank`
+Checkpoint: `v287`
+Version: `0.2.107-v287`
+Runtime: `react-v287-render-index-memoization`
 
-## v286 focus
+## v287 focus
 
-Mobile/foreground interaction latency follow-up after v285. The browser video showed `body.tx-return-settle` active while interacting with a large Tiinex/docs workspace. That class used broad descendant selectors over cards, dialogs, rows, dock, and runtime shell, which can invalidate styles for the whole mounted app during foreground or DevTools/mobile-emulation focus changes.
+Mobile interaction latency follow-up after v286 + RC12. The remaining lag looks like whole-workspace render work after Tiinex/docs is loaded, not transport, route persistence, or return-settle CSS. This checkpoint keeps the v286 return-settle fix and adds render-index memoization around large workspace views.
 
-## Changed in v286
+## Changed in v287
 
-- The global return-settle class is disabled by default.
-- Visual dormancy still supports the coarse-pointer/mobile parked preview.
-- Tab/app lifecycle diagnostics remain available through `window.TiinexVisualDormancyReport()`.
-- Diagnostics now report `returnSettleEnabled: false` and record `return-settle-skip` instead of toggling `body.tx-return-settle`.
-- No route/hash persistence semantics were changed in this batch.
+- Discovery material indexes are reusable across query/filter passes instead of rebuilding lineage/path membership every time.
+- `WorkspaceColumnSurface` is memoized so dialog-only state changes do not rerender the full workspace surface.
+- Tree path-model building is memoized for stable record/query inputs.
+- Discovery cards, asset cards, and workspace candidate cards skip rerendering when their material props are unchanged.
+- Progressive render/search/filter truth from v281-v283 is preserved: filtering still runs over the full dataset; only mounted card DOM is bounded.
 
 ## Validation
 

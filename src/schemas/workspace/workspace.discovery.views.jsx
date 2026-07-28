@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AssetCard, RecordCard, WorkspaceCandidateCard } from './workspace.cards.views.jsx';
+import { AssetCard, MemoRecordCard as RecordCard, WorkspaceCandidateCard } from './workspace.cards.views.jsx';
 import { discoveryInitialRecordWindowLimitForScroll, discoveryRecordWindowKey, discoveryRenderWindowProfile, discoveryWindowState, DISCOVERY_INITIAL_RECORD_WINDOW } from './workspace.discoveryRenderWindow.js';
 
 export function DiscoveryRecordList({ workspaceCandidates = [], records = [], assets = [], auditById = new Map(), stageScrollTop = 0, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenAsset }) {

@@ -4,7 +4,7 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
 import { lineageDisplayOptions } from '../../workspaces/workspace.displayOptions.js';
 import { displayRecordIncluded } from '../../workspaces/workspace.displayFilters.js';
-import { RecordCard } from './workspace.cards.views.jsx';
+import { MemoRecordCard as RecordCard } from './workspace.cards.views.jsx';
 import { compactPath } from './workspace.viewFormatting.js';
 
 export function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, lineageLoadReport = null, lineageReady = false, displayOptions = null, expandedRecordIds = [], onToggleLineageCard }) {

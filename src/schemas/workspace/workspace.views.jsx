@@ -4,7 +4,7 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './tiinex.workspace.v1.presenter.js';
 import { summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
-import { buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
+import { buildDiscoveryMaterialIndex, buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
 import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
 import { normalizeWorkspaceDisplayOptions } from '../../workspaces/workspace.displayOptions.js';
 import { WorkspaceBoundaryKicker, SourceStrip, WorkspaceDropHint, WorkspaceMaterialSummary, ModeToolbar, ProgressStrip, EmptyWorkspaceState } from './workspace.chrome.views.jsx';
@@ -34,7 +34,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate, onShareRecord, onRecordAction, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -58,6 +58,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWork
   const query = lineageVerse ? lineageQuery : discoveryQuery;
   const displayOptions = useMemo(() => normalizeWorkspaceDisplayOptions(state.view?.displayOptions), [state.view?.displayOptions]);
   const selectedRecord = selectedRecordFrom(workspace, selectedRecordId);
+  const materialIndex = useMemo(() => buildDiscoveryMaterialIndex(allRecords), [allRecords]);
   const auditById = useMemo(() => auditIndexForWorkspace(workspace, allRecords), [workspace, allRecords]);
   const allAssets = useMemo(() => (Array.isArray(workspace.assets) ? workspace.assets : []), [workspace.assets]);
   const allWorkspaceCandidates = useMemo(() => (Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : []), [workspace.workspaceMergeCandidates]);
@@ -67,8 +68,9 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWork
     workspaceCandidates: allWorkspaceCandidates,
     displayOptions,
     query: discoveryQuery,
-    auditById
-  }), [workspace, allRecords, allAssets, allWorkspaceCandidates, displayOptions, discoveryQuery, auditById]);
+    auditById,
+    materialIndex
+  }), [workspace, allRecords, allAssets, allWorkspaceCandidates, displayOptions, discoveryQuery, auditById, materialIndex]);
   const workspaceCandidates = discoveryView.workspaceCandidates;
   const records = discoveryView.records;
   const assets = discoveryView.assets;
@@ -132,4 +134,12 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWork
       </section>
     </section>
   );
+}, workspaceColumnSurfacePropsEqual);
+
+function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
+  return previous.workspace === next.workspace
+    && previous.state === next.state
+    && previous.expandedLineageRecordIds === next.expandedLineageRecordIds
+    && previous.lineageAuditReport === next.lineageAuditReport
+    && previous.lineageLoadReport === next.lineageLoadReport;
 }

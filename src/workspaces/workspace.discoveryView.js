@@ -12,7 +12,9 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
   const displayOptions = normalizeWorkspaceDisplayOptions(options.displayOptions || {});
   const query = String(options.query || '').trim();
   const auditById = options.auditById instanceof Map ? options.auditById : new Map();
-  const materialIndex = buildDiscoveryMaterialIndex(records);
+  const materialIndex = options.materialIndex && Array.isArray(options.materialIndex.records) && options.materialIndex.records === records
+    ? options.materialIndex
+    : buildDiscoveryMaterialIndex(records);
   const hiddenReasonsById = new Map();
   const membershipById = new Map();
 
@@ -145,6 +147,7 @@ export function buildDiscoveryMaterialIndex(records = []) {
     pathChildKeys,
     parentReasonsByKey,
     descriptors: recordIndex.descriptors,
+    records: source,
     descriptorsByRecord: recordIndex.byRecord,
     descriptorsByKey: recordIndex.byKey,
     hasLineage: Boolean(resolved),

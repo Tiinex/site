@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
@@ -7,14 +7,15 @@ import { recordLifecycleBadge } from './workspace.viewFormatting.js';
 
 export function WorkspaceTreeState({ workspace, query = '', records, assets = [], workspaceCandidates = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   query = String(query || '').trim();
-  const tree = buildWorkspacePathTree({
+  const rootLabel = `Visible tree · ${workspace.title || workspace.name || 'workspace'}`;
+  const tree = useMemo(() => buildWorkspacePathTree({
     records,
     assets,
     workspaceCandidates,
-    rootLabel: `Visible tree · ${workspace.title || workspace.name || 'workspace'}`,
+    rootLabel,
     query
-  });
-  const expandedSet = new Set(Array.isArray(expandedFolders) ? expandedFolders : []);
+  }), [records, assets, workspaceCandidates, rootLabel, query]);
+  const expandedSet = useMemo(() => new Set(Array.isArray(expandedFolders) ? expandedFolders : []), [expandedFolders]);
   return (
     <div className="tx-workspace-tree-state tx-path-tree-state" role="tree" aria-label="Workspace path tree">
       <div className="tx-tree-root tx-path-tree-root">

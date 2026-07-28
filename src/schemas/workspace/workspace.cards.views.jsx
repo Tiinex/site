@@ -8,7 +8,7 @@ import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { actionClassName, actionLabel, compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
 
-export function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+export const WorkspaceCandidateCard = React.memo(function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   return (
     <article className="tx-artifact-card tx-workspace-candidate-card">
       <div className="tx-card-badges">
@@ -25,9 +25,9 @@ export function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, on
       </footer>
     </article>
   );
-}
+}, candidateCardPropsEqual);
 
-export function AssetCard({ asset, onOpenAsset }) {
+export const AssetCard = React.memo(function AssetCard({ asset, onOpenAsset }) {
   return (
     <article className="tx-artifact-card tx-asset-card">
       <div className="tx-card-badges">
@@ -43,7 +43,7 @@ export function AssetCard({ asset, onOpenAsset }) {
       </footer>
     </article>
   );
-}
+}, assetCardPropsEqual);
 
 export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
   const lineageContext = context === 'lineage';
@@ -93,6 +93,23 @@ export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLinea
       </footer>
     </article>
   );
+}
+
+export const MemoRecordCard = React.memo(RecordCard, recordCardPropsEqual);
+
+function candidateCardPropsEqual(previous = {}, next = {}) {
+  return previous.candidate === next.candidate;
+}
+
+function assetCardPropsEqual(previous = {}, next = {}) {
+  return previous.asset === next.asset;
+}
+
+function recordCardPropsEqual(previous = {}, next = {}) {
+  return previous.record === next.record
+    && previous.auditItem === next.auditItem
+    && previous.context === next.context
+    && previous.expanded === next.expanded;
 }
 
 export function AssetDetailDialog({ asset, onDismiss }) {

@@ -1,15 +1,17 @@
-# Validation Notes v286
+# Validation Notes v287
 
 ## Root hypothesis
 
-The v285 video still showed mobile/foreground latency after route persistence was deferred. The browser inspector showed `body.tx-return-settle` on the page while interacting with a large Tiinex/docs workspace. The `tx-return-settle` CSS used broad body-level descendant selectors for runtime, workspace, dock, cards, rows, audit, lineage, dialogs, filters and blur effects. Toggling or keeping that class during foreground interaction can cause whole-app style invalidation.
+After v286 disabled the broad `tx-return-settle` path, mobile/device-viewport interactions could still feel delayed once Tiinex/docs had loaded hundreds of records. The likely remaining owner is render-path work over the full workspace: discovery membership/material indexes, tree model building, and rerendering the workspace surface/cards when only dialogs or selected-record state changes.
 
 ## Changed
 
-- Disabled the global return-settle class by default.
-- Kept coarse/mobile visual dormancy preview behavior.
-- Kept diagnostics and added explicit `returnSettleEnabled: false` in `window.TiinexVisualDormancyReport()`.
-- Added a regression assertion that return-settle remains disabled.
+- `buildWorkspaceDiscoveryView` now accepts a stable `materialIndex` and reuses it when it belongs to the same records array.
+- `buildDiscoveryMaterialIndex` exposes its source records so reuse is verifiable and safe.
+- `WorkspaceColumnSurface` is wrapped in `React.memo` with a comparator that ignores callback identity churn and dialog-only parent rerenders.
+- `WorkspaceTreeState` memoizes `buildWorkspacePathTree` and the expanded-folder set.
+- `RecordCard`, `AssetCard`, and `WorkspaceCandidateCard` are memoized with material-prop comparators.
+- Added a discovery-view regression guard that reuses a material index across query/filter changes.
 
 ## Validation run in sandbox
 
@@ -36,7 +38,6 @@ node --check .site-publish/tiinex.bundle.js
 
 1. Load Tiinex/docs with repo files and issues.
 2. Use mobile/device viewport.
-3. Interact with feed/search/tree/dialog controls.
-4. Run `window.TiinexVisualDormancyReport()`.
-5. Confirm `returnSettleEnabled: false` and no persistent `body.tx-return-settle` class.
-6. Confirm interaction latency improves relative to v285.
+3. Interact with Feed, Tree, search, display filters, dialogs, and record actions.
+4. Confirm search/filter still works against records outside the mounted render window.
+5. Confirm tab-return behavior stays at least as good as v286.
