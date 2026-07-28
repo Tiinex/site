@@ -9,7 +9,7 @@ export const PORTABLE_LINEAGE_SEARCH_SCHEMA_ID = 'tiinex.portable.lineage-search
 export function searchPortableLineage(input = {}, options = {}) {
   const material = normalizePortableInput(input.materials || input);
   const query = String(input.query ?? options.query ?? '').trim();
-  const filters = normalizeFilters(input.filters || options.filters || input);
+  const filters = normalizeFilters(input.filters || options.filters || legacyFilterInput(input));
   const resolved = resolveLineage(material.records, { depth: 'loaded-portable-search' });
   const scopedIds = resolveScopeIds(material.records, resolved, input, options);
   const relationIndex = buildRelationIndex(resolved);
@@ -203,6 +203,25 @@ function summarizeFindings(findings = []) {
   const counts = { error: 0, warning: 0, info: 0 };
   for (const finding of findings) counts[finding.severity === 'error' ? 'error' : finding.severity === 'warning' ? 'warning' : 'info'] += 1;
   return Object.freeze({ ...counts, total: counts.error + counts.warning + counts.info });
+}
+
+function legacyFilterInput(input = {}) {
+  const materialPayloadPresent = Boolean(input.materials || input.markdown || input.files || input.records || input.assets);
+  return Object.freeze({
+    schemaIds: input.schemaIds || input.schemaId,
+    parentSchemaIds: input.parentSchemaIds || input.parentSchemaId,
+    sourceModes: input.sourceModes || (!materialPayloadPresent ? input.sourceMode : undefined),
+    paths: input.paths || input.pathPrefix,
+    relation: input.relation || input.lineageRole,
+    hasIntegrity: input.hasIntegrity,
+    hasContinuityContext: input.hasContinuityContext,
+    findingSeverities: input.findingSeverities || input.findingSeverity,
+    qualification: input.qualification,
+    searchFields: input.searchFields,
+    snippetChars: input.snippetChars,
+    offset: input.offset,
+    limit: input.limit
+  });
 }
 
 function normalizeFilters(raw = {}) {

@@ -97,7 +97,7 @@ export function createArtifactDraftMarkdown(contract = {}, input = {}) {
     '- Parent',
     `  - Parent Schema: [${parentSchemaForRecord(parentRecord)}](${parentSchemaForRecord(parentRecord)}.schema.md)`,
     `  - Created At: ${parentRecord.createdAt || 'unknown'}`,
-    `  - Trace: ${parentRecord.id ? `record:${parentRecord.id}` : 'record:unassigned'}`,
+    `  - Trace: ${parentRecord.continuationTrace || (parentRecord.id ? `record:${parentRecord.id}` : 'record:unassigned')}`,
     parentRecord.path ? `  - Origin: ${parentRecord.path}` : '',
     `  - Boundary: ${boundaryForRecord(parentRecord)}`,
     '- Current',

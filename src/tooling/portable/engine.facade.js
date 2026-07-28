@@ -7,12 +7,14 @@ import { buildArtifactCreationContract, validateArtifactCreationContract } from 
 import { schemaCanonicalBinding, schemaReadPresentation } from '../../schemas/companion.js';
 import { schemaRegistry } from '../../schemas/registry.js';
 import { findSchemaMaterial, normalizePortableInput, suppliedSchemaParentId } from './input/portable.input.js';
-import { dedupePortableFindings, normalizePortableFinding, portableFinding, summarizePortableFindings } from './findings.js';
+import { normalizePortableFinding, portableFinding } from './findings.js';
+import { normalizePortableDepth as normalizeDepth, normalizePortableSchemaIds as normalizeSchemaIds, portableOperationResult as operationResult } from './operation.result.js';
 import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
 import { searchPortableLineage as searchPortableLineageIndex } from './lineage/lineage.search.js';
 import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
 import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
 import { createPortableLocalDraft, stagePortableDraft } from './draft/draft.create.js';
+import { deletePortableLocalDraft, updatePortableLocalDraft } from './draft/draft.crud.js';
 import { discoverPortableHostCapabilities } from './host/host.capabilities.js';
 import { listPortableMaterialProviders, resolvePortableSchemaChainMaterial, resolvePortableSchemaMaterial } from './providers/schema.providers.js';
 import { inspectPortableAssets, preparePortableAssetAnalysis } from './assets/asset.operations.js';
@@ -88,6 +90,27 @@ export function createPortableArtifactDraft(input = {}, options = {}) {
     guide: result.guide,
     validation: result.validation || null,
     qualification: result.qualification,
+    findings: result.findings
+  });
+}
+
+export function updatePortableArtifactDraft(input = {}, options = {}) {
+  const result = updatePortableLocalDraft(input, options);
+  return operationResult('update-local-draft', {
+    status: result.status,
+    draft: result.draft,
+    previous: result.previous || null,
+    validation: result.validation || null,
+    qualification: result.qualification || null,
+    findings: result.findings
+  });
+}
+
+export function deletePortableArtifactDraft(input = {}, options = {}) {
+  const result = deletePortableLocalDraft(input, options);
+  return operationResult('delete-local-draft', {
+    status: result.status,
+    deletion: result.deletion,
     findings: result.findings
   });
 }
@@ -485,26 +508,4 @@ function writerInstructions({ mode, schemaId, schemaMaterial, qualification }) {
     'Record the unavailable schema as a blocking limitation and request the schema artifact.',
     ...(qualification.limitations || [])
   ]);
-}
-
-function operationResult(operation, payload = {}) {
-  const findings = dedupePortableFindings(payload.findings || []);
-  return Object.freeze({
-    schema: PORTABLE_RESULT_SCHEMA_ID,
-    operation,
-    ...payload,
-    findings,
-    findingSummary: summarizePortableFindings(findings)
-  });
-}
-
-function normalizeSchemaIds(value) {
-  const values = Array.isArray(value) ? value : [value];
-  return [...new Set(values.map((item) => String(item || '').trim()).filter(Boolean))];
-}
-
-function normalizeDepth(value, fallback = 16) {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(1, Math.min(64, parsed));
 }

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { visualDormancyEligible, visualDormancyPreviewHtml, visualDormancyRequiresManualRestore, visualDormancyRestoreDelay, visualDormancySummary } from './visualDormancy.js';
+import { visualDormancyEligible, visualDormancyPreviewHtml, visualDormancyRequiresManualRestore, visualDormancyRestoreDelay, visualDormancyReturnSettleEnabled, visualDormancySummary } from './visualDormancy.js';
 
 const state = {
   activeWorkspaceId: 'w1',
@@ -17,6 +17,7 @@ assert.equal(visualDormancyEligible(summary, { width: 390, coarse: true }).ok, t
 assert.equal(visualDormancyRequiresManualRestore(summary, { width: 390, coarse: true }), true, 'coarse mobile viewport should wait for user interaction before restoring the heavy DOM');
 assert.equal(visualDormancyRestoreDelay(summary, { width: 390, coarse: true }), 0, 'manual mobile preview restore should not auto-restore immediately after app focus');
 assert.equal(visualDormancyEligible({ hasMaterial: false, records: 0 }, { width: 400, coarse: true }).ok, false, 'empty state should not park');
+assert.equal(visualDormancyReturnSettleEnabled(), false, 'global return-settle class should stay disabled; broad body selectors caused mobile foreground jank');
 const html = visualDormancyPreviewHtml(summary);
 assert.ok(html.includes('Parked workspace'));
 assert.ok(html.includes('333 artifacts'));

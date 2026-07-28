@@ -1,6 +1,7 @@
 import {
   auditPortableMaterial,
   createPortableArtifactDraft,
+  deletePortableArtifactDraft,
   discoverPortableTooling,
   compilePortableSchemaGuide,
   explainPortableArtifactFindings,
@@ -20,9 +21,13 @@ import {
   resolvePortableSchemaMaterialOperation,
   searchPortableLineage,
   stagePortableArtifactDraft,
+  updatePortableArtifactDraft,
   resolvePortableLineage,
   validatePortableArtifactDraft
 } from './engine.facade.js';
+import { createPortableArtifactSet, preparePortableMaterialization } from './materialization/materialization.facade.js';
+import { processPortableLiveTurn, readPortableLiveLineage } from './live/live.lineage.js';
+import { exportPortableLiveLineage } from './live/live.export.js';
 import { openPortableSession, restorePortableSession, serializePortableSession } from './session/portable.session.js';
 import { summarizePortableFindings } from './findings.js';
 import { createPortableCheckpoint, restorePortableCheckpoint } from './checkpoint/portable.checkpoint.js';
@@ -171,12 +176,61 @@ export const portableOperationCatalog = Object.freeze({
     inputSchema: 'tiinex.portable.artifact-plan.request.v1',
     handler: planPortableArtifactCreation
   }),
+  'process-live-turn': operation({
+    name: 'process-live-turn',
+    description: 'Atomically record one substantive dialogue turn, optionally create or revise supported live artifacts, and return bounded artifact-state for the reply. A no-artifact decision is still receipted.',
+    safety: 'local-draft-state-and-response-preflight',
+    inputSchema: 'tiinex.portable.live-turn.process.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('process-live-turn', processPortableLiveTurn(input, options))
+  }),
+  'read-live-lineage': operation({
+    name: 'read-live-lineage',
+    description: 'Return bounded current artifact-state without exposing raw Markdown, state JSON, or hidden reasoning.',
+    safety: 'read-only-local-state',
+    inputSchema: 'tiinex.portable.live-lineage.read.request.v1',
+    handler: (input = {}) => wrapPortableResult('read-live-lineage', readPortableLiveLineage(input))
+  }),
+  'export-live-lineage': operation({
+    name: 'export-live-lineage',
+    description: 'Validate and flush artifacts that already existed during dialogue into an artifact-first changeset; generic Markdown or JSON fallback is forbidden.',
+    safety: 'local-package-result',
+    inputSchema: 'tiinex.portable.live-lineage.export.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('export-live-lineage', exportPortableLiveLineage(input, options))
+  }),
+  'prepare-materialization': operation({
+    name: 'prepare-materialization',
+    description: 'Validate an evidence-grounded proposal for zero, one, or multiple local Tiinex artifacts against shared schema companions and explicit loaded or earlier-proposal Parents without forcing a fixed questionnaire.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.epistemic-materialization.request.v1',
+    handler: preparePortableMaterialization
+  }),
+  'create-local-artifact-set': operation({
+    name: 'create-local-artifact-set',
+    description: 'Create one or more clean local Tiinex artifacts from a ready epistemic plan, preserving explicit loaded Parents or ordered proposal-to-proposal lineage without source mutation.',
+    safety: 'local-draft-result',
+    inputSchema: 'tiinex.portable.artifact-set-creation.request.v1',
+    handler: createPortableArtifactSet
+  }),
   'create-local-draft': operation({
     name: 'create-local-draft',
     description: 'Create an in-memory local Tiinex draft through exact site creation tooling or readable-schema writer fallback, then validate it without mutating source material.',
     safety: 'local-draft-result',
     inputSchema: 'tiinex.portable.draft-creation.request.v1',
     handler: createPortableArtifactDraft
+  }),
+  'update-local-draft': operation({
+    name: 'update-local-draft',
+    description: 'Validate and return a complete replacement for explicitly local draft state while preserving identity and blocking silent schema or continuity changes.',
+    safety: 'local-draft-result',
+    inputSchema: 'tiinex.portable.draft-update.request.v1',
+    handler: updatePortableArtifactDraft
+  }),
+  'delete-local-draft': operation({
+    name: 'delete-local-draft',
+    description: 'Return an explicitly confirmed local-state deletion record without mutating source material, remote systems, or the caller filesystem.',
+    safety: 'local-state',
+    inputSchema: 'tiinex.portable.draft-delete.request.v1',
+    handler: deletePortableArtifactDraft
   }),
   'stage-draft': operation({
     name: 'stage-draft',

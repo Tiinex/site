@@ -85,12 +85,22 @@ export function findSchemaMaterial(schemaId = '', input = {}) {
   }
   if (!match) return null;
   const materialPath = safeArchivePath(match.path || match.name || exactName);
+  const source = match.source || {};
+  const canonical = source.authority === 'canonical-core' && source.repository && (source.commit || source.ref);
   return Object.freeze({
     schemaId: wanted,
     path: materialPath,
     markdown: textContent(match),
-    role: 'supplied-readable-schema-material',
-    authority: 'declared-by-material; verify against current Tiinex/docs'
+    role: canonical ? 'bundled-canonical-readable-schema-material' : 'supplied-readable-schema-material',
+    authority: canonical
+      ? `byte-bound canonical snapshot ${source.repository}@${source.commit || source.ref}`
+      : 'declared-by-material; verify against current Tiinex/docs',
+    source: canonical ? Object.freeze({
+      repository: source.repository,
+      commit: source.commit || source.ref,
+      path: source.path || materialPath,
+      qualification: source.qualification || 'bundled-byte-bound-canonical-snapshot'
+    }) : null
   });
 }
 

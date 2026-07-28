@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { createHash } from 'node:crypto';
 import { deflateRawSync } from 'zlib';
 import {
   classifyArchiveEntry,
@@ -85,6 +86,67 @@ try {
   assert.equal(result.diagnostics.assetCount, 1);
   assert.equal(result.diagnostics.suggestedWorkspaceName, 'Bundle');
 
+
+
+  const portableArtifact = '# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n\n---\n\n# Portable Topic\n';
+  const artifactBytes = Buffer.from(portableArtifact, 'utf8');
+  const artifactSha = createHash('sha256').update(artifactBytes).digest('hex');
+  const portableManifest = {
+    schema: 'tiinex.portable.changeset.manifest.v1',
+    version: 1,
+    status: 'ready',
+    profile: 'changeset-with-minimum-lineage-closure',
+    material: [{
+      path: '.topics/portable/topic.trace.md',
+      kind: 'artifact',
+      role: 'created',
+      schemaId: 'tiinex.topic.v1',
+      bytes: artifactBytes.length,
+      sha256: artifactSha
+    }],
+    lineage: { closurePolicy: 'minimum-known-parent-closure', knownParents: [] },
+    boundary: { bootstrapIncluded: false }
+  };
+  const portableManifestText = `${JSON.stringify(portableManifest, null, 2)}\n`;
+  const portableManifestBytes = Buffer.from(portableManifestText, 'utf8');
+  const portableChecksums = {
+    schema: 'tiinex.portable.changeset.checksums.v1',
+    version: 1,
+    algorithm: 'sha256',
+    files: [
+      { path: '.topics/portable/topic.trace.md', bytes: artifactBytes.length, sha256: artifactSha },
+      { path: 'manifest.json', bytes: portableManifestBytes.length, sha256: createHash('sha256').update(portableManifestBytes).digest('hex') }
+    ]
+  };
+  const portableZip = makeZip([
+    { name: '.topics/portable/topic.trace.md', content: portableArtifact },
+    { name: 'manifest.json', content: portableManifestText },
+    { name: 'checksums.json', content: `${JSON.stringify(portableChecksums, null, 2)}\n` },
+    { name: 'rogue.json', content: '{"mustNotBecomeAsset":true}' }
+  ]);
+  const portableParsed = await zipBufferToImportEntries(portableZip);
+  assert.equal(portableParsed.diagnostics.portableChangesetCount, 1);
+  assert.equal(portableParsed.diagnostics.controlCount, 2);
+  assert.equal(portableParsed.entries.filter((entry) => entry.kind === 'control').length, 2);
+  assert.equal(portableParsed.entries.filter((entry) => entry.kind === 'record').length, 1);
+  assert.equal(portableParsed.entries.some((entry) => entry.path === 'rogue.json'), false, 'undeclared package files must not become assets');
+  assert(portableParsed.warnings.some((warning) => warning.code === 'archive.portable-changeset.undeclared-entry-skipped'));
+
+  const portableResult = await materializeArchiveFiles([fileFromZip('portable.zip', portableZip)]);
+  assert.equal(portableResult.records.length, 1);
+  assert.equal(portableResult.assets.length, 0, 'portable manifest/checksums controls must not become assets');
+  assert.equal(portableResult.diagnostics.controlCount, 2);
+  assert.equal(portableResult.diagnostics.portableChangesetCount, 1);
+
+  const tamperedPortableZip = makeZip([
+    { name: '.topics/portable/topic.trace.md', content: `${portableArtifact}\ntampered\n` },
+    { name: 'manifest.json', content: portableManifestText },
+    { name: 'checksums.json', content: `${JSON.stringify(portableChecksums, null, 2)}\n` }
+  ]);
+  const tamperedPortableResult = await materializeArchiveFiles([fileFromZip('portable-tampered.zip', tamperedPortableZip)]);
+  assert.equal(tamperedPortableResult.records.length, 0, 'checksum mismatch must block package materialization');
+  assert.equal(tamperedPortableResult.assets.length, 0);
+  assert(tamperedPortableResult.errors.some((error) => error.code === 'archive.portable-changeset.checksum-mismatch'));
 
   const largeAsset = makeZip([{ name: 'big/app.js', content: 'x'.repeat(160 * 1024), method: 8 }]);
   const largeResult = await materializeArchiveFiles([fileFromZip('large.zip', largeAsset)]);

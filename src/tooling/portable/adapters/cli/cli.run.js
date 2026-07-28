@@ -1,12 +1,15 @@
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { listPortableOperations, runPortableOperation } from '../../operation.catalog.js';
 import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
+import { materializeCliArtifactSetResult, materializeCliLocalDraftResult } from './cli.local-output.js';
+import { portableCliHelpText } from './cli.help.js';
 
-export async function runPortableCli(argv = process.argv.slice(2), io = console) {
+export async function runPortableCli(argv = process.argv.slice(2), io = console, runtime = {}) {
   const parsed = parseArgs(argv);
   if (!parsed.command || parsed.command === 'help' || parsed.flags.help) {
-    io.log(helpText());
+    io.log(portableCliHelpText(runtime.commandPrefix));
     return 0;
   }
   if (parsed.command === 'operations') {
@@ -14,11 +17,21 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console)
     return 0;
   }
   try {
-    const { input, options } = await commandInput(parsed);
+    const { input, options } = await commandInput(parsed, runtime);
     const result = await runPortableOperation(parsed.command, input, options);
     if (parsed.command === 'build-runtime-package' && parsed.flags.output) {
       const receipt = await writePortableRuntimePackageZip(result.bundle, parsed.flags.output);
       writeJson(io, Object.freeze({ ...result, bundle: undefined, writeReceipt: receipt }), parsed.flags.compact !== true);
+    } else if (parsed.command === 'create-local-draft' && (parsed.flags.output || parsed.flags['qualified-package'] || parsed.flags['result-package'])) {
+      writeJson(io, await materializeCliLocalDraftResult(result, input, parsed.flags), parsed.flags.compact !== true);
+    } else if ((parsed.command === 'create-local-artifact-set' || parsed.command === 'export-live-lineage') && (parsed.flags['output-dir'] || parsed.flags.bundle)) {
+      writeJson(io, await materializeCliArtifactSetResult(result, parsed.flags, { bundlePrimary: parsed.command === 'export-live-lineage' }), parsed.flags.compact !== true);
+    } else if (parsed.command === 'process-live-turn' && parsed.flags.output && result.status !== 'blocked') {
+      const outputPath = path.resolve(String(parsed.flags.output));
+      const stateBytes = `${JSON.stringify(result.state, null, 2)}\n`;
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, stateBytes, 'utf8');
+      writeJson(io, Object.freeze({ ...result, liveStateOutput: Object.freeze({ path: outputPath, bytes: Buffer.byteLength(stateBytes), artifacts: result.state?.artifacts?.length || 0 }) }), parsed.flags.compact !== true);
     } else {
       writeJson(io, result, parsed.flags.compact !== true);
     }
@@ -33,7 +46,7 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console)
   }
 }
 
-async function commandInput(parsed) {
+async function commandInput(parsed, runtime = {}) {
   const flags = parsed.flags;
   if (parsed.command === 'resolve-capabilities') return {
     input: {
@@ -75,6 +88,23 @@ async function commandInput(parsed) {
     const file = flags.bundle || parsed.positionals[0];
     const value = JSON.parse(await readFile(file, 'utf8'));
     return { input: { bundle: value.bundle || value }, options: {} };
+  }
+  if (parsed.command === 'process-live-turn' || parsed.command === 'read-live-lineage' || parsed.command === 'export-live-lineage') {
+    const stateValue = await readOptionalJson(flags.state || parsed.positionals[0]);
+    const updateValue = parsed.command === 'process-live-turn' ? await readOptionalJson(flags.turn || flags.update || parsed.positionals[1]) : {};
+    const materialTargets = splitFlag(flags.material || flags.workspace);
+    const material = await loadCliMaterial(materialTargets, runtime, flags);
+    return {
+      input: {
+        ...material,
+        ...updateValue,
+        state: stateValue.state || stateValue.liveLineage || stateValue,
+        artifactIds: splitFlag(flags.artifacts),
+        ...(flags.assets ? { assets: await readOptionalJson(flags.assets) } : {}),
+        requireInterleaved: Boolean(flags['require-interleaved'])
+      },
+      options: {}
+    };
   }
   if (parsed.command === 'plan-durable-materialization') {
     const session = await readOptionalJson(flags.session || parsed.positionals[0]);
@@ -120,13 +150,16 @@ async function commandInput(parsed) {
     return { input: value.qualificationInput || value.input || value, options: {} };
   }
 
-  const targets = parsed.positionals.length ? parsed.positionals : flags.input ? [flags.input] : [];
-  const operationsWithoutMaterial = new Set(['prepare-task', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
-  if (!targets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
-  const material = targets.length ? await loadNodePortableInput(targets, {
-    maxFiles: flags['max-files'],
-    maxTextBytes: flags['max-text-bytes']
-  }) : { files: [], findings: [], sourceMode: 'portable-node-local' };
+  const explicitTargets = parsed.positionals.length ? parsed.positionals : flags.input ? [flags.input] : [];
+  const schemaAwareOperations = new Set(['resolve-schema-material', 'resolve-schema-chain-material', 'describe-schema-chain', 'make-writer-brief', 'schema-guide', 'read-schema-section', 'plan-artifact', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'update-local-draft', 'validate-draft', 'stage-draft', 'materialize-durable-findings', 'process-live-turn', 'export-live-lineage']);
+  const defaultSchemaTargets = schemaAwareOperations.has(parsed.command) ? normalizeRuntimePaths(runtime.defaultSchemaMaterialPaths) : [];
+  const schemaTargets = defaultSchemaTargets.filter((target) => !explicitTargets.includes(target));
+  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
+  if (!explicitTargets.length && !schemaTargets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
+  const loadOptions = { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] };
+  const explicitMaterial = explicitTargets.length ? await loadNodePortableInput(explicitTargets, loadOptions) : emptyMaterial();
+  const defaultSchemaMaterial = schemaTargets.length ? decorateDefaultSchemaMaterial(await loadNodePortableInput(schemaTargets, loadOptions), runtime.defaultSchemaSource) : emptyMaterial();
+  const material = mergeLoadedMaterial(explicitMaterial, defaultSchemaMaterial);
   const options = {
     startId: flags.start || '',
     direction: flags.direction || 'ancestors',
@@ -212,6 +245,11 @@ async function commandInput(parsed) {
     input: { ...material, schemaId: flags.schema || '', task: flags.task || 'create', detail: flags.detail || 'compact', inputs: await readOptionalJson(flags.values) },
     options
   };
+  if (parsed.command === 'prepare-materialization' || parsed.command === 'create-local-artifact-set') {
+    const proposalDocument = await readOptionalJson(flags.proposals || flags.plan);
+    const proposals = proposalDocument.proposals || proposalDocument.proposal || (Array.isArray(proposalDocument) ? proposalDocument : []);
+    return { input: { ...material, proposals }, options };
+  }
   if (parsed.command === 'create-local-draft') return {
     input: {
       ...material,
@@ -227,6 +265,33 @@ async function commandInput(parsed) {
     },
     options
   };
+  if (parsed.command === 'update-local-draft') {
+    const draft = draftFromMaterial(material, flags.draft || '');
+    const replacementPath = String(flags.replacement || '').trim();
+    if (!replacementPath) throw new Error('portable.cli.replacement-file.required');
+    return {
+      input: {
+        ...material,
+        draft: { ...draft, schemaId: flags.schema || draft.schemaId || '', sourceMode: 'local-portable-draft', source: null },
+        replacementMarkdown: await readFile(replacementPath, 'utf8'),
+        allowInvalid: Boolean(flags['allow-invalid']),
+        allowSchemaChange: Boolean(flags['allow-schema-change']),
+        allowContinuityChange: Boolean(flags['allow-continuity-change'])
+      },
+      options
+    };
+  }
+  if (parsed.command === 'delete-local-draft') {
+    const draft = draftFromMaterial(material, flags.draft || '');
+    return {
+      input: {
+        draft: { ...draft, schemaId: flags.schema || draft.schemaId || '', sourceMode: 'local-portable-draft', source: null },
+        confirmId: flags.confirm || '',
+        reason: flags.reason || ''
+      },
+      options
+    };
+  }
   if (parsed.command === 'stage-draft') {
     const draft = draftFromMaterial(material, flags.draft || '');
     return { input: { ...material, draft: { ...draft, schemaId: flags.schema || draft.schemaId || '', sourceMode: 'local-portable-draft', source: null }, allowInvalid: Boolean(flags['allow-invalid']) }, options };
@@ -269,6 +334,16 @@ async function commandInput(parsed) {
 }
 
 
+
+async function loadCliMaterial(targets = [], runtime = {}, flags = {}) {
+  const explicitTargets = normalizeRuntimePaths(targets);
+  const schemaTargets = normalizeRuntimePaths(runtime.defaultSchemaMaterialPaths).filter((target) => !explicitTargets.includes(target));
+  const loadOptions = { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] };
+  const explicitMaterial = explicitTargets.length ? await loadNodePortableInput(explicitTargets, loadOptions) : emptyMaterial();
+  const defaultSchemaMaterial = schemaTargets.length ? decorateDefaultSchemaMaterial(await loadNodePortableInput(schemaTargets, loadOptions), runtime.defaultSchemaSource) : emptyMaterial();
+  return mergeLoadedMaterial(explicitMaterial, defaultSchemaMaterial);
+}
+
 async function readOptionalJson(file = '') {
   if (!file) return {};
   return JSON.parse(await readFile(file, 'utf8'));
@@ -280,6 +355,47 @@ function draftFromMaterial(material = {}, preferredPath = '') {
   const candidate = preferred || files.find((file) => !String(file.path || '').toLowerCase().endsWith('.schema.md') && typeof file.content === 'string') || files.find((file) => typeof file.content === 'string');
   if (!candidate) throw new Error('portable.cli.draft.required');
   return { path: candidate.path || 'draft.md', markdown: candidate.content || candidate.markdown || '', schemaId: '' };
+}
+
+function emptyMaterial() {
+  return { files: [], findings: [], sourceMode: 'portable-node-local' };
+}
+
+function decorateDefaultSchemaMaterial(material = {}, source = {}) {
+  const repository = String(source.repository || 'Tiinex/docs');
+  const commit = String(source.commit || source.ref || '');
+  const sourcePathPrefix = String(source.sourcePathPrefix || '.topics/.schemas').replace(/\/$/, '');
+  return {
+    ...material,
+    files: (material.files || []).map((file) => ({
+      ...file,
+      sourceMode: 'portable-bootstrap-canonical-schema',
+      source: {
+        providerId: 'bootstrap-canonical-schema-pack',
+        repository,
+        ref: commit,
+        commit,
+        path: `${sourcePathPrefix}/${file.path}`,
+        authority: 'canonical-core',
+        qualification: 'bundled-byte-bound-canonical-snapshot',
+        remoteFetch: false,
+        cached: false
+      }
+    }))
+  };
+}
+
+function mergeLoadedMaterial(primary = {}, secondary = {}) {
+  return {
+    files: [...(primary.files || []), ...(secondary.files || [])],
+    findings: [...(primary.findings || []), ...(secondary.findings || [])],
+    sourceMode: primary.files?.length ? primary.sourceMode : secondary.sourceMode || 'portable-node-local'
+  };
+}
+
+function normalizeRuntimePaths(value) {
+  const paths = Array.isArray(value) ? value : value ? [value] : [];
+  return paths.map((entry) => String(entry || '').trim()).filter(Boolean);
 }
 
 function splitFlag(value) {
@@ -309,49 +425,4 @@ function parseArgs(argv = []) {
 
 function writeJson(io, value, pretty = true) {
   io.log(JSON.stringify(value, null, pretty ? 2 : 0));
-}
-
-function helpText() {
-  return [
-    'Tiinex portable tooling',
-    '',
-    'node tools/tiinex-portable.mjs operations',
-    'node tools/tiinex-portable.mjs prepare-task [file|dir|zip] --task <read-schema|create-artifact|validate-draft|search-lineage|analyze-asset> [--schema <id>] [--host host-profile.json]',
-    'node tools/tiinex-portable.mjs discover-tooling [--host host-profile.json]',
-    'node tools/tiinex-portable.mjs plan-host-action <action> --host host-profile.json [--request request.json]',
-    'node tools/tiinex-portable.mjs accept-host-receipt --plan plan.json --receipt receipt.json',
-    'node tools/tiinex-portable.mjs list-material-providers [file|dir|zip] [--host host-profile.json]',
-    'node tools/tiinex-portable.mjs resolve-schema-material [file|dir|zip] --schema <schema-id> [--host host-profile.json]',
-    'node tools/tiinex-portable.mjs resolve-schema-chain-material [file|dir|zip] --schema <schema-id> [--depth 16]',
-    'node tools/tiinex-portable.mjs inspect <file|dir|zip> [--include-markdown]',
-    'node tools/tiinex-portable.mjs audit <file|dir|zip>',
-    'node tools/tiinex-portable.mjs resolve-lineage <file|dir|zip> [--start <id>] [--depth 3] [--direction ancestors|descendants|both]',
-    'node tools/tiinex-portable.mjs resolve-capabilities <schema-id> [capability]',
-    'node tools/tiinex-portable.mjs describe-schema-chain <file|dir|zip> --schema <schema-id>',
-    'node tools/tiinex-portable.mjs inspect-creation-contract <schema-id> [--transition <type>]',
-    'node tools/tiinex-portable.mjs make-writer-brief <file|dir|zip> --schema <schema-id>',
-    'node tools/tiinex-portable.mjs schema-guide <file|dir|zip> --schema <schema-id> [--task create] [--detail compact]',
-    'node tools/tiinex-portable.mjs read-schema-section <file|dir|zip> --schema <schema-id> --section "Artifact Creation Contract,Minimal Example"',
-    'node tools/tiinex-portable.mjs plan-artifact <file|dir|zip> --schema <schema-id> [--values inputs.json]',
-    'node tools/tiinex-portable.mjs create-local-draft <schema-dir|zip> --schema <schema-id> --values inputs.json [--sections sections.json]',
-    'node tools/tiinex-portable.mjs validate-draft <draft.md> <schema-dir|zip> --schema <schema-id>',
-    'node tools/tiinex-portable.mjs stage-draft <draft.md> <schema-dir|zip> --schema <schema-id>',
-    'node tools/tiinex-portable.mjs search-lineage <file|dir|zip> --query <text> [--schema <ids>] [--relation root|leaf] [--scope ancestors --start <id>]',
-    'node tools/tiinex-portable.mjs inspect-assets <file|dir|zip>',
-    'node tools/tiinex-portable.mjs prepare-asset-analysis <file|dir|zip> --asset <path> --host host-profile.json',
-    'node tools/tiinex-portable.mjs plan-durable-materialization --session session.json --specs materializations.json',
-    'node tools/tiinex-portable.mjs materialize-durable-findings <schema-dir|zip> --session session.json --specs materializations.json',
-    'node tools/tiinex-portable.mjs create-checkpoint session.json [--created-at <iso>]',
-    'node tools/tiinex-portable.mjs restore-checkpoint checkpoint.json',
-    'node tools/tiinex-portable.mjs build-runtime-package [file|dir|zip] [--session session.json] [--staged staged.json] [--output package.zip]',
-    'node tools/tiinex-portable.mjs inspect-runtime-package bundle.json',
-    'node tools/tiinex-portable.mjs rehydrate-runtime-package package.zip',
-    'node tools/tiinex-portable.mjs roundtrip-runtime-package [file|dir|zip] [--session session.json] [--bundle bundle.json]',
-    'node tools/tiinex-portable.mjs explain-findings <validation-result.json>',
-    'node tools/tiinex-portable.mjs repair-plan <validation-result.json>',
-    'node tools/tiinex-portable.mjs serialize-session <file|dir|zip>',
-    'node tools/tiinex-portable.mjs restore-session <snapshot.json>',
-    '',
-    'All results are JSON. Remote schema reads are host-mediated and explicit. Operations do not mutate sources, authorize remote writes, or execute received package code.'
-  ].join('\n');
 }

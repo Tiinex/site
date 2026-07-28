@@ -1,7 +1,12 @@
 const PREVIEW_ID = 'tx-visual-dormancy-preview';
 const WORKSPACE_SELECTOR = '.tx-workspace-window';
 const PREVIEW_FIRST_RESTORE_DELAY_MS = 1100;
-const RETURN_SETTLE_MS = 1200;
+const RETURN_SETTLE_MS = 0;
+const RETURN_SETTLE_ENABLED = false;
+
+export function visualDormancyReturnSettleEnabled() {
+  return RETURN_SETTLE_ENABLED;
+}
 
 function text(value) {
   return String(value == null ? '' : value).trim();
@@ -128,14 +133,26 @@ export function installVisualDormancy({ getSummary, rootSelector = '.tx-react-ru
     state.settleTimer = 0;
   };
   const startReturnSettle = (reason = 'background') => {
+    // v286: broad body-level return-settle selectors caused a full style
+    // invalidation on mobile/devtools foreground and could be seen in the
+    // browser inspector as body.tx-return-settle during interaction. Keep the
+    // diagnostic seam, but do not toggle the global class by default.
     const summary = (typeof getSummary === 'function' ? getSummary() : null) || {};
-    if (!summary.hasMaterial) return false;
+    if (!summary.hasMaterial || !RETURN_SETTLE_ENABLED) {
+      state.lastSettle = { reason, phase: 'disabled', records: Number(summary.records || 0), at: new Date().toISOString() };
+      record('return-settle-skip', state.lastSettle);
+      return false;
+    }
     document.body.classList.add('tx-return-settle');
     state.lastSettle = { reason, phase: 'background-ready', records: Number(summary.records || 0), at: new Date().toISOString() };
     record('return-settle-start', state.lastSettle);
     return true;
   };
   const finishReturnSettle = (reason = 'foreground') => {
+    if (!RETURN_SETTLE_ENABLED) {
+      document.body.classList.remove('tx-return-settle');
+      return false;
+    }
     if (!document.body.classList.contains('tx-return-settle')) return false;
     clearSettleTimer();
     const done = () => {
@@ -249,7 +266,7 @@ export function installVisualDormancy({ getSummary, rootSelector = '.tx-react-ru
   window.addEventListener('pointerdown', onInteract, { passive: true });
   window.addEventListener('wheel', onInteract, { passive: true });
   window.addEventListener('keydown', onInteract, { passive: true });
-  window.TiinexVisualDormancyReport = () => Object.assign({ schema: 'tiinex.visualDormancy.report.v1', parked: state.parked }, state);
+  window.TiinexVisualDormancyReport = () => Object.assign({ schema: 'tiinex.visualDormancy.report.v1', parked: state.parked, returnSettleEnabled: RETURN_SETTLE_ENABLED }, state);
   return () => {
     clearRestoreTimers();
     clearSettleTimer();

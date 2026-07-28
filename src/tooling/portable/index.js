@@ -1,4 +1,5 @@
 export * from './engine.facade.js';
+export * from './materialization/materialization.facade.js';
 export * from './findings.js';
 export * from './qualification.js';
 export * from './operation.catalog.js';
@@ -14,9 +15,18 @@ export * from './host/host.capabilities.js';
 export * from './host/tool.bindings.js';
 export * from './providers/schema.providers.js';
 export * from './draft/draft.create.js';
+export * from './draft/draft.crud.js';
+export * from './draft/draft.set.js';
+export * from './live/live.lineage.js';
+export * from './live/live.export.js';
+export * from './live/live.protocol.js';
+export * from './materialization/epistemic.plan.js';
+export * from './output/node.artifact-set.js';
 export * from './assets/asset.operations.js';
 export * from './orchestration/task.prepare.js';
 export * from './checkpoint/portable.checkpoint.js';
 export * from './materialization/durable.materialize.js';
 export * from './package/runtime.package.js';
 export * from './conformance/checkpoint.qualification.js';
+
+export * from './transfer/transfer.plan.js';

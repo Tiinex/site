@@ -1,5 +1,7 @@
 import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '../adapter.contracts.js';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
+import { filterArchiveTransportEntries } from './archive.transport.js';
+import { qualifyPortableChangesetEntries } from './archive.portableChangeset.js';
 
 export const ARCHIVE_ADAPTER_ID = 'archive';
 
@@ -131,7 +133,37 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
     }
   }
 
-  return { entries, errors, warnings, diagnostics: { requestedCount: centralEntries.length, encryptedCount: encrypted.length, unsupportedCount: unsupported.length, unsafeCount: unsafe.length } };
+  const filtered = await filterArchiveTransportEntries(entries, { ...options, stripPortableControl: false });
+  if (filtered.mergePreflight.status === 'blocked' && options.enforceMergePreflight !== false) {
+    for (const conflict of filtered.mergePreflight.conflicts || []) errors.push({ code: conflict.code, ref: conflict.path, message: 'Archive merge preflight detected missing or changed known lineage material.' });
+  }
+  const qualified = await qualifyPortableChangesetEntries(filtered.entries, warnings, errors, {
+    safePath: safeArchivePath,
+    isMarkdownPath: (value) => MARKDOWN_RE.test(value)
+  });
+  let materialEntries = qualified.entries;
+  let portableControlStrippedCount = 0;
+  if (!qualified.detected && filtered.portableControl && options.stripPortableControl !== false) {
+    const before = materialEntries.length;
+    materialEntries = materialEntries.filter((entry) => entry.path !== 'manifest.json' && entry.path !== 'checksums.json');
+    portableControlStrippedCount = before - materialEntries.length;
+  }
+  const blocked = filtered.mergePreflight.status === 'blocked' && options.enforceMergePreflight !== false;
+  return {
+    entries: blocked ? [] : materialEntries,
+    errors,
+    warnings,
+    diagnostics: {
+      requestedCount: centralEntries.length,
+      encryptedCount: encrypted.length,
+      unsupportedCount: unsupported.length,
+      unsafeCount: unsafe.length,
+      ...filtered.diagnostics,
+      portableControlStrippedCount,
+      portableChangesetCount: qualified.detected ? 1 : 0,
+      controlCount: qualified.controlCount
+    }
+  };
 }
 
 export async function fileToArchiveImportEntries(file, options = {}) {
@@ -145,7 +177,7 @@ export async function fileToArchiveImportEntries(file, options = {}) {
       // Continue through parser so unencrypted files are still recoverable if a mixed archive is supplied.
       // Each encrypted entry is reported explicitly; no fake password prompt is shown in React.
     }
-    return zipBufferToImportEntries(buffer, { source: 'zip', excludeRepositoryInternals: true });
+    return zipBufferToImportEntries(buffer, { ...options, source: options.source || 'zip', excludeRepositoryInternals: true });
   }
   const bytes = new Uint8Array(await file.arrayBuffer?.() || TEXT_ENCODER.encode(await file.text?.() || ''));
   let content = null;
@@ -159,7 +191,7 @@ export async function materializeArchiveFiles(files = [], options = {}) {
   const workspaceEntries = [];
   const errors = [];
   const warnings = [];
-  const diagnostics = { sourceBoundary: 'local-archive', fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
+  const diagnostics = { sourceBoundary: 'local-archive', fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, controlCount: 0, portableChangesetCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, bootstrapDetected: false, bootstrapStrippedCount: 0, portableControlDetected: false, portableControlStrippedCount: 0, mergePreflight: null, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
 
   for (const file of Array.from(files || []).filter(Boolean)) {
     diagnostics.fileCount += 1;
@@ -170,9 +202,18 @@ export async function materializeArchiveFiles(files = [], options = {}) {
       diagnostics.encryptedCount += Number(result.diagnostics?.encryptedCount || 0);
       diagnostics.unsafeCount += Number(result.diagnostics?.unsafeCount || 0);
       diagnostics.unsupportedCount += Number(result.diagnostics?.unsupportedCount || 0);
+      diagnostics.bootstrapDetected = diagnostics.bootstrapDetected || Boolean(result.diagnostics?.bootstrapDetected);
+      diagnostics.bootstrapStrippedCount += Number(result.diagnostics?.bootstrapStrippedCount || 0);
+      diagnostics.portableControlDetected = diagnostics.portableControlDetected || Boolean(result.diagnostics?.portableControlDetected);
+      diagnostics.portableControlStrippedCount += Number(result.diagnostics?.portableControlStrippedCount || 0);
+      diagnostics.portableChangesetCount += Number(result.diagnostics?.portableChangesetCount || 0);
+      diagnostics.controlCount += Number(result.diagnostics?.controlCount || 0);
+      if (result.diagnostics?.mergePreflight && result.diagnostics.mergePreflight.status !== 'not-applicable') diagnostics.mergePreflight = result.diagnostics.mergePreflight;
       for (const entry of result.entries || []) {
         diagnostics.entryCount += 1;
-        if (entry.kind === 'workspace') {
+        if (entry.kind === 'control') {
+          continue;
+        } else if (entry.kind === 'workspace') {
           workspaceEntries.push(workspaceEntryFromImportEntry(entry));
         } else if (entry.kind === 'record') {
           records.push(createRecordFromMarkdown(entry.content || '', { path: entry.path, name: fileName(entry.path), sourceMode: options.sourceMode || 'archive-local' }));

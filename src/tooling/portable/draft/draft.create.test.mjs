@@ -102,7 +102,7 @@ const unknown = createPortableLocalDraft({
   values: { Statement: 'The local draft preserves an explicit statement.' },
   createdAt: '2026-07-23T00:00:00.000Z'
 });
-assert.equal(unknown.draft.creationMode, 'readable-schema-llm-writer');
+assert.equal(unknown.draft.creationMode, 'readable-schema-root-writer');
 assert.equal(unknown.draft.markdown.includes('## Note'), true);
 assert.equal(unknown.qualification.exactCreateTooling, false);
 assert.equal(unknown.qualification.contractDrivenStructuralValidation, true);
