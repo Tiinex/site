@@ -1,20 +1,24 @@
-# Tiinex Site v284
+# Tiinex Site v285
 
-Checkpoint: `v284`
-Version: `0.2.104-v284`
-Runtime: `react-v284-dialog-viewport-actions`
+Checkpoint: `v285`
+Version: `0.2.105-v285`
+Runtime: `react-v285-deferred-view-route-persistence`
 
-## v284 focus
+## v285 focus
 
-Responsive dialog viewport repair after the v283 performance pass. The v283 render-window and idle scroll persistence fixed the Tiinex/docs tab-return lag, but mobile/short viewport dialogs could still hide their action rows or expose nested clipping.
+Mobile interaction latency follow-up after v284. Large Tiinex/docs workspaces made simple mobile actions feel delayed because view-only interactions synchronously persisted large route/session state into URL hash + local storage.
 
-## Changed in v284
+## Changed in v285
 
-- Dialog primitive CSS now has a single viewport contract: dialog shell is a flex column, header is fixed, body owns scroll.
-- Dialog bodies no longer rely on competing `max-height` overrides from older batches.
-- GitHub source actions stay sticky inside the scroll body and remain visible on short/mobile viewports.
-- Mobile dialog action labels stay readable instead of collapsing to icon-only modal controls.
-- Add/Edit GitHub source layout keeps its two-column desktop plan, but collapses to a stable single-column mobile action footer.
+- View-only commits update React state immediately but defer route/hash/session persistence to idle time.
+- Workspace/material/source commits still persist synchronously for recoverability.
+- Share and beforeunload flush pending deferred route state.
+- Added `window.TiinexStatePersistenceReport()` diagnostics.
+- Added `src/app/statePersistenceScheduler.js` as the owner for deferred route persistence.
+
+## Validation
+
+See `VALIDATION_NOTES.md`.
 
 ## Supported local start
 

@@ -1,0 +1,99 @@
+export function createStatePersistenceScheduler(win = globalThis) {
+  const state = {
+    timer: null,
+    idle: null,
+    pending: null,
+    writes: 0,
+    deferred: 0,
+    flushed: 0,
+    lastReason: ''
+  };
+
+  const clearTimer = () => {
+    if (state.timer && win?.clearTimeout) win.clearTimeout(state.timer);
+    state.timer = null;
+  };
+  const clearIdle = () => {
+    if (state.idle && typeof win?.cancelIdleCallback === 'function') win.cancelIdleCallback(state.idle);
+    state.idle = null;
+  };
+  const clearScheduled = () => { clearTimer(); clearIdle(); };
+
+  function writeNow(entry, reason = 'write') {
+    if (!entry?.state?.workspaces?.length) return null;
+    state.writes += 1;
+    state.lastReason = reason;
+    entry.runtime?.().persistence?.writeState?.(entry.state, { mode: entry.mode || 'replace' });
+    return entry.state;
+  }
+
+  function flush(reason = 'flush') {
+    const entry = state.pending;
+    state.pending = null;
+    clearScheduled();
+    if (!entry) return null;
+    state.flushed += 1;
+    return writeNow(entry, reason);
+  }
+
+  function schedule(entry = {}, options = {}) {
+    if (!entry?.state?.workspaces?.length) return null;
+    state.pending = entry;
+    state.deferred += 1;
+    state.lastReason = options.reason || 'deferred';
+    clearScheduled();
+    const delayMs = Math.max(0, Number(options.delayMs ?? 180));
+    const idleTimeout = Math.max(0, Number(options.idleTimeout ?? 1600));
+    const run = () => {
+      state.timer = null;
+      const idleRun = () => {
+        state.idle = null;
+        flush(options.reason || 'idle');
+      };
+      if (typeof win?.requestIdleCallback === 'function') state.idle = win.requestIdleCallback(idleRun, { timeout: idleTimeout });
+      else state.timer = win?.setTimeout?.(idleRun, Math.max(60, Math.min(450, idleTimeout))) || null;
+    };
+    state.timer = win?.setTimeout?.(run, delayMs) || null;
+    return entry.state;
+  }
+
+  function cancel() {
+    state.pending = null;
+    clearScheduled();
+  }
+
+  function report() {
+    return {
+      pending: Boolean(state.pending),
+      writes: state.writes,
+      deferred: state.deferred,
+      flushed: state.flushed,
+      lastReason: state.lastReason
+    };
+  }
+
+  return { schedule, flush, cancel, report };
+}
+
+
+export function commitStateWithPersistence({ nextState, mode = 'push', options = {}, sourceState = {}, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler } = {}) {
+  const withScroll = preserveCapturedViewScroll?.(nextState, sourceState) || nextState;
+  if (latestStateRef) latestStateRef.current = withScroll;
+  setState?.(withScroll);
+  if (!withScroll?.workspaces?.length) {
+    scheduler?.cancel?.();
+    runtime?.().persistence?.clearState?.({ mode });
+    return withScroll;
+  }
+  if (options.deferPersistence) {
+    scheduler?.schedule?.({ state: withScroll, mode, runtime }, {
+      reason: options.persistenceReason || 'view-state',
+      delayMs: options.persistenceDelayMs,
+      idleTimeout: options.persistenceIdleTimeout
+    });
+    return withScroll;
+  }
+  scheduler?.cancel?.();
+  runtime?.().persistence?.writeState?.(withScroll, { mode });
+  return withScroll;
+}

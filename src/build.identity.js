@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v284';
-export const TIINEX_SITE_VERSION = '0.2.104-v284';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v284';
-export const TIINEX_RUNTIME_ID = 'react-v284-scroll-restore-idle-persistence';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v284-scroll-restore-idle-persistence';
+export const TIINEX_SITE_CHECKPOINT = 'v285';
+export const TIINEX_SITE_VERSION = '0.2.105-v285';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v285';
+export const TIINEX_RUNTIME_ID = 'react-v285-deferred-view-route-persistence';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v285-deferred-view-route-persistence';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

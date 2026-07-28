@@ -32,6 +32,7 @@ import { shouldCommitGithubProgress, yieldForVisibleSourceProgress } from './git
 import { TIINEX_RUNTIME_ID } from '../build.identity.js';
 import { installVisualDormancy, visualDormancySummary } from './visualDormancy.js';
 import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScrollPersist } from './scrollPersistence.js';
+import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -46,6 +47,8 @@ export function TiinexApp() {
   const githubOperationRef = useRef({ token: null, controller: null }); const lineageAutoLoadKeysRef = useRef(new Set());
   const scrollPersistTimerRef = useRef(null);
   const scrollPersistIdleRef = useRef(null);
+  const statePersistenceSchedulerRef = useRef(null);
+  if (!statePersistenceSchedulerRef.current) statePersistenceSchedulerRef.current = createStatePersistenceScheduler(typeof window !== 'undefined' ? window : globalThis);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
@@ -78,10 +81,12 @@ export function TiinexApp() {
 
   useEffect(() => installVisualDormancy({ getSummary: () => visualDormancySummary(latestStateRef.current || state) }), []);
 
-  useEffect(() => () => clearScheduledScrollPersistence({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, window), []);
+  useEffect(() => { window.TiinexStatePersistenceReport = () => statePersistenceSchedulerRef.current?.report?.() || { pending: false }; return () => { try { delete window.TiinexStatePersistenceReport; } catch (_) { window.TiinexStatePersistenceReport = undefined; } }; }, []);
+
+  useEffect(() => () => { clearScheduledScrollPersistence({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, window); statePersistenceSchedulerRef.current?.cancel?.(); }, []);
 
   useEffect(() => {
-    const flushOnUnload = () => persistCapturedViewScroll('replace', { force: true });
+    const flushOnUnload = () => { statePersistenceSchedulerRef.current?.flush?.('beforeunload'); persistCapturedViewScroll('replace', { force: true }); };
     window.addEventListener('beforeunload', flushOnUnload);
     return () => window.removeEventListener('beforeunload', flushOnUnload);
   }, []);
@@ -94,13 +99,8 @@ export function TiinexApp() {
 
   useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id || lineageLoadReportForSelected(state)) return; const lineage = buildWorkspaceLineageView(activeUi || active, { records: Array.isArray((activeUi || active)?.records) ? (activeUi || active).records : [], query: '', selectedRecordId: id }); const key = `${active.id}:${id}:${(activeUi || active).records?.length || 0}:${lineage.selectedTraversal?.missingEdges?.length || 0}`; if (lineage.selectedTraversal?.hasMissing && !lineageAutoLoadKeysRef.current.has(key)) { lineageAutoLoadKeysRef.current.add(key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
 
-  function commit(nextState, mode = 'push') {
-    const sourceState = latestStateRef.current || state;
-    const withScroll = preserveCapturedViewScroll(nextState, sourceState);
-    latestStateRef.current = withScroll;
-    setState(withScroll);
-    if (withScroll?.workspaces?.length) runtime().persistence?.writeState?.(withScroll, { mode });
-    else runtime().persistence?.clearState?.({ mode });
+  function commit(nextState, mode = 'push', options = {}) {
+    commitStateWithPersistence({ nextState, mode, options, sourceState: latestStateRef.current || state, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler: statePersistenceSchedulerRef.current });
   }
 
   function viewScrollKeyFor(sourceState = state, viewOverride = null) {
@@ -109,12 +109,12 @@ export function TiinexApp() {
 
   function commitViewPatch(patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithViewPatch(sourceState, patch), mode);
+    commit(stateWithViewPatch(sourceState, patch), mode, { deferPersistence: true, persistenceReason: 'view-patch' });
   }
 
   function commitViewUpdate(updater = null, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithViewUpdate(sourceState, updater), mode);
+    commit(stateWithViewUpdate(sourceState, updater), mode, { deferPersistence: true, persistenceReason: 'view-update' });
   }
 
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
@@ -739,6 +739,7 @@ export function TiinexApp() {
   }
 
   function copyShareUrl() {
+    statePersistenceSchedulerRef.current?.flush?.('share-url');
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
     navigator.clipboard?.writeText?.(new URL(url, window.location.href).href)
