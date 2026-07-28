@@ -86,6 +86,8 @@
 - Kind: git-proxy
 - Match: github.com/*
 - Proxy: https://cors.isomorphic-git.org
+- Activation: manual
+- Note: Shared test proxy; use only when explicitly requested or replaced by a hosted workspace proxy.
 
 ## Help
 

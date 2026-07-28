@@ -7724,3 +7724,28 @@ pre { white-space: pre-wrap; overflow:auto; }
   max-width: 6.8rem;
   white-space: nowrap;
 }
+
+.tx-source-governance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  color: var(--tx-brand-muted);
+  background: rgba(255,255,255,0.04);
+}
+
+.tx-source-governance.tx-governance-found,
+.tx-source-governance.tx-governance-origin-fallback {
+  color: rgba(156, 255, 214, 0.95);
+  border-color: rgba(101,242,231,0.24);
+}
+
+.tx-source-governance.tx-governance-missing,
+.tx-source-governance.tx-governance-unknown {
+  color: rgba(255, 213, 128, 0.95);
+  border-color: rgba(255, 213, 128, 0.25);
+}

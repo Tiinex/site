@@ -1,6 +1,7 @@
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { zipBufferToImportEntries } from '../archive/archive.adapter.js';
 import { githubRawUrlForSourcePath, readGithubSourceCacheEntry, writeGithubSourceCacheEntry } from '../../sources/github/github.transport.js';
+import { governanceBoundaryFromRootFiles } from '../../governance/governance.boundary.js';
 
 const MARKDOWN_RE = /(?:\.md|\.markdown|\.trace\.md|\.schema\.md|\.validator\.md|\.workspace\.md)$/i;
 
@@ -52,6 +53,8 @@ export async function materializeGithubRepoFilesViaHostedMirror(source = {}, opt
       const ref = String(meta.commit || meta.ref || source.ref || '').trim();
       const sourceForRaw = Object.assign({}, source, { ref });
       const roots = rootPaths(source);
+      const governanceRootFiles = governanceRootFilesFromMirrorEntries(imported.entries || [], sourceForRaw, meta);
+      const governanceBoundary = governanceBoundaryFromRootFiles(sourceForRaw, governanceRootFiles, { rootChecked: true, discoveredFrom: 'repo-mirror-archive' });
       const records = [];
       const refs = [];
       for (const entry of imported.entries || []) {
@@ -72,7 +75,8 @@ export async function materializeGithubRepoFilesViaHostedMirror(source = {}, opt
         warnings: imported.warnings || [],
         errors: imported.errors || [],
         counts: { records: records.length, loaded: records.length, failed: 0, discovered: refs.length },
-        diagnostics: { metadataUrl, archiveUrl, transportEvents: [{ tier: 'mirror', code: 'github.repo.mirror.ok', severity: 'info', url: metadataUrl, resource: 'repo-snapshot', loaded: records.length }] }
+        diagnostics: { metadataUrl, archiveUrl, governanceBoundary, transportEvents: [{ tier: 'mirror', code: 'github.repo.mirror.ok', severity: 'info', url: metadataUrl, resource: 'repo-snapshot', loaded: records.length }] },
+        governanceBoundary
       };
     } catch (error) {
       errors.push({ metadataUrl, message: error?.message || String(error || '') });
@@ -83,6 +87,25 @@ export async function materializeGithubRepoFilesViaHostedMirror(source = {}, opt
 
 export async function writeGithubRepoDiscoveryCache(source = {}, refs = [], options = {}) {
   return writeRepoDiscoveryManifest(source, refs, options);
+}
+
+function governanceRootFilesFromMirrorEntries(entries = [], source = {}, meta = {}) {
+  const out = [];
+  for (const entry of entries || []) {
+    const path = repoMirrorRootEntryPath(entry?.path || '', meta);
+    if (!path || typeof entry?.content !== 'string') continue;
+    out.push({ path, kind: path, text: entry.content, url: githubRawUrlForSourcePath(source, path) });
+  }
+  return out;
+}
+
+function repoMirrorRootEntryPath(path = '', meta = {}) {
+  const candidates = [stripArchivePrefix(path, meta), stripFirstArchiveSegment(path)];
+  for (const candidate of candidates) {
+    const clean = String(candidate || '').replace(/^\/+/, '').replace(/\\/g, '/');
+    if (clean && !clean.includes('/')) return clean;
+  }
+  return '';
 }
 
 function recordFromRepoMarkdown(markdown = '', source = {}, path = '', rawUrl = '', tier = '') {

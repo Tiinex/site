@@ -401,7 +401,7 @@ export function TiinexApp() {
           recordAttribution: out.diagnostics?.recordAttribution || [],
           transportTiers: out.diagnostics?.transportTiers || {},
           transportOutcome: out.diagnostics?.transportOutcome || {},
-          transportPlan: out.diagnostics?.transportPlan || {},
+          transportPlan: out.diagnostics?.transportPlan || {}, governanceBoundary: out.diagnostics?.governanceBoundary || result.source?.governanceBoundary || {},
           transportLabel: out.diagnostics?.transportPlan?.label || transportLabel,
           transportRefreshTier
         }));

@@ -130,6 +130,12 @@ function repoProxyUrlFor(repo = '', options = {}) {
   for (const item of configured) {
     const kind = String(item.kind || '').toLowerCase();
     if (!kind.includes('proxy')) continue;
+    const activation = String(item.activation || item.mode || item.use || '').trim().toLowerCase();
+    const manual = ['manual', 'explicit', 'opt-in', 'optin', 'user'].includes(activation);
+    const disabled = ['off', 'disabled', 'never'].includes(activation);
+    if (disabled) continue;
+    const exactProxy = options.transportOrderExact === true && (String(options.transportRefreshTier || '').toLowerCase() === 'proxy' || (Array.isArray(options.preferredTransports) && String(options.preferredTransports[0] || '').toLowerCase() === 'proxy'));
+    if (manual && !exactProxy && options.allowManualProxy !== true) continue;
     const proxy = String(item.proxy || item.proxyUrl || item.corsProxy || '').trim();
     if (!proxy) continue;
     if (repoTransportMatches(repo, item.match || item.repository || item.repo || '')) return proxy;

@@ -6,6 +6,7 @@ import { recordSourceClass } from '../../workspaces/workspace.displayFilters.js'
 import { shouldShowWorkspaceSummary } from '../../workspaces/workspace.summary.js';
 import { normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
 import { sourceTransportBadgesForSource } from '../../app/sourceTransportRefresh.js';
+import { buildGovernanceBoundaryForSource, GOVERNANCE_BOUNDARY_SCHEMA_ID } from '../../governance/governance.boundary.js';
 
 export function WorkspaceBoundaryKicker({ workspace = {} }) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -55,6 +56,7 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
                   <span key={badge.key} className={`tx-source-transport ${badge.className}`} title={badge.title}>{badge.label}</span>
                 ))}
               </span> : null}
+              <SourceGovernanceBadge source={source} />
               {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
               {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
@@ -63,6 +65,30 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
       </div>
     </div>
   );
+}
+
+function SourceGovernanceBadge({ source = {} }) {
+  const sourceKind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
+  const repo = String(source.repo || source.repository || source.config?.repo || '').trim();
+  const explicitBoundary = source.governanceBoundary && typeof source.governanceBoundary === 'object' && source.governanceBoundary.schema === GOVERNANCE_BOUNDARY_SCHEMA_ID
+    ? source.governanceBoundary
+    : null;
+  const boundary = explicitBoundary || (sourceKind.includes('github') && repo
+    ? buildGovernanceBoundaryForSource(source, { rootChecked: false, discoveredFrom: 'source-strip-unchecked' })
+    : null);
+  if (!boundary || typeof boundary !== 'object') return null;
+  const status = String(boundary.status || '').trim();
+  if (!status || status === 'local') return null;
+  const policyKind = boundary.policy?.kind || '';
+  const label = status === 'found'
+    ? 'lineage policy'
+    : status === 'origin-fallback'
+      ? (policyKind || 'license')
+      : status === 'missing'
+        ? 'no policy'
+        : 'policy ?';
+  const title = boundary.note || boundary.boundary || 'Source governance boundary';
+  return <span className={`tx-source-governance tx-governance-${status}`} title={title} aria-label={`Governance boundary: ${label}`}><Icon name={status === 'missing' ? 'warning' : 'audit'} /><span>{label}</span></span>;
 }
 
 function sourceTransportSummary(source = {}) {

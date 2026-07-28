@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v270';
-export const TIINEX_SITE_VERSION = '0.2.90-v270';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v270';
-export const TIINEX_RUNTIME_ID = 'react-v270-abortable-repo-proxy-transport';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v270-abortable-repo-proxy-transport';
+export const TIINEX_SITE_CHECKPOINT = 'v272';
+export const TIINEX_SITE_VERSION = '0.2.92-v272';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v272';
+export const TIINEX_RUNTIME_ID = 'react-v272-governance-badge-visibility';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v272-governance-badge-visibility';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

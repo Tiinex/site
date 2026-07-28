@@ -68,9 +68,10 @@ try {
   if (otherRefSource.id === addSource.source.id) fail('configured source identity must not collide across refs');
   const otherRootSource = lifecycle.makeConfiguredSource({ repository: 'owner/repo', ref: 'master', rootPath: 'docs' });
   if (otherRootSource.id === addSource.source.id) fail('configured source identity must not collide across roots');
-  const continuationSource = lifecycle.makeConfiguredSource({ label: 'Plan', repository: 'owner/repo', ref: 'master', rootPath: '.topics', repoDiscovery: true, issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1', surfaces: { repoFiles: { requested: true, loaded: 7 }, issueSnapshots: { requested: true, deferred: true, loaded: 0 } } });
+  const continuationSource = lifecycle.makeConfiguredSource({ label: 'Plan', repository: 'owner/repo', ref: 'master', rootPath: '.topics', repoDiscovery: true, issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1', surfaces: { repoFiles: { requested: true, loaded: 7 }, issueSnapshots: { requested: true, deferred: true, loaded: 0 } }, governanceBoundary: { schema: 'tiinex.governance.boundary.v1', status: 'origin-fallback', policy: { kind: 'LICENSE' } } });
   if (!continuationSource.repoDiscovery || !continuationSource.issueDiscovery) fail('configured source must preserve requested source surfaces for continuation');
   if (!continuationSource.surfaces.issueSnapshots?.deferred) fail('configured source must preserve deferred surface state');
+  if (continuationSource.governanceBoundary?.status !== 'origin-fallback') fail('configured source must preserve governance boundary metadata');
   const invalidStateSource = lifecycle.makeConfiguredSource({ label: 'Bad State', repository: 'owner/repo', discoveryState: 'resolved' });
   if (invalidStateSource.discoveryState !== 'deferred') fail('unknown source discovery state must normalize to deferred');
   if (lifecycle.normalizeSourceDiscoveryState('partial') !== 'partial') fail('known source discovery state must be preserved');

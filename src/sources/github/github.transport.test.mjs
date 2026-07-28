@@ -20,8 +20,18 @@ const workspaceConfig = {
 };
 
 const plan = buildGithubTransportPlan({ repo: 'owner/repo' }, { workspaceConfig });
-assert.deepEqual(plan.tiers, ['cache', 'mirror', 'proxy', 'direct'], 'configured source should prefer cache, mirror, proxy, direct');
+assert.deepEqual(plan.tiers, ['cache', 'mirror', 'proxy', 'direct'], 'configured source should prefer cache, mirror, proxy, direct when proxy is auto-activated');
 assert.equal(plan.label, 'cache → mirror → proxy → direct');
+
+const manualWorkspaceConfig = {
+  repositoryMirrors: [{ repository: 'Owner/Repo', name: 'Repo mirror' }],
+  repositoryTransports: [{ kind: 'git-proxy', match: 'github.com/*', proxy: 'https://cors.isomorphic-git.org', activation: 'manual' }]
+};
+const manualPlan = buildGithubTransportPlan({ repo: 'owner/repo' }, { workspaceConfig: manualWorkspaceConfig });
+assert.deepEqual(manualPlan.tiers, ['cache', 'mirror', 'direct'], 'manual shared proxy must not be part of default source transport order');
+assert.equal(manualPlan.configured.proxy, true, 'manual proxy remains visible as a configured opt-in tier');
+const manualExactProxyPlan = buildGithubTransportPlan({ repo: 'owner/repo' }, { workspaceConfig: manualWorkspaceConfig, preferredTransports: ['proxy'], transportOrderExact: true });
+assert.deepEqual(manualExactProxyPlan.tiers, ['proxy'], 'manual proxy may run when explicitly selected by the user');
 
 const cache = Object.create(null);
 const calls = [];

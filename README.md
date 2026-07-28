@@ -1,24 +1,19 @@
-# Tiinex Site v270
+# Tiinex Site v272
 
-Checkpoint: `v270`
-Version: `0.2.90-v270`
-Runtime: `react-v270-abortable-repo-proxy-transport`
+Checkpoint: `v272`
+Version: `0.2.92-v272`
+Runtime: `react-v272-governance-badge-visibility`
 
-## v270 focus
+## v272 focus
 
-Repo-file proxy transport follow-up after v269: make slow browser Git proxy runs abortable when the user advances to direct, and expose low-throughput/timeouts as transport truth instead of letting stale proxy requests keep running.
+Follow-up to v271 after browser video: make governance boundary state visible even when a bounded mirror materialization cannot prove the repository root files.
 
-## Changed in v270
+## Changed in v272
 
-- GitHub materialization now passes the active operation `AbortSignal` into repo-file proxy transport.
-- Repo-file proxy passes a hard network budget, response-start timeout, idle timeout, low-throughput grace window, and minimum throughput floor into the browser Git runtime.
-- Advancing the transport badge while proxy is pending aborts/ignores the old proxy run before direct can commit.
-- Proxy timeout / low-throughput / abort conditions are diagnosed as proxy transport events instead of generic failures.
-- No proxy endpoint was changed: `cors.isomorphic-git.org` remains a shared/free testing proxy, so throughput is not treated as production truth.
-
-## Validation
-
-See `VALIDATION_NOTES.md`.
+- GitHub sources with no persisted governance boundary now render an explicit `policy ?` source-rail badge instead of silently omitting governance state.
+- Detected boundaries from `LINEAGE_POLICY`, `LINEAGE_LICENSE`, `LICENSE`, `POLICY`, and `NOTICE` still win when available.
+- The fallback badge is advisory/unknown only. It does not fetch extra GitHub API/root material and does not claim a license was found.
+- Mirror remains the primary practical transport for large public repo material; shared browser Git proxy remains manual/explicit.
 
 ## Supported local start
 

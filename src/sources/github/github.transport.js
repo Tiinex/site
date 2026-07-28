@@ -35,10 +35,12 @@ export function buildGithubTransportPlan(source = {}, options = {}) {
   const order = normalizeOrder(options.transportOrder || options.preferredTransports || DEFAULT_ORDER, { appendMissing: !exactOrder });
   const mirrors = configuredMirrorsFor(repo, workspaceConfig, options);
   const proxies = configuredProxiesFor(repo, workspaceConfig, options);
+  const requestedProxy = exactOrder && order.includes('proxy');
+  const autoProxy = proxies.some((proxy) => proxy.activation === 'auto');
   const allow = {
     cache: options.allowCache !== false,
     mirror: options.allowMirror !== false,
-    proxy: options.allowProxy !== false,
+    proxy: options.allowProxy !== false && (autoProxy || requestedProxy || options.allowManualProxy === true),
     direct: options.allowDirect !== false
   };
   const configured = {
@@ -308,12 +310,20 @@ function configuredProxiesFor(repo, workspaceConfig = {}, options = {}) {
     if (!kind.includes('proxy')) continue;
     const match = String(item.match || item.repository || item.repo || '').toLowerCase();
     const proxy = String(item.proxy || item.proxyUrl || '').trim();
-    if (!proxy) continue;
+    const activation = transportActivation(item);
+    if (!proxy || activation === 'disabled') continue;
     const matchesRepo = !match || match === repo || match === 'github.com/*' || match === 'github.com/**' || match.endsWith('*');
-    if (matchesRepo) matches.push({ kind: 'git-proxy', label: item.label || item.name || 'Configured proxy', repository: repo, proxyUrl: proxy });
+    if (matchesRepo) matches.push({ kind: 'git-proxy', label: item.label || item.name || 'Configured proxy', repository: repo, proxyUrl: proxy, activation });
   }
-  if (options.proxyRawUrl || options.proxyApiUrl) matches.push({ kind: 'proxy', label: options.proxyLabel || 'Configured proxy', repository: repo, rawUrl: options.proxyRawUrl || '', apiUrl: options.proxyApiUrl || '' });
+  if (options.proxyRawUrl || options.proxyApiUrl) matches.push({ kind: 'proxy', label: options.proxyLabel || 'Configured proxy', repository: repo, rawUrl: options.proxyRawUrl || '', apiUrl: options.proxyApiUrl || '', activation: 'auto' });
   return matches;
+}
+
+function transportActivation(item = {}) {
+  const value = String(item.activation || item.mode || item.use || '').trim().toLowerCase();
+  if (['manual', 'explicit', 'opt-in', 'optin', 'user'].includes(value)) return 'manual';
+  if (['off', 'disabled', 'never'].includes(value)) return 'disabled';
+  return 'auto';
 }
 
 async function tryConfiguredTransport(tier, url, init, resource, options, emit) {

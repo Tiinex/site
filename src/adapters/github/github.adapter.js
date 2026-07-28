@@ -8,6 +8,7 @@ import { summarizeTransportOutcome, summarizeTransportTiers } from './github.tra
 import { writeGithubRepoDiscoveryCache } from './github.repoMirror.js';
 import { preMaterializeGithubRepoFiles, requestedRepoTransportTier } from './github.repoSurface.js';
 import { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
+import { buildGovernanceBoundaryForSource, governanceFindingForBoundary } from '../../governance/governance.boundary.js';
 export { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
 
 export const GITHUB_ADAPTER_ID = 'github';
@@ -196,6 +197,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         repoDiscoveryHandledBySurfaceTransport = true;
         resolvedRef = preloadedRepoResult.ref || resolvedRef;
         diagnostics.discoveredFileRefs = Number(preloadedRepoResult.counts?.discovered || preloadedRepoResult.records.length || 0);
+        if (preloadedRepoResult.governanceBoundary) diagnostics.governanceBoundary = preloadedRepoResult.governanceBoundary;
         markSurface(sourcePlan, 'repoFiles', { discovered: diagnostics.discoveredFileRefs, requestedCount: diagnostics.discoveredFileRefs, loaded: preloadedRepoResult.records.length, records: preloadedRepoResult.records.map((record) => record.id).filter(Boolean), transportTier: preloadedRepoResult.transportTier || '', transportTiers: [preloadedRepoResult.transportTier || ''].filter(Boolean) });
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: preloadedRepoResult.records.length, label: `Loaded ${preloadedRepoResult.records.length} repo file${preloadedRepoResult.records.length === 1 ? '' : 's'} from ${preloadedRepoResult.transportTier || 'surface'} transport` });
       } else if (options.transportOrderExact === true && requestedRepoTransportTier(options) && requestedRepoTransportTier(options) !== 'direct') {
@@ -213,6 +215,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: discovered.refs.length, label: `Found ${discovered.refs.length} Markdown file${discovered.refs.length === 1 ? '' : 's'} under source roots` });
         diagnostics.treeUrl = discovered.treeUrl;
         diagnostics.resolvedBy = discovered.resolvedBy;
+        if (discovered.governanceBoundary) diagnostics.governanceBoundary = discovered.governanceBoundary;
         warnings.push(...(discovered.warnings || []).map((warning) => Object.assign({ surface: 'repoFiles' }, warning)));
       } catch (error) {
         const warning = Object.assign({ surface: 'repoFiles' }, githubDiscoveryWarning(error));
@@ -312,6 +315,9 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   diagnostics.transportTiers = summarizeTransportTiers(diagnostics.transportEvents);
   diagnostics.transportOutcome = summarizeTransportOutcome(diagnostics.transportEvents, transportRuntime.plan, options);
   const records = result.records.concat(issueSnapshotResult.records || []);
+  if (!diagnostics.governanceBoundary) diagnostics.governanceBoundary = buildGovernanceBoundaryForSource(sourceForLoad, { records, rootChecked: false, discoveredFrom: 'loaded-source-material' });
+  const governanceFinding = governanceFindingForBoundary(diagnostics.governanceBoundary);
+  if (governanceFinding) warnings.push(Object.assign({ surface: 'governance' }, governanceFinding));
   diagnostics.recordAttribution = records.map((record) => ({
     recordId: record.id || '',
     path: record.path || '',

@@ -1,15 +1,23 @@
-# Validation Notes v270
+# Validation Notes v272
 
-## v270 abortable repo proxy transport
+## v272 governance badge visibility
 
-Changed in v270:
+Browser evidence from the v271 test video showed the main transport behavior working:
 
-- Repo-file proxy transport receives the active GitHub materialization abort signal.
-- Repo-file proxy timeout now aborts the underlying browser Git runtime request, rather than only rejecting the outer promise.
-- Browser Git runtime receives a response-start timeout, idle timeout, low-speed grace window, and minimum bytes/second threshold.
-- Proxy abort/timeout/low-throughput are diagnosable as `github.repo.proxy.aborted`, `github.repo.proxy.timeout`, or `github.repo.proxy.low-throughput`.
-- Added regression coverage that an already-aborted operation reaches the Git runtime as an aborted `transportSignal`.
-- Added regression coverage that repo proxy runtime options include a hard network budget and low-throughput floor.
+- mirror loaded `333` source-backed records for `Tiinex/docs`
+- issue snapshot mirror paths returned `200 OK`
+- explicit proxy no longer defaulted during initial mirror load
+- explicit proxy could load issue snapshots while the repo-file git proxy run was cancelled/aborted
+
+Remaining visible gap:
+
+- the source rail did not show any governance badge, even though v271 introduced governance-boundary metadata.
+
+Changed in v272:
+
+- `SourceGovernanceBadge` now renders `policy ?` for GitHub sources when no boundary object has been persisted yet.
+- This makes unchecked governance visible instead of silently absent.
+- It does not add network requests, root probes, or policy/license claims.
 
 Validated locally in the sandbox:
 
@@ -28,14 +36,4 @@ Follow-up validation still needed outside the sandbox:
 npm run build:public
 npm run public:check
 node --check .site-publish/tiinex.bundle.js
-```
-
-Manual browser focus:
-
-```txt
-1. Start repo files via proxy.
-2. While proxy is pending/slow, click the repo-files transport badge to direct.
-3. The old proxy request should abort/stop committing stale material.
-4. Direct should be the only transport allowed to commit after the click.
-5. If the shared proxy stays below the throughput floor, the warning should be proxy low-throughput/timeout, not direct/mirror confusion.
 ```

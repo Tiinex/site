@@ -20,6 +20,7 @@ if (parsed.workspaceDiscovery[0]?.kind !== 'github-tree') throw new Error('works
 if (parsed.workspaceEntrypoints[0]?.repository !== 'Tiinex/docs') throw new Error('workspace entrypoint repository did not parse');
 if (parsed.repositoryMirrors.length < 2) throw new Error('repository mirrors did not parse');
 if (parsed.repositoryTransports[0]?.kind !== 'git-proxy') throw new Error('repository transport did not parse');
+if (parsed.repositoryTransports[0]?.activation !== 'manual') throw new Error('shared proxy must parse as manual activation');
 if (!parsed.help.some((item) => item.question === 'What should I trust?' && item.body.includes('Source'))) throw new Error('help subsections did not parse');
 const rooted = readFileSync(join(root, '.topics/.workspaces/viewer.workspace.md'), 'utf8');
 const rootedParsed = api.parseWorkspaceConfig(rooted);

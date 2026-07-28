@@ -29,6 +29,7 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
     includesSourceReferences: sourceReferences.length > 0,
     includesAssets: assetEntries.length > 0,
     includesWorkspaceContextCandidates: contextCandidates.length > 0,
+    governanceBoundary: preflight.governanceBoundary || null,
     sourceMutation: false,
     remoteFetch: false,
     packageZipCreated: false
@@ -60,6 +61,7 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
     workspaceId: packageScope.workspaceId,
     status,
     policy: 'tiinex-export-package-manifest-v1',
+    governanceBoundary: packageScope.governanceBoundary,
     material
   };
   const fingerprint = stableFingerprint(fingerprintInput);

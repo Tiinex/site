@@ -1,5 +1,6 @@
 import { buildPublicationPreflight } from '../publication/publication.preflight.js';
 import { buildReingestPlan } from '../reingest/reingest.plan.js';
+import { buildWorkspaceGovernanceSummary, governanceFindingForBoundary } from '../governance/governance.boundary.js';
 import { buildSourceBoundaryReport, isSourceBacked } from '../diagnostics/sourceBoundary.report.js';
 
 export const EXPORT_PACKAGE_PREFLIGHT_SCHEMA_ID = 'tiinex.export.package.preflight.v1';
@@ -11,6 +12,7 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
   const sourceBoundary = input.sourceBoundary || buildSourceBoundaryReport(workspace, { records, assets });
   const publicationPreflight = input.publicationPreflight || buildPublicationPreflight(workspace, { records, assets, workspaceCandidates });
   const reingestPlan = input.reingestPlan || buildReingestPlan(workspace, { records, assets, workspaceCandidates, sourceBoundary, publicationPreflight });
+  const governanceBoundary = input.governanceBoundary || buildWorkspaceGovernanceSummary(workspace, { records, assets });
   const findings = [];
 
   for (const finding of sourceBoundary.findings || []) {
@@ -25,6 +27,10 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
     if (finding.severity === 'error' || finding.code?.includes('metadata-only') || finding.code?.includes('workspace-candidate') || finding.code?.includes('ref-unpinned')) {
       findings.push(normalizeFinding('reingest-plan', finding));
     }
+  }
+  for (const boundary of governanceBoundary.sources || []) {
+    const boundaryFinding = governanceFindingForBoundary(boundary);
+    if (boundaryFinding) findings.push(normalizeFinding('governance-boundary', boundaryFinding));
   }
 
   const localDraftEntries = (publicationPreflight.publishableLocalDrafts || []).map((record) => localDraftEntry(record));
@@ -64,6 +70,7 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
     boundary: 'Preflight only. It plans a bounded package without creating a zip, mutating sources, or converting local/session material into GitHub provenance.',
     entryPolicy: 'Embed validated local draft Markdown; preserve source-backed material as explicit source references; keep local assets as assets, never fake leaves.',
     counts: Object.freeze(counts),
+    governanceBoundary,
     localDraftEntries: Object.freeze(localDraftEntries),
     blockedLocalEntries: Object.freeze(blockedLocalEntries),
     sourceReferenceEntries: Object.freeze(sourceReferenceEntries),

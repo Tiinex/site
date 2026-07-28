@@ -1,3 +1,5 @@
+import { governanceBoundaryFromRootFiles, isGovernanceNoticePath, isGovernancePolicyPath } from '../../governance/governance.boundary.js';
+
 const MARKDOWN_EXTENSIONS = /\.(md|markdown|trace\.md|schema\.md|validator\.md|workspace\.md)$/i;
 
 function repoParts(source = {}) {
@@ -68,17 +70,18 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
   const roots = rootPaths(source);
   const refs = [];
   const warnings = [];
+  const governanceRootFiles = [];
   for (const item of Array.isArray(tree.tree) ? tree.tree : []) {
     const path = String(item.path || '').replace(/^\/+/, '');
     if (item.type !== 'blob') continue;
+    if (!path.includes('/') && (isGovernancePolicyPath(path) || isGovernanceNoticePath(path))) governanceRootFiles.push({ path, kind: path });
     if (!underRoots(path, roots)) continue;
     if (!isMarkdownPath(path)) continue;
-    refs.push(path);
-    if (refs.length >= maxFiles) break;
+    if (refs.length < maxFiles) refs.push(path);
   }
   refs.sort((a, b) => a.localeCompare(b));
   if (tree.truncated) warnings.push({ code: 'github.tree.truncated', message: 'GitHub tree response was truncated.' });
   const totalMarkdown = (Array.isArray(tree.tree) ? tree.tree : []).filter((item) => item.type === 'blob' && underRoots(String(item.path || ''), roots) && isMarkdownPath(item.path)).length;
   if (totalMarkdown > refs.length) warnings.push({ code: 'github.discovery.bounded', message: `Loaded first ${refs.length} of ${totalMarkdown} markdown files.` });
-  return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown };
+  return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown, governanceBoundary: governanceBoundaryFromRootFiles(Object.assign({}, source, { ref: resolved.ref }), governanceRootFiles, { rootChecked: true, discoveredFrom: 'github-tree-root-manifest' }) };
 }
