@@ -299,6 +299,17 @@ assert(directExplicitCalls.includes(directIssuePage), 'direct explicit issue loa
 assert(!directExplicitCalls.some((url) => url.includes('api.github.com')), 'direct explicit issue load must not call GitHub API');
 assert.equal(directExplicitLoaded.diagnostics.transportOutcome.sequenceTier, 'direct', 'direct explicit issue load should leave the visible transport sequence at direct');
 
+const directStaticIssueUrl = 'https://viewer.example/issues/github.com/owner/repo/issues/4/issue.md';
+const directStaticCalls = [];
+const directStaticLoaded = await materializeGithubSource(
+  source,
+  { issueDiscovery: true, issueUrls: directStaticIssueUrl },
+  { fetchImpl: makeFetch({ [directStaticIssueUrl]: { text: 'Direct static issue body' } }, directStaticCalls), preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(directStaticLoaded.records.length, 1, 'direct issue transport may read browser-readable static issue snapshot URLs');
+assert(directStaticCalls.includes(directStaticIssueUrl), 'direct static issue load should fetch the literal static URL');
+assert(!directStaticCalls.some((url) => url.includes('api.github.com')), 'direct static issue load must not call GitHub API');
+
 const mirrorIssueFallbackCalls = [];
 const mirrorIssueFallbackLoaded = await materializeGithubSource(
   source,
@@ -350,6 +361,39 @@ assert.equal(repoCacheLoaded.records[0].sourceTarget.transportTier, 'cache', 're
 assert.equal(repoCacheCalls.length, 0, 'repo-file cache restore should not call mirror, proxy, direct, or GitHub API');
 assert.equal(repoCacheLoaded.diagnostics.surfaces.repoFiles.transportTier, 'cache', 'repo-file cache restore should set repoFiles surface transport to cache');
 
+const repoNoCacheCalls = [];
+const repoNoCacheLoaded = await materializeGithubSource(
+  Object.assign({}, repoMirrorSource, { ref: 'abc123' }),
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    fetchImpl: makeFetch({
+      [repoMirrorMetaUrl]: { json: { type: 'tiinex.repository.snapshot', repository: repoMirrorRepo, commit: 'abc123', archive: 'mirror/repo.zip' } },
+      [repoMirrorArchiveUrl]: { buffer: repoMirrorZip }
+    }, repoNoCacheCalls),
+    hostedRepoMirrorBaseUrls: [mirrorBase],
+    allowCache: false
+  }
+);
+assert.equal(repoNoCacheLoaded.records.length, 1, 'user/material reload should bypass source-cache when allowCache is false');
+assert(repoNoCacheCalls.some((url) => url === repoMirrorMetaUrl), 'allowCache=false should try mirror instead of serving repo files from cache');
+
+const repoCaseMirrorCalls = [];
+const repoCaseMirrorLoaded = await materializeGithubSource(
+  { id: 'github:Tiinex/docs:.topics', repo: 'Tiinex/docs', ref: '', rootPath: '.topics' },
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    fetchImpl: makeFetch({
+      ['https://viewer.example/mirrors/github.com/Tiinex/docs.json']: { json: { type: 'tiinex.repository.snapshot', repository: 'Tiinex/docs', commit: 'case123', archive: 'case.zip' } },
+      ['https://viewer.example/mirrors/github.com/Tiinex/case.zip']: { buffer: repoMirrorZip }
+    }, repoCaseMirrorCalls),
+    preferredTransports: ['mirror'],
+    transportOrderExact: true,
+    hostedRepoMirrorBaseUrls: [mirrorBase]
+  }
+);
+assert.equal(repoCaseMirrorLoaded.records.length, 1, 'repo-file mirror should try case-preserving Tiinex/docs metadata before lowercase fallback');
+assert(repoCaseMirrorCalls.some((url) => url === 'https://viewer.example/mirrors/github.com/Tiinex/docs.json'), 'case-preserving repository mirror URL should be attempted');
+
 const repoProxyCalls = [];
 const repoProxyExact = await materializeGithubSource(
   repoMirrorSource,
@@ -388,6 +432,62 @@ assert.equal(repoProxyLoaded.records.length, 1, 'repo-file proxy should material
 assert.equal(repoProxyLoaded.records[0].sourceTarget.transportTier, 'proxy', 'repo-file proxy records should disclose proxy transport');
 assert.equal(repoProxyLoaded.diagnostics.surfaces.repoFiles.transportTier, 'proxy', 'repo-file proxy success should set repoFiles surface transport to proxy');
 assert(repoProxyLoaded.diagnostics.transportEvents.some((event) => event.code === 'github.repo.proxy.ok'), 'repo-file proxy success should be diagnosable');
+
+const abortController = new AbortController();
+abortController.abort(new DOMException('user advanced transport', 'AbortError'));
+let abortedRuntimeSawSignal = false;
+const abortAwareGitProxyRuntime = {
+  acquireSnapshot: async (options = {}) => {
+    abortedRuntimeSawSignal = Boolean(options.transportSignal?.aborted);
+    throw options.transportSignal?.reason || new DOMException('transport aborted', 'AbortError');
+  },
+  ensureRuntime: async () => { throw new Error('aborted proxy must not continue to ensureRuntime'); },
+  readGitText: async () => ''
+};
+const repoProxyAborted = await materializeGithubSource(
+  repoMirrorSource,
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    gitNativeRuntime: abortAwareGitProxyRuntime,
+    workspaceConfig: { repositoryTransports: [{ kind: 'git-proxy', match: 'github.com/*', proxy: 'https://cors.isomorphic-git.org' }] },
+    preferredTransports: ['proxy'],
+    transportOrderExact: true,
+    abortSignal: abortController.signal
+  }
+);
+assert.equal(abortedRuntimeSawSignal, true, 'repo proxy runtime should receive the active operation abort signal');
+assert(repoProxyAborted.warnings.some((warning) => warning.code === 'github.repo.proxy.aborted'), 'aborted repo proxy transport should be diagnosable and non-committing');
+
+let slowRuntimeOptions = null;
+const slowPolicyRuntime = {
+  acquireSnapshot: async (options = {}) => { slowRuntimeOptions = options; return { ok: false, error: 'stop after capture' }; },
+  ensureRuntime: async () => ({ ok: true }),
+  readGitText: async () => ''
+};
+await materializeGithubSource(
+  repoMirrorSource,
+  { repoDiscovery: true, fileRefs: [] },
+  {
+    gitNativeRuntime: slowPolicyRuntime,
+    workspaceConfig: { repositoryTransports: [{ kind: 'git-proxy', match: 'github.com/*', proxy: 'https://cors.isomorphic-git.org' }] },
+    preferredTransports: ['proxy'],
+    transportOrderExact: true,
+    repoProxyTimeoutMs: 9000
+  }
+);
+assert.equal(slowRuntimeOptions.maxNetworkDurationMs, 9000, 'repo proxy should pass a hard network budget into the browser Git runtime');
+assert.equal(slowRuntimeOptions.reloadRuntime, true, 'repo proxy should refresh the runtime wrapper so abort signals do not get trapped in a stale cached http client');
+assert(slowRuntimeOptions.minBytesPerSecond >= 8192, 'repo proxy should pass a low-throughput floor into the browser Git runtime');
+
+const repoDirectCalls = [];
+const repoDirectLoaded = await materializeGithubSource(
+  source,
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(map, repoDirectCalls), preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(repoDirectLoaded.records.length, 2, 'repo-file direct transport should use GitHub tree/raw fallback when direct is explicitly selected');
+assert(repoDirectCalls.some((url) => url === treeApi), 'repo-file direct transport should perform tree discovery only at direct tier');
+assert(repoDirectLoaded.records.every((record) => record.sourceTarget?.transportTier === 'direct'), 'repo-file direct records should disclose direct raw/API transport');
 
 function toArrayBuffer(value) {
   const buffer = value instanceof Uint8Array ? value : Buffer.from(value);

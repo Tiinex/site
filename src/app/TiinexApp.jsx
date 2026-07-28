@@ -46,9 +46,8 @@ export function TiinexApp() {
   const [recordAction, setRecordAction] = useState(null);
   const [githubRequestPending, setGithubRequestPending] = useState(false);
   const [sourceContinuationId, setSourceContinuationId] = useState('');
-  const viewScrollRef = useRef({});
-  const latestStateRef = useRef(state);
-  const lineageAutoLoadKeysRef = useRef(new Set());
+  const viewScrollRef = useRef({}); const latestStateRef = useRef(state);
+  const githubOperationRef = useRef({ token: null, controller: null }); const lineageAutoLoadKeysRef = useRef(new Set());
   const scrollPersistTimerRef = useRef(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
@@ -252,10 +251,10 @@ export function TiinexApp() {
   }
 
   async function addGitHubSource(input = {}) {
-    if (githubRequestPending) {
-      setNotice('GitHub source operation already in progress.');
-      return;
-    }
+    if (githubRequestPending && input.abortPreviousGithubOperation !== true) return setNotice('GitHub source operation already in progress.');
+    if (githubRequestPending && input.abortPreviousGithubOperation === true) try { githubOperationRef.current?.controller?.abort?.(); } catch (_) {}
+    const operationToken = Symbol('github-source-operation'); let operationController = null;
+    const operationIsCurrent = () => !operationController || githubOperationRef.current?.token === operationToken;
     setGithubRequestPending(true);
     const { repository, existingSource, sourceId, rootPath, ref, label } = githubSourceFormState(input, active?.sources || [], normalizeRepository);
     if (!repository) {
@@ -283,6 +282,7 @@ export function TiinexApp() {
       return;
     }
     const wantsMaterialization = !registerOnly && Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
+    if (wantsMaterialization && typeof AbortController !== 'undefined') { operationController = new AbortController(); githubOperationRef.current = { token: operationToken, controller: operationController }; }
     if (wantsMaterialization && input.resetSourceCache !== false && input.allowSourceCache !== true) sourceCacheCleared = clearGithubSourceTextCacheForSource({ repo: repository });
     let sourceRegistrationState = result.state;
     const cleared = wantsMaterialization && input.resetSourceMaterial !== false ? stateWithSourceMaterialCleared(sourceRegistrationState, active?.id, result.source.id, { discoveryState: 'loading', surfaces: selectedTransportSurfaces }) : null;
@@ -295,6 +295,7 @@ export function TiinexApp() {
     let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
     const progressCommit = { at: 0, phase: '', percent: -1, label: '' };
     const publishGithubProgress = (progress = {}) => {
+      if (!operationIsCurrent()) return;
       const progressed = setWorkspaceDiscoveryProgress(finalState, active?.id, Object.assign({
         sourceId: materializationSourceId || result.source.id,
         phase: 'source-materialization',
@@ -340,12 +341,14 @@ export function TiinexApp() {
           now: new Date().toISOString(),
           offline: Boolean(input.offline)
         });
+        const fetchForOperation = operationController ? (url, init = {}) => fetch(url, Object.assign({}, init || {}, { signal: operationController.signal })) : fetch;
         const out = await materializeGithubSource(result.source, {
           fileRefs,
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || ''
-        }, { fetchImpl: fetch, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache !== false, sourceCacheCleared });
+        }, { fetchImpl: fetchForOperation, abortSignal: operationController?.signal || null, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache === true, sourceCacheCleared });
+        if (!operationIsCurrent()) return;
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
           const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
@@ -406,6 +409,7 @@ export function TiinexApp() {
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
         noticeMessage = summarizeGithubMaterialization(materializationSourceLabel, out);
       } catch (e) {
+        if (!operationIsCurrent()) return;
         console.error(e);
         finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
           sourceId: result.source.id,
@@ -419,6 +423,8 @@ export function TiinexApp() {
       finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, '').state || finalState;
     }
 
+    if (!operationIsCurrent()) return;
+    if (operationController && operationIsCurrent()) githubOperationRef.current = { token: null, controller: null };
     setDialog(null);
     setNotice(noticeMessage);
     setGithubRequestPending(false);
@@ -429,14 +435,14 @@ export function TiinexApp() {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
     if (!source) return setNotice('Source not found.');
     const refresh = sourceTransportRefreshInputForSource(source, currentTier, surfaceKeys);
-    if (refresh.reason === 'pending') return setNotice(`${source.label || 'Source'} is already trying ${refresh.pendingTier} transport.`);
+    if (refresh.replacingPending) { try { githubOperationRef.current?.controller?.abort?.(); } catch (_) {} setGithubRequestPending(false); }
     if (refresh.reason === 'last-tier') return setNotice(`${source.label || 'Source'} is already using the last transport tier (direct).`);
     if (refresh.reason === 'no-surfaces') return openAddToWorkspace(source.id || sourceId);
     clearGithubSourceTextCacheForSource(source);
     const pendingSource = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, sourceTransportPendingUpdateInputForSource(source, refresh));
     if (pendingSource?.ok) commit(pendingSource.state, 'replace');
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
-    await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true, resetSourceMaterial: true, resetSourceCache: false }));
+    await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true, resetSourceMaterial: true, resetSourceCache: false, abortPreviousGithubOperation: Boolean(refresh.replacingPending) }));
   }
 
   function openRecord(recordId) {

@@ -1,15 +1,15 @@
-# Validation Notes v266
+# Validation Notes v270
 
-## v266 repo-file proxy/mirror parity
+## v270 abortable repo proxy transport
 
-Changed in v266:
+Changed in v270:
 
-- Repo files keep cache-first restore from v265, but proxy is no longer only an unavailable placeholder.
-- Repo-file proxy uses the browser Git runtime bridge plus configured git-proxy/CORS proxy to acquire a repository snapshot and read Markdown without GitHub tree API discovery.
-- Repo-file proxy success writes source cache entries and a repo discovery manifest so later F5/default restore can use `cache` without network materialization.
-- Repo-file proxy unavailable is still explicit when runtime/proxy configuration is missing and exact proxy reload does not fall through to direct.
-- Hosted repo mirrors now try both `.mirrors/github.com/<owner>/<repo>.json` and `mirrors/github.com/<owner>/<repo>.json` candidates.
-- Regression tests cover repo mirror, repo cache restore, proxy unavailable, and proxy success via a fake browser Git runtime.
+- Repo-file proxy transport receives the active GitHub materialization abort signal.
+- Repo-file proxy timeout now aborts the underlying browser Git runtime request, rather than only rejecting the outer promise.
+- Browser Git runtime receives a response-start timeout, idle timeout, low-speed grace window, and minimum bytes/second threshold.
+- Proxy abort/timeout/low-throughput are diagnosable as `github.repo.proxy.aborted`, `github.repo.proxy.timeout`, or `github.repo.proxy.low-throughput`.
+- Added regression coverage that an already-aborted operation reaches the Git runtime as an aborted `transportSignal`.
+- Added regression coverage that repo proxy runtime options include a hard network budget and low-throughput floor.
 
 Validated locally in the sandbox:
 
@@ -28,4 +28,14 @@ Follow-up validation still needed outside the sandbox:
 npm run build:public
 npm run public:check
 node --check .site-publish/tiinex.bundle.js
+```
+
+Manual browser focus:
+
+```txt
+1. Start repo files via proxy.
+2. While proxy is pending/slow, click the repo-files transport badge to direct.
+3. The old proxy request should abort/stop committing stale material.
+4. Direct should be the only transport allowed to commit after the click.
+5. If the shared proxy stays below the throughput floor, the warning should be proxy low-throughput/timeout, not direct/mirror confusion.
 ```

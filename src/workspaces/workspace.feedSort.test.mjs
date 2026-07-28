@@ -13,4 +13,11 @@ const midnightWithCommit = workspaceRecordSortTimestamp({ currentCreatedAt: '202
 const midnightWithoutCommit = workspaceRecordSortTimestamp({ currentCreatedAt: '2026-07-22 00:00:00' });
 assert.ok(midnightWithCommit > midnightWithoutCommit, 'commit time should disambiguate same-day midnight artifact dates when it matches the created date');
 
+
+const issueRecords = sortWorkspaceFeedRecords([
+  { id: 'artifact-newer-but-source-older', path: '.topics/.issues/github/owner-repo/1/comment.trace.md', currentCreatedAt: '2026-07-30', sourceTarget: { surface: 'issueSnapshots', sourceSortAt: '2026-07-10T10:00:00Z' } },
+  { id: 'artifact-older-but-source-newer', path: '.topics/.issues/github/owner-repo/2/comment.trace.md', currentCreatedAt: '2026-07-01', sourceTarget: { surface: 'issueSnapshots', sourceSortAt: '2026-07-22T10:00:00Z' } }
+]);
+assert.deepEqual(issueRecords.map((item) => item.id), ['artifact-older-but-source-newer', 'artifact-newer-but-source-older'], 'issue snapshot feed order should use stable source updated timestamp when available');
+
 console.log('✓ workspace.feedSort tests passed');

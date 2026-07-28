@@ -3,6 +3,7 @@
 
   const HASH_PREFIX = '#state=';
   const STATE_VERSION = 2;
+  const ROUTE_ISSUE_MARKDOWN_LIMIT = 120000;
 
   function makeRouteState(appState) {
     const state = appState && typeof appState === 'object' ? appState : {};
@@ -37,7 +38,14 @@
     const out = {};
     for (const [key, value] of Object.entries(source)) {
       if (!value || typeof value !== 'object') continue;
-      out[key] = Object.assign({}, value);
+      const next = Object.assign({}, value);
+      delete next.transportTier;
+      delete next.transportTiers;
+      delete next.transportRefreshTier;
+      delete next.pendingTier;
+      delete next.activeStatus;
+      delete next.status;
+      out[key] = next;
     }
     return out;
   }
@@ -111,15 +119,18 @@
   function compactRecord(record = {}) {
     const source = compactSource(record.source || {});
     const sourceBacked = isSourceBackedShell(record, source);
-    const materialUnavailable = !String(record.markdown || '').trim();
-    return {
+    const routeMarkdown = routeRecordMarkdown(record);
+    const materialUnavailable = !String(routeMarkdown || '').trim();
+    const out = {
       id: record.id || '',
       title: record.title || '',
       summary: record.summary || '',
       kind: record.kind || '',
       status: record.status || '',
+      currentCreatedAt: record.currentCreatedAt || '',
       createdAt: record.createdAt || '',
       path: record.path || '',
+      markdown: routeMarkdown,
       sourceMode: record.sourceMode || (sourceBacked ? 'source-backed' : 'local-route-shell'),
       cacheState: record.cacheState || (materialUnavailable ? 'route-shell-material-unavailable' : ''),
       materialAvailability: record.materialAvailability || (materialUnavailable ? 'material-unavailable' : 'available'),
@@ -133,6 +144,54 @@
       boundary: record.boundary || source.boundary || '',
       source
     };
+    const sourceTarget = compactSourceTarget(record.sourceTarget || null);
+    if (sourceTarget) out.sourceTarget = sourceTarget;
+    const snapshot = compactSnapshot(record.snapshot || null);
+    if (snapshot) out.snapshot = snapshot;
+    if (routeMarkdown) {
+      out.cacheState = 'route-issue-snapshot-cache-complete';
+      out.materialAvailability = 'available';
+    }
+    return out;
+  }
+
+  function routeRecordMarkdown(record = {}) {
+    if (!isIssueSnapshotRecord(record)) return '';
+    const markdown = String(record.markdown || '');
+    if (!markdown.trim()) return '';
+    if (markdown.length > ROUTE_ISSUE_MARKDOWN_LIMIT) return '';
+    return markdown;
+  }
+
+  function isIssueSnapshotRecord(record = {}) {
+    return String(record?.sourceTarget?.surface || '') === 'issueSnapshots'
+      || String(record?.snapshot?.schema || '') === 'tiinex.github.issueSnapshot.v1'
+      || /(^|\/)\.issues\/github\//.test(String(record.path || ''));
+  }
+
+  function compactSourceTarget(sourceTarget = null) {
+    if (!sourceTarget || typeof sourceTarget !== 'object') return null;
+    const out = {};
+    for (const key of ['schema', 'surface', 'targetKind', 'inputTarget', 'sourceArtifactPath', 'parentArtifactPath', 'parentRawUrl', 'parentSourceUrl', 'sourceUpdatedAt', 'sourceSortAt', 'gitCommittedAt', 'committedAt', 'transportTier']) {
+      if (sourceTarget[key] != null && sourceTarget[key] !== '') out[key] = sourceTarget[key];
+    }
+    if (sourceTarget.loaded != null) out.loaded = Boolean(sourceTarget.loaded);
+    return Object.keys(out).length ? out : null;
+  }
+
+  function compactSnapshot(snapshot = null) {
+    if (!snapshot || typeof snapshot !== 'object') return null;
+    const out = {};
+    for (const key of ['schema', 'embedded', 'sourceKind', 'sourceUrl', 'method', 'sourceArtifactPath', 'parentArtifactPath', 'parentRawUrl', 'parentSourceUrl', 'sourceUpdatedAt', 'sourceSortAt', 'comments', 'state', 'author']) {
+      if (snapshot[key] != null && snapshot[key] !== '') out[key] = snapshot[key];
+    }
+    if (snapshot.target && typeof snapshot.target === 'object') {
+      out.target = {};
+      for (const key of ['repository', 'kind', 'number', 'canonicalUrl', 'apiUrl', 'input', 'directRawUrl', 'directRawFormat']) {
+        if (snapshot.target[key] != null && snapshot.target[key] !== '') out.target[key] = snapshot.target[key];
+      }
+    }
+    return Object.keys(out).length ? out : null;
   }
 
   function isSourceBackedAsset(asset = {}, source = {}) {

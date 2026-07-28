@@ -1,21 +1,20 @@
-# Tiinex Site v266
+# Tiinex Site v270
 
-Checkpoint: `v266`
-Version: `0.2.86-v266`
-Runtime: `react-v266-repo-proxy-mirror-parity`
+Checkpoint: `v270`
+Version: `0.2.90-v270`
+Runtime: `react-v270-abortable-repo-proxy-transport`
 
-## v266 focus
+## v270 focus
 
-Repo-file transport parity after v265 proved F5/cache restore but still fell straight to direct for repo files.
+Repo-file proxy transport follow-up after v269: make slow browser Git proxy runs abortable when the user advances to direct, and expose low-throughput/timeouts as transport truth instead of letting stale proxy requests keep running.
 
-## Changed in v266
+## Changed in v270
 
-- Repo-file proxy now has a real browser Git runtime path instead of being hard-coded unavailable.
-- The browser Git runtime is shipped as a public runtime bridge and only used by the repo-file proxy transport.
-- Repo-file proxy reads repository Markdown through the Git proxy/runtime, writes raw markdown + discovery manifest to Tiinex source cache, and reports `proxy` as the repo-files surface transport.
-- Repo-file proxy unavailable remains explicit when the runtime or proxy URL is missing; it still does not silently fall through to direct during exact proxy tests.
-- Hosted repo mirror candidate discovery now checks both `.mirrors/github.com/...` and `mirrors/github.com/...` metadata locations to match source/dev and public mirror layouts.
-- Existing issue transport/badge behavior from v264/v265 is preserved.
+- GitHub materialization now passes the active operation `AbortSignal` into repo-file proxy transport.
+- Repo-file proxy passes a hard network budget, response-start timeout, idle timeout, low-throughput grace window, and minimum throughput floor into the browser Git runtime.
+- Advancing the transport badge while proxy is pending aborts/ignores the old proxy run before direct can commit.
+- Proxy timeout / low-throughput / abort conditions are diagnosed as proxy transport events instead of generic failures.
+- No proxy endpoint was changed: `cors.isomorphic-git.org` remains a shared/free testing proxy, so throughput is not treated as production truth.
 
 ## Validation
 

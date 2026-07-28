@@ -12,6 +12,9 @@ export async function materializeGithubRepoFilesViaGitProxy(source = {}, options
   if (!runtime?.acquireSnapshot || !runtime?.ensureRuntime || !runtime?.readGitText) return emptyRepoProxyResult('github.repo.proxy.unavailable', 'Repo-file proxy transport requires the browser Git runtime bridge.');
   if (!proxyUrl) return emptyRepoProxyResult('github.repo.proxy.unavailable', 'Repo-file proxy transport requires an explicit git-proxy URL in workspace configuration.');
   const roots = rootPaths(source);
+  const timeoutMs = repoProxyTimeoutMs(options);
+  const proxyController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const disconnectAbort = linkAbortSignal(options.abortSignal || options.signal || null, proxyController);
   try {
     reportProgress(options, { phase: 'repo-proxy', percent: 18, label: `Connecting to repo-file proxy for ${repo}` });
     const runtimeOptions = {
@@ -22,15 +25,30 @@ export async function materializeGithubRepoFilesViaGitProxy(source = {}, options
       loadFromUnpkg: options.loadGitNativeVendor !== false,
       allowDefaultVendorUrls: options.allowDefaultGitNativeVendorUrls !== false,
       reuseExistingClone: true,
+      reloadRuntime: true,
       refreshExistingClone: options.cacheMode === 'refresh' || options.transportOrderExact === true,
       cloneDepth: Math.max(1, Number(options.gitNativeCloneDepth || options.cloneDepth || 1)),
+      transportSignal: proxyController?.signal || options.abortSignal || options.signal || null,
+      requestTimeoutMs: timeoutMs,
+      maxNetworkDurationMs: timeoutMs,
+      responseStartTimeoutMs: repoProxyResponseStartTimeoutMs(options),
+      idleTimeoutMs: repoProxyIdleTimeoutMs(options),
+      lowSpeedGraceMs: repoProxyLowSpeedGraceMs(options),
+      minBytesPerSecond: repoProxyMinBytesPerSecond(options),
+      onTransportEvent: (event = {}) => {
+        if (event?.event === 'progress') reportProgress(options, {
+          phase: 'repo-proxy-network',
+          percent: 30,
+          label: proxyNetworkProgressLabel(event, repo)
+        });
+      },
       onProgress: (event = {}) => reportProgress(options, {
         phase: 'repo-proxy',
         percent: proxyProgressPercent(event),
         label: proxyProgressLabel(event, repo)
       })
     };
-    const snapshot = await runtime.acquireSnapshot(runtimeOptions);
+    const snapshot = await withTimeout(runtime.acquireSnapshot(runtimeOptions), timeoutMs, 'Repo-file proxy transport timed out.', proxyController);
     if (!snapshot?.ok) throw new Error(snapshot?.error || 'Git proxy did not produce a repository snapshot.');
     const commit = String(snapshot.commit || '').trim() || String(snapshot.ref || source.ref || '').trim();
     const runtimeHandle = await runtime.ensureRuntime(Object.assign({}, runtimeOptions, { ref: snapshot.ref || source.ref || '' }));
@@ -77,7 +95,11 @@ export async function materializeGithubRepoFilesViaGitProxy(source = {}, options
       }
     };
   } catch (error) {
-    return emptyRepoProxyResult('github.repo.proxy.failed', `Repo-file proxy transport failed: ${error?.message || String(error || '')}`);
+    const failure = repoProxyFailure(error);
+    return emptyRepoProxyResult(failure.code, failure.message, failure.extra);
+  } finally {
+    disconnectAbort?.();
+    abortController(proxyController, 'Repo-file proxy transport finished.');
   }
 }
 
@@ -124,7 +146,7 @@ function repoTransportMatches(repo = '', match = '') {
   return cleanMatch.endsWith('*') && cleanRepo.startsWith(cleanMatch.slice(0, -1).replace(/^github\.com\//, ''));
 }
 
-function emptyRepoProxyResult(code = '', message = '') {
+function emptyRepoProxyResult(code = '', message = '', extra = {}) {
   return {
     schema: 'tiinex.github.repoFiles.materialization.v1',
     transportTier: 'proxy',
@@ -132,7 +154,7 @@ function emptyRepoProxyResult(code = '', message = '') {
     warnings: [{ code, severity: 'warning', surface: 'repoFiles', transportTier: 'proxy', message }],
     errors: [],
     counts: { records: 0, loaded: 0, failed: 0, discovered: 0 },
-    diagnostics: { transportEvents: [{ tier: 'proxy', code, severity: 'warning', resource: 'repo-files', message }] }
+    diagnostics: { transportEvents: [Object.assign({ tier: 'proxy', code, severity: 'warning', resource: 'repo-files', message }, extra || {})] }
   };
 }
 
@@ -155,6 +177,83 @@ function normalizeRepo(value = '') {
 
 function reportProgress(options = {}, progress = {}) {
   if (typeof options.onProgress === 'function') options.onProgress(progress);
+}
+
+function repoProxyTimeoutMs(options = {}) {
+  const configured = Number(options.repoProxyTimeoutMs || options.gitProxyTimeoutMs || 12000);
+  return Math.max(2000, Math.min(60000, Number.isFinite(configured) ? configured : 12000));
+}
+
+function repoProxyResponseStartTimeoutMs(options = {}) {
+  const configured = Number(options.repoProxyResponseStartTimeoutMs || options.gitProxyResponseStartTimeoutMs || 5000);
+  return Math.max(1000, Math.min(repoProxyTimeoutMs(options), Number.isFinite(configured) ? configured : 5000));
+}
+
+function repoProxyIdleTimeoutMs(options = {}) {
+  const configured = Number(options.repoProxyIdleTimeoutMs || options.gitProxyIdleTimeoutMs || 4000);
+  return Math.max(1000, Math.min(repoProxyTimeoutMs(options), Number.isFinite(configured) ? configured : 4000));
+}
+
+function repoProxyLowSpeedGraceMs(options = {}) {
+  const configured = Number(options.repoProxyLowSpeedGraceMs || options.gitProxyLowSpeedGraceMs || 5000);
+  return Math.max(1000, Math.min(repoProxyTimeoutMs(options), Number.isFinite(configured) ? configured : 5000));
+}
+
+function repoProxyMinBytesPerSecond(options = {}) {
+  const configured = Number(options.repoProxyMinBytesPerSecond || options.gitProxyMinBytesPerSecond || 8192);
+  return Math.max(0, Math.min(1024 * 1024, Number.isFinite(configured) ? configured : 8192));
+}
+
+function proxyNetworkProgressLabel(event = {}, repo = '') {
+  const bps = Number(event.bytesPerSecond || 0);
+  const loaded = Number(event.loaded || 0);
+  const kbps = Math.max(0, Math.round(bps / 1024));
+  const kb = Math.max(0, Math.round(loaded / 1024));
+  return `${repo} repo proxy · receiving ${kb} KB at ${kbps} KB/s`;
+}
+
+function linkAbortSignal(signal, controller) {
+  if (!signal || !controller?.abort) return () => {};
+  const abort = () => abortController(controller, signal.reason || 'Repo-file proxy transport superseded.');
+  if (signal.aborted) abort();
+  else signal.addEventListener?.('abort', abort, { once: true });
+  return () => signal.removeEventListener?.('abort', abort);
+}
+
+function abortController(controller, reason = 'Repo-file proxy transport aborted.') {
+  if (!controller || controller.signal?.aborted) return;
+  try { controller.abort(reason instanceof Error ? reason : new DOMException(String(reason), 'AbortError')); }
+  catch (_) { try { controller.abort(); } catch (_) {} }
+}
+
+function repoProxyFailure(error = {}) {
+  const name = String(error?.name || '').toLowerCase();
+  const kind = String(error?.transportFailureKind || '').toLowerCase();
+  const message = error?.message || String(error || 'Repo-file proxy transport failed.');
+  const extra = { failureKind: kind || name || 'proxy-failed' };
+  if (name === 'aborterror' || kind === 'aborted') return { code: 'github.repo.proxy.aborted', message: 'Repo-file proxy transport was aborted before it could commit material.', extra };
+  if (kind === 'low-throughput') return { code: 'github.repo.proxy.low-throughput', message: `${message} Try direct or configure a faster Git proxy endpoint.`, extra: Object.assign(extra, { bytesPerSecond: Number(error.bytesPerSecond || 0), loaded: Number(error.loaded || 0) }) };
+  if (kind === 'idle-timeout' || kind === 'response-start-timeout' || kind === 'max-network-duration' || name === 'timeouterror') return { code: 'github.repo.proxy.timeout', message: `${message} Try direct or configure a faster Git proxy endpoint.`, extra };
+  return { code: 'github.repo.proxy.failed', message: `Repo-file proxy transport failed: ${message}`, extra };
+}
+
+async function withTimeout(promise, timeoutMs = 12000, message = 'Operation timed out.', controller = null) {
+  let timer = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          const error = new Error(message);
+          error.name = 'TimeoutError';
+          abortController(controller, error);
+          reject(error);
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function proxyProgressPercent(event = {}) {

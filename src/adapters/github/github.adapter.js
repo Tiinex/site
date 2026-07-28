@@ -198,7 +198,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         diagnostics.discoveredFileRefs = Number(preloadedRepoResult.counts?.discovered || preloadedRepoResult.records.length || 0);
         markSurface(sourcePlan, 'repoFiles', { discovered: diagnostics.discoveredFileRefs, requestedCount: diagnostics.discoveredFileRefs, loaded: preloadedRepoResult.records.length, records: preloadedRepoResult.records.map((record) => record.id).filter(Boolean), transportTier: preloadedRepoResult.transportTier || '', transportTiers: [preloadedRepoResult.transportTier || ''].filter(Boolean) });
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: preloadedRepoResult.records.length, label: `Loaded ${preloadedRepoResult.records.length} repo file${preloadedRepoResult.records.length === 1 ? '' : 's'} from ${preloadedRepoResult.transportTier || 'surface'} transport` });
-      } else if (options.transportOrderExact === true && requestedRepoTransportTier(options)) {
+      } else if (options.transportOrderExact === true && requestedRepoTransportTier(options) && requestedRepoTransportTier(options) !== 'direct') {
         repoDiscoveryHandledBySurfaceTransport = true;
         markSurface(sourcePlan, 'repoFiles', { failed: 1, unavailable: true, transportTier: preloadedRepoResult.transportTier || requestedRepoTransportTier(options), transportTiers: [preloadedRepoResult.transportTier || requestedRepoTransportTier(options)].filter(Boolean) });
       }

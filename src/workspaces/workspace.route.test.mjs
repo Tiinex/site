@@ -52,6 +52,40 @@ if (normalizedRecord.source.adapterId !== 'github') throw new Error('normalized 
 if (normalizedRecord.materialAvailability !== 'material-unavailable') throw new Error('route-only record should disclose unavailable material');
 if (normalizedRecord.cacheState !== 'route-shell-material-unavailable') throw new Error('route-only record should disclose route-shell cache state');
 
+const stateWithIssueSnapshotRecord = {
+  version: 1,
+  activeWorkspaceId: 'w-route-issue-cache',
+  view: { workspaceVerse: 'feed', query: '' },
+  workspaces: [{
+    id: 'w-route-issue-cache',
+    name: 'Route Issue Cache',
+    sources: [{ id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', issueDiscovery: true }],
+    sourceOrder: ['github:tiinex-docs'],
+    records: [{
+      id: 'issue-comment-1',
+      title: 'Cached issue comment leaf',
+      summary: 'Preserved issue material',
+      kind: 'tiinex.evidence.v1',
+      currentCreatedAt: '2026-07-28',
+      path: '.topics/.issues/github/Tiinex-docs/9/comment-001.trace.md',
+      markdown: '# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n- Current\n  - Current Schema: [tiinex.evidence.v1](tiinex.evidence.v1.schema.md)\n  - Created At: 2026-07-19\n  - Summary: issue snapshot body survives route restore\n\n---\n\n# Cached issue comment leaf\n',
+      sourceMode: 'github-comment-embedded-artifact',
+      source: { id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary' },
+      sourceTarget: { schema: 'tiinex.source.material.target.v1', surface: 'issueSnapshots', targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1', sourceSortAt: '2026-07-19T12:00:00Z', sourceUpdatedAt: '2026-07-19T12:00:00Z', loaded: true },
+      snapshot: { schema: 'tiinex.github.issueSnapshot.v1', embedded: true, sourceKind: 'comment', sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-1', sourceSortAt: '2026-07-19T12:00:00Z' }
+    }]
+  }]
+};
+const issueRoute = route.makeRouteState(stateWithIssueSnapshotRecord);
+const issueRecordShell = issueRoute.workspaces[0].records[0];
+if (!issueRecordShell.markdown.includes('issue snapshot body survives route restore')) throw new Error('bounded issue snapshot route shell should preserve readable markdown for F5 cache restore');
+if (issueRecordShell.sourceTarget?.sourceSortAt !== '2026-07-19T12:00:00Z') throw new Error('issue route shell should preserve source sort timestamp');
+if (issueRecordShell.currentCreatedAt !== '2026-07-28') throw new Error('issue route shell should preserve current-created date for display');
+const normalizedIssueRoute = route.normalizeRouteState(issueRoute, lifecycle);
+const normalizedIssueRecord = normalizedIssueRoute.workspaces[0].records[0];
+if (normalizedIssueRecord.materialAvailability !== 'available') throw new Error('bounded issue route material should restore as available');
+if (!normalizedIssueRecord.markdown.includes('Cached issue comment leaf')) throw new Error('normalized issue route should keep readable markdown');
+
 
 const stateWithRouteMaterial = {
   version: 1,

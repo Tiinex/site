@@ -17,7 +17,9 @@ export function requestedRepoTransportTier(options = {}) {
 
 export function repoTransportFallbackTiers(options = {}) {
   const normalized = requestedRepoTransportTier(options);
-  return Array.from(normalized ? (REPO_TRANSPORT_FALLBACKS[normalized] || [normalized]) : REPO_TRANSPORT_FALLBACKS.default);
+  const tiers = Array.from(normalized ? (REPO_TRANSPORT_FALLBACKS[normalized] || [normalized]) : REPO_TRANSPORT_FALLBACKS.default);
+  if (options.allowCache === false && normalized !== 'cache') return tiers.filter((tier) => tier !== 'cache');
+  return tiers;
 }
 
 export async function preMaterializeGithubRepoFiles(source = {}, options = {}) {

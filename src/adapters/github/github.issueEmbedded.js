@@ -4,6 +4,7 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
   const item = context.item || {};
   const sourceUrl = context.sourceUrl || target.canonicalUrl || item.html_url || '';
   const sourcePath = context.sourceArtifactPath || embeddedSourceArtifactPath(markdown);
+  const sourceSortAt = issueSourceSortAt(item, context);
   const parentBinding = publicationParentBindingFromBody(item.body || '');
   const recoveredPath = sourcePath || githubRecoveredEmbeddedArtifactPath(target, item, context.ordinal || 0, markdown, context.sourceKind || 'issue');
   const record = createRecordFromMarkdown(markdown, {
@@ -24,6 +25,8 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       parentArtifactPath: parentBinding.artifactPath || '',
       parentRawUrl: parentBinding.rawUrl || '',
       parentSourceUrl: parentBinding.sourceUrl || '',
+      sourceUpdatedAt: sourceSortAt,
+      sourceSortAt,
       loaded: true
     },
     snapshot: {
@@ -36,9 +39,24 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       sourceArtifactPath: sourcePath || '',
       parentArtifactPath: parentBinding.artifactPath || '',
       parentRawUrl: parentBinding.rawUrl || '',
-      parentSourceUrl: parentBinding.sourceUrl || ''
+      parentSourceUrl: parentBinding.sourceUrl || '',
+      sourceUpdatedAt: sourceSortAt,
+      sourceSortAt
     }
   });
+}
+
+function issueSourceSortAt(item = {}, context = {}) {
+  return String(
+    item.updated_at
+    || item.updatedAt
+    || item.created_at
+    || item.createdAt
+    || context.threadUpdatedAt
+    || context.issueUpdatedAt
+    || context.sourceUpdatedAt
+    || ''
+  ).trim();
 }
 
 export function extractEmbeddedTiinexMarkdownBlocks(body = '') {

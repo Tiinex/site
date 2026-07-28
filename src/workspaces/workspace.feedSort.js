@@ -12,6 +12,8 @@ export function compareWorkspaceFeedRecords(a = {}, b = {}) {
 }
 
 export function workspaceRecordSortTimestamp(record = {}) {
+  const issueSourceTime = issueSourceSortTimestamp(record);
+  if (issueSourceTime) return issueSourceTime;
   const createdAt = record.currentCreatedAt || record.createdAt || record.date || '';
   const createdTime = sortableDate(createdAt);
   const midnightDate = createdAtMidnightDate(createdAt);
@@ -25,6 +27,11 @@ export function workspaceRecordSortTimestamp(record = {}) {
   if (!midnightDate || !committedAt) return createdTime;
   if (utcDatePart(committedAt) !== midnightDate) return createdTime;
   return sortableDate(committedAt) || createdTime;
+}
+
+function issueSourceSortTimestamp(record = {}) {
+  if (String(record?.sourceTarget?.surface || '') !== 'issueSnapshots') return 0;
+  return sortableDate(record.sourceTarget?.sourceSortAt || record.sourceTarget?.sourceUpdatedAt || record.snapshot?.sourceSortAt || record.snapshot?.sourceUpdatedAt || '');
 }
 
 function sortableDate(value = '') {

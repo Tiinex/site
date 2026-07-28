@@ -81,15 +81,17 @@ export async function materializeDirectIssueTargets(targets = [], source = {}, o
       continue;
     }
     try {
-      const res = await fetchImpl(normalized.canonicalUrl, { headers: { Accept: 'text/markdown,text/plain,text/html,*/*' } });
+      const directUrl = normalized.directRawUrl || normalized.canonicalUrl;
+      const res = await fetchImpl(directUrl, { headers: { Accept: 'text/markdown,text/plain,text/html,application/json,*/*' } });
       if (!res?.ok) {
-        const warning = githubIssueFetchWarning(Object.assign(new Error(`${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, statusText: res?.statusText || '', url: normalized.canonicalUrl }), 'github.issue.direct.fetch-failed', `Direct raw issue fetch could not read ${normalized.canonicalUrl}; no GitHub API request was made.`, { transportTier: 'direct' });
+        const warning = githubIssueFetchWarning(Object.assign(new Error(`${res?.status || 0} ${res?.statusText || ''}`.trim()), { status: res?.status || 0, statusText: res?.statusText || '', url: directUrl }), 'github.issue.direct.fetch-failed', `Direct raw issue fetch could not read ${directUrl}; no GitHub API request was made. Normal github.com issue pages may be blocked by browser CORS unless the URL is a browser-readable raw/static snapshot.`, { transportTier: 'direct' });
         warnings.push(warning);
         targetResults.push(issueSurfaceTargetResult(normalized, { status: 'failed', warningCode: warning.code, message: warning.message, transportTier: 'direct' }));
         continue;
       }
       const body = await res.text();
-      const issueRecords = createGithubIssueSnapshotRecords({
+      const issue = directIssueSnapshotFromRawBody(body, normalized);
+      const issueRecords = createGithubIssueSnapshotRecords(Object.assign({
         target: normalized,
         html_url: normalized.canonicalUrl,
         number: normalized.number,
@@ -99,7 +101,7 @@ export async function materializeDirectIssueTargets(targets = [], source = {}, o
         user: { login: '' },
         comments: [],
         method: 'github-direct-raw-issue-reader'
-      }, options);
+      }, issue || {}), options);
       for (const record of issueRecords) {
         record.sourceTarget = Object.assign({
           schema: 'tiinex.source.material.target.v1',
@@ -119,6 +121,23 @@ export async function materializeDirectIssueTargets(targets = [], source = {}, o
     }
   }
   return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueSurfaceMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults), transportTier: 'direct' };
+}
+
+
+function directIssueSnapshotFromRawBody(body = '', target = {}) {
+  if (String(target.directRawFormat || '').toLowerCase() !== 'json') return null;
+  try {
+    const parsed = JSON.parse(String(body || '{}'));
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return Object.assign({}, parsed, {
+      target,
+      body: parsed.body || parsed.markdown || parsed.content || '',
+      comments: Array.isArray(parsed.comments) ? parsed.comments : [],
+      method: 'github-direct-static-issue-json'
+    });
+  } catch (_) {
+    return null;
+  }
 }
 
 function issueSurfaceMaterializationCounts(targets = 0, records = 0, warnings = 0, errors = 0, targetResults = []) {

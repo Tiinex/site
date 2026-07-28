@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v266';
-export const TIINEX_SITE_VERSION = '0.2.86-v266';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v266';
-export const TIINEX_RUNTIME_ID = 'react-v266-repo-proxy-mirror-parity';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v266-repo-proxy-mirror-parity';
+export const TIINEX_SITE_CHECKPOINT = 'v270';
+export const TIINEX_SITE_VERSION = '0.2.90-v270';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v270';
+export const TIINEX_RUNTIME_ID = 'react-v270-abortable-repo-proxy-transport';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v270-abortable-repo-proxy-transport';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

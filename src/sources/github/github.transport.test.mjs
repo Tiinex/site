@@ -124,9 +124,20 @@ const refreshWhilePending = sourceTransportRefreshInputForSource({
   transportOutcome: { pendingTier: 'direct' },
   requestedSurfaces: { issueSnapshots: { requested: true } }
 });
-assert.equal(refreshWhilePending.ok, false, 'transport badge clicks should not start a second reload while a tier is pending');
-assert.equal(refreshWhilePending.reason, 'pending', 'pending tier should be exposed instead of repeating the same transport action');
-assert.equal(refreshWhilePending.pendingTier, 'direct', 'pending tier should show the next transport already being tried');
+assert.equal(refreshWhilePending.ok, false, 'pending direct has no next tier to advance to');
+assert.equal(refreshWhilePending.reason, 'last-tier', 'pending direct should behave as the terminal transport tier');
+assert.equal(refreshWhilePending.pendingTier, 'direct', 'pending tier should still be exposed for diagnostics');
+
+const refreshWhileProxyPending = sourceTransportRefreshInputForSource({
+  id: 'gh',
+  repo: 'owner/repo',
+  transportRefreshTier: 'proxy',
+  transportOutcome: { pendingTier: 'proxy', pendingSurfaces: ['repoFiles'] },
+  requestedSurfaces: { repoFiles: { requested: true } }
+});
+assert.equal(refreshWhileProxyPending.ok, true, 'badge click while proxy is pending should advance rather than trap the user');
+assert.equal(refreshWhileProxyPending.replacingPending, true, 'pending replacement should be visible to the caller so the old run can be aborted/ignored');
+assert.equal(refreshWhileProxyPending.input.transportRefreshTier, 'direct', 'pending proxy click should advance to direct');
 
 console.log('github transport ladder: ok');
 

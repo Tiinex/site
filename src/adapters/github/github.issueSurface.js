@@ -21,7 +21,7 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   const errors = [];
   const diagnostics = { transportEvents: [] };
   const requestedTier = requestedIssueTransportTier(options);
-  const issueTiers = issueTransportFallbackTiers(requestedTier);
+  const issueTiers = issueTransportFallbackTiers(requestedTier, options);
   const sourceFetchImpl = options.sourceFetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const surface = { attempted: true, requested: true, requestedCount: 0, discovered: 0, loaded: 0, failed: 0, records: [] };
   let result = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
@@ -99,9 +99,11 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
 }
 
 
-function issueTransportFallbackTiers(tier = '') {
+function issueTransportFallbackTiers(tier = '', options = {}) {
   const normalized = normalizeGithubTransportTier(tier);
-  return Array.from(normalized ? (ISSUE_TRANSPORT_FALLBACKS[normalized] || [normalized]) : ISSUE_TRANSPORT_FALLBACKS.default);
+  const tiers = Array.from(normalized ? (ISSUE_TRANSPORT_FALLBACKS[normalized] || [normalized]) : ISSUE_TRANSPORT_FALLBACKS.default);
+  if (options.allowCache === false && normalized !== 'cache') return tiers.filter((candidate) => candidate !== 'cache');
+  return tiers;
 }
 
 async function discoverIssueTargetsForTiers(source = {}, options = {}, tiers = [''], diagnostics = {}) {

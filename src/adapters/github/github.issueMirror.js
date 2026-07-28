@@ -162,6 +162,8 @@ async function loadHostedIssueSnapshotThread(hosted = {}, target = {}, options =
   const issueBodyUrl = hostedResolve(baseUrl, entry.body || `issues/${target.number}/issue.md`);
   const issueMeta = await hostedFetchJson(issueJsonUrl, options);
   const issueBody = await hostedFetchText(issueBodyUrl, options);
+  if (!issueMeta.updated_at && entry.updated_at) issueMeta.updated_at = entry.updated_at;
+  if (!issueMeta.updatedAt && entry.updated_at) issueMeta.updatedAt = entry.updated_at;
   const comments = [];
   const warnings = [];
   const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));

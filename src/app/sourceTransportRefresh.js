@@ -102,22 +102,25 @@ export function sourceTransportBadgesForSource(source = {}) {
 }
 
 export function sourceTransportRefreshInputForSource(source = {}, currentTier = '', surfaceKeysInput = null) {
-  const selectedSurfaceKeys = normalizeTransportSurfaceKeys(surfaceKeysInput, source);
+  const configured = source.transportPlan?.configured || source.transportOutcome?.configured || {};
   const pendingTier = normalizeGithubTransportTier(source.transportOutcome?.pendingTier || '');
   const pendingSurfaces = Array.isArray(source.transportOutcome?.pendingSurfaces) ? source.transportOutcome.pendingSurfaces : [];
-  if (pendingTier) return { ok: false, reason: 'pending', pendingTier, pendingSurfaces, observedTier: sourceTransportSequenceTier(source, source.transportOutcome?.pendingFromTier || currentTier) };
-  const observedTier = normalizeGithubTransportTier(currentTier) || (selectedSurfaceKeys.length === 1 ? sourceTransportSurfaceTier(source, selectedSurfaceKeys[0]) : sourceTransportSequenceTier(source, currentTier));
-  const nextTier = nextGithubTransportTier(observedTier, source.transportPlan?.configured || source.transportOutcome?.configured || {});
-  if (!nextTier) return { ok: false, reason: 'last-tier', observedTier, selectedSurfaceKeys };
+  const selectedSurfaceKeys = normalizeTransportSurfaceKeys(pendingTier ? (pendingSurfaces.length ? pendingSurfaces : surfaceKeysInput) : surfaceKeysInput, source);
+  const observedTier = pendingTier || normalizeGithubTransportTier(currentTier) || (selectedSurfaceKeys.length === 1 ? sourceTransportSurfaceTier(source, selectedSurfaceKeys[0]) : sourceTransportSequenceTier(source, currentTier));
+  const nextTier = nextGithubTransportTier(observedTier, configured);
+  if (!nextTier) return { ok: false, reason: 'last-tier', observedTier, selectedSurfaceKeys, pendingTier, pendingSurfaces };
   const issueUrls = source.issueUrls || source.config?.issueUrls || '';
   const repoDiscovery = selectedSurfaceKeys.includes('repoFiles');
   const issueDiscovery = selectedSurfaceKeys.includes('issueSnapshots');
-  if (!repoDiscovery && !issueDiscovery && !issueUrls) return { ok: false, reason: 'no-surfaces', nextTier, observedTier, selectedSurfaceKeys };
+  if (!repoDiscovery && !issueDiscovery && !issueUrls) return { ok: false, reason: 'no-surfaces', nextTier, observedTier, selectedSurfaceKeys, pendingTier, pendingSurfaces };
   return {
     ok: true,
     nextTier,
     observedTier,
     selectedSurfaceKeys,
+    replacingPending: Boolean(pendingTier),
+    pendingTier,
+    pendingSurfaces,
     input: {
       sourceId: source.id || '',
       repository: source.repo || source.repository || source.config?.repo || '',

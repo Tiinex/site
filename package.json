@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.86-v266",
+  "version": "0.2.90-v270",
   "private": true,
-  "description": "Tiinex Site v266: repo-file proxy transport and mirror candidate parity.",
+  "description": "Tiinex Site v270: abortable repo proxy transport with low-throughput diagnostics.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

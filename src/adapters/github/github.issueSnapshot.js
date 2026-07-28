@@ -3,9 +3,28 @@ import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks
 
 export const GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID = 'tiinex.github.issueSnapshot.v1';
 const TARGET_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(issues|pull|discussions)\/(\d+)(?:[#?].*)?$/i;
+const HOSTED_DIRECT_ISSUE_PATTERN = /^https:\/\/[^/]+\/.*?issues\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)\/issue\.(md|json)(?:[#?].*)?$/i;
 
 export function parseGithubIssueSnapshotTarget(value = '') {
   const raw = String(value || '').trim();
+  const hosted = raw.match(HOSTED_DIRECT_ISSUE_PATTERN);
+  if (hosted) {
+    const [, owner, repo, number, format] = hosted;
+    return {
+      ok: true,
+      schema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID,
+      input: raw,
+      owner,
+      repo,
+      repository: `${owner}/${repo}`,
+      kind: 'issue',
+      number: Number(number),
+      canonicalUrl: `https://github.com/${owner}/${repo}/issues/${number}`,
+      apiUrl: apiUrlFor({ owner, repo, kind: 'issue', number }),
+      directRawUrl: raw,
+      directRawFormat: String(format || '').toLowerCase()
+    };
+  }
   const match = raw.match(TARGET_PATTERN);
   if (!match) return { ok: false, input: raw, error: 'unsupported-github-issue-target' };
   const [, owner, repo, kind, number] = match;
@@ -166,14 +185,14 @@ export function createGithubIssueSnapshotRecords(snapshot = {}, options = {}) {
   const issueEmbedded = extractEmbeddedTiinexMarkdownBlocks(snapshot.body || '');
   const records = [];
   if (issueEmbedded.length) {
-    records.push(createGithubEmbeddedArtifactRecord(issueEmbedded[0], { target, item: snapshot, ordinal: 0, sourceKind: 'issue', sourceUrl: target.canonicalUrl, sourceArtifactPath: sourceArtifactPathFromPublicationBody(snapshot.body || ''), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+    records.push(createGithubEmbeddedArtifactRecord(issueEmbedded[0], { target, item: snapshot, ordinal: 0, sourceKind: 'issue', sourceUrl: target.canonicalUrl, sourceArtifactPath: sourceArtifactPathFromPublicationBody(snapshot.body || ''), sourceUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
   } else {
     records.push(createGithubIssueSnapshotEvidenceRecord(snapshot, options));
   }
   const comments = Array.isArray(snapshot.comments) ? snapshot.comments : [];
   comments.forEach((comment, index) => {
     for (const embedded of extractEmbeddedTiinexMarkdownBlocks(comment.body || '')) {
-      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, sourceArtifactPath: sourceArtifactPathFromPublicationBody(comment.body || ''), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, sourceArtifactPath: sourceArtifactPathFromPublicationBody(comment.body || ''), threadUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
     }
   });
   return records;
@@ -189,6 +208,7 @@ function createGithubIssueSnapshotEvidenceRecord(snapshot = {}, options = {}) {
   const author = snapshot.user?.login || snapshot.author || 'unknown';
   const body = String(snapshot.body || '');
   const method = snapshot.method || 'github-explicit-snapshot-fixture';
+  const sourceSortAt = issueSnapshotSortAt(snapshot);
   const summary = issueSnapshotSummary({ body, title, target });
   const markdown = [
     '# Continuity Context',
@@ -253,15 +273,30 @@ function createGithubIssueSnapshotEvidenceRecord(snapshot = {}, options = {}) {
   ].filter(Boolean).join('\n');
   const record = createRecordFromMarkdown(markdown, { path: `${githubIssueSyntheticFolder(target)}/issue-snapshot.trace.md`, name: title, sourceMode: 'github-issue-snapshot' });
   return Object.assign({}, record, {
+    sourceTarget: {
+      schema: 'tiinex.source.material.target.v1',
+      surface: 'issueSnapshots',
+      targetKind: `github-${target.kind || 'issue'}-snapshot`,
+      inputTarget: target.canonicalUrl,
+      sourceUpdatedAt: sourceSortAt,
+      sourceSortAt,
+      loaded: true
+    },
     snapshot: {
       schema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID,
       target,
       comments: comments.length,
       state,
       author,
-      method
+      method,
+      sourceUpdatedAt: sourceSortAt,
+      sourceSortAt
     }
   });
+}
+
+function issueSnapshotSortAt(snapshot = {}) {
+  return String(snapshot.updated_at || snapshot.updatedAt || snapshot.created_at || snapshot.createdAt || '').trim();
 }
 
 export function materializeGithubIssueSnapshotFixtures(issueUrls = '', fixtures = {}) {

@@ -35,10 +35,11 @@ export async function materializeGithubRepoFilesFromSourceCache(source = {}, opt
 }
 
 export async function materializeGithubRepoFilesViaHostedMirror(source = {}, options = {}) {
-  const repo = normalizeRepo(source.repo || source.repository || '');
+  const repoRaw = String(source.repo || source.repository || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '').split('/').slice(0, 2).join('/');
+  const repo = normalizeRepo(repoRaw);
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!repo || !fetchImpl) return emptyRepoMirrorResult('mirror', 'github.repo.mirror.unavailable', 'Hosted repository mirror is unavailable without a repository and fetch implementation.');
-  const candidates = hostedRepoMirrorMetadataUrlCandidates(repo, options);
+  const candidates = hostedRepoMirrorMetadataUrlCandidates(repo, options, repoRaw);
   const errors = [];
   for (const metadataUrl of candidates) {
     try {
@@ -132,10 +133,9 @@ async function writeRepoDiscoveryManifest(source = {}, refs = [], options = {}) 
   return writeGithubSourceCacheEntry(repoDiscoveryCacheUrl(source), JSON.stringify(manifest), 'application/json', 'repo-discovery-json', options);
 }
 
-function hostedRepoMirrorMetadataUrlCandidates(repo = '', options = {}) {
-  const repoPath = String(repo || '').replace(/^\/+|\/+$/g, '');
-  const publicRelative = `mirrors/github.com/${repoPath}.json`;
-  const sourceRelative = `.mirrors/github.com/${repoPath}.json`;
+function hostedRepoMirrorMetadataUrlCandidates(repo = '', options = {}, rawRepo = '') {
+  const repoPaths = Array.from(new Set([rawRepo, repo].map((item) => String(item || '').replace(/^\/+|\/+$/g, '')).filter(Boolean)));
+
   const bases = [];
   const addBase = (value) => {
     const clean = String(value || '').trim();
@@ -145,12 +145,14 @@ function hostedRepoMirrorMetadataUrlCandidates(repo = '', options = {}) {
   (options.hostedRepoMirrorBaseUrls || options.repositoryMirrorBaseUrls || []).forEach(addBase);
   if (typeof window !== 'undefined') addBase(window.TIINEX_VIEWER_OPTIONS?.publicBaseUrl || window.TIINEX_VIEWER_OPTIONS?.viewerBaseUrl || window.TIINEX_VIEWER_OPTIONS?.shareBaseUrl || '');
   if (typeof location !== 'undefined' && location.origin) addBase(`${location.origin}/`);
-  const sourcePages = githubPagesDefaultBaseUrlForRepository(repoPath);
+  const sourcePages = githubPagesDefaultBaseUrlForRepository(rawRepo || repo);
   if (sourcePages) addBase(sourcePages);
   const urls = [];
   for (const base of bases) {
-    urls.push(new URL(sourceRelative, base).toString());
-    urls.push(new URL(publicRelative, base).toString());
+    for (const repoPath of repoPaths) {
+      urls.push(new URL(`.mirrors/github.com/${repoPath}.json`, base).toString());
+      urls.push(new URL(`mirrors/github.com/${repoPath}.json`, base).toString());
+    }
   }
   return [...new Set(urls)];
 }
