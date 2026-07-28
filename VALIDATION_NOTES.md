@@ -1,25 +1,23 @@
-# Validation Notes v275
+# Validation Notes v280
 
-## v275 visual dormancy
+## v280 foreground settle + mobile preview ownership
 
-Root cause hypothesis:
+Root hypothesis from v279 video:
 
-- Large Tiinex/docs workspaces can make browser tab/app switches expensive because the visible workspace tree remains fully paintable during hide/show and app-switch snapshots.
-- The PoC avoided this on mobile by parking the heavy visual tree and showing a lightweight workspace preview while hidden.
+- Desktop preview was a UX mismatch when the browser window was visually narrow but still fine-pointer desktop.
+- Remaining ~1 second lag is likely compositor/CSS paint cost on tab return rather than React auto-restore or route/hash serialization.
 
-Changed in v275:
+Changed in v280:
 
-- Ported the PoC behavior as a React-era owner: `src/app/visualDormancy.js`.
-- The owner does not call React state setters during hide/pagehide/blur.
-- It hides the heavy `.tx-workspace-window` with `content-visibility:hidden`, containment, hidden visibility, and disabled pointer events.
-- It shows a lightweight preview card with workspace title, source, view, and counts.
-- It restores on visible/focus/user interaction after a short delay.
-- Desktop large workspaces are eligible too, not only coarse/mobile viewports.
+- Mobile parked preview is reserved for coarse-pointer viewports.
+- Desktop/laptop tab return keeps the normal UI and no longer shows the parked workspace preview solely because the viewport is narrow.
+- Added `tx-return-settle` lifecycle class before backgrounding and held it briefly after foregrounding, so the first foreground paints skip expensive shadows, filters, backdrop blur, and root radial gradients.
+- Tightened parked preview CSS with `align-content:start` and explicit chip sizing, preventing stretched badge blobs.
+- Updated `visualDormancy` regression expectations for fine-pointer narrow desktop vs coarse mobile.
 
 Validated locally in the sandbox:
 
 ```bash
-node src/app/visualDormancy.test.mjs
 npm run validate
 npm run architecture:shape
 npm run ui:shape

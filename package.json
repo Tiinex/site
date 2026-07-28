@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.95-v275",
+  "version": "0.2.100-v280",
   "private": true,
-  "description": "Tiinex Site v275: visual dormancy for tab and app switches.",
+  "description": "Tiinex Site v280: foreground-settle tab return performance and coarse-mobile preview ownership.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

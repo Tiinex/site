@@ -81,7 +81,7 @@ export function TiinexApp() {
   }, []);
 
   useEffect(() => {
-    const flushOnUnload = () => persistCapturedViewScroll('replace');
+    const flushOnUnload = () => persistCapturedViewScroll('replace', { force: true });
     window.addEventListener('beforeunload', flushOnUnload);
     return () => window.removeEventListener('beforeunload', flushOnUnload);
   }, []);
@@ -121,7 +121,8 @@ export function TiinexApp() {
     return stateWithCapturedViewScroll(nextState, sourceState, viewScrollRef.current, active?.id || 'workspace');
   }
 
-  function persistCapturedViewScroll(mode = 'replace') {
+  function persistCapturedViewScroll(mode = 'replace', options = {}) {
+    if (!options.force && typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return;
     const base = latestStateRef.current || state;
     const withScroll = preserveCapturedViewScroll(base, base);
     if (withScroll === base) return;

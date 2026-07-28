@@ -230,8 +230,25 @@
     return base;
   }
 
+  function compactRecordSourceForCache(source = {}) {
+    const config = source.config && typeof source.config === 'object' ? source.config : {};
+    const out = {
+      id: source.id || '',
+      kind: source.kind || '',
+      adapterId: source.adapterId || '',
+      sourceKind: source.sourceKind || '',
+      label: source.label || '',
+      repo: source.repo || config.repo || '',
+      ref: source.ref || config.ref || '',
+      rootPath: source.rootPath || config.rootPath || '',
+      boundary: source.boundary || ''
+    };
+    if (source.url) out.url = source.url;
+    return out;
+  }
+
   function compactRecordForCache(record = {}) {
-    const source = Object.assign({}, record.source || {});
+    const source = compactRecordSourceForCache(record.source || {});
     const markdown = truncateForCache(record.markdown || '', SESSION_CACHE_LIMITS.maxRecordMarkdownChars);
     if (isSourceBackedForCache(record) && !isLocalForCache(record)) {
       return Object.assign({}, record, {
@@ -248,7 +265,7 @@
   }
 
   function compactAssetForCache(asset = {}) {
-    const source = Object.assign({}, asset.source || {});
+    const source = compactRecordSourceForCache(asset.source || {});
     if (isSourceBackedForCache(asset)) {
       return Object.assign({}, asset, {
         source,

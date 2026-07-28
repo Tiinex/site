@@ -120,6 +120,7 @@ const restoredScaleRecord = scaleRestored.workspaces[0].records[200];
 if (!restoredScaleRecord.markdown.includes('# Topic 200')) throw new Error('scale restore should keep source-backed markdown in same-session cache');
 if (restoredScaleRecord.cacheState !== 'source-backed-session-cache-complete') throw new Error('scale restore should disclose complete source-backed session cache state');
 if (restoredScaleRecord.materialRole !== 'leaf') throw new Error('scale restore should preserve materialRole across hash restore');
+if (restoredScaleRecord.source.requestedSurfaces || restoredScaleRecord.source.surfaces || restoredScaleRecord.source.governanceBoundary || restoredScaleRecord.source.config) throw new Error('session-cache record source shell should stay compact and not repeat source rail metadata');
 if (scaleRestored.view.selectedRecordId !== scaleRecords[200].id) throw new Error('scale restore should preserve selected record view state');
 if (scaleRestored.view.scrollPositions?.[scaleScrollKey] !== 1840) throw new Error('scale restore should preserve per-view scroll positions');
 

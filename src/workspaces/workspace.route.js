@@ -99,8 +99,25 @@
     return Object.keys(out).length ? out : undefined;
   }
 
+  function compactRecordSource(source = {}) {
+    const config = source.config && typeof source.config === 'object' ? source.config : {};
+    const out = {
+      id: source.id || '',
+      kind: source.kind || '',
+      adapterId: source.adapterId || '',
+      sourceKind: source.sourceKind || '',
+      label: source.label || '',
+      repo: source.repo || config.repo || '',
+      ref: source.ref || config.ref || '',
+      rootPath: source.rootPath || config.rootPath || '',
+      boundary: source.boundary || ''
+    };
+    if (source.url) out.url = source.url;
+    return out;
+  }
+
   function compactAsset(asset = {}) {
-    const source = compactSource(asset.source || {});
+    const source = compactRecordSource(asset.source || {});
     const sourceBacked = isSourceBackedAsset(asset, source);
     return {
       id: asset.id || '',
@@ -117,7 +134,7 @@
   }
 
   function compactWorkspaceCandidate(candidate = {}) {
-    const source = compactSource(candidate.source || {});
+    const source = compactRecordSource(candidate.source || {});
     return {
       id: candidate.id || '',
       title: candidate.title || candidate.name || candidate.path || 'Workspace candidate',
@@ -142,7 +159,7 @@
   }
 
   function compactRecord(record = {}) {
-    const source = compactSource(record.source || {});
+    const source = compactRecordSource(record.source || {});
     const sourceBacked = isSourceBackedShell(record, source);
     const routeMarkdown = routeRecordMarkdown(record);
     const materialUnavailable = !String(routeMarkdown || '').trim();
@@ -273,7 +290,7 @@
   }
 
   function normalizeRouteWorkspaceCandidateShell(candidate = {}) {
-    const source = compactSource(candidate.source || {});
+    const source = compactRecordSource(candidate.source || {});
     const materialAvailability = candidate.materialAvailability || 'material-unavailable';
     return Object.assign({}, candidate, {
       source,
@@ -286,7 +303,7 @@
   }
 
   function normalizeRouteRecordShell(record = {}) {
-    const source = compactSource(record.source || {});
+    const source = compactRecordSource(record.source || {});
     const materialAvailability = record.materialAvailability || (String(record.markdown || '').trim() ? 'available' : 'material-unavailable');
     return Object.assign({}, record, {
       source,

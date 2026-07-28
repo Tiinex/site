@@ -45,6 +45,8 @@ if (sourceRoute.workspaces[0].sources[0].requestedSurfaces.issueSnapshots.reques
 if (sourceRoute.workspaces[0].sources[0].transportRefreshTier || sourceRoute.workspaces[0].sources[0].transportOutcome || sourceRoute.workspaces[0].sources[0].transportPlan || sourceRoute.workspaces[0].sources[0].transportTiers) throw new Error('route hash must not preserve volatile transport state');
 if (sourceRoute.workspaces[0].sources[0].governanceBoundary?.policy?.path !== 'LINEAGE_POLICY.md') throw new Error('route source shell must preserve persisted governance boundary metadata');
 if (sourceRecordShell.source.adapterId !== 'github') throw new Error('route shell must preserve source adapter');
+
+if (sourceRecordShell.source.requestedSurfaces || sourceRecordShell.source.surfaces || sourceRecordShell.source.governanceBoundary || sourceRecordShell.source.config) throw new Error('route record source shells must not repeat source rail transport/governance/config metadata');
 if (sourceRecordShell.sourceMode !== 'source-backed') throw new Error('route shell must preserve source mode');
 if (sourceRecordShell.path !== 'topics/source.md') throw new Error('route shell must preserve path');
 const normalizedSourceRoute = route.normalizeRouteState(sourceRoute, lifecycle);

@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v275';
-export const TIINEX_SITE_VERSION = '0.2.95-v275';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v275';
-export const TIINEX_RUNTIME_ID = 'react-v275-visual-dormancy';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v275-visual-dormancy';
+export const TIINEX_SITE_CHECKPOINT = 'v280';
+export const TIINEX_SITE_VERSION = '0.2.100-v280';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v280';
+export const TIINEX_RUNTIME_ID = 'react-v280-foreground-settle-mobile-preview';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v280-foreground-settle-mobile-preview';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

@@ -7771,11 +7771,64 @@ button.tx-source-governance:focus-visible {
   border-radius:22px;
   background:linear-gradient(180deg, rgba(32,26,48,.96), rgba(13,15,24,.96));
   box-shadow:0 18px 42px rgba(0,0,0,.28);
+  align-content:start;
+  align-items:start;
+  grid-auto-rows:max-content;
+  min-block-size:0;
 }
 .tx-visual-dormancy-preview[hidden] { display:none !important; }
 .tx-visual-dormancy-kicker { margin:0; color:#d9b6ff; font-size:11px; font-weight:900; letter-spacing:.11em; text-transform:uppercase; }
 .tx-visual-dormancy-preview h2 { margin:0; font-size:22px; line-height:1.1; }
 .tx-visual-dormancy-source { margin:0; color:var(--tx-muted); }
 .tx-visual-dormancy-meta { display:flex; gap:8px; flex-wrap:wrap; }
-.tx-visual-dormancy-meta span { border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:6px 10px; color:var(--tx-text); background:rgba(255,255,255,.04); font-size:12px; font-weight:800; }
+.tx-visual-dormancy-meta span { display:inline-flex; align-items:center; inline-size:auto; min-inline-size:0; block-size:auto; min-block-size:0; border:1px solid rgba(255,255,255,.1); border-radius:999px; padding:6px 10px; color:var(--tx-text); background:rgba(255,255,255,.04); font-size:12px; font-weight:800; line-height:1.15; }
 body.tx-visual-dormant .tx-workspace-window { content-visibility:hidden; contain:layout paint style; visibility:hidden; pointer-events:none; }
+/* v277: keep dormant tab return cheap by leaving heavy DOM parked until interaction. */
+body.tx-visual-dormant .tx-react-runtime { contain: layout paint style; }
+body.tx-visual-dormant .tx-workspace-window { display:none !important; content-visibility:hidden; contain:layout paint style; visibility:hidden; pointer-events:none; }
+body.tx-visual-dormant .tx-dock-core,
+body.tx-visual-dormant .tx-footer,
+body.tx-visual-dormant .tx-visual-dormancy-preview { backdrop-filter:none !important; }
+body.tx-visual-dormant .tx-visual-dormancy-preview { box-shadow:none; }
+.tx-visual-dormancy-resume { margin: 2px 0 0; color: rgba(220,226,238,.72); font-size: 12px; }
+
+/* v280 foreground settle: on tab return keep the normal desktop UI but delay
+   expensive compositor effects for a short paint window. */
+body.tx-return-settle .tx-react-runtime,
+body.tx-return-settle .tx-workspace-window,
+body.tx-return-settle .tx-top-dock,
+body.tx-return-settle .tx-dock-core,
+body.tx-return-settle .tx-logo-command,
+body.tx-return-settle .tx-footer,
+body.tx-return-settle .tx-legacy-artifact-card,
+body.tx-return-settle .tx-artifact-card,
+body.tx-return-settle .tx-lineage-node,
+body.tx-return-settle .tx-lineage-record,
+body.tx-return-settle .tx-tree-row,
+body.tx-return-settle .tx-audit-surface,
+body.tx-return-settle .tx-dialog-backdrop,
+body.tx-return-settle .tx-dialog {
+  box-shadow:none !important;
+  filter:none !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+body.tx-return-settle .tx-react-runtime {
+  background: linear-gradient(180deg, rgba(18,14,30,.98), rgba(8,6,15,.98)) !important;
+}
+
+/* v278 desktop return performance: keep desktop UI normal while letting the browser skip offscreen card paint. */
+.tx-legacy-artifact-card,
+.tx-artifact-card,
+.tx-tree-row,
+.tx-audit-surface,
+.tx-recovery-item,
+.tx-lineage-node,
+.tx-lineage-record {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
+}
+.tx-legacy-artifact-card,
+.tx-artifact-card {
+  contain: layout paint style;
+}
