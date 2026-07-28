@@ -1,20 +1,20 @@
-# Tiinex Site v280
+# Tiinex Site v284
 
-Checkpoint: `v280`
-Version: `0.2.100-v280`
-Runtime: `react-v280-foreground-settle-mobile-preview`
+Checkpoint: `v284`
+Version: `0.2.104-v284`
+Runtime: `react-v284-dialog-viewport-actions`
 
-## v280 focus
+## v284 focus
 
-Follow-up after v279 tab-return performance testing: keep the desktop UI normal on tab return, reserve parked preview for coarse/mobile surfaces, and use a short foreground-settle class to defer expensive compositor effects during the first foreground paint.
+Responsive dialog viewport repair after the v283 performance pass. The v283 render-window and idle scroll persistence fixed the Tiinex/docs tab-return lag, but mobile/short viewport dialogs could still hide their action rows or expose nested clipping.
 
-## Changed in v280
+## Changed in v284
 
-- Parked workspace preview is coarse-pointer/mobile only; narrow desktop windows no longer get the mobile screensaver.
-- Desktop/laptop keeps the normal Tiinex UI during tab switching.
-- Foreground settle mode disables heavy shadows, filters, backdrop blur, and decorative root gradients for a short paint window after tab/app return.
-- The dormant preview layout now uses max-content rows so status chips do not stretch into large blobs.
-- `window.TiinexVisualDormancyReport()` records `return-settle-start` / `return-settle-end` events.
+- Dialog primitive CSS now has a single viewport contract: dialog shell is a flex column, header is fixed, body owns scroll.
+- Dialog bodies no longer rely on competing `max-height` overrides from older batches.
+- GitHub source actions stay sticky inside the scroll body and remain visible on short/mobile viewports.
+- Mobile dialog action labels stay readable instead of collapsing to icon-only modal controls.
+- Add/Edit GitHub source layout keeps its two-column desktop plan, but collapses to a stable single-column mobile action footer.
 
 ## Supported local start
 

@@ -40,12 +40,12 @@ export function visualDormancyPreviewHtml(summary = {}) {
   return `<section id="${PREVIEW_ID}" class="tx-visual-dormancy-preview" aria-label="Parked Tiinex workspace preview" aria-hidden="true" hidden>
     <p class="tx-visual-dormancy-kicker">Parked workspace</p>
     <h2>${escapeHtml(summary.title || 'Tiinex workspace')}</h2>
-    <p class="tx-visual-dormancy-source">${escapeHtml(summary.source || 'Workspace')}</p>
-    <div class="tx-visual-dormancy-meta">
-      <span>${escapeHtml(summary.view || 'View')}</span>
-      <span>${escapeHtml(counts.join(' · ') || 'Workspace loaded')}</span>
+    <div class="tx-visual-dormancy-widget-grid" aria-label="Workspace resume summary">
+      <span><strong>View</strong><em>${escapeHtml(summary.view || 'View')}</em></span>
+      <span><strong>Material</strong><em>${escapeHtml(counts.join(' · ') || 'Workspace loaded')}</em></span>
+      <span><strong>Source</strong><em>${escapeHtml(summary.source || 'Workspace')}</em></span>
     </div>
-    <p class="tx-visual-dormancy-resume">Click, scroll, or press any key to resume full workspace.</p>
+    <p class="tx-visual-dormancy-resume">Tap, scroll, or press any key to resume the full workspace.</p>
   </section>`;
 }
 

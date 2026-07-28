@@ -56,6 +56,7 @@ if (!appAndWorkspace.includes('selectedRecordId')) failures.push('artifact linea
 if (!appAndWorkspace.includes('function focusRecordLineage')) failures.push('Lineage focus must be separate from Open/detail reading');
 if (!appAndWorkspace.includes('tx-clickable-record-card')) failures.push('record card itself must be the Lineage focus target, not a crowded Lineage button');
 if (!appAndWorkspace.includes('function DiscoveryRecordList') || !appAndWorkspace.includes('tx-discovery-record-list')) failures.push('Discovery feed must render records through an owned list wrapper so card surfaces cannot collapse into stage background');
+if (!appAndWorkspace.includes('DISCOVERY_INITIAL_RECORD_WINDOW') || !appAndWorkspace.includes('tx-discovery-window-sentinel')) failures.push('large Discovery feeds must use a bounded render window instead of mounting every record card at once');
 if (appAndWorkspace.includes("label: 'Lineage'")) failures.push('cards must not reintroduce a visible Lineage action label');
 if (!appAndWorkspace.includes('Show markdown')) failures.push('cards must expose old-like Show markdown dialog action');
 if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte ok without byte/digest verification');
@@ -115,6 +116,10 @@ has('src/styles/app.css', '.tx-discovery-record-list', 'Discovery feed cards nee
 has('src/styles/app.css', '.tx-compact-empty-node-state', 'empty node state must stay compact and low-boilerplate');
 has('src/styles/app.css', '.tx-add-choice-card', 'Add flow choices must have shared compact card styling');
 has('src/styles/app.css', '.tx-add-mode-modal .tx-github-dialog-actions', 'GitHub source edit footer must stay visible in tall desktop dialogs');
+has('src/styles/app.css', '/* v284: dialog viewport contract.', 'dialog viewport action contract guard missing');
+has('src/styles/app.css', 'display: flex;\n  flex-direction: column;', 'dialogs must use flex-column viewport ownership');
+has('src/styles/app.css', 'max-height: none !important;', 'dialog body must override stale max-height caps');
+has('src/styles/app.css', 'grid-template-columns: 1fr;\n    margin: 0.24rem -0.74rem 0;', 'mobile GitHub dialog actions must collapse into reachable rows');
 has('src/styles/app.css', 'position: sticky;', 'GitHub source edit footer must be sticky rather than hidden below the modal viewport');
 has('src/schemas/companion.js', 'readState,', 'schema read presentation must expose readState contract');
 has('src/schemas/companion.js', 'schemaCoverage,', 'schema read presentation must expose schemaCoverage contract');

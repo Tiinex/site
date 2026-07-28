@@ -118,6 +118,7 @@ export function WorkspaceColumnSurface({ workspace, state, onClose, onRenameWork
                 workspaceCandidates={workspaceCandidates}
                 records={records}
                 assets={assets}
+                stageScrollTop={stageScrollTop}
                 auditById={auditById}
                 onOpenWorkspaceCandidate={onOpenWorkspaceCandidate}
                 onMergeWorkspaceCandidate={onMergeWorkspaceCandidate}

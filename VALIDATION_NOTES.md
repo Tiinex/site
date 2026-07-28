@@ -1,19 +1,16 @@
-# Validation Notes v280
+# Validation Notes v284
 
-## v280 foreground settle + mobile preview ownership
+## v284 dialog viewport actions
 
-Root hypothesis from v279 video:
+The v283 performance candidate fixed the observed tab-return lag, but screenshots showed a separate responsive-dialog issue: the GitHub source dialog could hide action buttons or require viewport resizing before controls became reachable.
 
-- Desktop preview was a UX mismatch when the browser window was visually narrow but still fine-pointer desktop.
-- Remaining ~1 second lag is likely compositor/CSS paint cost on tab return rather than React auto-restore or route/hash serialization.
+Changed in v284:
 
-Changed in v280:
-
-- Mobile parked preview is reserved for coarse-pointer viewports.
-- Desktop/laptop tab return keeps the normal UI and no longer shows the parked workspace preview solely because the viewport is narrow.
-- Added `tx-return-settle` lifecycle class before backgrounding and held it briefly after foregrounding, so the first foreground paints skip expensive shadows, filters, backdrop blur, and root radial gradients.
-- Tightened parked preview CSS with `align-content:start` and explicit chip sizing, preventing stretched badge blobs.
-- Updated `visualDormancy` regression expectations for fine-pointer narrow desktop vs coarse mobile.
+- `.tx-dialog` is now a flex column with a bounded visual-viewport height.
+- `.tx-dialog-body` is the single scroll owner and has `min-height: 0`, `overflow: auto`, and no competing inherited `max-height` cap.
+- GitHub source action rows remain sticky at the bottom of the modal body across create/edit/source-plan operations.
+- Mobile modal button labels are kept visible in dialog actions, even though toolbar buttons elsewhere may collapse to icon-only.
+- Short-height viewports receive a tighter header/body layout instead of clipping the form footer.
 
 Validated locally in the sandbox:
 
@@ -33,3 +30,11 @@ npm run build:public
 npm run public:check
 node --check .site-publish/tiinex.bundle.js
 ```
+
+Manual browser test:
+
+1. Open Add → GitHub source on mobile/narrow viewport.
+2. Confirm the form scrolls inside the modal body.
+3. Confirm Back / Register only / Load selected surfaces remain reachable without resizing the viewport.
+4. Confirm record detail, governance, and markdown dialogs still scroll normally.
+5. Confirm v283 tab-return performance does not regress.

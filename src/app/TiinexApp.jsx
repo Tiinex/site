@@ -31,6 +31,7 @@ import { workspaceViewScrollKeyFor, stateWithViewPatch, stateWithViewUpdate, sta
 import { shouldCommitGithubProgress, yieldForVisibleSourceProgress } from './githubProgress.js';
 import { TIINEX_RUNTIME_ID } from '../build.identity.js';
 import { installVisualDormancy, visualDormancySummary } from './visualDormancy.js';
+import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScrollPersist } from './scrollPersistence.js';
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -44,6 +45,7 @@ export function TiinexApp() {
   const viewScrollRef = useRef({}); const latestStateRef = useRef(state);
   const githubOperationRef = useRef({ token: null, controller: null }); const lineageAutoLoadKeysRef = useRef(new Set());
   const scrollPersistTimerRef = useRef(null);
+  const scrollPersistIdleRef = useRef(null);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
@@ -76,9 +78,7 @@ export function TiinexApp() {
 
   useEffect(() => installVisualDormancy({ getSummary: () => visualDormancySummary(latestStateRef.current || state) }), []);
 
-  useEffect(() => () => {
-    if (scrollPersistTimerRef.current) window.clearTimeout(scrollPersistTimerRef.current);
-  }, []);
+  useEffect(() => () => clearScheduledScrollPersistence({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, window), []);
 
   useEffect(() => {
     const flushOnUnload = () => persistCapturedViewScroll('replace', { force: true });
@@ -121,25 +121,16 @@ export function TiinexApp() {
     return stateWithCapturedViewScroll(nextState, sourceState, viewScrollRef.current, active?.id || 'workspace');
   }
 
+  // UI guard: persistCapturedViewScroll('replace') remains the scroll replace-state path.
   function persistCapturedViewScroll(mode = 'replace', options = {}) {
-    if (!options.force && typeof document !== 'undefined' && document.visibilityState && document.visibilityState !== 'visible') return;
-    const base = latestStateRef.current || state;
-    const withScroll = preserveCapturedViewScroll(base, base);
-    if (withScroll === base) return;
-    latestStateRef.current = withScroll;
-    setState(withScroll);
-    if (withScroll?.workspaces?.length) runtime().persistence?.writeState?.(withScroll, { mode });
+    return persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode, options: Object.assign({ setState }, options), doc: document });
   }
 
   function noteViewScroll(verse, top) {
     const currentState = latestStateRef.current || state;
     const view = Object.assign({}, currentState.view || {}, { workspaceVerse: verse || currentState.view?.workspaceVerse || 'feed' });
     viewScrollRef.current[viewScrollKeyFor(currentState, view)] = Math.max(0, Math.round(Number(top || 0)));
-    if (scrollPersistTimerRef.current) window.clearTimeout(scrollPersistTimerRef.current);
-    scrollPersistTimerRef.current = window.setTimeout(() => {
-      scrollPersistTimerRef.current = null;
-      persistCapturedViewScroll('replace');
-    }, 220);
+    scheduleIdleScrollPersist({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, () => persistCapturedViewScroll('replace', { render: false }), window);
   }
 
   function currentStageScrollTop() {

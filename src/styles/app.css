@@ -7268,6 +7268,43 @@ pre { white-space: pre-wrap; overflow:auto; }
   min-height: 8.4rem;
 }
 
+.tx-discovery-window-sentinel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.76rem 0.88rem;
+  border: 1px solid rgba(189,115,255,0.22);
+  border-radius: 1rem;
+  background: rgba(255,255,255,0.035);
+  color: rgba(247,248,251,0.78);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.8rem;
+}
+.tx-discovery-window-sentinel span {
+  font-size: 0.84rem;
+  letter-spacing: 0.015em;
+}
+.tx-discovery-window-sentinel button {
+  appearance: none;
+  border: 1px solid rgba(128,255,214,0.32);
+  border-radius: 999px;
+  background: rgba(128,255,214,0.08);
+  color: rgba(217,255,243,0.96);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.44rem 0.72rem;
+}
+.tx-discovery-window-sentinel button:hover,
+.tx-discovery-window-sentinel button:focus-visible {
+  filter: brightness(1.12);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(128,255,214,0.14);
+}
+
 .tx-audit-badge-button {
   appearance: none;
   border-style: solid;
@@ -7831,4 +7868,278 @@ body.tx-return-settle .tx-react-runtime {
 .tx-legacy-artifact-card,
 .tx-artifact-card {
   contain: layout paint style;
+}
+
+/* v282: progressive-render truth and mobile polish. Windowing is visual only;
+   the Discovery read-model/search/filter still evaluates the full loaded dataset. */
+.tx-discovery-window-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tx-discovery-record-list[data-record-window="partial"]::before {
+  content: 'Progressive render · filters/search apply to all loaded artifacts';
+  justify-self: start;
+  border: 1px solid rgba(101,242,231,.18);
+  border-radius: 999px;
+  padding: .28rem .54rem;
+  color: rgba(188,255,240,.78);
+  background: rgba(101,242,231,.045);
+  font-size: .68rem;
+  font-weight: 820;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+.tx-visual-dormancy-preview {
+  gap: 12px;
+  padding: 18px 16px;
+}
+.tx-visual-dormancy-widget-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.tx-visual-dormancy-widget-grid span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid rgba(101,242,231,.13);
+  border-radius: 14px;
+  padding: 9px 10px;
+  background: rgba(255,255,255,.032);
+}
+.tx-visual-dormancy-widget-grid strong {
+  color: rgba(156,255,230,.88);
+  font-size: 10px;
+  font-weight: 920;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.tx-visual-dormancy-widget-grid em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(247,248,251,.92);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .tx-mode-strip.tx-column-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-mode-name {
+    flex: 1 1 100%;
+    order: -2;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-segment,
+  .tx-mode-strip.tx-column-toolbar .tx-mode-return,
+  .tx-mode-strip.tx-column-toolbar .tx-mode-audit-run-button,
+  .tx-mode-strip.tx-column-toolbar .tx-display-options-icon-trigger {
+    flex: 0 0 auto;
+  }
+  .tx-mode-strip.tx-column-toolbar .tx-search-field-icon {
+    flex: 1 1 100%;
+    order: 8;
+    min-width: 0;
+  }
+  .tx-source-strip .tx-source-list {
+    gap: .26rem;
+  }
+  .tx-source-pill {
+    max-width: min(15.5rem, 82vw);
+  }
+  .tx-discovery-record-list {
+    gap: .62rem;
+  }
+  .tx-discovery-record-list[data-record-window="partial"]::before {
+    font-size: .59rem;
+    letter-spacing: .035em;
+    white-space: normal;
+  }
+  .tx-discovery-window-sentinel {
+    display: grid;
+    gap: .55rem;
+    padding: .62rem .68rem;
+  }
+  .tx-discovery-window-sentinel button {
+    justify-self: stretch;
+    min-height: 2.25rem;
+  }
+  .tx-dialog-backdrop {
+    align-items: end;
+    padding: .55rem .35rem 0;
+  }
+  .tx-dialog {
+    width: min(100%, 27rem);
+    max-height: 88dvh;
+    border-radius: 1.05rem 1.05rem 0 0;
+  }
+  .tx-dialog-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: rgba(6,8,15,.98);
+    backdrop-filter: blur(8px);
+  }
+  .tx-dialog-body {
+    max-height: calc(88dvh - 3.2rem) !important;
+    padding: .76rem .74rem max(.86rem, env(safe-area-inset-bottom));
+  }
+  .tx-record-detail {
+    gap: .68rem;
+  }
+  .tx-record-meta {
+    gap: .42rem;
+  }
+  .tx-record-meta div {
+    gap: .28rem;
+    padding: .52rem .58rem;
+    border-radius: .72rem;
+  }
+  .tx-schema-read-view {
+    gap: .58rem;
+  }
+  .tx-schema-read-section {
+    border-radius: .74rem;
+    padding: .62rem;
+  }
+  .tx-artifact-actions,
+  .tx-legacy-action-row {
+    gap: .38rem;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 760px) {
+  .tx-visual-dormancy-preview {
+    margin: 10px auto;
+    width: min(calc(100vw - 2.1rem), 25rem);
+    min-height: min(64dvh, 34rem);
+    padding: 18px 16px;
+    border-radius: 20px;
+  }
+  .tx-visual-dormancy-preview h2 {
+    font-size: clamp(1.08rem, 5.2vw, 1.35rem);
+  }
+  .tx-visual-dormancy-resume {
+    margin-top: 4px;
+    color: rgba(210,255,244,.82);
+  }
+}
+
+/* v284: dialog viewport contract.
+   Dialogs own one reliable scroll area so action rows do not disappear below
+   short/mobile viewports. Surface forms may be tall, but the modal shell stays
+   flexed to the visual viewport and the body owns overflow. */
+.tx-dialog-backdrop {
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
+}
+.tx-dialog {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(92dvh, calc(100dvh - 1.5rem));
+  overflow: hidden;
+}
+.tx-dialog-head {
+  flex: 0 0 auto;
+}
+.tx-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+.tx-add-mode-modal .tx-dialog-body,
+.tx-add-flow-modal .tx-dialog-body,
+.tx-dialog-record-detail .tx-dialog-body,
+.tx-dialog-record-markdown .tx-dialog-body,
+.tx-dialog-display-options .tx-dialog-body,
+.tx-dialog-governance-boundary .tx-dialog-body {
+  max-height: none !important;
+}
+.tx-add-mode-modal .tx-github-source-plan-form {
+  min-height: 0;
+  align-content: start;
+}
+.tx-add-mode-modal .tx-github-source-plan-form > *,
+.tx-add-mode-modal .tx-github-source-field-grid,
+.tx-add-mode-modal .tx-github-discovery-surfaces,
+.tx-add-mode-modal .tx-textarea-field,
+.tx-add-mode-modal .tx-textarea-field textarea {
+  min-width: 0;
+}
+.tx-add-mode-modal .tx-github-source-plan-form > .tx-github-dialog-actions {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(12rem, 1fr);
+  gap: 0.5rem;
+  z-index: 4;
+  margin: 0.2rem -0.74rem 0;
+  padding: 0.76rem 0.74rem calc(0.76rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 0 0 1.05rem 1.05rem;
+  border-top: 1px solid rgba(101,242,231,0.2);
+  background: linear-gradient(180deg, rgba(6,8,15,0.76), rgba(6,8,15,0.98) 28%, rgba(6,8,15,1));
+  backdrop-filter: blur(8px);
+}
+.tx-add-mode-modal .tx-github-source-plan-form > .tx-github-dialog-actions .tx-button {
+  min-width: 0;
+}
+.tx-add-mode-modal .tx-github-source-plan-form > .tx-github-dialog-actions .tx-button:last-child {
+  justify-content: center;
+}
+@media (max-width: 760px) {
+  .tx-dialog-backdrop {
+    align-items: end;
+    padding: max(0.45rem, env(safe-area-inset-top, 0px)) max(0.35rem, env(safe-area-inset-right, 0px)) 0 max(0.35rem, env(safe-area-inset-left, 0px));
+  }
+  .tx-dialog {
+    width: min(100%, 27rem);
+    max-height: calc(100dvh - 0.5rem);
+    border-radius: 1.05rem 1.05rem 0 0;
+  }
+  .tx-dialog-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .tx-dialog-body {
+    padding-bottom: max(0.86rem, env(safe-area-inset-bottom, 0px));
+  }
+  .tx-add-mode-modal .tx-github-source-plan-form > .tx-github-dialog-actions {
+    grid-template-columns: 1fr;
+    margin: 0.24rem -0.74rem 0;
+    padding: 0.72rem 0.74rem calc(0.78rem + env(safe-area-inset-bottom, 0px));
+  }
+  .tx-dialog .tx-dialog-actions .tx-button span,
+  .tx-add-mode-modal .tx-github-dialog-actions .tx-button span {
+    display: inline !important;
+  }
+}
+@media (max-height: 620px) {
+  .tx-dialog-backdrop {
+    align-items: stretch;
+    padding-top: 0.35rem;
+  }
+  .tx-dialog {
+    max-height: calc(100dvh - 0.5rem);
+  }
+  .tx-dialog-head {
+    min-height: 2.65rem;
+    padding-top: 0.48rem;
+    padding-bottom: 0.48rem;
+  }
+  .tx-dialog-body {
+    padding-top: 0.58rem;
+  }
 }

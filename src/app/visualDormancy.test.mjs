@@ -20,6 +20,9 @@ assert.equal(visualDormancyEligible({ hasMaterial: false, records: 0 }, { width:
 const html = visualDormancyPreviewHtml(summary);
 assert.ok(html.includes('Parked workspace'));
 assert.ok(html.includes('333 artifacts'));
-assert.ok(html.includes('resume full workspace'));
+assert.ok(html.includes('resume the full workspace'));
+assert.ok(html.includes('Workspace resume summary'));
+assert.ok(html.includes('Material'));
+assert.ok(html.includes('Source'));
 assert.ok(!html.includes('<script'));
 console.log('visualDormancy: ok');
