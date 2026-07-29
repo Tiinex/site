@@ -48,8 +48,8 @@ export function recordLifecycleBadge(record = {}) {
 
 export function actionClassName(action = {}) {
   const id = action.id;
-  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference;
-  const side = id === RecordActionKind.continue || id === RecordActionKind.reference ? 'tx-action-right' : 'tx-action-left';
+  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge;
+  const side = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge ? 'tx-action-right' : 'tx-action-left';
   return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
 }
 
@@ -57,6 +57,8 @@ export function actionLabel(action = {}) {
   if (action.id === RecordActionKind.open) return 'Open details';
   if (action.id === RecordActionKind.markdown) return 'Show markdown';
   if (action.id === RecordActionKind.lineage) return 'Anchor';
+  if (action.id === RecordActionKind.workspaceOpen) return 'Open';
+  if (action.id === RecordActionKind.workspaceMerge) return 'Merge';
   return action.label;
 }
 

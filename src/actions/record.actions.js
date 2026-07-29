@@ -10,7 +10,9 @@ export const RecordActionKind = Object.freeze({
   continue: 'record.continue',
   reference: 'record.reference',
   source: 'record.source',
-  share: 'record.share'
+  share: 'record.share',
+  workspaceOpen: 'record.workspace.open',
+  workspaceMerge: 'record.workspace.merge'
 });
 
 export function presentRecordActions(record = {}, options = {}) {
@@ -70,6 +72,28 @@ export function presentRecordActions(record = {}, options = {}) {
       capabilityStatus: 'implemented'
     });
   }
+  if (isWorkspaceRecord(record)) {
+    actions.push(
+      {
+        id: RecordActionKind.workspaceOpen,
+        label: 'Open',
+        icon: 'workspace',
+        enabled: true,
+        contract: RECORD_ACTIONS_CONTRACT_ID,
+        capabilityStatus: 'implemented',
+        capabilityReason: '.workspace.md can become the active workspace context'
+      },
+      {
+        id: RecordActionKind.workspaceMerge,
+        label: 'Merge',
+        icon: 'continue',
+        enabled: true,
+        contract: RECORD_ACTIONS_CONTRACT_ID,
+        capabilityStatus: 'implemented',
+        capabilityReason: '.workspace.md can be merged as workspace context without closing current work'
+      }
+    );
+  }
   actions.push({
     id: RecordActionKind.share,
     label: 'Share session',
@@ -104,6 +128,12 @@ function actionAvailability(capability = {}, { fallbackUsed = false, action = ''
     status,
     reason: fallbackUsed ? 'root fallback does not expose schema-specific create transitions' : (capability?.reason || 'schema action unavailable')
   });
+}
+
+export function isWorkspaceRecord(record = {}) {
+  const path = String(record.path || record.sourcePath || record.sourceTarget?.sourceArtifactPath || record.name || '').trim().toLowerCase();
+  const schema = String(record.schemaId || record.currentSchemaId || record.kind || '').trim().toLowerCase();
+  return /(?:^|\/)[^/]+\.workspace\.md$/i.test(path) || schema === 'tiinex.workspace.v1' || schema.includes('workspace');
 }
 
 function recordSchemaId(record = {}) {
@@ -183,7 +213,7 @@ function isSyntheticIssuePath(value = '') {
 }
 
 export function actionIsRenderable(action = {}) {
-  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.href));
+  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.workspaceOpen || action.id === RecordActionKind.workspaceMerge || action.href));
 }
 
 export function createRecordActionResult(record = {}, actionId = '') {

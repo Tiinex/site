@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v288';
-export const TIINEX_SITE_VERSION = '0.2.108-v288';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v288';
-export const TIINEX_RUNTIME_ID = 'react-v288-mobile-read-sheet-config-source';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v288-mobile-read-sheet-config-source';
+export const TIINEX_SITE_CHECKPOINT = 'v291';
+export const TIINEX_SITE_VERSION = '0.2.111-v291';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v291';
+export const TIINEX_RUNTIME_ID = 'react-v291-poc-config-chooser-parity';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v291-poc-config-chooser-parity';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

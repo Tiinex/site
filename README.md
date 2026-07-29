@@ -1,23 +1,20 @@
-# Tiinex Site v288
+# Tiinex Site v291
 
-Checkpoint: `v288`
-Version: `0.2.108-v288`
-Runtime: `react-v288-mobile-read-sheet-config-source`
+Checkpoint: `v291`
+Version: `0.2.111-v291`
+Runtime: `react-v291-poc-config-chooser-parity`
 
-## v288 focus
+## v291 focus
 
-Mobile interaction follow-up after v287. Desktop and most mobile lockups are resolved, but record opening on mobile can still feel like a small delay because the read projection is built in the same commit as the dialog shell. This checkpoint makes the mobile read sheet respond first, then mounts the heavier schema read view on the next animation frame.
+Hosted Tiinex app config intake now follows the PoC bootstrap order and treats Workspace Discovery as a chooser/catalog, not as “load every Markdown file under the source root.”
 
-It also adds a first Tiinex-hosted app config intake: paste a Tiinex app URL and the viewer resolves its declared workspace config through Tiinex web conventions, then loads the first configured source entrypoint through the normal source transport path.
+## Changed in v291
 
-## Changed in v288
-
-- Record detail dialogs now show a lightweight read-shell immediately and defer `SchemaReadView` by one animation frame.
-- Touch targets use `touch-action: manipulation` and visible pressed feedback on coarse/mobile viewports.
-- Mobile record detail actions are sticky and sheet-like without reusing the broader return-settle/dormancy paths.
-- Add flow includes `Tiinex app config` as a config-source semantic.
-- Config-source intake detects HTML link/meta declarations and conventional config paths such as `/.well-known/tiinex/workspace.md`, `tiinex.workspace.md`, `viewer.workspace.md`, and `.topics/.workspaces/viewer.workspace.md`.
-- A resolved config maps to a GitHub source input; actual material still loads through normal source transports and boundaries.
+- PoC-hosted apps prefer explicit link/meta config, then runtime `workspaceCandidates` / issue pointers, then embedded `EMBEDDED_DEFAULT_WORKSPACE_MD`, and only then static path fallbacks such as `.topics/.workspaces/viewer.workspace.md`.
+- Workspace Discovery `Match: *.workspace.md` is preserved into the source boundary.
+- Repo discovery applies the workspace match before materializing records, including direct discovery and preloaded mirror/cache records.
+- Source metadata preserves `workspaceMatch`, `appConfigPlan`, `openBehavior`, and `preferredDisplay` through registration, materialization, route state, and source records.
+- Source-backed `.workspace.md` records remain explicit Open / Merge targets.
 
 ## Validation
 

@@ -89,6 +89,20 @@ const syntheticIssueOnlyRecord = {
 };
 assert.equal(sourceHrefForRecord(syntheticIssueOnlyRecord), '', 'synthetic issue display paths must not be treated as GitHub blob source URLs');
 
+
+const workspaceRecord = {
+  id: 'source:github:tiinex/site:.topics/docs.workspace.md',
+  title: 'Documentation',
+  path: '.topics/docs.workspace.md',
+  markdown: `# Documentation\n\n## Workspace Entrypoints\n`,
+  currentSchemaId: 'tiinex.workspace.v1',
+  source: { adapterId: 'github', repo: 'Tiinex/site', ref: 'master' }
+};
+const workspaceActions = presentRecordActions(workspaceRecord);
+assert(workspaceActions.some((action) => action.id === RecordActionKind.workspaceOpen && action.label === 'Open'), 'source-backed .workspace.md records must expose Open workspace');
+assert(workspaceActions.some((action) => action.id === RecordActionKind.workspaceMerge && action.label === 'Merge'), 'source-backed .workspace.md records must expose Merge workspace');
+assert(workspaceActions.every(actionIsRenderable), 'workspace record actions must be renderable');
+
 const githubAvailability = actionAvailabilityForRecord(githubRecord);
 assert.equal(githubAvailability.continue.enabled, false, 'source-backed records still need a concrete schema transition before Continue is rendered');
 assert.equal(githubAvailability.reference.enabled, false, 'source-backed records still need a concrete schema transition before preserve/reference is rendered');

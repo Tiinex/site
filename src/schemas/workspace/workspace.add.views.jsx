@@ -63,7 +63,7 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
         </button>
         <button type="button" className="tx-add-choice-card" onClick={() => onMode('app-config')}>
           <span className="tx-add-choice-icon"><Icon name="source" /></span>
-          <span className="tx-add-choice-copy"><strong>Tiinex app config</strong><small>Fetch hosted source plan</small></span>
+          <span className="tx-add-choice-copy"><strong>Tiinex app config</strong><small>Fetch hosted workspace plan</small></span>
           <Icon name="source" />
         </button>
         <button type="button" className="tx-add-choice-card tx-desktop-only-choice" onClick={() => onMode('drop')}>
@@ -251,13 +251,13 @@ function TiinexAppConfigForm({ onBack, onSubmit, busy = false }) {
     <form className="tx-add-source-form tx-app-config-source-form" onSubmit={submit}>
       <section className="tx-github-boundary-panel" aria-label="Tiinex app config source">
         <strong>Fetch hosted app config</strong>
-        <small>Reads a Tiinex web app's declared workspace config and loads its first source entrypoint. The target app must expose config through Tiinex web conventions and browser-readable CORS.</small>
+        <small>Reads a Tiinex web app's declared or PoC-hosted workspace config and prefers its Workspace Discovery catalog before falling back to the first entrypoint. It supports link/meta config, PoC runtime candidates, GitHub issue pointers, and embedded defaults when browser-readable.</small>
       </section>
       <TextField id="tiinex-app-config-url" label="Tiinex app URL" value={target} onChange={setTarget} placeholder="https://tiinex.dev/" />
       {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
       <div className="tx-transport-contract-panel" aria-label="Config source contract">
-        <span><strong>Convention</strong><small>HTML link/meta or /.well-known/tiinex/workspace.md, tiinex.workspace.md, viewer.workspace.md</small></span>
-        <span><strong>Boundary</strong><small>Config fetch only chooses the source plan; material still loads through normal source transport.</small></span>
+        <span><strong>Convention</strong><small>HTML link/meta, PoC window.TiinexWorkspace candidates, issue pointer, embedded default, or known workspace paths</small></span>
+        <span><strong>Boundary</strong><small>Config fetch chooses a workspace discovery/source plan; Open/Merge remains explicit on workspace artifacts.</small></span>
       </div>
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>

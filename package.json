@@ -1,8 +1,8 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.108-v288",
+  "version": "0.2.111-v291",
   "private": true,
-  "description": "Tiinex Site v288: improves mobile tap response/read sheets and adds Tiinex-hosted app config source intake.",
+  "description": "Tiinex Site v291: aligns hosted PoC config intake with chooser/catalog semantics and workspace-match materialization.",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",

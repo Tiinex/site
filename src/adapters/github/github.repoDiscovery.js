@@ -25,6 +25,35 @@ function isMarkdownPath(path) {
   return MARKDOWN_EXTENSIONS.test(String(path || ''));
 }
 
+function workspaceMatchPatterns(source = {}, options = {}) {
+  return String(options.workspaceMatch || source.workspaceMatch || source.match || '')
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+export function matchesGithubWorkspacePattern(path = '', patterns = []) {
+  const clean = String(path || '').replace(/^\/+/, '').replace(/\\/g, '/');
+  if (!patterns || !patterns.length) return true;
+  const name = clean.split('/').filter(Boolean).pop() || clean;
+  return patterns.some((pattern) => {
+    const raw = String(pattern || '').trim().replace(/^\.\//, '');
+    if (!raw) return true;
+    const target = raw.includes('/') ? clean : name;
+    return globToRegExp(raw).test(target);
+  });
+}
+
+function globToRegExp(pattern = '') {
+  const source = String(pattern || '')
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '\u0000')
+    .replace(/\*/g, '[^/]*')
+    .replace(/\?/g, '[^/]')
+    .replace(/\u0000/g, '.*');
+  return new RegExp(`^${source}$`, 'i');
+}
+
 async function fetchJson(url, fetchImpl) {
   const res = await fetchImpl(url, { headers: { Accept: 'application/vnd.github+json' } });
   if (!res || !res.ok) {
@@ -68,6 +97,7 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
   const treeUrl = `https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(resolved.ref)}?recursive=1`;
   const tree = await fetchJson(treeUrl, fetchImpl);
   const roots = rootPaths(source);
+  const patterns = workspaceMatchPatterns(source, options);
   const refs = [];
   const warnings = [];
   const governanceRootFiles = [];
@@ -77,11 +107,12 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
     if (!path.includes('/') && (isGovernancePolicyPath(path) || isGovernanceNoticePath(path))) governanceRootFiles.push({ path, kind: path });
     if (!underRoots(path, roots)) continue;
     if (!isMarkdownPath(path)) continue;
+    if (!matchesGithubWorkspacePattern(path, patterns)) continue;
     if (refs.length < maxFiles) refs.push(path);
   }
   refs.sort((a, b) => a.localeCompare(b));
   if (tree.truncated) warnings.push({ code: 'github.tree.truncated', message: 'GitHub tree response was truncated.' });
-  const totalMarkdown = (Array.isArray(tree.tree) ? tree.tree : []).filter((item) => item.type === 'blob' && underRoots(String(item.path || ''), roots) && isMarkdownPath(item.path)).length;
+  const totalMarkdown = (Array.isArray(tree.tree) ? tree.tree : []).filter((item) => item.type === 'blob' && underRoots(String(item.path || ''), roots) && isMarkdownPath(item.path) && matchesGithubWorkspacePattern(String(item.path || ''), patterns)).length;
   if (totalMarkdown > refs.length) warnings.push({ code: 'github.discovery.bounded', message: `Loaded first ${refs.length} of ${totalMarkdown} markdown files.` });
   return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown, governanceBoundary: governanceBoundaryFromRootFiles(Object.assign({}, source, { ref: resolved.ref }), governanceRootFiles, { rootChecked: true, discoveredFrom: 'github-tree-root-manifest' }) };
 }

@@ -85,6 +85,35 @@ assert(progressEvents.some((event) => event.phase === 'raw-file-load' && event.t
 assert.equal(materialized.diagnostics.assetReferences.counts['referenced-unloaded'], 1, 'adapter should report referenced-but-unloaded source assets without fetching binaries');
 assert(materialized.warnings.some((warning) => warning.code === 'github.asset.referenced-unloaded'), 'referenced source assets should be surfaced as honest non-fetch warnings');
 
+const workspaceTreeApi = 'https://api.github.com/repos/owner/workspaces/git/trees/main?recursive=1';
+const workspaceRepoApi = 'https://api.github.com/repos/owner/workspaces';
+const rawWorkspace = 'https://raw.githubusercontent.com/owner/workspaces/main/.topics/news.workspace.md';
+const rawOrdinary = 'https://raw.githubusercontent.com/owner/workspaces/main/.topics/ordinary.md';
+const workspaceFetch = makeFetch({
+  [workspaceRepoApi]: { json: { default_branch: 'main' } },
+  [workspaceTreeApi]: { json: { truncated: false, tree: [
+    { type: 'blob', path: '.topics/news.workspace.md' },
+    { type: 'blob', path: '.topics/ordinary.md' }
+  ] } },
+  [rawWorkspace]: { text: `# News
+
+## Workspace Entrypoints
+
+### News
+
+- Repository: owner/news
+` },
+  [rawOrdinary]: { text: '# Ordinary' }
+});
+const workspaceDiscoveryOnly = await materializeGithubSource(
+  { id: 'github:owner/workspaces:.topics', repo: 'owner/workspaces', ref: '', rootPath: '.topics', workspaceMatch: '*.workspace.md' },
+  { repoDiscovery: true, fileRefs: [], workspaceMatch: '*.workspace.md' },
+  { fetchImpl: workspaceFetch, allowCache: false }
+);
+assert.equal(workspaceDiscoveryOnly.records.length, 1, 'workspace discovery should materialize only matched workspace config files');
+assert.equal(workspaceDiscoveryOnly.records[0].sourceTarget.inputTarget, '.topics/news.workspace.md');
+assert.equal(workspaceDiscoveryOnly.diagnostics.surfaces.repoFiles.discovered, 1, 'workspace discovery count should reflect matched workspace configs, not all markdown');
+
 const limitedFetch = makeFetch({
   [repoApi]: { json: { default_branch: 'main' } },
   [treeApi]: { ok: false, status: 403, statusText: 'Forbidden', json: { message: 'API rate limit exceeded' } }

@@ -1,19 +1,17 @@
-# Validation Notes v288
+# Validation Notes v291
 
 ## Root hypothesis
 
-After v287, remaining latency is small enough that the main technical lockup is mostly resolved. The remaining mobile issue is perceived tap latency when opening a record: the dialog shell and schema-owned read projection are created in the same render path, so the first visual response can wait for Markdown/read parsing.
-
-A separate source-workflow need emerged: hosted Tiinex apps should be usable as configuration sources so a tester can point the viewer at another Tiinex app, discover its configured workspace source plan, and then load that source through normal source semantics.
+The v290 video showed that hosted Tiinex app config was discovered, but React did not match the PoC user expectation. It loaded a broad repo materialization path instead of presenting the app's workspace discovery catalog/chooser semantics. The likely owner was config-source ordering plus missing propagation of `Workspace Discovery` `Match` into GitHub materialization.
 
 ## Changed
 
-- `RecordDetailDialog` now uses a `DeferredSchemaReadView` shell. The modal appears first; the heavier `SchemaReadView` mounts on the next animation frame.
-- Mobile/coarse styles add immediate tap feedback and keep record detail actions sticky/reachable inside the sheet.
-- `src/app/tiinexAppConfigSource.js` owns Tiinex-hosted app config discovery and mapping to GitHub source input.
-- `AddToWorkspaceDialog` exposes a `Tiinex app config` choice without changing GitHub source semantics.
-- Config fetch supports HTML link/meta declarations and conventional Tiinex config paths. Hosts still need browser-readable CORS.
-- The Drop-mode duplicate hidden input was removed while touching the add flow.
+- Hosted config intake now mirrors the PoC order: explicit link/meta config first, runtime candidates/issue pointers next, embedded default workspace next, and static path conventions last.
+- This avoids accidentally selecting a packaged `.topics/.workspaces/viewer.workspace.md` path before the PoC's embedded/runtime bootstrap.
+- Workspace Discovery keeps `Match: *.workspace.md` and passes it through source registration/materialization.
+- GitHub repo discovery filters matched workspace config files before materializing records.
+- Preloaded repo mirror/cache records are also filtered by the same match before being committed.
+- Source route shells preserve workspace discovery metadata so reload/back/forward do not erase the chooser boundary.
 
 ## Validation run in sandbox
 
@@ -39,8 +37,8 @@ node --check .site-publish/tiinex.bundle.js
 
 ## Manual test target
 
-1. Load Tiinex/docs with repo files and issues.
-2. Use mobile/device viewport.
-3. Tap record Open/read actions and confirm the sheet appears faster, even if the full read projection fills in a moment later.
-4. Confirm Feed/Tree/Lineage switches and search stay at least as good as v287.
-5. Use Add → Tiinex app config with a hosted app URL that exposes config. It should fetch config, resolve the first GitHub entrypoint, and load through the usual source materialization path.
+1. Add → Tiinex app config → `https://tiinex.dev/`.
+2. The app should resolve the same PoC-style bootstrap path instead of blindly preferring the packaged dot-path fallback.
+3. Workspace Discovery should materialize matched `.workspace.md` records, not every Markdown artifact under `.topics`.
+4. Workspace records should remain visible with Open / Merge actions.
+5. Open should switch context; Merge should merge context without closing the current workspace.

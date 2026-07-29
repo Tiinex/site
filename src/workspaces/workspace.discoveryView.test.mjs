@@ -116,6 +116,30 @@ assert.equal(isDiscoveryLeafRecord(educationalRoot, index), false, 'path branch 
 assert.equal(isDiscoveryLeafRecord(socialsRoot, index), false, 'same-folder 001.trace.md roots are not Discovery leaves when they have child work records');
 assert.equal(isDiscoveryLeafRecord(socialsTask, index), true, 'terminal same-folder child remains a Discovery leaf');
 
+
+const workspaceConfigRecord = sourceBackedRecord(`# Continuity Context
+
+- Current
+  - Current Schema: [tiinex.workspace.v1](schema.md)
+  - Summary: Workspace selector.
+
+---
+
+# Documentation
+
+## Workspace Entrypoints
+`, '.topics/documentation.workspace.md', { currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
+const workspaceRecordView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [], workspaceMergeCandidates: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+  query: ''
+});
+assert.equal(workspaceRecordView.records.length, 1, 'source-backed .workspace.md records stay visible when workspace candidates are enabled even under Leaves only');
+const workspaceRecordHiddenView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [], workspaceMergeCandidates: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
+  query: ''
+});
+assert.equal(workspaceRecordHiddenView.records.length, 0, 'source-backed .workspace.md records respect the workspace candidates display toggle');
+
 const tree = buildWorkspacePathTree({ records: view.records, assets: view.assets, workspaceCandidates: view.workspaceCandidates, rootLabel: 'Visible tree' });
 const treeJson = JSON.stringify(tree);
 assert.equal(treeJson.includes('Educational Root'), false, 'Tree read-model uses same Discovery membership and hides parent root records');

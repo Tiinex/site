@@ -58,9 +58,11 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const role = descriptor?.role || inferRecordMaterialRole(record);
   const supporting = descriptor ? descriptor.supporting : isSupportingRecord(record);
   const discoveryLeaf = isDiscoveryLeafRecord(record, materialIndex);
+  const workspaceCandidateRecord = role === MaterialRole.workspaceCandidate;
   const parentReason = discoveryParentReason(record, materialIndex);
-  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || 'hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
-  if (!options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
+  if (workspaceCandidateRecord && options.showWorkspaceCandidates === false) return hidden('hidden-workspace-candidates', role, discoveryLeaf, supporting);
+  if (!workspaceCandidateRecord && options.leavesOnly && !discoveryLeaf) return hidden(parentReason || 'hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
+  if (!workspaceCandidateRecord && !options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
   if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);

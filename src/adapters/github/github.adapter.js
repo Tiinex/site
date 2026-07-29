@@ -7,7 +7,7 @@ import { createGithubTransportFetch, normalizeGithubTransportTier } from '../../
 import { summarizeTransportOutcome, summarizeTransportTiers } from './github.transportDiagnostics.js';
 import { writeGithubRepoDiscoveryCache } from './github.repoMirror.js';
 import { preMaterializeGithubRepoFiles, requestedRepoTransportTier } from './github.repoSurface.js';
-import { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
+import { discoverGithubMarkdownRefs, resolveGithubSourceRef, matchesGithubWorkspacePattern } from './github.repoDiscovery.js';
 import { buildGovernanceBoundaryForSource, governanceFindingForBoundary } from '../../governance/governance.boundary.js';
 export { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
 
@@ -87,6 +87,7 @@ function makeSourcePlan(source = {}, input = {}, explicitRefs = []) {
     repo: source?.repo || source?.repository || '',
     ref: source?.ref || '',
     rootPath: source?.rootPath || '',
+    workspaceMatch: input.workspaceMatch || source.workspaceMatch || '',
     surfaces: {
       boundary: makeSurfaceState(true, { attempted: true }),
       repoFiles: makeSurfaceState(repoRequested),
@@ -98,6 +99,18 @@ function makeSourcePlan(source = {}, input = {}, explicitRefs = []) {
 
 function cloneSourcePlan(plan = {}) {
   return JSON.parse(JSON.stringify(plan || {}));
+}
+
+function workspaceMatchPatternsFromInput(source = {}, input = {}) {
+  return String(input.workspaceMatch || source.workspaceMatch || source.match || '')
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function filterRepoRecordsByWorkspaceMatch(records = [], patterns = []) {
+  if (!patterns.length) return records;
+  return (records || []).filter((record) => matchesGithubWorkspacePattern(record?.sourceTarget?.sourceArtifactPath || record?.sourceTarget?.inputTarget || record?.path || '', patterns));
 }
 
 function markSurface(plan, name, patch = {}) {
@@ -170,6 +183,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const errors = [];
   let preloadedRepoResult = { records: [], warnings: [], errors: [], counts: {}, diagnostics: { transportEvents: [] } };
   let repoDiscoveryHandledBySurfaceTransport = false;
+  const workspaceMatchPatterns = workspaceMatchPatternsFromInput(source, input);
 
   const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
 
@@ -194,6 +208,14 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       warnings.push(...(preloadedRepoResult.warnings || []).map((warning) => Object.assign({ surface: 'repoFiles' }, warning)));
       errors.push(...(preloadedRepoResult.errors || []).map((error) => Object.assign({ surface: 'repoFiles' }, error)));
       if (preloadedRepoResult.records?.length) {
+        const unfilteredRepoRecords = preloadedRepoResult.records || [];
+        const filteredRepoRecords = filterRepoRecordsByWorkspaceMatch(unfilteredRepoRecords, workspaceMatchPatterns);
+        preloadedRepoResult = Object.assign({}, preloadedRepoResult, {
+          records: filteredRepoRecords,
+          counts: Object.assign({}, preloadedRepoResult.counts || {}, { records: filteredRepoRecords.length, loaded: filteredRepoRecords.length, discovered: filteredRepoRecords.length, unfilteredDiscovered: Number(preloadedRepoResult.counts?.discovered || unfilteredRepoRecords.length || 0) })
+        });
+      }
+      if (preloadedRepoResult.records?.length) {
         repoDiscoveryHandledBySurfaceTransport = true;
         resolvedRef = preloadedRepoResult.ref || resolvedRef;
         diagnostics.discoveredFileRefs = Number(preloadedRepoResult.counts?.discovered || preloadedRepoResult.records.length || 0);
@@ -206,7 +228,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       }
       if (!repoDiscoveryHandledBySurfaceTransport) try {
         reportProgress(options, { phase: 'repo-discovery', percent: 18, label: 'Resolving GitHub ref and scanning repo tree' });
-        const discovered = await discoverGithubMarkdownRefs(source, Object.assign({}, options, { fetchImpl: transportFetchImpl }));
+        const discovered = await discoverGithubMarkdownRefs(source, Object.assign({}, options, { fetchImpl: transportFetchImpl, workspaceMatch: input.workspaceMatch || source.workspaceMatch || '' }));
         const discoveredTargets = discovered.refs.map((ref, index) => fileTarget(ref, 'repoFiles', index, 'repo-markdown'));
         fileTargets = fileTargets.concat(discoveredTargets);
         resolvedRef = discovered.ref || resolvedRef;

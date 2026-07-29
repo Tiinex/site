@@ -34,6 +34,8 @@ import { installVisualDormancy, visualDormancySummary } from './visualDormancy.j
 import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScrollPersist } from './scrollPersistence.js';
 import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
 import { resolveTiinexAppConfigGithubInput } from './tiinexAppConfigSource.js';
+import { RecordActionKind } from '../actions/record.actions.js';
+import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -55,7 +57,6 @@ export function TiinexApp() {
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
   const pagerVisible = shouldPageWorkspaces(state.workspaces.length, viewportWidth);
-
   useEffect(() => {
     const onRoute = () => {
       const { lifecycle, route, persistence } = runtime();
@@ -73,97 +74,76 @@ export function TiinexApp() {
       window.removeEventListener('hashchange', onRoute);
     };
   }, []);
-
   useEffect(() => { document.title = workspaceConfig?.viewerIdentity?.browserTitle || 'Tiinex'; }, [workspaceConfig]);
-
   useEffect(() => {
     latestStateRef.current = state;
   }, [state]);
-
   useEffect(() => installVisualDormancy({ getSummary: () => visualDormancySummary(latestStateRef.current || state) }), []);
-
   useEffect(() => { window.TiinexStatePersistenceReport = () => statePersistenceSchedulerRef.current?.report?.() || { pending: false }; return () => { try { delete window.TiinexStatePersistenceReport; } catch (_) { window.TiinexStatePersistenceReport = undefined; } }; }, []);
-
   useEffect(() => () => { clearScheduledScrollPersistence({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, window); statePersistenceSchedulerRef.current?.cancel?.(); }, []);
-
   useEffect(() => {
     const flushOnUnload = () => { statePersistenceSchedulerRef.current?.flush?.('beforeunload'); persistCapturedViewScroll('replace', { force: true }); };
     window.addEventListener('beforeunload', flushOnUnload);
     return () => window.removeEventListener('beforeunload', flushOnUnload);
   }, []);
-
   useEffect(() => {
     if (!notice) return undefined;
     const timer = window.setTimeout(() => setNotice(''), 9000);
     return () => window.clearTimeout(timer);
   }, [notice]);
-
   useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id || lineageLoadReportForSelected(state)) return; const lineage = buildWorkspaceLineageView(activeUi || active, { records: Array.isArray((activeUi || active)?.records) ? (activeUi || active).records : [], query: '', selectedRecordId: id }); const key = `${active.id}:${id}:${(activeUi || active).records?.length || 0}:${lineage.selectedTraversal?.missingEdges?.length || 0}`; if (lineage.selectedTraversal?.hasMissing && !lineageAutoLoadKeysRef.current.has(key)) { lineageAutoLoadKeysRef.current.add(key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
-
   function commit(nextState, mode = 'push', options = {}) {
     commitStateWithPersistence({ nextState, mode, options, sourceState: latestStateRef.current || state, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler: statePersistenceSchedulerRef.current });
   }
-
   function viewScrollKeyFor(sourceState = state, viewOverride = null) {
     return workspaceViewScrollKeyFor(sourceState, viewOverride, active?.id || 'workspace');
   }
-
   function commitViewPatch(patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
     commit(stateWithViewPatch(sourceState, patch), mode, { deferPersistence: true, persistenceReason: 'view-patch' });
   }
-
   function commitViewUpdate(updater = null, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
     commit(stateWithViewUpdate(sourceState, updater), mode, { deferPersistence: true, persistenceReason: 'view-update' });
   }
-
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
     return stateWithCapturedViewScroll(nextState, sourceState, viewScrollRef.current, active?.id || 'workspace');
   }
-
   // UI guard: persistCapturedViewScroll('replace') remains the scroll replace-state path.
   function persistCapturedViewScroll(mode = 'replace', options = {}) {
     return persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode, options: Object.assign({ setState }, options), doc: document });
   }
-
   function noteViewScroll(verse, top) {
     const currentState = latestStateRef.current || state;
     const view = Object.assign({}, currentState.view || {}, { workspaceVerse: verse || currentState.view?.workspaceVerse || 'feed' });
     viewScrollRef.current[viewScrollKeyFor(currentState, view)] = Math.max(0, Math.round(Number(top || 0)));
     scheduleIdleScrollPersist({ timerRef: scrollPersistTimerRef, idleRef: scrollPersistIdleRef }, () => persistCapturedViewScroll('replace', { render: false }), window);
   }
-
   function currentStageScrollTop() {
     const key = viewScrollKeyFor(state);
     const fromRef = viewScrollRef.current[key];
     if (Number.isFinite(Number(fromRef))) return Number(fromRef);
     return Number(state.view?.scrollPositions?.[key] || 0);
   }
-
   function openCreate() {
     setCreateError('');
     setSourceContinuationId('');
     setDialog('create-workspace');
   }
-
   function openAddToWorkspace(sourceId = '') {
     setSourceContinuationId(String(sourceId || ''));
     setDialog('add-to-workspace');
   }
-
   function openGovernanceBoundary(sourceId = '') {
     const id = String(sourceId || '').trim();
     if (!id) return;
     setSourceContinuationId(id);
     setDialog('source-governance');
   }
-
   function dismissDialog() {
     setDialog(null);
     setSourceContinuationId('');
   }
-
   function createWorkspace(name) {
     const result = runtime().lifecycle?.createWorkspace?.(state, { name });
     if (!result?.ok) {
@@ -175,9 +155,7 @@ export function TiinexApp() {
     commit(result.state, 'push');
     return true;
   }
-
   function renameWorkspace(name) { const result = runtime().lifecycle?.renameWorkspace?.(state, active?.id, name); if (!result?.ok) return false; setDialog(null); setNotice('Workspace renamed.'); commit(result.state, 'replace'); return true; }
-
   function closeWorkspace(workspaceId) {
     const result = runtime().lifecycle?.closeWorkspace?.(state, workspaceId || state.activeWorkspaceId);
     if (!result?.ok) return;
@@ -185,7 +163,6 @@ export function TiinexApp() {
     setNotice(result.state.workspaces.length ? 'Workspace closed.' : 'Workspace closed. Clean start restored.');
     commit(result.state, 'push');
   }
-
   async function addLocalFiles(fileList, options = {}) {
     const files = options.fromDataTransfer
       ? await collectLocalFilesFromDataTransfer(fileList)
@@ -217,7 +194,6 @@ export function TiinexApp() {
     setNotice(applied.summary?.message || 'Import completed.');
     commit(applied.state, 'push');
   }
-
   async function addExplicitUrls(urlText) {
     const urls = String(urlText || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
     if (!urls.length) {
@@ -248,10 +224,9 @@ export function TiinexApp() {
   async function addTiinexAppConfig(targetUrl) {
     const resolved = await resolveTiinexAppConfigGithubInput(targetUrl, { fetchImpl: fetch, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig });
     if (!resolved?.ok) return setNotice(resolved?.message || 'Could not read Tiinex app config source.');
-    setNotice(`Config source found: ${resolved.configUrl || resolved.targetUrl}; loading ${resolved.input.repository}.`);
+    setNotice(`Config source found: ${resolved.configUrl || resolved.targetUrl}; loading ${resolved.input.repository}${resolved.selectedPlan === 'workspace-discovery' ? ' workspace discovery' : ''}.`);
     await addGitHubSource(resolved.input);
   }
-
   async function addGitHubSource(input = {}) {
     if (githubRequestPending && input.abortPreviousGithubOperation !== true) return setNotice('GitHub source operation already in progress.');
     if (githubRequestPending && input.abortPreviousGithubOperation === true) try { githubOperationRef.current?.controller?.abort?.(); } catch (_) {}
@@ -276,6 +251,7 @@ export function TiinexApp() {
     const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, Object.assign({
       id: sourceId, kind: input.sourceKind || input.kind || 'github-tree', label, repository, ref, rootPath,
       repoDiscovery: Boolean(input.repoDiscovery), issueDiscovery: Boolean(input.issueDiscovery), issueUrls: input.issueUrls || '',
+      workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
       transportLabel, transportRefreshTier, requestedSurfaces: requestedSurfacesForInput
     }, preservedSourceState));
     if (!result?.ok) {
@@ -310,7 +286,6 @@ export function TiinexApp() {
         if (shouldCommitGithubProgress(progress, progressCommit)) commit(finalState, 'replace');
       }
     };
-
     if (!wantsMaterialization) {
       finalState = appendImportSummary(runtime().lifecycle, finalState, {
         schema: 'tiinex.workspace.import.result.v1',
@@ -322,7 +297,6 @@ export function TiinexApp() {
         diagnostics: { adapterId: 'github', sourceId: result.source.id, operation: 'register-boundary-only', transport: 'none' }
       }, {});
     }
-
     if (wantsMaterialization) {
       finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
         sourceId: result.source.id,
@@ -348,7 +322,8 @@ export function TiinexApp() {
           fileRefs,
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
-          issueUrls: input.issueUrls || ''
+          issueUrls: input.issueUrls || '',
+          workspaceMatch: input.workspaceMatch || ''
         }, { fetchImpl: fetchForOperation, abortSignal: operationController?.signal || null, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache === true, sourceCacheCleared });
         if (!operationIsCurrent()) return;
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
@@ -364,6 +339,7 @@ export function TiinexApp() {
             repoDiscovery: Boolean(input.repoDiscovery),
             issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
             issueUrls: input.issueUrls || '',
+            workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
             transportRefreshTier,
             requestedSurfaces: requestedSurfacesForInput
           }));
@@ -397,6 +373,7 @@ export function TiinexApp() {
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery || input.issueUrls),
           issueUrls: input.issueUrls || '',
+          workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
           requestedSurfaces: requestedSurfacesForInput,
           surfaces: mergeGithubSurfaceStates(existingSource?.surfaces || result.source?.surfaces || {}, out.diagnostics?.surfaces || {}, selectedTransportSurfaces),
           sourcePlan: out.diagnostics?.sourcePlan || {},
@@ -424,7 +401,6 @@ export function TiinexApp() {
       }
       finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, '').state || finalState;
     }
-
     if (!operationIsCurrent()) return;
     if (operationController && operationIsCurrent()) githubOperationRef.current = { token: null, controller: null };
     setDialog(null);
@@ -432,7 +408,6 @@ export function TiinexApp() {
     setGithubRequestPending(false);
     commit(finalState, 'push');
   }
-
   async function refreshSourceTransport(sourceId, currentTier = '', surfaceKeys = []) {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
     if (!source) return setNotice('Source not found.');
@@ -446,14 +421,12 @@ export function TiinexApp() {
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
     await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true, resetSourceMaterial: true, resetSourceCache: false, abortPreviousGithubOperation: Boolean(refresh.replacingPending) }));
   }
-
   function openRecord(recordId) {
     const id = String(recordId || '');
     setRecordAction(null);
     setActiveAssetId('');
     setActiveRecordId(id);
   }
-
   function focusRecordLineage(recordId) {
     const id = String(recordId || '');
     setRecordAction(null);
@@ -469,21 +442,17 @@ export function TiinexApp() {
       lineageLoadReport: null
     }, 'push');
   }
-
   function dismissRecord() {
     setActiveRecordId('');
   }
-
   function openAsset(assetId) {
     setRecordAction(null);
     setActiveRecordId('');
     setActiveAssetId(String(assetId || ''));
   }
-
   function dismissAsset() {
     setActiveAssetId('');
   }
-
   function openWorkspaceCandidate(candidateId) {
     const result = openStagedWorkspaceCandidate(runtime().lifecycle, state, active?.id, candidateId);
     if (!result?.ok) {
@@ -497,7 +466,6 @@ export function TiinexApp() {
     setNotice(`Opened workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
     commit(result.state, 'push');
   }
-
   function mergeWorkspaceCandidate(candidateId) {
     const result = mergeStagedWorkspaceCandidate(runtime().lifecycle, state, active?.id, candidateId);
     if (!result?.ok) {
@@ -507,17 +475,32 @@ export function TiinexApp() {
     setNotice(`Merged workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
     commit(result.state, 'push');
   }
-
+  function openWorkspaceRecord(record = {}) {
+    const result = openWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state, record });
+    if (!result?.ok) return setNotice(result?.message || 'Could not open workspace artifact.');
+    setDialog(null);
+    setActiveRecordId('');
+    setActiveAssetId('');
+    setRecordAction(null);
+    setNotice(`Opened workspace artifact ${result.entry?.title || result.entry?.path || ''}.`.replace(/\s+\./, '.'));
+    commit(result.state, 'push');
+  }
+  function mergeWorkspaceRecord(record = {}) {
+    const result = mergeWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state, workspaceId: active?.id, record });
+    if (!result?.ok) return setNotice(result?.message || 'Could not merge workspace artifact.');
+    setNotice(`Merged workspace artifact ${result.entry?.title || result.entry?.path || ''}.`.replace(/\s+\./, '.'));
+    commit(result.state, 'push');
+  }
   function openRecordAction(record, action) {
+    if (action?.id === RecordActionKind.workspaceOpen) return openWorkspaceRecord(record);
+    if (action?.id === RecordActionKind.workspaceMerge) return mergeWorkspaceRecord(record);
     setActiveRecordId('');
     setActiveAssetId('');
     setRecordAction({ recordId: record?.id || '', action });
   }
-
   function dismissRecordAction() {
     setRecordAction(null);
   }
-
   function createTransitionRecord(parentRecord, draft) {
     if (!draft?.title) {
       setNotice('Transition draft is missing a title.');
@@ -533,13 +516,11 @@ export function TiinexApp() {
     setNotice(`Created local ${draft.kind || 'transition'} leaf from ${parentRecord?.title || 'artifact'}.`);
     commit(result.state, 'push');
   }
-
   function shareRecord(record) {
     const label = record?.title || 'artifact';
     copyShareUrl();
     setNotice(`Workspace/session share copied for ${label}; route-only viewers preserve boundary and may show material unavailable.`);
   }
-
   function exportWorkspacePackage() {
     if (!active) {
       setNotice('No workspace to export.');
@@ -563,7 +544,6 @@ export function TiinexApp() {
       setNotice('Could not build export package.');
     }
   }
-
   function closeSource(sourceId) {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || '')) || null;
     if (source) clearGithubSourceTextCacheForSource(source);
@@ -575,7 +555,6 @@ export function TiinexApp() {
     setNotice('Source closed.');
     commit(result.state, 'push');
   }
-
   function cycleWorkspace(direction) {
     const sourceState = latestStateRef.current || state;
     const workspaces = Array.isArray(sourceState.workspaces) ? sourceState.workspaces : [];
@@ -585,21 +564,18 @@ export function TiinexApp() {
     const nextIndex = (currentIndex + offset + workspaces.length) % workspaces.length;
     commit(Object.assign({}, sourceState, { activeWorkspaceId: workspaces[nextIndex]?.id || sourceState.activeWorkspaceId }), 'push');
   }
-
   function lineageLoadReportForSelected(sourceState = state) {
     const view = sourceState?.view || {};
     const selectedRecordId = String(view.selectedRecordId || '').trim();
     const report = view.lineageLoadReport || null;
     return selectedRecordId && report && String(report.selectedRecordId || '') === selectedRecordId ? report : null;
   }
-
   function lineageControlsReadyForTraversal(traversal = null) {
     if (!traversal) return false;
     const terminalState = String(traversal.terminalState || traversal.status?.terminalState || '').trim();
     if (['root-reached', 'root-reached-scope-transition', 'no-parent-declared', 'target-unavailable', 'ambiguous-parent', 'integrity-mismatch'].includes(terminalState)) return true;
     return traversal.complete === true;
   }
-
   async function loadFullLineage() {
     if (!active) return;
     const selectedRecordId = String(state.view?.selectedRecordId || '').trim();
@@ -629,7 +605,6 @@ export function TiinexApp() {
       : stateLabel === 'complete' ? 'Full loaded-workspace lineage index ready.' : 'Loaded lineage index is partial; terminal root was not proven.');
     commit(stateWithViewPatch(sourceState, { lineageQuery: '', lineageLoadReport, lineageAuditReport: null }), recoveredParents ? 'push' : 'replace');
   }
-
   function runLineageAudit() {
     if (!active) return;
     const selectedRecordId = String(state.view?.selectedRecordId || '').trim();
@@ -689,7 +664,6 @@ export function TiinexApp() {
       };
     commit(stateWithViewPatch(sourceState, { lineageAuditReport }), 'replace');
   }
-
   function setVerse(verse) {
     const normalizedVerse = verse === 'tree' || verse === 'lineage' ? verse : 'feed';
     const resetLineage = normalizedVerse === 'feed' || normalizedVerse === 'tree';
@@ -702,7 +676,6 @@ export function TiinexApp() {
       lineageLoadReport: null
     } : {}), 'push');
   }
-
   function toggleLineageCard(recordId) {
     const id = String(recordId || '').trim();
     if (!id) return;
@@ -713,7 +686,6 @@ export function TiinexApp() {
       return Object.assign({}, currentView, { expandedLineageRecordIds: Array.from(current) });
     }, 'replace');
   }
-
   function setQuery(query) {
     commitViewUpdate((currentView) => {
       const verse = currentView.workspaceVerse || 'feed';
@@ -722,12 +694,10 @@ export function TiinexApp() {
         : Object.assign({}, currentView, { query });
     }, 'replace');
   }
-
   function setDisplayOptions(options) {
     setDialog(null);
     commitViewPatch({ displayOptions: normalizeWorkspaceDisplayOptions(options) }, 'replace');
   }
-
   function toggleTreeFolder(folderPath, open) {
     const path = String(folderPath || '').trim();
     if (!path) return;
@@ -738,13 +708,11 @@ export function TiinexApp() {
       return Object.assign({}, currentView, { expandedTreeFolders: Array.from(existing).sort() });
     }, 'replace');
   }
-
   function exportPackageFilename(workspace = {}, bundle = {}) {
     const slug = String(workspace.title || workspace.name || workspace.id || 'workspace').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'workspace';
     const stamp = String(bundle.builtAt || new Date().toISOString()).replace(/[^0-9]/g, '').slice(0, 14) || 'session';
     return `tiinex-${slug}-${stamp}.zip`;
   }
-
   function copyShareUrl() {
     statePersistenceSchedulerRef.current?.flush?.('share-url');
     const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
@@ -753,13 +721,11 @@ export function TiinexApp() {
       ?.then(() => setNotice('Workspace/session link copied.'))
       ?.catch(() => {});
   }
-
   function resetHome() {
     setDialog(null);
     setNotice('');
     commit(defaultState(), 'push');
   }
-
   const activeRecord = activeRecordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === activeRecordId)) : null;
   const activeAsset = activeAssetId && activeUi?.assets ? activeUi.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
   const actionRecord = recordAction?.recordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === recordAction.recordId)) : null;
@@ -767,7 +733,6 @@ export function TiinexApp() {
     ? activeUi.sources.find((source) => source.id === sourceContinuationId) || null
     : null;
   const governanceDialogData = governanceDialogSource ? sourceGovernanceDialogData(governanceDialogSource, activeUi) : null;
-
   const shellClasses = [
     'tx-react-runtime',
     'tx-uc001-shell',
@@ -778,7 +743,6 @@ export function TiinexApp() {
     'tx-schema-companion-runtime',
     active ? 'tx-workspace-mode' : 'tx-empty-stage-mode'
   ].join(' ');
-
   return (
     <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (!active && event.dataTransfer) { event.preventDefault(); addLocalFiles(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
@@ -793,7 +757,6 @@ export function TiinexApp() {
         onHelp={() => setDialog('help')}
         onMultiverse={() => setNotice('Column multiverse is active for UC-001. Other universes stay deferred.')}
       />
-
       {active ? (
         <WorkspaceColumnSurface
           workspace={activeUi || active}
@@ -829,10 +792,8 @@ export function TiinexApp() {
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />
       )}
-
       {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
-
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'rename-workspace' && active ? <RenameWorkspaceDialog workspace={activeUi || active} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={activeUi || active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
