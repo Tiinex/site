@@ -56,16 +56,39 @@ const issueTree = buildWorkspacePathTree({
 });
 const topicsFolder = issueTree.folders.find((folder) => folder.name === '.topics');
 assert(topicsFolder, 'issue records should display under .topics');
-const issuesFolder = topicsFolder.folders.find((folder) => folder.name === '.issues');
-assert(issuesFolder, 'issue records should use logical .topics/.issues scope');
-assert(!topicsFolder.folders.some((folder) => folder.name === '.github'), 'legacy .topics/.github issue paths should not leak into the display tree');
+const githubFolder = topicsFolder.folders.find((folder) => folder.name === '.github');
+assert(githubFolder, 'issue records should use adapter-owned .topics/.github sidecar scope');
+const tiinexFolder = githubFolder.folders.find((folder) => folder.name === 'tiinex');
+const docsFolder = tiinexFolder?.folders.find((folder) => folder.name === 'docs');
+const issuesFolder = docsFolder?.folders.find((folder) => folder.name === '.issues');
+assert(issuesFolder, 'issue records should group under .topics/.github/<owner>/<repo>/.issues');
+assert(!githubFolder.folders.some((folder) => folder.name === '.issues'), 'legacy .topics/.github/.issues paths should normalize below owner/repo');
 const issueLeafPaths = [];
 function collectItemPaths(folder) {
   for (const item of folder.items || []) issueLeafPaths.push(item.path);
   for (const child of folder.folders || []) collectItemPaths(child);
 }
 collectItemPaths(issuesFolder);
-assert(issueLeafPaths.includes('.topics/.issues/github/tiinex-docs/9/issue-snapshot.trace.md'), 'GitHub issue URL records should get a logical display path');
-assert(issueLeafPaths.includes('.topics/.issues/github/tiinex-docs/9/comment-001-4881780075-recovered-legacy.trace.md'), 'legacy issue paths should normalize to the logical issue scope');
+assert(issueLeafPaths.includes('.topics/.github/tiinex/docs/.issues/9/issue-snapshot.trace.md'), 'GitHub issue URL records should get a logical display path');
+assert(issueLeafPaths.includes('.topics/.github/tiinex/docs/.issues/9/comment-001-4881780075-recovered-legacy.trace.md'), 'legacy issue paths should normalize to the logical issue scope');
+
+
+const authorityTree = buildWorkspacePathTree({
+  records: [{
+    id: 'package:local:.topics/imported.trace.md',
+    title: 'Imported package',
+    path: 'artifacts/.topics/imported.trace.md',
+    displayPath: '.topics/imported.trace.md',
+    sourceMode: 'package-import',
+    packageImport: true,
+    source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false },
+    sourceTarget: { browseUrl: 'https://github.com/owner/repo/blob/main/.topics/imported.trace.md' }
+  }]
+});
+const importedItem = authorityTree.folders.find((folder) => folder.name === '.topics')?.items[0];
+assert(importedItem, 'imported package item should keep its presentation path under .topics');
+assert.equal(importedItem.authorityKind, 'imported-local', 'tree items should expose authority kind without making path provenance truth');
+assert.equal(importedItem.presentationPath, '.topics/imported.trace.md', 'tree presentation path must remain separate from provenance/source path');
+assert.equal(importedItem.provenancePath, 'https://github.com/owner/repo/blob/main/.topics/imported.trace.md', 'tree item can carry explicit provenance target separately from presentation path');
 
 console.log('✓ workspace.pathTree tests passed');

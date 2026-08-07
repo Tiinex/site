@@ -3,6 +3,7 @@ import {
   actionAvailabilityForRecord,
   actionIsRenderable,
   createRecordActionResult,
+  isRemovableLocalDraftRecord,
   presentRecordActions,
   RECORD_ACTIONS_CONTRACT_ID,
   RECORD_ACTION_RESULT_SCHEMA_ID,
@@ -20,6 +21,7 @@ assert(!localActions.some((action) => action.id === RecordActionKind.lineage), '
 assert(!localActions.some((action) => action.id === RecordActionKind.continue), 'local records without a concrete schema transition must not expose Continue');
 assert(!localActions.some((action) => action.id === RecordActionKind.reference), 'local records without a declared schema reference transition must not expose evidence preservation');
 assert(!localActions.some((action) => action.id === RecordActionKind.source), 'local record must not expose source action');
+assert(!localActions.some((action) => action.id === RecordActionKind.deleteLocal), 'manual local files are not treated as unpublished transition drafts');
 assert(!sourceHrefForRecord(localRecord), 'local record must not create external source href');
 const localContinue = createRecordActionResult(localRecord, RecordActionKind.continue);
 assert(localContinue.schema === RECORD_ACTION_RESULT_SCHEMA_ID, 'legacy continue capsule remains available behind explicit transition code paths');
@@ -75,7 +77,7 @@ assert.equal(sourceHrefForRecord(rawParentRecord), 'https://github.com/Tiinex/do
 const recoveredParentWithoutRef = {
   id: 'source:github:tiinex/docs:recovered-parent',
   title: 'Recovered parent',
-  path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-parent.trace.md',
+  path: '.topics/.github/tiinex/docs/.issues/10/issue-root-recovered-parent.trace.md',
   source: { adapterId: 'github', repo: 'Tiinex/docs', ref: '' },
   sourceTarget: { rawUrl: 'https://raw.githubusercontent.com/Tiinex/docs/f8b37239f17bc48180cfc8f93f812c6ffc6edc1f/.topics/odysseus/001-1-1.trace.md' }
 };
@@ -84,7 +86,7 @@ assert.equal(sourceHrefForRecord(recoveredParentWithoutRef), 'https://github.com
 const syntheticIssueOnlyRecord = {
   id: 'source:github:tiinex/docs:synthetic-only',
   title: 'Synthetic only',
-  path: '.topics/.issues/github/tiinex-docs/9/issue-snapshot.trace.md',
+  path: '.topics/.github/tiinex/docs/.issues/9/issue-snapshot.trace.md',
   source: { adapterId: 'github', repo: 'Tiinex/docs', ref: '' }
 };
 assert.equal(sourceHrefForRecord(syntheticIssueOnlyRecord), '', 'synthetic issue display paths must not be treated as GitHub blob source URLs');
@@ -102,6 +104,45 @@ const workspaceActions = presentRecordActions(workspaceRecord);
 assert(workspaceActions.some((action) => action.id === RecordActionKind.workspaceOpen && action.label === 'Open'), 'source-backed .workspace.md records must expose Open workspace');
 assert(workspaceActions.some((action) => action.id === RecordActionKind.workspaceMerge && action.label === 'Merge'), 'source-backed .workspace.md records must expose Merge workspace');
 assert(workspaceActions.every(actionIsRenderable), 'workspace record actions must be renderable');
+
+
+const topicRecord = {
+  id: 'topic-1',
+  title: 'News',
+  path: '.topics/news.trace.md',
+  markdown: '# News\n\nTopic material.',
+  schemaId: 'tiinex.topic.v1',
+  kind: 'tiinex.topic.v1',
+  sourceMode: 'source-backed',
+  source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'master' }
+};
+const topicAvailability = actionAvailabilityForRecord(topicRecord);
+assert.equal(topicAvailability.continue.enabled, true, 'Topic companion transition should make Continue semantically available');
+assert.equal(topicAvailability.reference.enabled, false, 'Topic has no Reference transition in the first slice');
+const topicActions = presentRecordActions(topicRecord);
+assert(topicActions.some((action) => action.id === RecordActionKind.continue), 'semantic Continue action remains available behind transition presentation');
+const localTaskDraft = { id: 'draft-1', title: 'Task draft', path: '.topics/news/001-1-task.trace.md', status: 'local', sourceMode: 'local-transition', source: { adapterId: 'local', kind: 'local-session' } };
+assert.equal(isRemovableLocalDraftRecord(localTaskDraft), true, 'browser-local transition drafts can be removed from the session');
+const localTaskActions = presentRecordActions(localTaskDraft);
+assert(localTaskActions.some((action) => action.id === RecordActionKind.deleteLocal && action.icon === 'delete'), 'local transition drafts expose Delete local draft');
+assert(localTaskActions.every(actionIsRenderable), 'delete-local action must be renderable');
+
+const importedPackageRecord = {
+  id: 'package:local:.topics/imported.trace.md',
+  title: 'Imported package artifact',
+  path: '.topics/imported.trace.md',
+  sourceMode: 'package-import',
+  packageImport: true,
+  source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false }
+};
+assert.equal(sourceHrefForRecord(importedPackageRecord), '', 'package-imported local material must not expose guessed source href');
+assert.equal(isRemovableLocalDraftRecord(importedPackageRecord), true, 'browser-local package imports can be removed from the current workspace');
+const importedActions = presentRecordActions(importedPackageRecord);
+assert(importedActions.some((action) => action.id === RecordActionKind.deleteLocal && action.label === 'Remove imported local copy'), 'imported local material exposes a removal affordance with non-source wording');
+assert(!importedActions.some((action) => action.id === RecordActionKind.source), 'imported local material must not expose Open source');
+
+assert.equal(isRemovableLocalDraftRecord(topicRecord), false, 'source-backed records cannot be deleted through local draft removal');
+assert(!presentRecordActions(topicRecord).some((action) => action.id === RecordActionKind.deleteLocal), 'source-backed topic must not expose local delete');
 
 const githubAvailability = actionAvailabilityForRecord(githubRecord);
 assert.equal(githubAvailability.continue.enabled, false, 'source-backed records still need a concrete schema transition before Continue is rendered');

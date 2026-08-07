@@ -80,6 +80,16 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
     ? presentWorkspaceTree(workspace, { verse, query: discoveryQuery })
     : presentWorkspaceFeed(workspace, { verse, query: discoveryQuery })), [workspace, verse, discoveryQuery]);
   const materialSummary = useMemo(() => summarizeWorkspaceMaterial(workspace), [workspace]);
+  const interactionRevision = [
+    state.activeWorkspaceId || '',
+    workspace?.id || '',
+    state.view?.workspaceVerse || '',
+    state.view?.selectedRecordId || '',
+    allRecords.length,
+    allAssets.length,
+    allWorkspaceCandidates.length,
+    sources.map((source) => `${source.id || source.label || ''}:${source.discoveryState || ''}:${Number(source.count || 0)}`).join('|')
+  ].join('::');
   return (
     <section className="tx-workspace-window tx-column-window tx-uc001-created-workspace tx-schema-workspace-surface tx-compact-column-window" aria-label="Tiinex workspace window" data-schema-id="tiinex.workspace.v1" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (event.dataTransfer) onDropFiles?.(event.dataTransfer, { sourceMode: 'workspace-drop', fromDataTransfer: true }); }}>
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">
@@ -110,9 +120,9 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
-          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} />
+          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} workspaceCandidates={workspaceCandidates} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} onOpenWorkspaceCandidate={onOpenWorkspaceCandidate} onMergeWorkspaceCandidate={onMergeWorkspaceCandidate} actionStateKey={interactionRevision} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} workspaceCandidates={allWorkspaceCandidates} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length || workspaceCandidates.length)
@@ -124,6 +134,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
                 auditById={auditById}
                 onOpenWorkspaceCandidate={onOpenWorkspaceCandidate}
                 onMergeWorkspaceCandidate={onMergeWorkspaceCandidate}
+                actionStateKey={interactionRevision}
                 onOpenRecord={onOpenRecord}
                 onFocusRecordLineage={onFocusRecordLineage}
                 onShareRecord={onShareRecord}

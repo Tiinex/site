@@ -92,7 +92,14 @@
         current = { name: heading[1].trim() };
         groups.push(current);
       } else if (current && item) {
-        current[toCamel(item[1])] = cleanListValue(item[2]);
+        const key = toCamel(item[1]);
+        const value = cleanListValue(item[2]);
+        if (!value) return;
+        if (current[key] && WORKSPACE_ENTRYPOINT_FIELD_ALIASES.includes(key)) {
+          current[key] = `${current[key]}\n${value}`;
+        } else {
+          current[key] = value;
+        }
       }
     });
     return groups;

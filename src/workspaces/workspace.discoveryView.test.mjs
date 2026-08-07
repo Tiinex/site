@@ -140,6 +140,125 @@ const workspaceRecordHiddenView = buildWorkspaceDiscoveryView({ id: 'workspace:w
 });
 assert.equal(workspaceRecordHiddenView.records.length, 0, 'source-backed .workspace.md records respect the workspace candidates display toggle');
 
+const parentWorkspaceRecord = sourceBackedRecord(`# Continuity Context
+
+- Current
+  - Current Schema: [tiinex.workspace.v1](schema.md)
+  - Summary: Parent workspace.
+
+---
+
+# Parent Workspace
+`, '.topics/parent.workspace.md', { currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
+const childWorkspaceRecord = sourceBackedRecord(`# Continuity Context
+
+- Parent
+  - Parent Schema: [tiinex.workspace.v1](schema.md)
+  - Trace: [parent.workspace.md](./parent.workspace.md)
+- Current
+  - Current Schema: [tiinex.workspace.v1](schema.md)
+  - Summary: Child workspace.
+
+---
+
+# Child Workspace
+`, '.topics/child.workspace.md', { currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
+const workspaceRecordLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record-lineage', records: [parentWorkspaceRecord, childWorkspaceRecord], assets: [], workspaceMergeCandidates: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+  query: ''
+});
+assert.deepEqual(workspaceRecordLeafView.records.map((record) => record.title), ['Child Workspace'], 'Leaves only hides parent .workspace.md records but keeps terminal workspace cards for Open/Merge');
+assert.equal(workspaceRecordLeafView.hiddenReasonsById.get(parentWorkspaceRecord.id), 'hidden-loaded-parent', 'parent workspace card is hidden by leaf membership rather than the workspace-candidates toggle');
+
+const staleRootWorkspaceRecord = sourceBackedRecord(`# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](schema.md)
+- Current
+  - Current Schema: [tiinex.workspace.v1](schema.md)
+  - Summary: Start workspace root.
+
+---
+
+# Start
+
+# Continuity Integrity
+
+- [sha](validator.md)
+  - Towards: self
+  - Value: current-start-hash
+`, '.topics/site/1/issue-root-recovered-start.workspace.md', { id: 'stale-start-workspace', currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
+const staleRootChildTopic = sourceBackedRecord(`# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](schema.md)
+- Parent
+  - Parent Schema: [tiinex.workspace.v1](schema.md)
+  - Trace: [issue-root-recovered-start.workspace.md](issue-root-recovered-start.workspace.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](schema.md)
+  - Summary: News child.
+
+---
+
+# News
+
+# Continuity Integrity
+
+- [sha](validator.md)
+  - Towards: [issue-root-recovered-start.workspace.md](issue-root-recovered-start.workspace.md)
+  - Value: old-start-hash
+`, '.topics/site/2/issue-root-recovered-news.trace.md', { id: 'news-child-topic', currentSchemaId: 'tiinex.topic.v1', schemaId: 'tiinex.topic.v1', sourceTarget: { parentArtifactPath: '.topics/site/1/issue-root-recovered-start.workspace.md' }, snapshot: { parentArtifactPath: '.topics/site/1/issue-root-recovered-start.workspace.md' } });
+const staleWorkspaceRootLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-workspace-root', records: [staleRootWorkspaceRecord, staleRootChildTopic], assets: [], workspaceMergeCandidates: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+  query: ''
+});
+assert.deepEqual(staleWorkspaceRootLeafView.records.map((record) => record.title), ['News'], 'Leaves only hides loaded workspace/root parents even when the edge is stale or integrity-mismatched');
+assert.equal(staleWorkspaceRootLeafView.hiddenReasonsById.get(staleRootWorkspaceRecord.id), 'hidden-loaded-parent', 'mismatched workspace roots stay classified as loaded parents for Discovery membership');
+
+const staleIssueParent = sourceBackedRecord(`# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](schema.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](schema.md)
+  - Created At: 2026-07-18
+  - Summary: Parent whose integrity changed.
+
+---
+
+# Klagomuren
+
+# Continuity Integrity
+
+- [sha](validator.md)
+  - Towards: self
+  - Value: current-parent-integrity
+`, '.topics/.github/tiinusen/socials/.issues/3/comment-002-5011116876-recovered-klagomuren.trace.md', { id: 'stale-issue-parent' });
+const staleIssueChild = sourceBackedRecord(`# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](schema.md)
+- Parent
+  - Parent Schema: [tiinex.topic.v1](schema.md)
+  - Trace: [comment-002-5011116876-recovered-klagomuren.trace.md](comment-002-5011116876-recovered-klagomuren.trace.md)
+- Current
+  - Current Schema: [tiinex.discovery.finding.v1](schema.md)
+  - Created At: 2026-07-18
+  - Summary: Child points at older parent integrity.
+
+---
+
+# Fler bondgårdar
+
+# Continuity Integrity
+
+- [sha](validator.md)
+  - Towards: [comment-002-5011116876-recovered-klagomuren.trace.md](comment-002-5011116876-recovered-klagomuren.trace.md)
+  - Value: stale-parent-integrity
+`, '.topics/.github/tiinusen/socials/.issues/3/comment-004-5011198457-recovered-fler-bondgardar.trace.md', { id: 'stale-issue-child' });
+const staleIssueView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-issue-parent', records: [staleIssueParent, staleIssueChild], assets: [], workspaceMergeCandidates: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+  query: ''
+});
+assert.deepEqual(staleIssueView.records.map((record) => record.id), ['stale-issue-child', 'stale-issue-parent'], 'Leaves-only should keep stale/mismatch issue parents visible while Lineage remains navigable with mismatch diagnostics');
+
 const tree = buildWorkspacePathTree({ records: view.records, assets: view.assets, workspaceCandidates: view.workspaceCandidates, rootLabel: 'Visible tree' });
 const treeJson = JSON.stringify(tree);
 assert.equal(treeJson.includes('Educational Root'), false, 'Tree read-model uses same Discovery membership and hides parent root records');

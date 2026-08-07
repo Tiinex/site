@@ -2,6 +2,7 @@ import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks, githubIssueSyntheticFolder, sourceArtifactPathFromPublicationBody } from './github.issueEmbedded.js';
 
 export const GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID = 'tiinex.github.issueSnapshot.v1';
+export const DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS = 24;
 const TARGET_PATTERN = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/(issues|pull|discussions)\/(\d+)(?:[#?].*)?$/i;
 const HOSTED_DIRECT_ISSUE_PATTERN = /^https:\/\/[^/]+\/.*?issues\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)\/issue\.(md|json)(?:[#?].*)?$/i;
 
@@ -29,6 +30,7 @@ export function parseGithubIssueSnapshotTarget(value = '') {
   if (!match) return { ok: false, input: raw, error: 'unsupported-github-issue-target' };
   const [, owner, repo, kind, number] = match;
   const normalizedKind = kind === 'pull' ? 'pull' : kind === 'discussions' ? 'discussion' : 'issue';
+  const commentId = githubIssueCommentIdFromTarget(raw);
   return {
     ok: true,
     schema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID,
@@ -38,7 +40,9 @@ export function parseGithubIssueSnapshotTarget(value = '') {
     repository: `${owner}/${repo}`,
     kind: normalizedKind,
     number: Number(number),
-    canonicalUrl: `https://github.com/${owner}/${repo}/${kind}/${number}`,
+    commentId,
+    canonicalUrl: `https://github.com/${owner}/${repo}/${kind}/${number}${commentId ? `#issuecomment-${commentId}` : ''}`,
+    issueCanonicalUrl: `https://github.com/${owner}/${repo}/${kind}/${number}`,
     apiUrl: apiUrlFor({ owner, repo, kind: normalizedKind, number })
   };
 }
@@ -125,7 +129,7 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
     if (parsed.counts.targets) warnings.push(finding('warning', 'github.issue.reader.unavailable', 'Issue snapshot targets were parsed, but no fetch implementation is available.', { surface: 'issueSnapshots', targetCount: parsed.counts.targets }));
     return { schema: 'tiinex.github.issueSnapshot.materialization.v1', records, warnings, errors, targetResults, counts: issueMaterializationCounts(parsed.counts.targets, records.length, warnings.length, errors.length, targetResults) };
   }
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS)));
   for (const target of parsed.targets) {
     await yieldToBrowserIfAvailable();
     const normalized = target.ok ? target : parseGithubIssueSnapshotTarget(target.canonicalUrl || target.html_url || target.url || '');
@@ -142,9 +146,11 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
     }
     try {
       const issue = target.issue || await fetchJson(normalized.apiUrl, fetchImpl);
-      const commentResult = maxComments && Number(issue.comments || 0) > 0
-        ? await fetchCommentsForIssue(normalized, fetchImpl, maxComments)
-        : { comments: [], warnings: [] };
+      const commentResult = normalized.commentId
+        ? await fetchSingleCommentForIssue(normalized, fetchImpl)
+        : maxComments && Number(issue.comments || 0) > 0
+          ? await fetchCommentsForIssue(normalized, fetchImpl, maxComments)
+          : { comments: [], warnings: [] };
       warnings.push(...commentResult.warnings);
       const issueRecords = createGithubIssueSnapshotRecords(Object.assign({}, issue, { target: normalized, comments: commentResult.comments, method: 'github-browser-issue-reader' }), options);
       for (const record of issueRecords) {
@@ -386,6 +392,20 @@ function markdownFence(text, lang = '') {
   return `${fence}${lang ? lang : ''}\n${body}\n${fence}`;
 }
 
+async function fetchSingleCommentForIssue(target = {}, fetchImpl) {
+  const commentId = String(target.commentId || '').trim();
+  const commentUrl = `https://api.github.com/repos/${target.owner}/${target.repo}/issues/comments/${encodeURIComponent(commentId)}`;
+  try {
+    const comment = await fetchJson(commentUrl, fetchImpl);
+    return { comments: comment && typeof comment === 'object' ? [comment] : [], warnings: [] };
+  } catch (error) {
+    return {
+      comments: [],
+      warnings: [githubIssueFetchWarning(error, 'github.issue.comment.fetch-failed', `Could not fetch issue comment ${commentId} for ${target.issueCanonicalUrl || target.canonicalUrl}; issue body still loaded without that comment.`, { url: commentUrl, targetUrl: target.canonicalUrl, commentId })]
+    };
+  }
+}
+
 async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {
   const commentsUrl = `https://api.github.com/repos/${target.owner}/${target.repo}/issues/${target.number}/comments?per_page=${encodeURIComponent(String(maxComments))}`;
   try {
@@ -394,7 +414,7 @@ async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {
   } catch (error) {
     return {
       comments: [],
-      warnings: [githubIssueFetchWarning(error, 'github.issue.comments.fetch-failed', `Could not fetch comments for ${target.canonicalUrl}; issue body still loaded without comments.`, { url: commentsUrl, targetUrl: target.canonicalUrl })]
+      warnings: [githubIssueFetchWarning(error, 'github.issue.comments.fetch-failed', `Could not fetch comments for ${target.issueCanonicalUrl || target.canonicalUrl}; issue body still loaded without comments.`, { url: commentsUrl, targetUrl: target.canonicalUrl })]
     };
   }
 }
@@ -422,6 +442,16 @@ async function fetchJson(url, fetchImpl) {
 
 export function githubIssueFetchWarning(error, code = 'github.issue.fetch-failed', message = '', extra = {}) {
   return finding('warning', code, message || 'GitHub issue reader could not fetch the requested issue material.', Object.assign({ surface: 'issueSnapshots', status: error?.status || 0, url: error?.url || '' }, extra));
+}
+
+function githubIssueCommentIdFromTarget(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    return url.hash.match(/issuecomment-(\d+)/i)?.[1] || '';
+  } catch (_) {}
+  return raw.match(/issuecomment-(\d+)/i)?.[1] || '';
 }
 
 function apiUrlFor({ owner, repo, kind, number }) {

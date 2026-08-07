@@ -3,7 +3,7 @@ import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
-import { recordLifecycleBadge } from './workspace.viewFormatting.js';
+import { recordAuthorityBadge, recordLifecycleBadge } from './workspace.viewFormatting.js';
 
 export function WorkspaceTreeState({ workspace, query = '', records, assets = [], workspaceCandidates = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   query = String(query || '').trim();
@@ -82,6 +82,7 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecord
       <span className="tx-tree-row-badges">
         <AuditStatusBadge record={item.source} item={auditItem} />
         {recordLifecycleBadge(item.source) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(item.source)}</Badge> : null}
+        <Badge title="Authority/mutability boundary">{recordAuthorityBadge(item.source)}</Badge>
         <Badge>{item.source.kind || item.kind || 'artifact'}</Badge>
       </span>
     </div>

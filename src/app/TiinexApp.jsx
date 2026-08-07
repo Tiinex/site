@@ -5,6 +5,7 @@ import { shouldPageWorkspaces, useViewportWidth } from './viewport.js';
 import { summarizeGithubAdapterResult, summarizeGithubMaterialization, normalizeRepository } from './githubMaterializationSummary.js';
 import { buildDisplayOptionCounts } from './workspaceDisplayCounts.js';
 import { hydrateUiRecord, hydrateUiWorkspace } from './recordUi.js';
+import { stateWithActiveWorkspace, stateWithWorkspaceViewPatch, stateWithWorkspaceViewUpdate, visibleWorkspaceItemsFor } from './workspaceMulticolumn.js';
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { materializeExplicitUrls } from '../adapters/static/static.adapter.js';
@@ -35,7 +36,10 @@ import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScr
 import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
 import { resolveTiinexAppConfigGithubInput } from './tiinexAppConfigSource.js';
 import { RecordActionKind } from '../actions/record.actions.js';
+import { ensureUniqueTransitionPath } from '../transitions/record.transitions.js';
 import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
+import { stateWithWorkspaceRecordOpenProgress } from './workspaceOpenProgress.js';
+
 export function TiinexApp() {
   const [state, setState] = useState(initialState);
   const [dialog, setDialog] = useState(null);
@@ -51,12 +55,14 @@ export function TiinexApp() {
   const scrollPersistTimerRef = useRef(null);
   const scrollPersistIdleRef = useRef(null);
   const statePersistenceSchedulerRef = useRef(null);
+  const appConfigDiagnosticsRef = useRef({ last: null });
   if (!statePersistenceSchedulerRef.current) statePersistenceSchedulerRef.current = createStatePersistenceScheduler(typeof window !== 'undefined' ? window : globalThis);
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
   const pagerVisible = shouldPageWorkspaces(state.workspaces.length, viewportWidth);
+  const visibleWorkspaceItems = useMemo(() => visibleWorkspaceItemsFor(state, { active, activeUi, pagerVisible, viewportWidth }), [state, active, activeUi, pagerVisible, viewportWidth]);
   useEffect(() => {
     const onRoute = () => {
       const { lifecycle, route, persistence } = runtime();
@@ -75,6 +81,13 @@ export function TiinexApp() {
     };
   }, []);
   useEffect(() => { document.title = workspaceConfig?.viewerIdentity?.browserTitle || 'Tiinex'; }, [workspaceConfig]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    window.TiinexAppConfigSourceReport = () => appConfigDiagnosticsRef.current;
+    return () => {
+      if (window.TiinexAppConfigSourceReport) delete window.TiinexAppConfigSourceReport;
+    };
+  }, []);
   useEffect(() => {
     latestStateRef.current = state;
   }, [state]);
@@ -100,11 +113,11 @@ export function TiinexApp() {
   }
   function commitViewPatch(patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithViewPatch(sourceState, patch), mode, { deferPersistence: true, persistenceReason: 'view-patch' });
+    commit(stateWithWorkspaceViewPatch(sourceState, active?.id, patch), mode, { deferPersistence: true, persistenceReason: 'view-patch' });
   }
   function commitViewUpdate(updater = null, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithViewUpdate(sourceState, updater), mode, { deferPersistence: true, persistenceReason: 'view-update' });
+    commit(stateWithWorkspaceViewUpdate(sourceState, active?.id, updater), mode, { deferPersistence: true, persistenceReason: 'view-update' });
   }
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
     return stateWithCapturedViewScroll(nextState, sourceState, viewScrollRef.current, active?.id || 'workspace');
@@ -223,21 +236,25 @@ export function TiinexApp() {
   }
   async function addTiinexAppConfig(targetUrl) {
     const resolved = await resolveTiinexAppConfigGithubInput(targetUrl, { fetchImpl: fetch, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig });
+    appConfigDiagnosticsRef.current = { last: { targetUrl, ok: Boolean(resolved?.ok), selectedConvention: resolved?.diagnostics?.selectedConvention || '', selectedPlan: resolved?.selectedPlan || '', input: resolved?.input || null, diagnostics: resolved?.diagnostics || null, message: resolved?.message || '' } };
     if (!resolved?.ok) return setNotice(resolved?.message || 'Could not read Tiinex app config source.');
-    setNotice(`Config source found: ${resolved.configUrl || resolved.targetUrl}; loading ${resolved.input.repository}${resolved.selectedPlan === 'workspace-discovery' ? ' workspace discovery' : ''}.`);
+    setNotice(`Config source found: ${resolved.configUrl || resolved.targetUrl}; ${resolved.diagnostics?.selectedConvention ? `${resolved.diagnostics.selectedConvention}; ` : ''}loading ${resolved.input.repository}${resolved.selectedPlan === 'workspace-discovery' ? ' workspace discovery' : ''}.`);
     await addGitHubSource(resolved.input);
   }
-  async function addGitHubSource(input = {}) {
-    if (githubRequestPending && input.abortPreviousGithubOperation !== true) return setNotice('GitHub source operation already in progress.');
+  async function addGitHubSource(input = {}, options = {}) {
+    const sourceState = options.state || latestStateRef.current || state;
+    const targetWorkspaceId = options.workspaceId || sourceState.activeWorkspaceId || active?.id || '';
+    const targetWorkspace = (Array.isArray(sourceState.workspaces) ? sourceState.workspaces : []).find((workspace) => workspace.id === targetWorkspaceId) || active || null;
+    if (githubRequestPending && input.abortPreviousGithubOperation !== true) { setNotice('GitHub source operation already in progress.'); return { ok: false, error: 'github.operation.pending', state: sourceState }; }
     if (githubRequestPending && input.abortPreviousGithubOperation === true) try { githubOperationRef.current?.controller?.abort?.(); } catch (_) {}
     const operationToken = Symbol('github-source-operation'); let operationController = null;
     const operationIsCurrent = () => !operationController || githubOperationRef.current?.token === operationToken;
     setGithubRequestPending(true);
-    const { repository, existingSource, sourceId, rootPath, ref, label } = githubSourceFormState(input, active?.sources || [], normalizeRepository);
+    const { repository, existingSource, sourceId, rootPath, ref, label } = githubSourceFormState(input, targetWorkspace?.sources || [], normalizeRepository);
     if (!repository) {
       setNotice('Repo URL or owner/name is required.');
       setGithubRequestPending(false);
-      return;
+      return { ok: false, error: 'github.repository.required', state: sourceState };
     }
     const registerOnly = input.operation === 'register';
     let sourceCacheCleared = 0;
@@ -248,7 +265,7 @@ export function TiinexApp() {
     const selectedTransportSurfaces = Array.isArray(input.transportRefreshSurfaces) ? input.transportRefreshSurfaces.filter(Boolean) : [];
     const requestedSurfacesForInput = selectedTransportSurfaces.length ? mergeGithubRequestedSurfaces(existingSource?.requestedSurfaces || {}, githubRequestedSurfaces(input, fileRefs), selectedTransportSurfaces) : githubRequestedSurfaces(input, fileRefs);
     const preservedSourceState = registerOnly && existingSource ? { count: Number(existingSource.count || 0), discoveryState: existingSource.discoveryState, surfaces: existingSource.surfaces, transportOutcome: existingSource.transportOutcome, transportPlan: existingSource.transportPlan, transportTiers: existingSource.transportTiers } : {};
-    const result = runtime().lifecycle?.addWorkspaceSource?.(state, active?.id, Object.assign({
+    const result = runtime().lifecycle?.addWorkspaceSource?.(sourceState, targetWorkspaceId, Object.assign({
       id: sourceId, kind: input.sourceKind || input.kind || 'github-tree', label, repository, ref, rootPath,
       repoDiscovery: Boolean(input.repoDiscovery), issueDiscovery: Boolean(input.issueDiscovery), issueUrls: input.issueUrls || '',
       workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
@@ -257,13 +274,13 @@ export function TiinexApp() {
     if (!result?.ok) {
       setNotice('Could not add GitHub source.');
       setGithubRequestPending(false);
-      return;
+      return { ok: false, error: result?.error || 'github.source.add.failed', state: sourceState };
     }
     const wantsMaterialization = !registerOnly && Boolean(fileRefs.length || input.repoDiscovery || input.issueDiscovery || input.issueUrls);
     if (wantsMaterialization && typeof AbortController !== 'undefined') { operationController = new AbortController(); githubOperationRef.current = { token: operationToken, controller: operationController }; }
     if (wantsMaterialization && input.resetSourceCache !== false && input.allowSourceCache !== true) sourceCacheCleared = clearGithubSourceTextCacheForSource({ repo: repository });
     let sourceRegistrationState = result.state;
-    const cleared = wantsMaterialization && input.resetSourceMaterial !== false ? stateWithSourceMaterialCleared(sourceRegistrationState, active?.id, result.source.id, { discoveryState: 'loading', surfaces: selectedTransportSurfaces }) : null;
+    const cleared = wantsMaterialization && input.resetSourceMaterial !== false ? stateWithSourceMaterialCleared(sourceRegistrationState, targetWorkspaceId, result.source.id, { discoveryState: 'loading', surfaces: selectedTransportSurfaces }) : null;
     if (cleared?.ok) sourceRegistrationState = cleared.state;
     const selectedOperations = [input.repoDiscovery ? 'repo files discovery' : '', fileRefs.length ? 'explicit file loading' : '', input.issueDiscovery || input.issueUrls ? 'issue snapshot loading' : ''].filter(Boolean);
     const operationLabel = selectedOperations.length ? selectedOperations.join(' + ') : 'boundary registration';
@@ -273,8 +290,8 @@ export function TiinexApp() {
     let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
     const progressCommit = { at: 0, phase: '', percent: -1, label: '' };
     const publishGithubProgress = (progress = {}) => {
-      if (!operationIsCurrent()) return;
-      const progressed = setWorkspaceDiscoveryProgress(finalState, active?.id, Object.assign({
+      if (!operationIsCurrent()) return { ok: false, error: 'github.operation.stale', state: finalState };
+      const progressed = setWorkspaceDiscoveryProgress(finalState, targetWorkspaceId, Object.assign({
         sourceId: materializationSourceId || result.source.id,
         phase: 'source-materialization',
         label: `${materializationSourceLabel} source materialization running`,
@@ -298,7 +315,7 @@ export function TiinexApp() {
       }, {});
     }
     if (wantsMaterialization) {
-      finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
+      finalState = setWorkspaceDiscoveryProgress(finalState, targetWorkspaceId, {
         sourceId: result.source.id,
         phase: input.repoDiscovery ? 'repo-discovery' : input.issueDiscovery ? 'issue-snapshots' : 'source-materialization',
         label: `${result.source.label} accepted · ${operationLabel} via ${transportLabel} transport`,
@@ -324,11 +341,11 @@ export function TiinexApp() {
           issueDiscovery: Boolean(input.issueDiscovery),
           issueUrls: input.issueUrls || '',
           workspaceMatch: input.workspaceMatch || ''
-        }, { fetchImpl: fetchForOperation, abortSignal: operationController?.signal || null, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache === true, sourceCacheCleared });
-        if (!operationIsCurrent()) return;
+        }, { fetchImpl: fetchForOperation, abortSignal: operationController?.signal || null, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache === true, sourceCacheCleared, hostedRepoMirrorBaseUrls: input.hostedRepoMirrorBaseUrls || [], hostedIssueSnapshotBaseUrls: input.hostedIssueSnapshotBaseUrls || [] });
+        if (!operationIsCurrent()) return { ok: false, error: 'github.operation.stale', state: finalState };
         const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
         if (resolvedRef && !String(result.source.ref || '').trim()) {
-          const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
+          const pinned = runtime().lifecycle?.addWorkspaceSource?.(finalState, targetWorkspaceId, Object.assign({}, result.source, {
             id: materializationSourceId,
             repository: result.source.repo || repository,
             repo: result.source.repo || repository,
@@ -350,18 +367,18 @@ export function TiinexApp() {
           }
         }
         if (out.okCount > 0) {
-          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, active?.id, materializationSourceId, out.records || [], { preserveView: Boolean(input.preserveView) });
+          const ins = runtime().lifecycle?.addWorkspaceSourceRecords?.(finalState, targetWorkspaceId, materializationSourceId, out.records || [], { preserveView: Boolean(input.preserveView) });
           if (ins?.ok) finalState = ins.state;
         }
         await yieldForVisibleSourceProgress();
-        const finalWorkspaceForSourceCount = runtime().lifecycle?.activeWorkspace?.(finalState);
+        const finalWorkspaceForSourceCount = (Array.isArray(finalState?.workspaces) ? finalState.workspaces : []).find((workspace) => workspace.id === targetWorkspaceId) || runtime().lifecycle?.activeWorkspace?.(finalState);
         const totalSourceRecordCount = Array.isArray(finalWorkspaceForSourceCount?.records)
           ? finalWorkspaceForSourceCount.records.filter((record) => record?.source?.id === materializationSourceId).length
           : 0;
         const sourceState = Number(out.okCount || 0) > 0
           ? (Number(out.failCount || 0) > 0 ? 'partial' : 'loaded')
           : (Number(out.failCount || 0) > 0 || (out.errors || []).length ? 'failed' : 'unavailable');
-        const updatedSource = runtime().lifecycle?.addWorkspaceSource?.(finalState, active?.id, Object.assign({}, result.source, {
+        const updatedSource = runtime().lifecycle?.addWorkspaceSource?.(finalState, targetWorkspaceId, Object.assign({}, result.source, {
           id: materializationSourceId,
           label: materializationSourceLabel,
           repository,
@@ -388,9 +405,9 @@ export function TiinexApp() {
         finalState = appendImportSummary(runtime().lifecycle, finalState, summarizeGithubAdapterResult(out), {});
         noticeMessage = summarizeGithubMaterialization(materializationSourceLabel, out);
       } catch (e) {
-        if (!operationIsCurrent()) return;
+        if (!operationIsCurrent()) return { ok: false, error: 'github.operation.stale', state: finalState };
         console.error(e);
-        finalState = setWorkspaceDiscoveryProgress(finalState, active?.id, {
+        finalState = setWorkspaceDiscoveryProgress(finalState, targetWorkspaceId, {
           sourceId: result.source.id,
           phase: 'failed',
           label: `${materializationSourceLabel} materialization failed`,
@@ -399,14 +416,15 @@ export function TiinexApp() {
         }).state || finalState;
         noticeMessage = `${materializationSourceLabel} source registered; source materialization failed.`;
       }
-      finalState = clearWorkspaceDiscoveryProgress(finalState, active?.id, '').state || finalState;
+      finalState = clearWorkspaceDiscoveryProgress(finalState, targetWorkspaceId, '').state || finalState;
     }
-    if (!operationIsCurrent()) return;
+    if (!operationIsCurrent()) return { ok: false, error: 'github.operation.stale', state: finalState };
     if (operationController && operationIsCurrent()) githubOperationRef.current = { token: null, controller: null };
     setDialog(null);
     setNotice(noticeMessage);
     setGithubRequestPending(false);
     commit(finalState, 'push');
+    return { ok: true, state: finalState, sourceId: materializationSourceId };
   }
   async function refreshSourceTransport(sourceId, currentTier = '', surfaceKeys = []) {
     const source = (active?.sources || []).find((item) => String(item.id || '') === String(sourceId || ''));
@@ -459,10 +477,7 @@ export function TiinexApp() {
       setNotice('Could not open workspace candidate.');
       return;
     }
-    setDialog(null);
-    setActiveRecordId('');
-    setActiveAssetId('');
-    setRecordAction(null);
+    setDialog(null); setActiveRecordId(''); setActiveAssetId(''); setRecordAction(null);
     setNotice(`Opened workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
     commit(result.state, 'push');
   }
@@ -475,45 +490,52 @@ export function TiinexApp() {
     setNotice(`Merged workspace candidate ${result.candidate?.title || result.candidate?.path || ''}.`.replace(/\s+\./, '.'));
     commit(result.state, 'push');
   }
-  function openWorkspaceRecord(record = {}) {
-    const result = openWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state, record });
+  async function openWorkspaceRecord(record = {}, originWorkspaceId = '') {
+    const currentState = latestStateRef.current || state;
+    const result = openWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state: currentState, record });
     if (!result?.ok) return setNotice(result?.message || 'Could not open workspace artifact.');
-    setDialog(null);
-    setActiveRecordId('');
-    setActiveAssetId('');
-    setRecordAction(null);
-    setNotice(`Opened workspace artifact ${result.entry?.title || result.entry?.path || ''}.`.replace(/\s+\./, '.'));
-    commit(result.state, 'push');
+    setDialog(null); setActiveRecordId(''); setActiveAssetId(''); setRecordAction(null);
+    const preparedState = stateWithWorkspaceRecordOpenProgress(result.state, result.workspace?.id, result.sourceInputs || [], result.entry);
+    const hasSourcesToLoad = Boolean((result.sourceInputs || []).length);
+    setNotice((hasSourcesToLoad ? `Opened workspace artifact ${result.entry?.title || result.entry?.path || ''}; source loading queued.` : `Opened workspace artifact ${result.entry?.title || result.entry?.path || ''}.`).replace(/\s+([;.])/, '$1'));
+    commit(preparedState, 'push');
+    let materialState = preparedState;
+    for (const sourceInput of result.sourceInputs || []) {
+      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id });
+      if (loaded?.state) materialState = loaded.state;
+    }
   }
-  function mergeWorkspaceRecord(record = {}) {
-    const result = mergeWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state, workspaceId: active?.id, record });
+  async function mergeWorkspaceRecord(record = {}, originWorkspaceId = '') {
+    const currentState = latestStateRef.current || state;
+    const result = mergeWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state: currentState, workspaceId: originWorkspaceId || currentState.activeWorkspaceId || active?.id, record });
     if (!result?.ok) return setNotice(result?.message || 'Could not merge workspace artifact.');
     setNotice(`Merged workspace artifact ${result.entry?.title || result.entry?.path || ''}.`.replace(/\s+\./, '.'));
     commit(result.state, 'push');
+    let materialState = result.state;
+    for (const sourceInput of result.sourceInputs || []) {
+      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id || active?.id });
+      if (loaded?.state) materialState = loaded.state;
+    }
   }
-  function openRecordAction(record, action) {
-    if (action?.id === RecordActionKind.workspaceOpen) return openWorkspaceRecord(record);
-    if (action?.id === RecordActionKind.workspaceMerge) return mergeWorkspaceRecord(record);
-    setActiveRecordId('');
-    setActiveAssetId('');
-    setRecordAction({ recordId: record?.id || '', action });
+  function openRecordAction(record, action, originWorkspaceId = '') {
+    if (action?.id === RecordActionKind.workspaceOpen) return openWorkspaceRecord(record, originWorkspaceId);
+    if (action?.id === RecordActionKind.workspaceMerge) return mergeWorkspaceRecord(record, originWorkspaceId);
+    if (action?.id === RecordActionKind.deleteLocal) return deleteLocalDraftRecord(record, originWorkspaceId);
+    setActiveRecordId(''); setActiveAssetId(''); setRecordAction({ recordId: record?.id || '', action });
   }
-  function dismissRecordAction() {
-    setRecordAction(null);
+  function dismissRecordAction() { setRecordAction(null); }
+
+  function deleteLocalDraftRecord(record = {}, originWorkspaceId = '') {
+    const currentState = latestStateRef.current || state, workspaceId = originWorkspaceId || currentState.activeWorkspaceId || active?.id, result = runtime().lifecycle?.removeWorkspaceRecord?.(currentState, workspaceId, record?.id || '');
+    if (!result?.ok) return setNotice(result?.message || 'Could not remove local draft.');
+    setRecordAction(null); if (activeRecordId === record?.id) setActiveRecordId(''); setNotice(`Removed local draft ${record?.title || record?.path || 'artifact'} from this browser session.`); commit(result.state, 'push');
   }
   function createTransitionRecord(parentRecord, draft) {
-    if (!draft?.title) {
-      setNotice('Transition draft is missing a title.');
-      return;
-    }
-    const result = runtime().lifecycle?.addWorkspaceRecord?.(state, active?.id, draft);
-    if (!result?.ok) {
-      setNotice('Could not create transition leaf.');
-      return;
-    }
+    if (!draft?.title) return setNotice('Transition draft is missing a title.');
+    const uniqueDraft = ensureUniqueTransitionPath(draft, active?.records || []), result = runtime().lifecycle?.addWorkspaceRecord?.(state, active?.id, uniqueDraft);
+    if (!result?.ok) return setNotice('Could not create transition leaf.');
     setRecordAction(null);
-    setActiveRecordId(result.record.id);
-    setNotice(`Created local ${draft.kind || 'transition'} leaf from ${parentRecord?.title || 'artifact'}.`);
+    setActiveRecordId(''); setNotice(`Created local ${uniqueDraft.kind || 'transition'} leaf from ${parentRecord?.title || 'artifact'}.`);
     commit(result.state, 'push');
   }
   function shareRecord(record) {
@@ -562,7 +584,14 @@ export function TiinexApp() {
     const currentIndex = Math.max(0, workspaces.findIndex((workspace) => workspace.id === sourceState.activeWorkspaceId));
     const offset = direction === 'previous' ? -1 : 1;
     const nextIndex = (currentIndex + offset + workspaces.length) % workspaces.length;
-    commit(Object.assign({}, sourceState, { activeWorkspaceId: workspaces[nextIndex]?.id || sourceState.activeWorkspaceId }), 'push');
+    commit(stateWithActiveWorkspace(sourceState, workspaces[nextIndex]?.id || sourceState.activeWorkspaceId), 'push');
+  }
+  function activateWorkspace(workspaceId, mode = 'replace') {
+    const id = String(workspaceId || '').trim();
+    const sourceState = latestStateRef.current || state;
+    if (!id || id === sourceState.activeWorkspaceId) return;
+    if (!(Array.isArray(sourceState.workspaces) ? sourceState.workspaces : []).some((workspace) => workspace.id === id)) return;
+    commit(stateWithActiveWorkspace(sourceState, id), mode, { deferPersistence: true, persistenceReason: 'workspace-activate' });
   }
   function lineageLoadReportForSelected(sourceState = state) {
     const view = sourceState?.view || {};
@@ -758,37 +787,43 @@ export function TiinexApp() {
         onMultiverse={() => setNotice('Column multiverse is active for UC-001. Other universes stay deferred.')}
       />
       {active ? (
-        <WorkspaceColumnSurface
-          workspace={activeUi || active}
-          state={state}
-          onClose={() => setDialog('close-workspace')}
-          onRenameWorkspace={() => setDialog('rename-workspace')}
-          onVerse={setVerse}
-          onQuery={setQuery}
-          onOpenDisplayOptions={() => setDialog('display-options')}
-          onOpenAddDialog={openAddToWorkspace}
-          onExportWorkspace={exportWorkspacePackage}
-          onCloseSource={closeSource}
-          onDropFiles={addLocalFiles}
-          onOpenRecord={openRecord}
-          onFocusRecordLineage={focusRecordLineage}
-          onOpenAsset={openAsset}
-          onOpenWorkspaceCandidate={openWorkspaceCandidate}
-          onMergeWorkspaceCandidate={mergeWorkspaceCandidate}
-          onShareRecord={shareRecord}
-          onRecordAction={openRecordAction}
-          onToggleTreeFolder={toggleTreeFolder}
-          onSourceTransportRefresh={refreshSourceTransport}
-          onOpenGovernance={openGovernanceBoundary}
-          onViewScroll={noteViewScroll}
-          stageScrollTop={currentStageScrollTop()}
-          expandedLineageRecordIds={state.view?.expandedLineageRecordIds || []}
-          lineageAuditReport={state.view?.lineageAuditReport || null}
-          lineageLoadReport={state.view?.lineageLoadReport || null}
-          onToggleLineageCard={toggleLineageCard}
-          onRunLineageAudit={runLineageAudit}
-          onLoadFullLineage={loadFullLineage}
-        />
+        <div className={visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} data-workspace-columns={visibleWorkspaceItems.length} style={{ '--tx-visible-workspace-columns': visibleWorkspaceItems.length }}>
+          {visibleWorkspaceItems.map(({ workspace, ui, active: itemActive, surfaceState }) => (
+            <div key={workspace.id} className={`tx-workspace-frame ${itemActive ? 'tx-workspace-frame-active' : 'tx-workspace-frame-inactive'}`} onMouseDownCapture={() => { if (!itemActive) activateWorkspace(workspace.id); }}>
+              <WorkspaceColumnSurface
+                workspace={ui || workspace}
+                state={surfaceState || state}
+                onClose={itemActive ? () => setDialog('close-workspace') : undefined}
+                onRenameWorkspace={itemActive ? () => setDialog('rename-workspace') : undefined}
+                onVerse={itemActive ? setVerse : undefined}
+                onQuery={itemActive ? setQuery : undefined}
+                onOpenDisplayOptions={itemActive ? () => setDialog('display-options') : undefined}
+                onOpenAddDialog={itemActive ? openAddToWorkspace : undefined}
+                onExportWorkspace={itemActive ? exportWorkspacePackage : undefined} /* onExportWorkspace={exportWorkspacePackage} */
+                onCloseSource={itemActive ? closeSource : undefined}
+                onDropFiles={itemActive ? addLocalFiles : undefined}
+                onOpenRecord={itemActive ? openRecord : undefined}
+                onFocusRecordLineage={itemActive ? focusRecordLineage : undefined}
+                onOpenAsset={itemActive ? openAsset : undefined}
+                onOpenWorkspaceCandidate={itemActive ? openWorkspaceCandidate : undefined}
+                onMergeWorkspaceCandidate={itemActive ? mergeWorkspaceCandidate : undefined}
+                onShareRecord={itemActive ? shareRecord : undefined}
+                onRecordAction={(record, action) => openRecordAction(record, action, workspace.id)}
+                onToggleTreeFolder={itemActive ? toggleTreeFolder : undefined}
+                onSourceTransportRefresh={itemActive ? refreshSourceTransport : undefined}
+                onOpenGovernance={itemActive ? openGovernanceBoundary : undefined}
+                onViewScroll={itemActive ? noteViewScroll : undefined}
+                stageScrollTop={itemActive ? currentStageScrollTop() : 0}
+                expandedLineageRecordIds={itemActive ? ((surfaceState || state).view?.expandedLineageRecordIds || []) : []}
+                lineageAuditReport={itemActive ? ((surfaceState || state).view?.lineageAuditReport || null) : null}
+                lineageLoadReport={itemActive ? ((surfaceState || state).view?.lineageLoadReport || null) : null}
+                onToggleLineageCard={itemActive ? toggleLineageCard : undefined}
+                onRunLineageAudit={itemActive ? runLineageAudit : undefined}
+                onLoadFullLineage={itemActive ? loadFullLineage : undefined}
+              />
+            </div>
+          ))}
+        </div>
       ) : (
         <EmptyStage workspaceConfig={workspaceConfig} />
       )}
@@ -799,7 +834,7 @@ export function TiinexApp() {
       {dialog === 'close-workspace' && active ? <CloseWorkspaceDialog workspace={activeUi || active} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(active.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
-      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
+      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={active?.records || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
       {dialog === 'display-options' && active ? <DisplayOptionsDialog options={state.view?.displayOptions} counts={buildDisplayOptionCounts(activeUi || active)} scope={state.view?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
       {dialog === 'add-to-workspace' && active ? (
         <AddToWorkspaceDialog

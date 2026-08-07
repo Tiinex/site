@@ -1,6 +1,6 @@
 import { authorizeSourceTransport } from '../../sources/transport.policy.js';
 import { buildGithubTransportPlan, normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
-import { discoverGithubIssueSnapshotTargets, materializeGithubIssueSnapshotFixtures, materializeGithubIssueSnapshots, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS, discoverGithubIssueSnapshotTargets, materializeGithubIssueSnapshotFixtures, materializeGithubIssueSnapshots, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { discoverGithubIssueSnapshotTargetsViaHostedMirror, materializeGithubIssueSnapshotsViaHostedMirror } from './github.issueMirror.js';
 import { directIssueDiscoveryUnavailable, issueApiFetchForTier, issueDirectFetchForTier, issueMirrorFetchForTier, materializeDirectIssueTargets } from './github.issueTransport.js';
 
@@ -52,7 +52,7 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   Object.assign(surface, { requestedCount: parsed.counts.targets, targets: parsed.counts.targets });
   if (parsed.errors.length) errors.push(...parsed.errors.map((entry) => Object.assign({ surface: 'issueSnapshots', ref: entry.ref }, entry)));
 
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS)));
   const materializationAuth = policyInput && parsed.counts.targets && !surface.skipped
     ? authorizeSourceTransport({ kind: 'github.issue-snapshot-load', sourceId, adapterId, requestedRequests: Number(parsed.counts.targets || 0) * (maxComments > 0 ? 2 : 1) }, policyInput)
     : null;

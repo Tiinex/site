@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { inferRecordMaterialRole, MaterialRole, isSupportingRecord, isWorkLeafRecord } from './workspace.materialRole.js';
+import { inferRecordMaterialRole, MaterialRole, isSupportingRecord, isWorkLeafRecord, sourceBoundaryClass } from './workspace.materialRole.js';
 
 assert.equal(inferRecordMaterialRole({
   path: '.topics/educational/memes/doom/001.trace.md',
@@ -125,5 +125,12 @@ assert.equal(inferRecordMaterialRole({
   markdown: '# Plain note\n\nSupporting markdown.'
 }), MaterialRole.supporting);
 
+
+
+assert.equal(sourceBoundaryClass({
+  path: '.topics/imported.trace.md',
+  sourceMode: 'package-import',
+  source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false }
+}), 'local', 'browser-local package imports must not be treated as source-backed merely because the import adapter has an id');
 
 console.log('✓ workspace.materialRole tests passed');

@@ -1,4 +1,4 @@
-import { extractConfigLinks, extractEmbeddedWorkspaceMarkdowns, extractRuntimeWorkspaceDeclarations, extractScriptUrls, isLikelyConfigUrl, looksLikeWorkspaceConfig, normalizeConfigTargetUrl, normalizeNewlines, normalizeWorkspaceBootstrapCandidate, parseGithubIssueSpec, sameOriginOrExplicit, scriptFileName, toFetchableWorkspaceUrl, tryFetchText, workspaceUrlFromPointerMarkdown } from './tiinexHostedWorkspaceConventions.js';
+import { extractConfigLinks, extractEmbeddedWorkspaceMarkdowns, extractHostedViewerSourceDeclarations, extractRuntimeWorkspaceDeclarations, extractScriptUrls, isLikelyConfigUrl, looksLikeWorkspaceConfig, normalizeConfigTargetUrl, normalizeNewlines, normalizeWorkspaceBootstrapCandidate, parseGithubIssueSpec, sameOriginOrExplicit, scriptFileName, sourceDeclarationFromPublicBuildIdentity, toFetchableWorkspaceUrl, tryFetchText, workspaceUrlFromPointerMarkdown } from './tiinexHostedWorkspaceConventions.js';
 
 const DEFAULT_CONFIG_PATHS = Object.freeze([
   '/.well-known/tiinex/workspace.md',
@@ -25,6 +25,16 @@ export function tiinexAppConfigUrlCandidates(targetUrl = '', options = {}) {
   return candidates;
 }
 
+async function firstReadableWorkspaceConfig(candidates = [], context = {}) {
+  const { fetchImpl, target, parseWorkspaceConfig, diagnostics, selectedConvention } = context;
+  for (const href of candidates || []) {
+    const fetched = await tryFetchText(fetchImpl, href, 'text/markdown,text/plain,application/json,*/*');
+    if (!fetched.ok || !looksLikeWorkspaceConfig(fetched.text)) continue;
+    return successFromMarkdown({ markdown: fetched.text, configUrl: href, target, parseWorkspaceConfig, diagnostics: Object.assign({}, diagnostics, { selectedConvention }) });
+  }
+  return null;
+}
+
 export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const parseWorkspaceConfig = options.parseWorkspaceConfig || ((markdown) => ({ workspaceEntrypoints: [] }));
@@ -36,8 +46,9 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
   const fallbackCandidates = [];
   const runtimeCandidates = [];
   const embeddedWorkspaces = [];
+  const hostedViewerSources = [];
   const scriptUrls = [];
-  const diagnostics = { html: 'unavailable', candidates: [], explicitCandidates, fallbackCandidates, runtimeCandidates: [], scripts: [] };
+  const diagnostics = { html: 'unavailable', candidates: [], explicitCandidates, fallbackCandidates, runtimeCandidates: [], hostedViewerSources: [], scripts: [], publicBuildIdentity: null };
 
   const addCandidate = (value, source = 'explicit') => {
     try {
@@ -60,6 +71,14 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
     if (!looksLikeWorkspaceConfig(markdown)) return;
     embeddedWorkspaces.push({ markdown, sourceUrl: sourceUrl || target.href });
   };
+  const addHostedViewerSource = (source = {}, sourceUrl = '') => {
+    if (!source?.repository) return;
+    const key = `${source.repository}\n${source.ref || ''}\n${source.rootPath || ''}`;
+    if (hostedViewerSources.some((item) => `${item.repository}\n${item.ref || ''}\n${item.rootPath || ''}` === key)) return;
+    const item = Object.assign({ sourceUrl: sourceUrl || target.href }, source);
+    hostedViewerSources.push(item);
+    diagnostics.hostedViewerSources.push({ repository: item.repository, ref: item.ref || '', rootPath: item.rootPath || '', sourceUrl: item.sourceUrl || '', convention: item.hostedConvention || '' });
+  };
 
   if (isLikelyConfigUrl(target)) addCandidate(target.href, 'target-url');
 
@@ -71,6 +90,7 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
       if (!scriptUrls.includes(href) && sameOriginOrExplicit(href, target.href)) scriptUrls.push(href);
     });
     extractRuntimeWorkspaceDeclarations(html.text, target.href).forEach((candidate) => addRuntimeCandidate(candidate, 'html-runtime'));
+    extractHostedViewerSourceDeclarations(html.text, target.href).forEach((source) => addHostedViewerSource(source, target.href));
     extractEmbeddedWorkspaceMarkdowns(html.text, target.href).forEach((item) => addEmbeddedWorkspace(item.markdown, item.sourceUrl || target.href));
   } else {
     diagnostics.html = html.reason || 'unavailable';
@@ -82,17 +102,45 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
     if (!script.ok) continue;
     extractConfigLinks(script.text, href).forEach((link) => addCandidate(link, 'script-link'));
     extractRuntimeWorkspaceDeclarations(script.text, href).forEach((candidate) => addRuntimeCandidate(candidate, `script:${scriptFileName(href)}`));
+    extractHostedViewerSourceDeclarations(script.text, href).forEach((source) => addHostedViewerSource(source, href));
     extractEmbeddedWorkspaceMarkdowns(script.text, href).forEach((item) => addEmbeddedWorkspace(item.markdown, item.sourceUrl || href));
   }
 
-  for (const href of explicitCandidates) {
-    const fetched = await tryFetchText(fetchImpl, href, 'text/markdown,text/plain,application/json,*/*');
-    if (!fetched.ok || !looksLikeWorkspaceConfig(fetched.text)) continue;
-    return successFromMarkdown({ markdown: fetched.text, configUrl: href, target, parseWorkspaceConfig, diagnostics: Object.assign({}, diagnostics, { selectedConvention: 'explicit-config' }) });
+
+  const buildIdentityUrl = publicBuildIdentityUrlFor(target);
+  if (buildIdentityUrl) {
+    const buildIdentity = await tryFetchText(fetchImpl, buildIdentityUrl, 'application/json,text/plain,*/*');
+    diagnostics.publicBuildIdentity = { url: buildIdentityUrl, ok: buildIdentity.ok, reason: buildIdentity.ok ? 'read' : buildIdentity.reason || 'unavailable' };
+    if (buildIdentity.ok) {
+      const pointer = workspacePointerCandidateFromPublicBuildIdentity(buildIdentity.text, buildIdentityUrl);
+      if (pointer) addRuntimeCandidate(pointer, 'public-build-identity');
+      const source = sourceDeclarationFromPublicBuildIdentity(buildIdentity.text, buildIdentityUrl);
+      if (source?.repository) addHostedViewerSource(source, buildIdentityUrl);
+    }
+  }
+
+  const explicitTargetConfig = isLikelyConfigUrl(target);
+  if (explicitTargetConfig) {
+    const resolved = await firstReadableWorkspaceConfig(explicitCandidates, { fetchImpl, target, parseWorkspaceConfig, diagnostics, selectedConvention: 'explicit-config' });
+    if (resolved?.ok) return resolved;
+  }
+
+  if (!explicitTargetConfig) {
+    const resolved = await firstReadableWorkspaceConfig(strongHtmlConfigCandidates(explicitCandidates, target), { fetchImpl, target, parseWorkspaceConfig, diagnostics, selectedConvention: 'html-declared-config' });
+    if (resolved?.ok) return resolved;
   }
 
   for (const runtimeCandidate of runtimeCandidates) {
     const resolved = await resolveWorkspaceBootstrapCandidate(runtimeCandidate, { fetchImpl, target, parseWorkspaceConfig, diagnostics });
+    if (resolved?.ok) return resolved;
+  }
+
+  for (const hostedSource of hostedViewerSources) {
+    return successFromHostedViewerSource({ source: hostedSource, configUrl: `${hostedSource.sourceUrl || target.href}#hosted-viewer-source`, target, diagnostics: Object.assign({}, diagnostics, { selectedConvention: hostedSource.hostedConvention || 'hosted-viewer-source' }) });
+  }
+
+  if (!explicitTargetConfig) {
+    const resolved = await firstReadableWorkspaceConfig(weakHtmlConfigCandidates(explicitCandidates, target), { fetchImpl, target, parseWorkspaceConfig, diagnostics, selectedConvention: 'html-packaged-config' });
     if (resolved?.ok) return resolved;
   }
 
@@ -113,8 +161,9 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
 
 export function tiinexAppConfigSourceToGithubInput(result = {}) {
   const config = result.config || {};
-  const discovery = firstWorkspaceDiscovery(config);
   const entrypoint = result.entrypoint || firstWorkspaceEntrypoint(config);
+  const preferEntrypoint = shouldPreferWorkspaceEntrypoint(result);
+  const discovery = preferEntrypoint ? null : firstWorkspaceDiscovery(config);
   const source = discovery || entrypoint;
   const sourceKind = String(source?.sourceKind || source?.kind || '').trim() || 'github-tree';
   const repository = String(source?.repository || source?.repo || githubRepositoryFromUrl(source?.href || source?.url || '') || '').trim();
@@ -139,7 +188,9 @@ export function tiinexAppConfigSourceToGithubInput(result = {}) {
       workspaceMatch: source.match || source.pattern || '',
       openBehavior: source.openBehavior || '',
       preserveView: discoveryMode,
-      preferredDisplay: discoveryMode ? 'workspace-candidates' : ''
+      preferredDisplay: discoveryMode ? 'workspace-candidates' : '',
+      hostedRepoMirrorBaseUrls: source.hostedRepoMirrorBaseUrls || source.repositoryMirrorBaseUrls || [],
+      hostedIssueSnapshotBaseUrls: source.hostedIssueSnapshotBaseUrls || source.mirrorIssueSnapshotBaseUrls || []
     }
   };
 }
@@ -152,10 +203,85 @@ export async function resolveTiinexAppConfigGithubInput(targetUrl = '', options 
   return Object.assign({}, mapped, { configUrl: result.configUrl, targetUrl: result.targetUrl, diagnostics: result.diagnostics });
 }
 
+
+function shouldPreferWorkspaceEntrypoint(result = {}) {
+  const convention = String(result?.diagnostics?.selectedConvention || '').toLowerCase();
+  return /github-issue|public-build-issue-sync|workspace-state/.test(convention);
+}
+
+function strongHtmlConfigCandidates(candidates = [], target) {
+  return (candidates || []).filter((href) => !isWeakPackagedWorkspaceConfigUrl(href, target));
+}
+
+function weakHtmlConfigCandidates(candidates = [], target) {
+  return (candidates || []).filter((href) => isWeakPackagedWorkspaceConfigUrl(href, target));
+}
+
+function isWeakPackagedWorkspaceConfigUrl(href = '', target) {
+  try {
+    const url = new URL(href, target?.href || undefined);
+    const path = url.pathname.replace(/\/+$/u, '');
+    return /(?:^|\/)\.topics\/\.workspaces\/viewer\.workspace\.md$/iu.test(path)
+      || /(?:^|\/)viewer\.workspace\.md$/iu.test(path);
+  } catch (_) {
+    return /(?:^|\/)\.topics\/\.workspaces\/viewer\.workspace\.md(?:[?#].*)?$/iu.test(String(href || ''))
+      || /(?:^|\/)viewer\.workspace\.md(?:[?#].*)?$/iu.test(String(href || ''));
+  }
+}
+
+function workspacePointerCandidateFromPublicBuildIdentity(text = '', baseUrl = '') {
+  let parsed = null;
+  try { parsed = JSON.parse(String(text || '').trim()); } catch (_) { return null; }
+  const repository = githubRepositoryFromUrl(parsed.repository || parsed.sourceRepository || parsed.repo || parsed.buildSource || '');
+  const reason = [parsed.reason, parsed.releaseCacheKey, parsed.previousReleaseCacheKey, parsed.type].map((value) => String(value || '').toLowerCase()).join(' ');
+  if (!repository || !/(?:^|[^a-z0-9])issue[-_]?sync(?:[^a-z0-9]|$)/iu.test(reason)) return null;
+  return { kind: 'github-issue-pointer', role: 'public-build-issue-sync-root', label: parsed.browserTitle || parsed.title || repository, url: `https://github.com/${repository}/issues/1`, source: baseUrl || 'tiinex.build.json' };
+}
+
+function publicBuildIdentityUrlFor(target) {
+  try {
+    if (!target || isLikelyConfigUrl(target)) return '';
+    if (!/^https?:$/i.test(target.protocol || '')) return '';
+    return new URL('/tiinex.build.json', target.href).href;
+  } catch (_) { return ''; }
+}
+
 function successFromMarkdown({ markdown, configUrl, target, parseWorkspaceConfig, diagnostics }) {
   const config = parseWorkspaceConfig(markdown);
   const entrypoint = firstWorkspaceEntrypoint(config);
   return { ok: true, targetUrl: target.href, configUrl, markdown, config, entrypoint, diagnostics };
+}
+
+function successFromHostedViewerSource({ source = {}, configUrl, target, diagnostics }) {
+  const entrypoint = {
+    name: source.label || source.repository || 'Hosted Tiinex source',
+    label: source.label || source.repository || 'Hosted Tiinex source',
+    sourceKind: source.sourceKind || 'github-tree',
+    repository: source.repository || source.repo || '',
+    ref: source.ref || '',
+    rootPath: source.rootPath || '.topics',
+    repoFilesDiscovery: source.repoFilesDiscovery || 'on',
+    issueDiscovery: source.issueDiscovery || 'off',
+    hostedRepoMirrorBaseUrls: source.hostedRepoMirrorBaseUrls || [],
+    hostedIssueSnapshotBaseUrls: source.hostedIssueSnapshotBaseUrls || []
+  };
+  return {
+    ok: true,
+    targetUrl: target.href,
+    configUrl,
+    markdown: '',
+    config: {
+      source: { kind: 'hosted-viewer-source', path: configUrl },
+      viewerIdentity: { browserTitle: source.label || source.repository || 'Hosted Tiinex source' },
+      workspaceDiscovery: [],
+      workspaceEntrypoints: [entrypoint],
+      repositoryMirrors: [],
+      repositoryTransports: [],
+      help: []
+    },
+    entrypoint,
+    diagnostics
+  };
 }
 
 async function resolveWorkspaceBootstrapCandidate(candidate = {}, options = {}) {

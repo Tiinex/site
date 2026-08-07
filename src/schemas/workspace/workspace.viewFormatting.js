@@ -1,4 +1,5 @@
 import { RecordActionKind } from '../../actions/record.actions.js';
+import { authorityBadgeLabel, mutabilityBadgeLabel } from '../../workspaces/workspace.authority.js';
 import { recordLogicalPath } from '../../workspaces/workspace.recordPaths.js';
 
 export function compactPath(path = '') {
@@ -33,8 +34,16 @@ export function recordSourceBadge(record = {}) {
   const source = record.source || {};
   if (source.label) return source.label;
   if (source.repo) return source.repo;
-  if (source.adapterId && source.adapterId !== 'local') return source.adapterId;
+  if (source.adapterId && source.adapterId !== 'local' && source.sourceBacked !== false) return source.adapterId;
   return 'Local';
+}
+
+export function recordAuthorityBadge(record = {}) {
+  return authorityBadgeLabel(record);
+}
+
+export function recordMutabilityBadge(record = {}) {
+  return mutabilityBadgeLabel(record);
 }
 
 export function recordLifecycleBadge(record = {}) {
@@ -48,9 +57,11 @@ export function recordLifecycleBadge(record = {}) {
 
 export function actionClassName(action = {}) {
   const id = action.id;
+  const isTransition = String(id || '').startsWith('record.transition:');
   const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge;
-  const side = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge ? 'tx-action-right' : 'tx-action-left';
-  return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
+  const danger = id === RecordActionKind.deleteLocal;
+  const side = isTransition || id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge ? 'tx-action-right' : 'tx-action-left';
+  return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', isTransition ? 'tx-transition-action' : '', danger ? 'tx-danger tx-delete-local-action' : '', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
 }
 
 export function actionLabel(action = {}) {
@@ -59,6 +70,7 @@ export function actionLabel(action = {}) {
   if (action.id === RecordActionKind.lineage) return 'Anchor';
   if (action.id === RecordActionKind.workspaceOpen) return 'Open';
   if (action.id === RecordActionKind.workspaceMerge) return 'Merge';
+  if (action.id === RecordActionKind.deleteLocal) return action.label || 'Delete local draft';
   return action.label;
 }
 

@@ -10,8 +10,8 @@ export const MaterialRole = Object.freeze({
 export function sourceBoundaryClass(record = {}) {
   const source = record.source || {};
   const mode = String(record.sourceMode || '').toLowerCase();
+  if (source.sourceBacked === false || source.adapterId === 'local' || source.kind === 'local-session' || source.kind === 'local' || source.sourceKind === 'local.session' || source.sourceKind === 'export.package.import' || mode.startsWith('local') || mode.startsWith('archive-local') || mode.startsWith('package-import')) return 'local';
   if (source.adapterId === 'github' || source.kind === 'github-tree' || source.sourceKind === 'github.repo' || mode === 'source-backed') return 'source-backed';
-  if (source.adapterId === 'local' || source.kind === 'local-session' || mode.startsWith('local')) return 'local';
   return 'unknown';
 }
 

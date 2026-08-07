@@ -1,4 +1,5 @@
 import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
+import { deleteActionLabelForRecord, isRemovableLocalRecord } from '../workspaces/workspace.authority.js';
 
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
@@ -12,7 +13,8 @@ export const RecordActionKind = Object.freeze({
   source: 'record.source',
   share: 'record.share',
   workspaceOpen: 'record.workspace.open',
-  workspaceMerge: 'record.workspace.merge'
+  workspaceMerge: 'record.workspace.merge',
+  deleteLocal: 'record.local.delete'
 });
 
 export function presentRecordActions(record = {}, options = {}) {
@@ -72,6 +74,17 @@ export function presentRecordActions(record = {}, options = {}) {
       capabilityStatus: 'implemented'
     });
   }
+  if (isRemovableLocalDraftRecord(record)) {
+    actions.push({
+      id: RecordActionKind.deleteLocal,
+      label: deleteActionLabelForRecord(record),
+      icon: 'delete',
+      enabled: true,
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented',
+      capabilityReason: 'Only browser-local draft/session material is removed; source material is not mutated.'
+    });
+  }
   if (isWorkspaceRecord(record)) {
     actions.push(
       {
@@ -128,6 +141,10 @@ function actionAvailability(capability = {}, { fallbackUsed = false, action = ''
     status,
     reason: fallbackUsed ? 'root fallback does not expose schema-specific create transitions' : (capability?.reason || 'schema action unavailable')
   });
+}
+
+export function isRemovableLocalDraftRecord(record = {}) {
+  return Boolean(record?.id && isRemovableLocalRecord(record));
 }
 
 export function isWorkspaceRecord(record = {}) {
@@ -209,11 +226,13 @@ function githubRepoPathFromUrl(value = '') {
   return '';
 }
 function isSyntheticIssuePath(value = '') {
-  return String(value || '').replace(/^\/+/, '').startsWith('.topics/.issues/');
+  const clean = String(value || '').replace(/^\/+/, '');
+  return clean.startsWith('.topics/.github issue sidecars/') || /^\.topics\/\.github\/[^/]+\/[^/]+\/(?:\.issues|\.discussions|\.pulls)\//i.test(clean);
 }
 
 export function actionIsRenderable(action = {}) {
-  return Boolean(action && action.enabled !== false && (action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.workspaceOpen || action.id === RecordActionKind.workspaceMerge || action.href));
+  const id = String(action?.id || '');
+  return Boolean(action && action.enabled !== false && (id.startsWith('record.transition:') || action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.workspaceOpen || action.id === RecordActionKind.workspaceMerge || action.id === RecordActionKind.deleteLocal || action.href));
 }
 
 export function createRecordActionResult(record = {}, actionId = '') {

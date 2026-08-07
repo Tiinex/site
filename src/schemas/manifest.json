@@ -47,6 +47,16 @@
       "sourceBlobSha": "c36472b0d20ad97d01cc1ca78a50fc69ce35fdae"
     },
     {
+      "schemaId": "tiinex.task.v1",
+      "kind": "concrete",
+      "role": "core-task-artifact",
+      "path": "core/task/tiinex.task.v1.schema.json",
+      "checksum": "f10a2acac5859d308eb3afabc74da364984bdfcdd9543a6fd1921fdcb24b96f9",
+      "sourceBlobSha": "site-local-task-schema",
+      "originId": "viewer-local",
+      "originTrustRole": "viewer-extension"
+    },
+    {
       "schemaId": "tiinex.presentation.surface.v1",
       "kind": "concrete",
       "role": "presentation-surface-artifact",

@@ -178,10 +178,23 @@ function looksLikeStandaloneTiinexArtifact(markdown = '') {
 export function publicationParentBindingFromBody(body = '') {
   const text = normalizeNewlines(body || '').trim();
   const beforeSource = text.split(/^##\s+Source Markdown(?:\s+Excerpt|\s+Payload)?\s*$/im)[0] || '';
+  const parentPublicationItemUrl = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Publication\s+Item\s+URL:\s*(.*)$/im)?.[1] || '').trim();
+  const parentGitHubComment = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+GitHub\s+Comment:\s*(.*)$/im)?.[1] || '').trim();
+  const transitionSourceArtifact = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Source\s+Artifact:\s*(.*)$/im)?.[1] || '').trim();
+  const operation = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Publication\s+Operation:\s*(.*)$/im)?.[1] || '').trim().toLowerCase();
+  const publicationIntent = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Publication\s+Intent:\s*(.*)$/im)?.[1] || '').trim().toLowerCase();
+  const targetKind = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Publication\s+Target\s+Kind:\s*(.*)$/im)?.[1] || '').trim().toLowerCase();
+  const boundaryTarget = stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Target:\s*(.*)$/im)?.[1] || '').trim();
+  const targetIsParentHint = Boolean(boundaryTarget && (
+    operation === 'create'
+    || publicationIntent.includes('create-continuation')
+    || publicationIntent.includes('continuation-comment')
+    || (targetKind === 'github.issue.comment' && !operation.includes('update'))
+  ));
   return {
     artifactPath: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Artifact\s+Path:\s*(.*)$/im)?.[1] || '').trim(),
-    rawUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Raw\s+URL:\s*(.*)$/im)?.[1] || '').trim(),
-    sourceUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Source\s+URL:\s*(.*)$/im)?.[1] || '').trim()
+    rawUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Raw\s+URL:\s*(.*)$/im)?.[1] || '').trim() || parentPublicationItemUrl || parentGitHubComment || (targetIsParentHint ? boundaryTarget : ''),
+    sourceUrl: stripMarkdownInline(beforeSource.match(/(?:^|\n)-\s+Tiinex\s+Parent\s+Source\s+URL:\s*(.*)$/im)?.[1] || '').trim() || parentPublicationItemUrl || parentGitHubComment || transitionSourceArtifact || (targetIsParentHint ? boundaryTarget : '')
   };
 }
 
@@ -214,9 +227,10 @@ function githubRecoveredEmbeddedArtifactPath(target = {}, item = {}, ordinal = 0
 }
 
 export function githubIssueSyntheticFolder(target = {}) {
-  const repoSlug = `${slugPart(target.owner || 'owner')}-${slugPart(target.repo || 'repo')}`;
+  const owner = slugPart(target.owner || 'owner');
+  const repo = slugPart(target.repo || 'repo');
   const number = String(target.number || 'target').replace(/[^A-Za-z0-9_.-]+/g, '-') || 'target';
-  return `.topics/.issues/github/${repoSlug}/${number}`;
+  return `.topics/.github/${owner}/${repo}/.issues/${number}`;
 }
 
 function embeddedArtifactTitle(markdown = '') {

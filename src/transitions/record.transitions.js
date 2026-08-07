@@ -1,4 +1,5 @@
 import { validateTransitionDraft } from './transition.validate.js';
+import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { buildArtifactCreationContract, createArtifactDraftMarkdown, validateArtifactCreationResult } from '../schemas/creation.contracts.js';
 
 export const RECORD_TRANSITION_CONTRACT_ID = 'tiinex.record.transitions.v1';
@@ -8,7 +9,7 @@ export const ROOT_SCHEMA_ID = 'tiinex.root.v1';
 export function listContinuationTargets(schemaRegistry = {}) {
   const modules = Array.isArray(schemaRegistry.modules) ? schemaRegistry.modules : [];
   return modules
-    .filter((module) => module && module.kind === 'concrete' && module.role === 'core-artifact' && module.id === 'tiinex.topic.v1')
+    .filter((module) => module && module.kind === 'concrete' && module.role === 'core-artifact' && module.id === 'tiinex.task.v1')
     .map((module) => ({
       id: module.id,
       label: module.label || labelFromSchemaId(module.id),
@@ -22,17 +23,21 @@ export function listContinuationTargets(schemaRegistry = {}) {
 }
 
 export function createContinuationDraft(parentRecord = {}, target = {}, input = {}, options = {}) {
-  const targetId = String(target.id || input.targetSchemaId || 'tiinex.topic.v1').trim();
+  const targetId = String(target.id || input.targetSchemaId || 'tiinex.task.v1').trim();
   const targetLabel = String(target.label || labelFromSchemaId(targetId)).trim();
   const parentTitle = String(parentRecord.title || 'artifact').trim();
   const title = normalizeTitle(input.title || `Continue · ${parentTitle}`, parentTitle);
   const summary = normalizeSummary(input.summary || `Continuation leaf drafted from ${parentTitle}.`);
-  const path = `continuations/${slugify(parentTitle)}--${slugify(targetLabel)}.md`;
+  const pathTitle = input.title ? title : parentTitle;
+  const allocation = allocateContinuationPath({ parentRecord, targetId, targetLabel, title: pathTitle }, options);
+  const path = allocation.path;
   const createdAt = nowIso(options);
   const creationContract = buildArtifactCreationContract({ schemaId: targetId, transitionType: 'continue-from-record' });
   const markdown = createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract });
+  const envelopeMetadata = draftEnvelopeMetadata(markdown, targetId);
   const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
+    schemaId: targetId,
     title,
     summary,
     kind: targetId,
@@ -43,21 +48,39 @@ export function createContinuationDraft(parentRecord = {}, target = {}, input = 
     hasContinuityContext: true,
     hasIntegrity: true,
     creationContract,
+    ...envelopeMetadata,
     transition: {
       schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
       contract: RECORD_TRANSITION_CONTRACT_ID,
       type: 'continue-from-record',
+      intent: String(input.intent || target.intent || 'continue'),
+      definitionId: String(input.transitionDefinitionId || target.transitionDefinitionId || target.contract || ''),
       parentRecordId: parentRecord.id || '',
       parentPath: parentRecord.path || '',
       parentBoundary: boundaryForRecord(parentRecord),
       targetSchemaId: targetId,
       createdAt,
-      creationContractId: creationContract.id
+      creationContractId: creationContract.id,
+      pathPolicy: allocation.policy
     }
   };
   draft.creationValidation = validateArtifactCreationResult(draft, parentRecord, { contract: creationContract });
   draft.validation = validateTransitionDraft(draft, parentRecord);
   return draft;
+}
+
+
+export function ensureUniqueTransitionPath(draft = {}, existingRecords = []) {
+  const currentPath = String(draft.path || '').trim();
+  if (!currentPath) return Object.assign({}, draft);
+  const occupied = existingTransitionPaths({ existingRecords });
+  let nextPath = currentPath;
+  const policy = draft.transition?.pathPolicy || null;
+  if (occupied.has(canonicalLocalPath(currentPath)) && policy?.kind === 'same-parent-directory') nextPath = pathFromPolicy(policy, occupied);
+  else nextPath = uniqueTransitionPath(currentPath, occupied);
+  if (nextPath === currentPath) return Object.assign({}, draft);
+  const nextTransition = draft.transition ? Object.assign({}, draft.transition) : draft.transition;
+  return Object.assign({}, draft, { path: nextPath, id: '', transition: nextTransition });
 }
 
 export function createReferenceDraft(parentRecord = {}, input = {}, options = {}) {
@@ -76,8 +99,10 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
     why: 'Created as a browser-local reference draft from an existing Tiinex record.',
     bodyMarkdown: createEvidenceReferenceBody({ parentRecord, title, summary })
   });
+  const envelopeMetadata = draftEnvelopeMetadata(markdown, 'tiinex.evidence.v1');
   const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
+    schemaId: 'tiinex.evidence.v1',
     title,
     summary,
     kind: 'tiinex.evidence.v1',
@@ -88,6 +113,7 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
     hasContinuityContext: true,
     hasIntegrity: true,
     creationContract,
+    ...envelopeMetadata,
     transition: {
       schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
       contract: RECORD_TRANSITION_CONTRACT_ID,
@@ -105,6 +131,125 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
   return draft;
 }
 
+
+
+function allocateContinuationPath({ parentRecord = {}, targetId = '', targetLabel = '', title = '' } = {}, options = {}) {
+  const occupied = existingTransitionPaths(options);
+  const explicitPath = canonicalLocalPath(options.path || options.draftPath || '');
+  if (explicitPath) return { path: uniqueTransitionPath(explicitPath, occupied), policy: pathPolicyForExplicit(explicitPath) };
+  const parentPath = canonicalLocalPath(parentRecord.path || parentRecord.sourcePath || parentRecord.sourceTarget?.sourceArtifactPath || '');
+  const parentDir = parentDirectory(parentPath) || '.topics';
+  const parentPrefix = lineagePrefixFromPath(parentPath);
+  const labelSlug = slugify(title || parentRecord.title || targetLabel || 'continuation');
+  const targetSlug = slugify(targetLabel || labelFromSchemaId(targetId) || 'leaf');
+  const extension = '.trace.md';
+  const policy = {
+    schema: 'tiinex.transition.path-policy.v1',
+    kind: 'same-parent-directory',
+    parentDirectory: parentDir,
+    parentPath,
+    parentLineagePrefix: parentPrefix,
+    labelSlug,
+    targetSlug,
+    extension
+  };
+  return { path: pathFromPolicy(policy, occupied), policy };
+}
+
+function pathFromPolicy(policy = {}, occupied = new Set()) {
+  const dir = canonicalLocalPath(policy.parentDirectory || '.topics') || '.topics';
+  const extension = String(policy.extension || '.trace.md').startsWith('.') ? String(policy.extension || '.trace.md') : `.${policy.extension}`;
+  const labelSlug = slugify(policy.labelSlug || 'continuation');
+  const targetSlug = slugify(policy.targetSlug || 'leaf');
+  const parentPrefix = String(policy.parentLineagePrefix || '').trim();
+  if (parentPrefix) {
+    const childPrefix = nextChildLineagePrefix(parentPrefix, dir, occupied);
+    return `${dir}/${childPrefix}-${labelSlug}.${extension.replace(/^\./, '')}`;
+  }
+  return uniqueTransitionPath(`${dir}/${labelSlug}--${targetSlug}${extension}`, occupied);
+}
+
+function pathPolicyForExplicit(path = '') {
+  const canonical = canonicalLocalPath(path);
+  return {
+    schema: 'tiinex.transition.path-policy.v1',
+    kind: 'explicit-path',
+    parentDirectory: parentDirectory(canonical) || '',
+    explicitPath: canonical
+  };
+}
+
+function parentDirectory(path = '') {
+  const raw = String(path || '').trim();
+  if (/^https?:\/\//i.test(raw)) return '';
+  const canonical = canonicalLocalPath(raw);
+  if (!canonical) return '';
+  const index = canonical.lastIndexOf('/');
+  return index > -1 ? canonical.slice(0, index) || '.' : '';
+}
+
+function lineagePrefixFromPath(path = '') {
+  const name = basenameWithoutKnownMarkdownExtension(path);
+  if (!name) return '';
+  const recoveredComment = name.match(/^comment-(\d{3})(?:-|$)/i);
+  if (recoveredComment) return recoveredComment[1];
+  const numeric = name.match(/^(\d+(?:-\d+)*)(?:-|$)/);
+  if (numeric && !/^20\d{2}$/.test(numeric[1])) return numeric[1];
+  return '';
+}
+
+function nextChildLineagePrefix(parentPrefix = '', dir = '', occupied = new Set()) {
+  const prefix = String(parentPrefix || '').trim();
+  const width = childOrdinalWidth(prefix);
+  const numbers = [];
+  for (const path of occupied || []) {
+    const canonical = canonicalLocalPath(path);
+    if (parentDirectory(canonical) !== dir) continue;
+    const name = basenameWithoutKnownMarkdownExtension(canonical);
+    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = name.match(new RegExp(`^${escaped}-(\\d+)(?:-|$)`));
+    if (!match || !isChildOrdinalSegment(prefix, match[1])) continue;
+    numbers.push(Number(match[1]));
+  }
+  const next = numbers.length ? Math.max(...numbers) + 1 : 1;
+  return `${prefix}-${String(next).padStart(width, '0')}`;
+}
+
+function isChildOrdinalSegment(prefix = '', value = '') {
+  const raw = String(value || '').trim();
+  if (!/^\d+$/.test(raw)) return false;
+  return true;
+}
+
+function childOrdinalWidth(prefix = '') {
+  const parts = String(prefix || '').split('-').filter(Boolean);
+  if (parts.length >= 2 && parts.every((part) => /^\d{2}$/.test(part))) return 2;
+  return 1;
+}
+
+function basenameWithoutKnownMarkdownExtension(path = '') {
+  const canonical = canonicalLocalPath(path);
+  const base = canonical.split('/').filter(Boolean).pop() || '';
+  return base.replace(/\.trace\.md$/i, '').replace(/\.workspace\.md$/i, '').replace(/\.md$/i, '');
+}
+
+function draftEnvelopeMetadata(markdown = '', fallbackSchemaId = '') {
+  const parsed = parseArtifactMarkdown(markdown);
+  const parent = parsed.envelope?.parent || {};
+  const current = parsed.envelope?.current || {};
+  return {
+    schemaId: current.schema?.id || fallbackSchemaId || '',
+    parentSchemaId: parent.schema?.id || '',
+    trace: parent.trace || '',
+    traceLabel: parent.traceLabel || '',
+    origin: parent.origin || '',
+    boundary: parent.boundary || '',
+    createdAt: current.createdAt || '',
+    currentCreatedAt: current.createdAt || '',
+    currentStatus: current.status || '',
+    currentWhy: current.why || ''
+  };
+}
 
 function createEvidenceReferenceBody({ parentRecord = {}, title = 'Reference', summary = '' }) {
   const boundary = boundaryForRecord(parentRecord);
@@ -169,6 +314,10 @@ function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title
       parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
       parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
       '',
+      '## Next Step',
+      '',
+      '- Review and refine this task draft before export/publication.',
+      '',
       '## Source Excerpt',
       '',
       truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._'
@@ -231,6 +380,43 @@ function labelFromSchemaId(id = '') {
   const tail = String(id || '').split('.').filter(Boolean).slice(-2, -1)[0] || String(id || 'leaf');
   return tail.charAt(0).toUpperCase() + tail.slice(1);
 }
+
+function existingTransitionPaths(options = {}) {
+  const inputs = [];
+  if (Array.isArray(options.existingRecords)) inputs.push(...options.existingRecords);
+  if (Array.isArray(options.workspaceRecords)) inputs.push(...options.workspaceRecords);
+  if (Array.isArray(options.existingPaths)) inputs.push(...options.existingPaths.map((path) => ({ path })));
+  return new Set(inputs.map((item) => canonicalLocalPath(typeof item === 'string' ? item : item?.path || '')).filter(Boolean));
+}
+
+function uniqueTransitionPath(basePath = '', occupied = new Set()) {
+  const canonical = canonicalLocalPath(basePath || 'continuations/continuation.md') || 'continuations/continuation.md';
+  if (!occupied.has(canonical)) return canonical;
+  const compound = canonical.match(/^(.*?)(\.trace\.md|\.workspace\.md|\.schema\.md|\.md)$/i);
+  const stem = compound ? compound[1] : (canonical.lastIndexOf('.') > -1 ? canonical.slice(0, canonical.lastIndexOf('.')) : canonical);
+  const ext = compound ? compound[2] : (canonical.lastIndexOf('.') > -1 ? canonical.slice(canonical.lastIndexOf('.')) : '');
+  for (let index = 2; index < 10000; index += 1) {
+    const candidate = `${stem}-${index}${ext}`;
+    if (!occupied.has(candidate)) return candidate;
+  }
+  return `${stem}-${Date.now().toString(36)}${ext}`;
+}
+
+function canonicalLocalPath(value = '') {
+  const raw = String(value || '').trim().replace(/\\/g, '/').replace(/\/+/g, '/');
+  if (!raw) return '';
+  const parts = [];
+  for (const part of raw.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      parts.pop();
+      continue;
+    }
+    parts.push(part);
+  }
+  return parts.join('/');
+}
+
 
 function slugify(value = '') {
   return String(value || 'artifact').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64) || 'artifact';

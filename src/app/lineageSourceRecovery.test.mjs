@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
-import { buildLineageSourceRecoveryPlan, lineageRecoveryFileRefForTarget } from './lineageSourceRecovery.js';
+import { buildLineageSourceRecoveryPlan, lineageRecoveryFileRefForTarget, lineageRecoveryIssueUrlForTarget } from './lineageSourceRecovery.js';
 
 const childMarkdown = `# Continuity Context
 
@@ -49,6 +49,28 @@ const embeddedIssueChild = Object.assign(createRecordFromMarkdown(childMarkdown.
 assert.equal(lineageRecoveryFileRefForTarget('../001-1-1.trace.md', embeddedIssueChild), 'odysseus/001-1-1.trace.md', 'embedded issue lineage recovery must resolve relative Parent Trace from Source Path, not synthetic issue path');
 assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue URL as a repo file ref');
 assert.equal(lineageRecoveryFileRefForTarget('https://github.com/Tiinex/docs/issues/9#issuecomment-4881780075', embeddedIssueChild), '', 'lineage recovery must not treat a GitHub issue comment URL as a repo file ref');
+
+const embeddedWithIssueCommentParent = Object.assign({}, embeddedIssueChild, {
+  trace: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+  sourceTarget: Object.assign({}, embeddedIssueChild.sourceTarget, {
+    parentArtifactPath: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+    parentSourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876',
+    parentRawUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876'
+  }),
+  snapshot: Object.assign({}, embeddedIssueChild.snapshot, {
+    parentArtifactPath: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+    parentSourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876'
+  })
+});
+assert.equal(lineageRecoveryIssueUrlForTarget('comment-002-5011116876-recovered-klagomuren.trace.md', embeddedWithIssueCommentParent), 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'issue-comment parent provenance should become a targeted issue recovery URL rather than a repo file guess');
+assert.equal(lineageRecoveryFileRefForTarget('comment-002-5011116876-recovered-klagomuren.trace.md', embeddedWithIssueCommentParent), 'odysseus/branch/comment-002-5011116876-recovered-klagomuren.trace.md', 'file recovery remains available only as the legacy relative fallback');
+
+const missingIssueCommentWorkspace = { id: 'ws-comment', records: [Object.assign({}, embeddedWithIssueCommentParent, { id: 'source:github:tiinusen/socials:child', source: { id: 'github:tiinusen/socials', adapterId: 'github', kind: 'github-tree', repo: 'Tiinusen/socials', ref: '', rootPath: '.topics', transportRefreshTier: 'proxy' } })] };
+const missingIssueCommentView = buildWorkspaceLineageView(missingIssueCommentWorkspace, { selectedRecordId: 'source:github:tiinusen/socials:child' });
+const issueCommentPlan = buildLineageSourceRecoveryPlan(missingIssueCommentWorkspace, missingIssueCommentView);
+assert.equal(issueCommentPlan.length, 1, 'missing issue-comment parents should produce a recovery plan');
+assert.deepEqual(issueCommentPlan[0].issueUrls, ['https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876'], 'issue-comment parent recovery should target the concrete parent comment URL');
+assert.deepEqual(issueCommentPlan[0].fileRefs, [], 'issue-comment parent recovery should not queue a misleading repo file ref when concrete issue provenance exists');
 
 const embeddedWithDeclaredParentPath = Object.assign({}, embeddedIssueChild, {
   sourceTarget: Object.assign({}, embeddedIssueChild.sourceTarget, { parentArtifactPath: '.topics/educational/memes/magic-the-gathering/001-2-the-stack-remembers.trace.md' }),

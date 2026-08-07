@@ -64,7 +64,8 @@ function supportingMarkdownAuditResult(record = {}, parsed = {}, availability = 
 }
 
 function materialAvailabilityFor(scope = {}, record = {}, markdown = '') {
-  const sourceBacked = Boolean(scope.sourceBacked || record?.sourceBacked || (record?.source?.adapterId && record.source.adapterId !== 'local'));
+  const source = record?.source || {};
+  const sourceBacked = Boolean(scope.sourceBacked || record?.sourceBacked || (source.sourceBacked !== false && source.kind !== 'local-session' && source.sourceKind !== 'export.package.import' && source.adapterId && source.adapterId !== 'local'));
   const cacheState = String(scope.cacheState || record?.cacheState || '').trim();
   const materialAvailability = String(scope.materialAvailability || record?.materialAvailability || '').trim();
   const metadataOnly = cacheState === 'metadata-only' || materialAvailability === 'metadata-only' || materialAvailability === 'unavailable' || materialAvailability === 'material-unavailable';

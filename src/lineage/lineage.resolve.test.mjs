@@ -214,21 +214,100 @@ assert(blobPathContext.edges.some((edge) => edge.from === 'odysseus-root-blob' &
 assert(!blobPathContext.edges.some((edge) => edge.from === 'magic-root-blob' && edge.to === 'odysseus-child-blob'), 'raw/blob source file paths must not jump to another lineage with the same basename');
 
 
-const issueRootNewLogicalPath = Object.assign(leaf({ id: 'issue-root-logical-9', title: 'Welcome to the Next Dimension', path: '.topics/.issues/github/tiinex-docs/9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+const issueRootNewLogicalPath = Object.assign(leaf({ id: 'issue-root-logical-9', title: 'Welcome to the Next Dimension', path: '.topics/.github/tiinex/docs/.issues/9/issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
   recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9',
   sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9' },
   snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9' }
 });
-const brazilLogicalIssuePath = Object.assign(leaf({ id: 'comment-logical-alias-9', title: 'Brazil', path: '.topics/.issues/github/tiinex-docs/9/comment-002-4881782365-recovered-brazil.trace.md', trace: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
+const brazilLogicalIssuePath = Object.assign(leaf({ id: 'comment-logical-alias-9', title: 'Brazil', path: '.topics/.github/tiinex/docs/.issues/9/comment-002-4881782365-recovered-brazil.trace.md', trace: 'issue-root-recovered-welcome-to-the-next-dimension.trace.md', source: githubSource }), {
   recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365',
   sourceTarget: { inputTarget: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' },
   snapshot: { sourceUrl: 'https://github.com/Tiinex/docs/issues/9#issuecomment-4881782365' }
 });
 const issueLocalLogicalPathResolved = resolveLineage([issueRootNewLogicalPath, brazilLogicalIssuePath]);
-assert(issueLocalLogicalPathResolved.edges.some((edge) => edge.from === 'issue-root-logical-9' && edge.to === 'comment-logical-alias-9' ), 'logical .topics/.issues paths should preserve issue-local parent binding');
+assert(issueLocalLogicalPathResolved.edges.some((edge) => edge.from === 'issue-root-logical-9' && edge.to === 'comment-logical-alias-9' ), 'logical .topics/.github issue sidecar paths should preserve issue-local parent binding');
+
+const gamingSource = { id: 'github:tiinusen/socials', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinusen/socials', repo: 'Tiinusen/socials', ref: 'personal', rootPath: '.topics' };
+const issueCommentParentLogical = Object.assign(leaf({ id: 'issue-comment-parent-logical-3', title: 'Lagar och regler', path: '.topics/.github/tiinusen/socials/.issues/3/comment-001-5008615398-recovered-lagar-och-regler.trace.md', source: gamingSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5008615398',
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5008615398' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5008615398' }
+});
+const sameLegacyBasenameOtherIssue = Object.assign(leaf({ id: 'issue-comment-parent-other-4', title: 'Lagar och regler other issue', path: '.topics/.github/tiinusen/socials/.issues/4/comment-001-5008615398-recovered-lagar-och-regler.trace.md', source: gamingSource }), {
+  recoveredFromUrl: 'https://github.com/Tiinusen/socials/issues/4#issuecomment-5008615398',
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinusen/socials/issues/4#issuecomment-5008615398' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinusen/socials/issues/4#issuecomment-5008615398' }
+});
+const issueCommentChildLegacyDotGithubPath = Object.assign(leaf({
+  id: 'issue-comment-child-legacy-dot-github-3',
+  title: '§1 Ängkvistlagen',
+  path: '.topics/.github/tiinusen/socials/.issues/3/comment-002-5011140374-recovered-1-ngkvistlagen.trace.md',
+  trace: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-001-5008615398-recovered-lagar-och-regler.trace.md',
+  source: gamingSource
+}), {
+  recoveredFromUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011140374',
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011140374' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011140374' }
+});
+const legacyDotGithubIssuePathResolved = resolveLineage([issueCommentParentLogical, sameLegacyBasenameOtherIssue, issueCommentChildLegacyDotGithubPath]);
+assert(legacyDotGithubIssuePathResolved.edges.some((edge) => edge.from === 'issue-comment-parent-logical-3' && edge.to === 'issue-comment-child-legacy-dot-github-3' && edge.method === 'issue-local-path'), 'proxy-loaded issue artifacts must resolve legacy .topics/.github/.issues parent paths against current logical issue paths inside the same issue');
+assert(!legacyDotGithubIssuePathResolved.edges.some((edge) => edge.from === 'issue-comment-parent-other-4' && edge.to === 'issue-comment-child-legacy-dot-github-3'), 'legacy issue basename fallback must remain scoped to the declaring GitHub issue container');
+
+const issueCommentParentUrlOnly = Object.assign(leaf({ id: 'issue-comment-parent-url-only-3', title: 'Klagomuren', path: '.topics/.github/tiinusen/socials/.issues/3/comment-recovered-klagomuren.trace.md', source: gamingSource }), {
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', inputTarget: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876' },
+  snapshot: { embedded: true, sourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876' }
+});
+const issueCommentChildParentSourceArtifactUrl = Object.assign(leaf({
+  id: 'issue-comment-child-source-artifact-url-3',
+  title: 'Fler bondgårdar',
+  path: '.topics/.github/tiinusen/socials/.issues/3/comment-004-5011198457-recovered-fler-bondgardar.trace.md',
+  trace: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+  source: gamingSource
+}), {
+  recoveredFromUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011198457',
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: {
+    targetKind: 'github-comment-embedded-artifact',
+    inputTarget: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011198457',
+    parentArtifactPath: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+    parentSourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876'
+  },
+  snapshot: {
+    embedded: true,
+    sourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011198457',
+    parentArtifactPath: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+    parentSourceUrl: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876'
+  }
+});
+const sourceArtifactUrlParentResolved = resolveLineage([issueCommentParentUrlOnly, issueCommentChildParentSourceArtifactUrl]);
+assert(sourceArtifactUrlParentResolved.edges.some((edge) => edge.from === 'issue-comment-parent-url-only-3' && edge.to === 'issue-comment-child-source-artifact-url-3' ), 'issue-comment children resolve by stable comment id even when the loaded parent material path lacks the generated ordinal/id basename');
+assert(!sourceArtifactUrlParentResolved.findings.some((finding) => finding.nodeId === 'issue-comment-child-source-artifact-url-3' && finding.code === 'lineage.parent.missing'), 'issue-local comment-id parent binding should avoid false missing lineage on loaded issue-comment parents');
+
+const legacyFolderIssueParent = Object.assign(leaf({ id: 'legacy-folder-klagomuren-3', title: 'Klagomuren', path: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-002-5011116876-recovered-klagomuren.trace.md', source: gamingSource }), {
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', sourceArtifactPath: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-002-5011116876-recovered-klagomuren.trace.md' },
+  snapshot: { embedded: true, sourceArtifactPath: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-002-5011116876-recovered-klagomuren.trace.md' }
+});
+const legacyFolderIssueChild = Object.assign(leaf({
+  id: 'legacy-folder-fler-bondgardar-3',
+  title: 'Fler bondgårdar',
+  path: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-004-5011198457-recovered-fler-bondgardar.trace.md',
+  trace: 'comment-002-5011116876-recovered-klagomuren.trace.md',
+  source: gamingSource
+}), {
+  sourceMode: 'github-comment-embedded-artifact',
+  sourceTarget: { targetKind: 'github-comment-embedded-artifact', sourceArtifactPath: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-004-5011198457-recovered-fler-bondgardar.trace.md' },
+  snapshot: { embedded: true, sourceArtifactPath: '.topics/.github/.issues/Tiinusen-socials-3-fs25-markaryd/comment-004-5011198457-recovered-fler-bondgardar.trace.md' }
+});
+const legacyFolderIssueParentResolved = resolveLineage([legacyFolderIssueParent, legacyFolderIssueChild]);
+assert(legacyFolderIssueParentResolved.edges.some((edge) => edge.from === 'legacy-folder-klagomuren-3' && edge.to === 'legacy-folder-fler-bondgardar-3'), 'legacy .topics/.github/.issues folder paths should still form issue-local lineage when no URL provenance survived route/cache');
 
 const odysseusExactParent = leaf({ id: 'odysseus-exact-parent-10', title: 'Odysseus / Awaiting Parent', path: '.topics/odysseus/001-1-1.trace.md', source: githubSource });
-const awaitingSyntheticIssue = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10', title: 'Awaiting response', path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
+const awaitingSyntheticIssue = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10', title: 'Awaiting response', path: '.topics/.github/tiinex/docs/.issues/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
   recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/10',
   sourceMode: 'github-issue-embedded-artifact',
   sourceTarget: {
@@ -246,7 +325,7 @@ const syntheticDeclaredParentResolved = resolveLineage([odysseusExactParent, awa
 assert(syntheticDeclaredParentResolved.edges.some((edge) => edge.from === 'odysseus-exact-parent-10' && edge.to === 'awaiting-synthetic-issue-10' && edge.method === 'declared-parent-path'), 'synthetic issue artifacts must bind recovered exact Parent Artifact Path after cwd-relative lookup fails');
 assert(!syntheticDeclaredParentResolved.findings.some((finding) => finding.nodeId === 'awaiting-synthetic-issue-10' && finding.code === 'lineage.parent.missing'), 'synthetic issue exact parent binding should not remain target unavailable after recovery');
 
-const awaitingSyntheticIssueWithoutExplicitParent = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10-suffix', title: 'Awaiting response', path: '.topics/.issues/github/tiinex-docs/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
+const awaitingSyntheticIssueWithoutExplicitParent = Object.assign(leaf({ id: 'awaiting-synthetic-issue-10-suffix', title: 'Awaiting response', path: '.topics/.github/tiinex/docs/.issues/10/issue-root-recovered-awaiting-response.trace.md', trace: '../../../odysseus/001-1-1.trace.md', source: githubSource }), {
   recoveredFromUrl: 'https://github.com/Tiinex/docs/issues/10',
   sourceMode: 'github-issue-embedded-artifact',
   sourceTarget: { targetKind: 'github-issue-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/10' },

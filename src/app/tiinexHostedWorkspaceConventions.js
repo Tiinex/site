@@ -126,6 +126,269 @@ function extractWorkspaceHostStrings(text = '') {
   return out;
 }
 
+
+export function extractHostedViewerSourceDeclarations(text = '', baseUrl = '') {
+  const sources = [];
+  const viewerObjects = extractViewerOptionsObjects(text);
+  const metaRepository = firstHostedMetaRepository(text);
+  const buildRepository = firstHostedViewerBuildRepository(viewerObjects);
+  const fallbackRepository = buildRepository || metaRepository.repository;
+  const fallbackRepositoryConvention = buildRepository ? 'buildIdentity.repository' : metaRepository.convention;
+  const fallbackTitle = firstHostedViewerTitle(viewerObjects) || firstHostedPageTitle(text) || fallbackRepository;
+
+  const pushGitNative = (gitNative = {}, meta = {}) => {
+    if (!gitNative || typeof gitNative !== 'object') return;
+    if (gitNative.enabled === false || String(gitNative.enabled || '').trim().toLowerCase() === 'false') return;
+    const rawRepository = String(gitNative.repo || gitNative.repository || meta.repository || '').trim();
+    const repository = normalizeGithubRepository(rawRepository);
+    if (!repository) return;
+    const rootPaths = Array.isArray(gitNative.rootPaths) ? gitNative.rootPaths : (Array.isArray(gitNative.roots) ? gitNative.roots : [gitNative.rootPath || gitNative.root || '.topics']);
+    const rootPath = rootPaths.map((item) => String(item || '').trim()).filter(Boolean).join('\n') || '.topics';
+    sources.push({
+      sourceKind: 'github-tree',
+      repository,
+      ref: String(gitNative.ref || gitNative.branch || '').trim(),
+      rootPath,
+      repoFilesDiscovery: 'on',
+      issueDiscovery: 'off',
+      label: meta.browserTitle || meta.label || repository,
+      hostedConvention: meta.convention || 'tiinex-viewer-options.gitNative',
+      inferredRepository: Boolean(meta.repository && !rawRepository)
+    });
+  };
+
+  for (const obj of viewerObjects) {
+    const title = obj?.browserTitle || obj?.pageTitle || obj?.buildIdentity?.repository || '';
+    const repository = meaningfulBuildRepository(obj);
+    if (obj?.gitNative) pushGitNative(obj.gitNative, { browserTitle: title, repository, convention: 'window.TIINEX_VIEWER_OPTIONS.gitNative' });
+  }
+
+  for (const obj of extractNamedJsonObjects(text, 'defaultGitNative')) {
+    const usesDefault = /TIINEX_VIEWER_OPTIONS\.gitNative\s*=\s*Object\.assign\s*\([^)]*defaultGitNative/i.test(String(text || '')) || /gitNativeRuntime/i.test(String(text || ''));
+    if (usesDefault || obj?.repo || obj?.repository || fallbackRepository) {
+      const inferredConvention = fallbackRepositoryConvention ? `defaultGitNative+${fallbackRepositoryConvention}` : 'defaultGitNative+repository-unknown';
+      pushGitNative(obj, { repository: fallbackRepository, browserTitle: fallbackTitle, convention: obj?.repo || obj?.repository ? 'defaultGitNative' : inferredConvention });
+    }
+  }
+
+  if (!sources.length && metaRepository.repository && looksLikeHostedTiinexViewer(text)) {
+    pushGitNative({ enabled: true, rootPath: '.topics' }, {
+      repository: metaRepository.repository,
+      browserTitle: fallbackTitle,
+      convention: `${metaRepository.convention}+viewer-page-default`
+    });
+  }
+
+  return dedupeHostedViewerSources(sources);
+}
+
+
+export function sourceDeclarationFromPublicBuildIdentity(text = '', baseUrl = '') {
+  const parsed = parsePublicBuildIdentity(text);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const repository = normalizeGithubRepository(parsed.repository || parsed.sourceRepository || parsed.repo || parsed.buildSource || '');
+  if (!repository) return null;
+  let origin = '';
+  try { origin = new URL(baseUrl || globalThis.location?.href || undefined).origin; } catch (_) {}
+  const commit = String(parsed.commitSha || parsed.commit || parsed.sourceCommit || '').trim();
+  const ref = String(parsed.ref || parsed.branch || '').trim();
+  return {
+    sourceKind: 'github-tree',
+    repository,
+    ref: commit || ref,
+    rootPath: '.topics',
+    repoFilesDiscovery: 'on',
+    issueDiscovery: 'off',
+    label: parsed.browserTitle || parsed.title || repository,
+    hostedConvention: 'tiinex.public.build.identity',
+    hostedRepoMirrorBaseUrls: origin ? [origin] : [],
+    hostedIssueSnapshotBaseUrls: origin ? [origin] : [],
+    publicBuildIdentity: { buildId: parsed.buildId || '', releaseCacheKey: parsed.releaseCacheKey || '', generatedAt: parsed.generatedAt || parsed.builtAt || '', reason: parsed.reason || '', repository, commitSha: commit }
+  };
+}
+
+function parsePublicBuildIdentity(text = '') {
+  try { return JSON.parse(String(text || '').trim()); } catch (_) { return null; }
+}
+
+function normalizeGithubRepository(value = '') {
+  const clean = String(value || '').trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/^\/+|\/+$/g, '').split('/').slice(0, 2).join('/');
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(clean)) return '';
+  const lowered = clean.toLowerCase();
+  if (lowered === 'local' || lowered === 'unknown/unknown' || lowered === 'owner/repo') return '';
+  return clean;
+}
+
+function meaningfulBuildRepository(obj = {}) {
+  const buildIdentity = obj?.buildIdentity || obj?.build || {};
+  return normalizeGithubRepository(buildIdentity.repository || buildIdentity.sourceRepository || buildIdentity.repo || obj?.repository || obj?.repo || '');
+}
+
+function firstHostedViewerBuildRepository(viewerObjects = []) {
+  for (const obj of viewerObjects || []) {
+    const repo = meaningfulBuildRepository(obj);
+    if (repo) return repo;
+  }
+  return '';
+}
+
+function firstHostedViewerTitle(viewerObjects = []) {
+  for (const obj of viewerObjects || []) {
+    const title = String(obj?.browserTitle || obj?.pageTitle || obj?.buildIdentity?.builtFor || obj?.buildIdentity?.repository || '').trim();
+    if (title) return title;
+  }
+  return '';
+}
+
+function firstHostedPageTitle(text = '') {
+  const title = String(text || '').match(/<title[^>]*>([\s\S]*?)<\/title>/iu)?.[1] || '';
+  return htmlEntityText(title).trim();
+}
+
+
+function looksLikeHostedTiinexViewer(text = '') {
+  const source = String(text || '');
+  return /Tiinex\s+Lineage\s+Viewer|data-tiinex-app|tiinex\.bundle\.js|\bapp\.js\b|id=["'](?:app|root)["']/iu.test(source)
+    && /tiinex/i.test(source);
+}
+
+function firstHostedMetaRepository(text = '') {
+  const names = new Set([
+    'tiinex:build-source',
+    'tiinex-build-source',
+    'tiinex:source-repository',
+    'tiinex-source-repository',
+    'tiinex:repository',
+    'tiinex-repository',
+    'github:repository',
+    'github-repository'
+  ]);
+  for (const tag of String(text || '').matchAll(/<meta\b[^>]*>/giu)) {
+    const attrs = htmlAttributes(tag[0] || '');
+    const name = String(attrs.name || attrs.property || attrs['data-tiinex-role'] || '').trim().toLowerCase();
+    if (!names.has(name)) continue;
+    const repository = normalizeGithubRepository(attrs.content || attrs.value || '');
+    if (repository) return { repository, convention: `meta[${name}]` };
+  }
+  return { repository: '', convention: '' };
+}
+
+function htmlAttributes(tag = '') {
+  const attrs = {};
+  for (const match of String(tag || '').matchAll(/([A-Za-z_:][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/gu)) {
+    attrs[String(match[1] || '').toLowerCase()] = htmlEntityText(match[3] || '');
+  }
+  return attrs;
+}
+
+function htmlEntityText(value = '') {
+  return String(value || '')
+    .replace(/&quot;/gu, '"')
+    .replace(/&#39;|&apos;/gu, "'")
+    .replace(/&amp;/gu, '&')
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>');
+}
+
+function extractViewerOptionsObjects(text = '') {
+  const out = [];
+  const source = String(text || '');
+  const assignRe = /window\.TIINEX_VIEWER_OPTIONS\s*=\s*Object\.assign\s*\(/g;
+  for (const match of source.matchAll(assignRe)) {
+    const literalStart = source.indexOf('{', match.index + match[0].length);
+    if (literalStart < 0) continue;
+    const literal = balancedLiteralAt(source, literalStart, '{', '}');
+    const parsed = parseJsonLiteral(literal);
+    if (parsed && typeof parsed === 'object') out.push(parsed);
+  }
+  const directRe = /window\.TIINEX_VIEWER_OPTIONS\s*=\s*/g;
+  for (const match of source.matchAll(directRe)) {
+    const literal = balancedLiteralAt(source, match.index + match[0].length, '{', '}');
+    const parsed = parseJsonLiteral(literal);
+    if (parsed && typeof parsed === 'object') out.push(parsed);
+  }
+  return out;
+}
+
+function extractNamedJsonObjects(text = '', name = '') {
+  const out = [];
+  if (!name) return out;
+  const source = String(text || '');
+  const re = new RegExp(`(?:const|let|var)\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*=\\s*`, 'g');
+  for (const match of source.matchAll(re)) {
+    const literal = balancedLiteralAt(source, match.index + match[0].length, '{', '}');
+    const parsed = parseJsonLiteral(literal);
+    if (parsed && typeof parsed === 'object') out.push(parsed);
+  }
+  return out;
+}
+
+function parseJsonLiteral(literal = '') {
+  if (!literal) return null;
+  try { return JSON.parse(literal); } catch (_) {}
+  try { return JSON.parse(jsObjectLiteralToJson(literal)); } catch (_) { return null; }
+}
+
+function jsObjectLiteralToJson(literal = '') {
+  let source = String(literal || '').trim();
+  source = stripJsCommentsOutsideStrings(source);
+  source = source.replace(/([{,]\s*)([A-Za-z_$][\w$-]*)\s*:/gu, '$1"$2":');
+  source = source.replace(/'((?:\\.|[^'\\])*)'/gu, (_, body) => JSON.stringify(unescapeJsString(body)));
+  source = source.replace(/,\s*([}\]])/gu, '$1');
+  return source;
+}
+
+function stripJsCommentsOutsideStrings(source = '') {
+  let out = '';
+  let quote = '';
+  let escaped = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    const next = source[i + 1];
+    if (quote) {
+      out += ch;
+      if (escaped) { escaped = false; continue; }
+      if (ch === '\\') { escaped = true; continue; }
+      if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") { quote = ch; out += ch; continue; }
+    if (ch === '/' && next === '/') {
+      while (i < source.length && source[i] !== '\n') i += 1;
+      out += '\n';
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      i += 2;
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) i += 1;
+      i += 1;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function unescapeJsString(body = '') {
+  return String(body || '').replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|.)/gu, (match, token) => {
+    if (token[0] === 'u') return String.fromCharCode(parseInt(token.slice(1), 16));
+    if (token[0] === 'x') return String.fromCharCode(parseInt(token.slice(1), 16));
+    return jsEscapeValue(token);
+  });
+}
+
+function dedupeHostedViewerSources(sources = []) {
+  const seen = new Set();
+  const out = [];
+  for (const source of sources || []) {
+    const key = `${source.repository || ''}\n${source.ref || ''}\n${source.rootPath || ''}`;
+    if (!source.repository || seen.has(key)) continue;
+    seen.add(key);
+    out.push(source);
+  }
+  return out;
+}
+
 export function extractEmbeddedWorkspaceMarkdowns(text = '', sourceUrl = '') {
   const out = [];
   const re = /(?:const|let|var)\s+EMBEDDED_DEFAULT_WORKSPACE_MD\s*=\s*/g;

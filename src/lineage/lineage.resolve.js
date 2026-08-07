@@ -1,5 +1,6 @@
 import { createLineageEdge, createLineageFinding, createLineageNode, LINEAGE_VIEW_MODEL_SCHEMA_ID, LineageEdgeKind, LineageResolutionStatus } from './lineage.model.js';
 import { issueLocalPathKeysForNode, issueLocalPathMatches } from './lineage.githubIssueLocal.js';
+import { filterGitHubIssueCommentCandidatesForTarget, githubIssueCommentIdFromValue, githubIssueCommentIdsForNode } from './lineage.githubIssueComment.js';
 import { lineageBasePathForNode } from './lineage.pathBasis.js';
 import { preferredLineageMaterialCandidates } from './lineage.materialPreference.js';
 import { canonicalIntegrityValue, parentIntegrityValuesForTarget, selfIntegrityValuesForNode, verifiedIntegrityMatch, withParentIntegrityStatus } from './lineage.integrity.js';
@@ -155,7 +156,7 @@ function declaredTargetsFor(node = {}) {
   return targets;
 }
 function buildLineageIndex(nodes = []) {
-  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map(), byProvenance: new Map(), byIssueLocalPath: new Map(), bySelfIntegrity: new Map() };
+  const index = { byId: new Map(), byRecordTrace: new Map(), byPath: new Map(), bySourcePath: new Map(), byProvenance: new Map(), byIssueLocalPath: new Map(), byGitHubIssueCommentId: new Map(), bySelfIntegrity: new Map() };
   for (const node of nodes) {
     const id = canonicalToken(node.id);
     if (id) {
@@ -166,6 +167,7 @@ function buildLineageIndex(nodes = []) {
     if (path) addIndexed(index.byPath, path, node);
     for (const sourcePath of sourcePathsForNode(node)) addIndexed(index.bySourcePath, sourcePath, node);
     for (const target of provenanceTargetsForNode(node)) addIndexed(index.byProvenance, target, node);
+    for (const commentId of githubIssueCommentIdsForNode(node)) addIndexed(index.byGitHubIssueCommentId, commentId, node);
     for (const hash of selfIntegrityValuesForNode(node)) addIndexed(index.bySelfIntegrity, hash, node);
     for (const issueLocalPath of issueLocalPathKeysForNode(node)) addIndexed(index.byIssueLocalPath, issueLocalPath, node);
   }
@@ -196,6 +198,7 @@ function provenanceTargetsForNode(node = {}) {
   ];
   return Array.from(new Set(values.flatMap(provenanceTargetKeysForValue).filter(Boolean)));
 }
+
 function addIndexed(map, key, node) {
   if (!key || !node) return;
   const existing = map.get(key);
@@ -244,6 +247,14 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
     return null;
   };
 
+  const resolveGithubIssueCommentTarget = (method = 'github-issue-comment-id') => {
+    const commentId = githubIssueCommentIdFromValue(raw);
+    if (!commentId) return null;
+    const candidates = filterGitHubIssueCommentCandidatesForTarget(index.byGitHubIssueCommentId?.get(commentId) || [], raw, declaringNode);
+    const resolved = resolveCandidateNodes(candidates, method, declaringNode);
+    return resolved ? finalize(resolved) : null;
+  };
+
   const resolveDeclaredParentBinding = () => {
     if (options.targetKind !== LineageEdgeKind.parent) return null;
     for (const binding of declaredParentBindingTargetValuesForNode(declaringNode, raw)) {
@@ -281,6 +292,8 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
     const issueLocal = issueLocalPathMatches(raw, index, declaringNode);
     const resolvedIssueLocal = resolveCandidateNodes(issueLocal, 'issue-local-relative-path', declaringNode);
     if (resolvedIssueLocal) return finalize(resolvedIssueLocal);
+    const commentIdMatch = resolveGithubIssueCommentTarget('github-issue-comment-id-relative-path');
+    if (commentIdMatch) return commentIdMatch;
     const declaredParent = resolveDeclaredParentBinding();
     if (declaredParent) return declaredParent;
     if (dotRelative && isSyntheticPublicationLineageNode(declaringNode) && path.includes('/')) {
@@ -301,6 +314,12 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
 
   const declaredParent = resolveDeclaredParentBinding();
   if (declaredParent) return declaredParent;
+
+  const issueLocal = issueLocalPathMatches(raw, index, declaringNode);
+  const resolvedIssueLocal = resolveCandidateNodes(issueLocal, 'issue-local-path', declaringNode);
+  if (resolvedIssueLocal) return finalize(resolvedIssueLocal);
+  const commentIdMatch = resolveGithubIssueCommentTarget('github-issue-comment-id');
+  if (commentIdMatch) return commentIdMatch;
 
   const direct = resolveDirectToken();
   if (direct) return finalize(direct);

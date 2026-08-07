@@ -11,6 +11,12 @@ assert.equal(issue.number, 123);
 assert.equal(issue.canonicalUrl, 'https://github.com/Tiinex/docs/issues/123');
 assert.equal(issue.apiUrl, 'https://api.github.com/repos/Tiinex/docs/issues/123');
 
+const issueCommentTarget = parseGithubIssueSnapshotTarget('https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876');
+assert.equal(issueCommentTarget.ok, true, 'issue comment URL should remain a valid issue snapshot target');
+assert.equal(issueCommentTarget.commentId, '5011116876', 'issue comment URL should preserve its concrete comment id for targeted parent recovery');
+assert.equal(issueCommentTarget.issueCanonicalUrl, 'https://github.com/Tiinusen/socials/issues/3', 'issue comment target should retain the containing issue URL separately');
+assert.equal(issueCommentTarget.canonicalUrl, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876');
+
 const discussion = parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/discussions/45?foo=bar');
 assert.equal(discussion.ok, true);
 assert.equal(discussion.kind, 'discussion');
@@ -81,6 +87,19 @@ Does not look like Magic the Gathering.
   - Towards: self
   - Value: fixture`;
 
+const targetedCommentCalls = [];
+const targetedCommentResult = await materializeGithubIssueSnapshots([issueCommentTarget], {
+  fetchImpl: async (url) => {
+    targetedCommentCalls.push(url);
+    if (url === 'https://api.github.com/repos/Tiinusen/socials/issues/3') return responseJson({ html_url: 'https://github.com/Tiinusen/socials/issues/3', number: 3, title: 'FS25 Markaryd', state: 'open', body: 'Issue body', user: { login: 'q' }, comments: 10 });
+    if (url === 'https://api.github.com/repos/Tiinusen/socials/issues/comments/5011116876') return responseJson({ id: 5011116876, html_url: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', user: { login: 'q' }, body: ['# Klagomuren', '', '## Source Markdown', '', '```md', embeddedChild.replace('# Embedded Feedback', '# Klagomuren'), '```'].join('\n') });
+    return responseJson({ message: 'not found' }, { ok: false, status: 404, statusText: 'Not Found' });
+  }
+});
+assert(targetedCommentCalls.includes('https://api.github.com/repos/Tiinusen/socials/issues/comments/5011116876'), 'issue-comment targets should fetch the concrete comment endpoint instead of relying on the bounded comments window');
+assert(!targetedCommentCalls.includes('https://api.github.com/repos/Tiinusen/socials/issues/3/comments?per_page=24'), 'targeted issue-comment recovery should not load the full comments window');
+assert(targetedCommentResult.records.some((record) => record.title === 'Klagomuren'), 'targeted issue-comment materialization should recover the embedded parent artifact');
+
 const embeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/13', {
   'https://github.com/Tiinex/docs/issues/13': {
     title: 'Feedback: embedded artifact',
@@ -100,6 +119,119 @@ assert.equal(embeddedRecord.trace, 'parent.trace.md', 'embedded issue source mar
 assert.equal(embeddedRecord.snapshot.embedded, true, 'embedded recovery is explicit metadata, not a generic evidence snapshot');
 assert.equal(embeddedRecord.sourceTarget.targetKind, 'github-issue-embedded-artifact', 'source target classifies embedded artifact recovery separately from raw issue snapshots');
 assert.equal(embeddedRecord.sourceTarget.parentArtifactPath, '.topics/stack/parent.trace.md', 'embedded issue recovery preserves publication Parent Artifact Path as recovery metadata');
+
+const parentSourceArtifactMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinusen/socials/issues/3', {
+  'https://github.com/Tiinusen/socials/issues/3': {
+    title: 'FS25 Markaryd',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-07-18T00:00:00.000Z',
+    body: 'root',
+    comments: [{
+      id: 5011198457,
+      html_url: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011198457',
+      user: { login: 'q' },
+      body: [
+        '# Fler bondgårdar',
+        '',
+        '## Transition Boundary',
+        '',
+        '- Source Artifact: [Klagomuren](https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876)',
+        '',
+        '---',
+        '',
+        '<details>',
+        '<summary>Tiinex source payload</summary>',
+        '',
+        '## Tiinex Boundary',
+        '',
+        '- Source: Fler bondgårdar',
+        '- Tiinex Parent Artifact Path: comment-002-5011116876-recovered-klagomuren.trace.md',
+        '',
+        '## Source Markdown',
+        '',
+        '```md',
+        '# Continuity Context',
+        '',
+        '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+        '- Parent',
+        '  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+        '  - Trace: [comment-002-5011116876-recovered-klagomuren.trace.md](comment-002-5011116876-recovered-klagomuren.trace.md)',
+        '- Current',
+        '  - Current Schema: [tiinex.discovery.finding.v1](tiinex.discovery.finding.v1.schema.md)',
+        '  - Summary: Gräns i spelet är nådd',
+        '',
+        '---',
+        '',
+        '# Fler bondgårdar',
+        '',
+        '# Continuity Integrity',
+        '',
+        '- sha256-base64url-c14n-v2',
+        '  - Towards: self',
+        '  - Value: child',
+        '```',
+        '',
+        '</details>'
+      ].join('\n')
+    }]
+  }
+});
+const parentSourceArtifactRecord = parentSourceArtifactMaterialized.records.find((item) => item.title === 'Fler bondgårdar');
+assert.equal(parentSourceArtifactRecord.sourceTarget.parentArtifactPath, 'comment-002-5011116876-recovered-klagomuren.trace.md', 'embedded comment recovery keeps legacy Parent Artifact Path');
+assert.equal(parentSourceArtifactRecord.sourceTarget.parentSourceUrl, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'embedded comment recovery preserves Source Artifact URL as parent provenance fallback');
+
+const parentTargetFallbackMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinusen/socials/issues/3', {
+  'https://github.com/Tiinusen/socials/issues/3': {
+    title: 'FS25 Markaryd',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-07-18T00:00:00.000Z',
+    body: 'root',
+    comments: [{
+      id: 5011198457,
+      html_url: 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011198457',
+      user: { login: 'q' },
+      body: [
+        '# Fler bondgårdar',
+        '',
+        '<details>',
+        '<summary>Tiinex source payload</summary>',
+        '',
+        '## Tiinex Boundary',
+        '',
+        '- Publication Intent: create-continuation-comment',
+        '- Publication Target Kind: github.issue.comment',
+        '- Publication Operation: create',
+        '- Source: Fler bondgårdar',
+        '- Tiinex Parent Artifact Path: comment-002-5011116876-recovered-klagomuren.trace.md',
+        '- Target: https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876',
+        '',
+        '## Source Markdown',
+        '',
+        '```md',
+        '# Continuity Context',
+        '',
+        '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+        '- Parent',
+        '  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)',
+        '  - Trace: [comment-002-5011116876-recovered-klagomuren.trace.md](comment-002-5011116876-recovered-klagomuren.trace.md)',
+        '- Current',
+        '  - Current Schema: [tiinex.discovery.finding.v1](tiinex.discovery.finding.v1.schema.md)',
+        '  - Summary: Gräns i spelet är nådd',
+        '',
+        '---',
+        '',
+        '# Fler bondgårdar',
+        '```',
+        '',
+        '</details>'
+      ].join('\n')
+    }]
+  }
+});
+const parentTargetFallbackRecord = parentTargetFallbackMaterialized.records.find((item) => item.title === 'Fler bondgårdar');
+assert.equal(parentTargetFallbackRecord.sourceTarget.parentSourceUrl, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'create-continuation issue comments may use Boundary Target as parent provenance when older payloads lack explicit parent source URL');
 
 const detailsEmbeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/9', {
   'https://github.com/Tiinex/docs/issues/9': {
@@ -160,7 +292,7 @@ assert.equal(genericDetailsMaterialized.records[0].kind, 'tiinex.evidence.v1', '
 
 
 const issueApiOne = 'https://api.github.com/repos/Tiinex/docs/issues/1';
-const issueCommentApiOne = 'https://api.github.com/repos/Tiinex/docs/issues/1/comments?per_page=6';
+const issueCommentApiOne = 'https://api.github.com/repos/Tiinex/docs/issues/1/comments?per_page=24';
 const issueApiTwo = 'https://api.github.com/repos/Tiinex/docs/issues/2';
 const resilientCalls = [];
 const resilientMaterialized = await materializeGithubIssueSnapshots([
@@ -180,6 +312,26 @@ assert.equal(resilientMaterialized.counts.loadedTargets, 2, 'target diagnostics 
 assert.equal(resilientMaterialized.counts.failedTargets, 0, 'comment outage should not mark the issue target failed');
 assert(resilientMaterialized.warnings.some((warning) => warning.code === 'github.issue.comments.fetch-failed'), 'comment outage should be diagnosable instead of silent');
 assert.deepEqual(resilientMaterialized.targetResults.map((target) => target.status), ['loaded', 'loaded'], 'per-target issue materialization diagnostics should preserve target status');
+
+const defaultCommentWindowCalls = [];
+const seventhCommentPayload = embeddedChild.replace('# Embedded Feedback', '# Seventh Comment Payload').replace('Embedded feedback recovered from issue body.', 'Recovered from a later bounded issue comment.');
+const defaultCommentWindowResult = await materializeGithubIssueSnapshots([
+  parseGithubIssueSnapshotTarget('https://github.com/Tiinex/docs/issues/77')
+], {
+  fetchImpl: async (url) => {
+    defaultCommentWindowCalls.push(url);
+    if (url === 'https://api.github.com/repos/Tiinex/docs/issues/77') return responseJson({ html_url: 'https://github.com/Tiinex/docs/issues/77', number: 77, title: 'Issue with later comments', state: 'open', body: 'Issue body', user: { login: 'q' }, comments: 7 });
+    if (url === 'https://api.github.com/repos/Tiinex/docs/issues/77/comments?per_page=24') return responseJson(Array.from({ length: 7 }, (_, index) => ({
+      id: 7700 + index + 1,
+      html_url: `https://github.com/Tiinex/docs/issues/77#issuecomment-${7700 + index + 1}`,
+      user: { login: 'q' },
+      body: index === 6 ? ['## Source Markdown', '', '```md', seventhCommentPayload, '```'].join('\n') : `plain comment ${index + 1}`
+    })));
+    return responseJson({ message: 'not found' }, { ok: false, status: 404, statusText: 'Not Found' });
+  }
+});
+assert(defaultCommentWindowCalls.includes('https://api.github.com/repos/Tiinex/docs/issues/77/comments?per_page=24'), 'default issue comment window should request enough comments for PoC-like issue threads without extra API calls');
+assert(defaultCommentWindowResult.records.some((record) => record.title === 'Seventh Comment Payload'), 'issue materialization should include later embedded comment artifacts inside the default comment window');
 
 function responseJson(json, options = {}) {
   const body = JSON.stringify(json || {});
@@ -258,7 +410,7 @@ const syntheticIssuePaths = createGithubIssueSnapshotRecords({
     body: ['## Source Markdown', '', '```md', commentEmbeddedOne.replace('# Comment One', '# Silicon Valley'), '```'].join('\n')
   }]
 });
-assert(syntheticIssuePaths.every((record) => String(record.path || '').startsWith('.topics/.issues/github/tiinex-docs/9/')), 'issue/comment material without an explicit Source Path should live under the logical .topics/.issues scope');
+assert(syntheticIssuePaths.every((record) => String(record.path || '').startsWith('.topics/.github/tiinex/docs/.issues/9/')), 'issue/comment material without an explicit Source Path should live under the logical .topics/.github/<owner>/<repo>/.issues scope');
 assert(syntheticIssuePaths.some((record) => /comment-001-4881782365-recovered-silicon-valley\.trace\.md$/.test(record.path)), 'comment recovered artifacts should preserve comment id and title under the logical issue scope');
 
 console.log('github.issueSnapshot: ok');

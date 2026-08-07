@@ -8242,3 +8242,157 @@ body.tx-return-settle .tx-react-runtime {
     grid-template-columns: 1fr;
   }
 }
+
+/* v302: PoC-like workspace columns stay width-stable; narrow viewports still page. */
+.tx-workspace-single-stage {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  width: min(100%, 78rem);
+  justify-self: center;
+}
+.tx-workspace-multicolumn-stage {
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+  align-self: stretch;
+  display: flex;
+  gap: clamp(0.65rem, 1.3vw, 1rem);
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 clamp(0.15rem, 0.7vw, 0.45rem) 0.35rem;
+  scroll-snap-type: x proximity;
+}
+.tx-workspace-frame {
+  min-width: 0;
+  display: flex;
+  scroll-snap-align: start;
+}
+.tx-workspace-multicolumn-stage .tx-workspace-frame {
+  flex: 0 0 clamp(34rem, calc((100vw - 4.5rem) / 2), 78rem);
+}
+.tx-workspace-frame > .tx-workspace-window {
+  width: 100%;
+}
+.tx-workspace-frame-inactive {
+  opacity: 0.86;
+  filter: saturate(0.9);
+}
+.tx-workspace-frame-inactive:focus-within,
+.tx-workspace-frame-inactive:hover {
+  opacity: 0.96;
+  filter: none;
+}
+@media (max-width: 1179px) {
+  .tx-workspace-multicolumn-stage {
+    display: grid;
+    justify-items: center;
+    overflow: visible;
+    padding: 0;
+  }
+  .tx-workspace-multicolumn-stage .tx-workspace-frame {
+    width: 100%;
+    flex-basis: auto;
+  }
+}
+
+/* v303: deterministic desktop workspace columns.
+   Desktop uses a fixed column rhythm: one column stays the same width before/after
+   source loading, up to three columns fit on a 1920px viewport, and reduced browser
+   widths drop visible columns instead of introducing horizontal scrolling. */
+.tx-react-runtime.tx-workspace-mode {
+  overflow: hidden;
+}
+.tx-workspace-single-stage {
+  --tx-workspace-single-width: clamp(34rem, 34vw, 42rem);
+  inline-size: min(100%, var(--tx-workspace-single-width));
+  width: min(100%, var(--tx-workspace-single-width));
+  max-inline-size: calc(100vw - clamp(1rem, 3vw, 2rem));
+  justify-self: center;
+}
+.tx-workspace-single-stage .tx-workspace-frame {
+  inline-size: 100%;
+  width: 100%;
+}
+.tx-workspace-single-stage .tx-workspace-window,
+.tx-workspace-single-stage .tx-schema-workspace-surface {
+  inline-size: 100%;
+  width: 100%;
+  max-inline-size: none;
+}
+.tx-workspace-multicolumn-stage {
+  inline-size: min(100%, calc(100vw - clamp(1rem, 3vw, 2.2rem)));
+  width: min(100%, calc(100vw - clamp(1rem, 3vw, 2.2rem)));
+  max-inline-size: 112rem;
+  justify-self: center;
+  display: grid;
+  grid-template-columns: repeat(var(--tx-visible-workspace-columns, 2), minmax(0, 1fr));
+  gap: clamp(0.65rem, 1.15vw, 1rem);
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0 0 0.35rem;
+  scroll-snap-type: none;
+}
+.tx-workspace-multicolumn-stage .tx-workspace-frame {
+  inline-size: 100%;
+  width: 100%;
+  min-inline-size: 0;
+  flex: none;
+  display: flex;
+}
+.tx-workspace-multicolumn-stage .tx-workspace-frame > .tx-workspace-window,
+.tx-workspace-multicolumn-stage .tx-workspace-frame > .tx-schema-workspace-surface {
+  inline-size: 100%;
+  width: 100%;
+  min-inline-size: 0;
+  max-inline-size: none;
+}
+@media (min-width: 1500px) {
+  .tx-workspace-multicolumn-stage[data-workspace-columns="3"] {
+    max-inline-size: 112rem;
+  }
+}
+@media (min-width: 980px) and (max-width: 1499px) {
+  .tx-workspace-multicolumn-stage {
+    grid-template-columns: repeat(var(--tx-visible-workspace-columns, 2), minmax(0, 1fr));
+    max-inline-size: 88rem;
+  }
+}
+@media (max-width: 979px) {
+  .tx-workspace-single-stage,
+  .tx-workspace-multicolumn-stage {
+    display: grid;
+    justify-items: center;
+    inline-size: min(100%, calc(100vw - .8rem));
+    width: min(100%, calc(100vw - .8rem));
+    overflow: visible;
+    padding: 0;
+  }
+  .tx-workspace-multicolumn-stage .tx-workspace-frame {
+    width: 100%;
+  }
+}
+
+/* v316 transition draft dialog: form-first, generated detail second. */
+.tx-continuation-dialog-compact {
+  gap: 18px;
+}
+.tx-continuation-meta {
+  border: 1px solid rgba(181, 128, 255, 0.14);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.018);
+}
+.tx-continuation-meta summary,
+.tx-continuation-preview summary {
+  color: rgba(225, 210, 255, 0.74);
+  cursor: pointer;
+  font-weight: 700;
+}
+.tx-continuation-meta .tx-card-badges {
+  margin-top: 10px;
+}
+.tx-continuation-meta .tx-muted {
+  margin: 10px 0 0;
+}

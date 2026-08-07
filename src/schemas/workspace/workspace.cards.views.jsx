@@ -4,11 +4,13 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
+import { isTransitionAction, transitionActionsForRecord } from '../../transitions/transition.presentation.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
-import { actionClassName, actionLabel, compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
+import { appendTransitionActionsToStaticRow } from './workspace.cardActions.js';
+import { actionClassName, actionLabel, compactPath, compactRecordDate, recordAuthorityBadge, recordDisplayPath, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
 
-export const WorkspaceCandidateCard = React.memo(function WorkspaceCandidateCard({ candidate, onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
+export const WorkspaceCandidateCard = React.memo(function WorkspaceCandidateCard({ candidate, actionStateKey = '', onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
   return (
     <article className="tx-artifact-card tx-workspace-candidate-card">
       <div className="tx-card-badges">
@@ -27,7 +29,7 @@ export const WorkspaceCandidateCard = React.memo(function WorkspaceCandidateCard
   );
 }, candidateCardPropsEqual);
 
-export const AssetCard = React.memo(function AssetCard({ asset, onOpenAsset }) {
+export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey = '', onOpenAsset }) {
   return (
     <article className="tx-artifact-card tx-asset-card">
       <div className="tx-card-badges">
@@ -45,13 +47,15 @@ export const AssetCard = React.memo(function AssetCard({ asset, onOpenAsset }) {
   );
 }, assetCardPropsEqual);
 
-export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
+export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
-  const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference);
-  const actions = lineageContext
+  const transitionActions = transitionActionsForRecord(record, { surface: context, maxPrimary: 1 });
+  const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
+  const contextualActions = lineageContext
     ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
     : baseActions.filter((action) => action.id !== RecordActionKind.lineage);
+  const actions = appendTransitionActionsToStaticRow(contextualActions, transitionActions);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
   const sourceBadge = recordSourceBadge(record);
@@ -70,6 +74,7 @@ export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLinea
         <Badge>{schemaBadge}</Badge>
         {dateBadge ? <Badge>{dateBadge}</Badge> : null}
         <Badge>{sourceBadge}</Badge>
+        <Badge title="Authority/mutability boundary">{recordAuthorityBadge(record)}</Badge>
       </div>
       <h3>{record.title || 'Untitled'}</h3>
       <p>{record.summary || 'No summary available yet.'}</p>
@@ -87,6 +92,7 @@ export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLinea
             if (action.id === RecordActionKind.open) return onOpenRecord?.(record.id);
             if (action.id === RecordActionKind.lineage) return onFocusRecordLineage?.(record.id);
             if (action.id === RecordActionKind.share) return onShareRecord?.(record);
+            if (isTransitionAction(action)) return onRecordAction?.(record, action);
             return onRecordAction?.(record, action);
           }}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></button>
         ))}
@@ -97,19 +103,31 @@ export function RecordCard({ record, auditItem, onOpenRecord, onFocusRecordLinea
 
 export const MemoRecordCard = React.memo(RecordCard, recordCardPropsEqual);
 
-function candidateCardPropsEqual(previous = {}, next = {}) {
-  return previous.candidate === next.candidate;
+
+
+export function candidateCardPropsEqual(previous = {}, next = {}) {
+  return previous.candidate === next.candidate
+    && previous.actionStateKey === next.actionStateKey
+    && Boolean(previous.onOpenWorkspaceCandidate) === Boolean(next.onOpenWorkspaceCandidate)
+    && Boolean(previous.onMergeWorkspaceCandidate) === Boolean(next.onMergeWorkspaceCandidate);
 }
 
-function assetCardPropsEqual(previous = {}, next = {}) {
-  return previous.asset === next.asset;
+export function assetCardPropsEqual(previous = {}, next = {}) {
+  return previous.asset === next.asset
+    && previous.actionStateKey === next.actionStateKey
+    && Boolean(previous.onOpenAsset) === Boolean(next.onOpenAsset);
 }
 
-function recordCardPropsEqual(previous = {}, next = {}) {
+export function recordCardPropsEqual(previous = {}, next = {}) {
   return previous.record === next.record
     && previous.auditItem === next.auditItem
     && previous.context === next.context
-    && previous.expanded === next.expanded;
+    && previous.expanded === next.expanded
+    && previous.actionStateKey === next.actionStateKey
+    && Boolean(previous.onOpenRecord) === Boolean(next.onOpenRecord)
+    && Boolean(previous.onFocusRecordLineage) === Boolean(next.onFocusRecordLineage)
+    && Boolean(previous.onShareRecord) === Boolean(next.onShareRecord)
+    && Boolean(previous.onRecordAction) === Boolean(next.onRecordAction);
 }
 
 export function AssetDetailDialog({ asset, onDismiss }) {

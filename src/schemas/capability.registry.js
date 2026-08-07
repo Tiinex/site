@@ -156,8 +156,11 @@ function makeActionCapabilityMap(module = {}, capabilities = {}) {
 function transitionSupports(transitions, action) {
   if (!transitions) return false;
   if (typeof transitions === 'function') return true;
+  const wanted = String(action || '').toLowerCase();
+  const values = Array.isArray(transitions) ? transitions : Object.values(transitions || {});
+  if (values.some((entry) => String(entry?.intent || '').toLowerCase() === wanted || String(entry?.id || '').toLowerCase().includes(`.${wanted}.`))) return true;
   const keys = Object.keys(transitions || {}).map((key) => key.toLowerCase());
-  return keys.some((key) => key.includes(action));
+  return keys.some((key) => key.includes(wanted));
 }
 
 function capability(name, supported, reason) {

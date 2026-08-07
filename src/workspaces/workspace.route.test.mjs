@@ -71,7 +71,7 @@ const stateWithIssueSnapshotRecord = {
       summary: 'Preserved issue material',
       kind: 'tiinex.evidence.v1',
       currentCreatedAt: '2026-07-28',
-      path: '.topics/.issues/github/Tiinex-docs/9/comment-001.trace.md',
+      path: '.topics/.github/tiinex/docs/.issues/9/comment-001.trace.md',
       markdown: '# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n- Current\n  - Current Schema: [tiinex.evidence.v1](tiinex.evidence.v1.schema.md)\n  - Created At: 2026-07-19\n  - Summary: issue snapshot body survives route restore\n\n---\n\n# Cached issue comment leaf\n',
       sourceMode: 'github-comment-embedded-artifact',
       source: { id: 'github:tiinex-docs', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'abcdef', rootPath: '.topics', boundary: 'explicit source boundary' },

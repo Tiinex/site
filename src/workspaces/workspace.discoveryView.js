@@ -61,7 +61,7 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const workspaceCandidateRecord = role === MaterialRole.workspaceCandidate;
   const parentReason = discoveryParentReason(record, materialIndex);
   if (workspaceCandidateRecord && options.showWorkspaceCandidates === false) return hidden('hidden-workspace-candidates', role, discoveryLeaf, supporting);
-  if (!workspaceCandidateRecord && options.leavesOnly && !discoveryLeaf) return hidden(parentReason || 'hidden-not-terminal-work-leaf', role, discoveryLeaf, supporting);
+  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || (workspaceCandidateRecord ? 'hidden-workspace-parent' : 'hidden-not-terminal-work-leaf'), role, discoveryLeaf, supporting);
   if (!workspaceCandidateRecord && !options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
@@ -127,6 +127,7 @@ export function buildDiscoveryMaterialIndex(records = []) {
     if (edge.status === LineageResolutionStatus.missing) continue;
     const parent = recordIndex.byKey.get(keyLookup(edge.from));
     const child = recordIndex.byKey.get(keyLookup(edge.to));
+    if (edge.status === LineageResolutionStatus.mismatch && !mismatchedEdgeStillOwnsDiscoveryParenthood(parent, child)) continue;
     for (const key of parent ? parent.keys : [String(edge.from)]) {
       lineageParentKeys.add(key);
       parentReasonsByKey.set(key, 'hidden-loaded-parent');
@@ -245,7 +246,7 @@ function buildDiscoveryRecordIndex(records = []) {
       name,
       keys,
       keySet: new Set(keys),
-      workEligible: role === MaterialRole.leaf && isDiscoveryWorkLeafEligible(record)
+      workEligible: (role === MaterialRole.leaf && isDiscoveryWorkLeafEligible(record)) || role === MaterialRole.workspaceCandidate
     });
     descriptors.push(descriptor);
     byRecord.set(record, descriptor);
@@ -258,6 +259,15 @@ function buildDiscoveryRecordIndex(records = []) {
   }
 
   return Object.freeze({ descriptors, byRecord, byKey, workCandidates, candidatesByDir, folderRootTracesByDir });
+}
+
+
+function mismatchedEdgeStillOwnsDiscoveryParenthood(parent = null, child = null) {
+  if (!parent || !child) return false;
+  // A mismatched/stale edge between ordinary work leaves should stay visible in Discovery so
+  // users can inspect the changed parent material. Workspace/root entrypoints are containers;
+  // if a loaded child still points at them, Leaves only should not show them as terminal work.
+  return parent.role === MaterialRole.workspaceCandidate && Boolean(child.workEligible);
 }
 
 function addPathParentMembership(recordIndex, pathParentKeys, pathChildKeys, parentReasonsByKey) {

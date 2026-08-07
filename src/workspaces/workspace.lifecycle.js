@@ -101,6 +101,26 @@ next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, record, workspace, state: next };
 }
+
+function removableLocalSessionRecord(r){const s=r&&r.source||{},m=String(r&&r.sourceMode||'').toLowerCase(),st=String(r&&(r.status||r.lifecycleStatus||r.currentStatus)||'').toLowerCase(),l=s.sourceBacked===false||s.adapterId==='local'||s.kind===SESSION_SOURCE_KIND||s.kind==='local'||s.sourceKind==='local.session'||s.sourceKind==='export.package.import',d=/^local-(transition|reference|draft)/.test(m)||st==='draft'||st==='local'||st==='draft/local',i=/^(package-import|archive-local|local-import)/.test(m)||s.sourceKind==='export.package.import'||s.adapterId==='export-package'||r.packageImport===true;return!!(l&&(d||i));}
+function removeWorkspaceRecord(state,workspaceId,recordId){
+const next=cloneState(state);
+const targetId=workspaceId||next.activeWorkspaceId;
+const workspace=next.workspaces.find((item)=>item.id===targetId);
+if(!workspace)return{ok:false,error:'workspace.not.found',state};
+const cleanId=String(recordId||'').trim();
+if(!cleanId)return{ok:false,error:'record.id.required',state};
+const records=Array.isArray(workspace.records)?workspace.records:[];
+const record=records.find((item)=>String(item&&item.id||'')===cleanId)||null;
+if(!record)return{ok:false,error:'record.not.found',state};
+if(!removableLocalSessionRecord(record))return{ok:false,error:'record.remove.refused',state};
+workspace.records=records.filter((item)=>String(item&&item.id||'')!==cleanId);
+workspace.sources=ensureWorkspaceSources(workspace);
+upsertSource(workspace,makeLocalSource({count:countLocalRecords(workspace)}));
+if(String(next.view?.selectedRecordId||'')===cleanId)next.view=Object.assign({},next.view||{},{selectedRecordId:'',lineageAuditReport:null,lineageLoadReport:null});
+next.activeWorkspaceId=workspace.id;
+return{ok:true,record,workspace,state:next};
+}
 function addWorkspaceRecords(state,workspaceId,inputs=[],options={}){
 const records = Array.isArray(inputs) ? inputs : [];
 let next = cloneState(state);
@@ -354,6 +374,7 @@ SESSION_SOURCE_KIND,
 activeWorkspace,
 addWorkspaceRecord,
 addWorkspaceRecords,
+removeWorkspaceRecord,
 addWorkspaceAssets,
 openWorkspaceFromMarkdown,
 mergeWorkspaceImport,

@@ -4,7 +4,9 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { TextField } from '../../ui/primitives/Field.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { createRecordActionResult, RecordActionKind } from '../../actions/record.actions.js';
-import { createContinuationDraft, createReferenceDraft, listContinuationTargets } from '../../transitions/record.transitions.js';
+import { createReferenceDraft } from '../../transitions/record.transitions.js';
+import { isTransitionAction } from '../../transitions/transition.presentation.js';
+import { ContinuationDialog, TransitionValidationNotice } from './workspace.continuationDialog.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
 
@@ -83,10 +85,13 @@ export function RecordMarkdownDialog({ record, onDismiss }) {
   );
 }
 
-export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, onShare, onCreateTransition }) {
+export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], onDismiss, onShare, onCreateTransition }) {
   const actionId = action?.id || action;
+  if (isTransitionAction(action)) {
+    return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} transitionDefinition={action.transitionDefinition} workspaceRecords={workspaceRecords} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
+  }
   if (actionId === RecordActionKind.continue) {
-    return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
+    return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} workspaceRecords={workspaceRecords} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
   }
   if (actionId === RecordActionKind.markdown) {
     return <RecordMarkdownDialog record={record} onDismiss={onDismiss} />;
@@ -136,57 +141,6 @@ export function RecordActionDialog({ record, action, schemaRegistry, onDismiss, 
   );
 }
 
-function ContinuationDialog({ record, schemaRegistry, onDismiss, onCreateTransition }) {
-  const targets = listContinuationTargets(schemaRegistry);
-  const [selected, setSelected] = useState(targets[0]?.id || 'tiinex.topic.v1');
-  const [title, setTitle] = useState(`Continue · ${record?.title || 'artifact'}`.slice(0, 96));
-  const [summary, setSummary] = useState(`Continuation leaf drafted from ${record?.title || 'this artifact'}.`.slice(0, 280));
-  const target = targets.find((item) => item.id === selected) || targets[0] || { id: 'tiinex.topic.v1', label: 'Topic', summary: 'Topic continuation.' };
-  const draft = createContinuationDraft(record, target, { title, summary });
-  return (
-    <Modal title="Create continuation leaf" onDismiss={onDismiss} initialFocus="continuationTitle">
-      <div className="tx-continuation-dialog">
-        <div className="tx-card-badges">
-          <Badge>{draft.schema}</Badge>
-          <Badge>{target.id}</Badge>
-          <Badge>{draft.transition.parentBoundary}</Badge>
-        </div>
-        <p className="tx-muted">Choose a schema-backed Tiinex leaf type. The draft stays browser-local until you explicitly publish or export it.</p>
-        <div className="tx-continuation-target-grid" role="listbox" aria-label="Continuation target schema">
-          {targets.map((item) => (
-            <button key={item.id} type="button" className={`tx-continuation-target ${selected === item.id ? 'tx-active' : ''}`} aria-selected={selected === item.id} onClick={() => setSelected(item.id)}>
-              <strong>{item.label}</strong>
-              <small>{item.summary}</small>
-            </button>
-          ))}
-        </div>
-        <label className="tx-field"><span>Title</span><input id="continuationTitle" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={96} /></label>
-        <label className="tx-field"><span>Summary</span><textarea value={summary} onChange={(event) => setSummary(event.target.value)} rows={3} maxLength={280} /></label>
-        <details className="tx-continuation-preview">
-          <summary>Preview continuation Markdown</summary>
-          <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
-        </details>
-        <TransitionValidationNotice validation={draft.validation} />
-        <div className="tx-dialog-actions">
-          <Button variant="ghost" onClick={onDismiss}>Cancel</Button>
-          <Button variant="primary" icon="continue" onClick={() => onCreateTransition?.(record, draft)}>Create local continuation</Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function TransitionValidationNotice({ validation }) {
-  if (!validation) return null;
-  const severe = (validation.findings || []).filter((finding) => finding.severity === 'error' || finding.severity === 'warning').slice(0, 3);
-  return (
-    <div className={`tx-transition-validation tx-transition-validation-${validation.status || (validation.ok ? 'valid' : 'invalid')}`}>
-      <strong>{validation.ok ? 'Transition conformance passed' : 'Transition conformance needs attention'}</strong>
-      <span>{validation.counts?.error || 0} errors · {validation.counts?.warning || 0} warnings · local draft boundary</span>
-      {severe.length ? <ul>{severe.map((finding) => <li key={finding.code}>{finding.message}</li>)}</ul> : null}
-    </div>
-  );
-}
 
 export function CreateWorkspaceDialog({ error, onSubmit, onDismiss }) {
   const [name, setName] = useState('');

@@ -27,4 +27,7 @@ const rootedParsed = api.parseWorkspaceConfig(rooted);
 if (rootedParsed.workspaceEntrypoints[0]?.issueUrl !== 'https://github.com/Tiinex/docs/issues/9') throw new Error('root .workspace.md issue URL did not parse');
 const custom = api.parseWorkspaceConfig('## Empty Stage\n\n- Subtitle: Custom line\n- Empty Copy Link Behavior: clean-url\n');
 if (api.emptyStageSubtitle(custom) !== 'Custom line') throw new Error('custom .workspace.md subtitle did not parse');
+
+const repeated = api.parseWorkspaceConfig('## Workspace Entrypoints\n\n### Tiinex\n\n- Source Kind: github-tree\n- Repository: Tiinex/site\n- Issue URL: https://github.com/Tiinex/site/issues/1\n- Issue URL: https://github.com/Tiinex/site/issues/2\n');
+if (repeated.workspaceEntrypoints[0]?.issueUrl !== 'https://github.com/Tiinex/site/issues/1\nhttps://github.com/Tiinex/site/issues/2') throw new Error('repeated issue URLs must be preserved for PoC workspace state parity');
 console.log('✓ workspace config parser passed');

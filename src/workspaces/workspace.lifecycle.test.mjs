@@ -53,6 +53,30 @@ try {
   const afterSecondPath = lifecycle.activeWorkspace(addSecondPath.state);
   if (!afterSecondPath.records.some((item) => item.path === 'a.md') || !afterSecondPath.records.some((item) => item.path === 'folder/a.md')) fail('same title with distinct paths must remain distinct records');
 
+  const draftAdd = lifecycle.addWorkspaceRecord(addSecondPath.state, ws.id, { title: 'Draft Task', summary: 'draft', path: '.topics/news/001-1-draft-task.trace.md', kind: 'tiinex.task.v1', status: 'local', sourceMode: 'local-transition', markdown: '# Draft Task' });
+  if (!draftAdd?.ok) fail('addWorkspaceRecord failed for transition draft');
+  const draftRecord = draftAdd.record;
+  const deleteDraft = lifecycle.removeWorkspaceRecord(draftAdd.state, ws.id, draftRecord.id);
+  if (!deleteDraft?.ok) fail('removeWorkspaceRecord must delete browser-local transition drafts');
+  if (lifecycle.activeWorkspace(deleteDraft.state).records.some((item) => item.id === draftRecord.id)) fail('removed local draft must leave workspace records');
+  const missingDeleteRefused = lifecycle.removeWorkspaceRecord(draftAdd.state, ws.id, 'missing-source-record');
+  if (missingDeleteRefused?.ok) fail('removeWorkspaceRecord must not succeed for unknown records');
+
+  const packageImportAdd = lifecycle.addWorkspaceRecord(addSecondPath.state, ws.id, {
+    id: 'package:local:.topics/imported.trace.md',
+    title: 'Imported Package Artifact',
+    summary: 'imported',
+    path: '.topics/imported.trace.md',
+    kind: 'tiinex.topic.v1',
+    sourceMode: 'package-import',
+    packageImport: true,
+    markdown: '# Imported Package Artifact',
+    source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false }
+  });
+  if (!packageImportAdd?.ok) fail('addWorkspaceRecord failed for package import material');
+  const packageRemove = lifecycle.removeWorkspaceRecord(packageImportAdd.state, ws.id, packageImportAdd.record.id);
+  if (!packageRemove?.ok) fail('removeWorkspaceRecord must remove browser-local package import material');
+  if (lifecycle.activeWorkspace(packageRemove.state).records.some((item) => item.id === packageImportAdd.record.id)) fail('removed package import material must leave workspace records');
 
   // ensure adding records using 'local' as sourceId is rejected
   const badLocal = lifecycle.addWorkspaceSourceRecords(addLocal.state, ws.id, 'local', [rec]);
@@ -84,6 +108,8 @@ try {
   if (!inserted?.source || inserted.source.id !== sourceId) fail('inserted record must have explicit source provenance');
   if (!inserted?.id || !String(inserted.id).startsWith('source:')) fail('source-backed record must have deterministic source id');
   if (String(inserted.path || '') !== '.topics/1.md') fail('source-backed record path must be canonicalized to include rootPath');
+  const sourceDelete = lifecycle.removeWorkspaceRecord(addSrcRes.state, ws.id, inserted.id);
+  if (sourceDelete?.ok || sourceDelete?.error !== 'record.remove.refused') fail('removeWorkspaceRecord must refuse source-backed material');
   const foundSource = addSrcRes.workspace.sources.find((s) => s.id === sourceId);
   if (!foundSource) fail('configured source not present after insert');
   if (!(Number(foundSource.count) > 0)) fail('configured source count not updated');
@@ -140,7 +166,7 @@ try {
 
   const surfaceClearState = JSON.parse(JSON.stringify(addSource.state));
   const repoSurfaceRec = Object.assign(createRecordFromMarkdown('# Repo file\n\nbody', { path: '.topics/repo.md', name: 'repo.md', sourceMode: 'source' }), { sourceTarget: { surface: 'repoFiles', transportTier: 'mirror' } });
-  const issueSurfaceRec = Object.assign(createRecordFromMarkdown('# Issue\n\nbody', { path: '.topics/.issues/1.md', name: '1.md', sourceMode: 'source' }), { sourceTarget: { surface: 'issueSnapshots', transportTier: 'proxy' } });
+  const issueSurfaceRec = Object.assign(createRecordFromMarkdown('# Issue\n\nbody', { path: '.topics/.github issue sidecars/1.md', name: '1.md', sourceMode: 'source' }), { sourceTarget: { surface: 'issueSnapshots', transportTier: 'proxy' } });
   let surfaceState = lifecycle.addWorkspaceSourceRecords(surfaceClearState, ws.id, sourceId, [repoSurfaceRec, issueSurfaceRec]).state;
   const surfaceClearRes = stateWithSourceMaterialCleared(surfaceState, ws.id, sourceId, { discoveryState: 'loading', surfaces: ['issueSnapshots'] });
   if (!surfaceClearRes?.ok) fail('surface-scoped clear failed');
@@ -261,12 +287,12 @@ try {
 `
     }]);
     assert.equal(issueLoaded.ok, true, 'issue snapshot source records should insert');
-    assert.equal(issueLoaded.records[0].path, '.topics/.issues/github/tiinex-docs/123/issue-snapshot.trace.md', 'plain issue snapshot path should use logical .topics/.issues scope, not a GitHub URL pseudo-tree');
+    assert.equal(issueLoaded.records[0].path, '.topics/.github/tiinex/docs/.issues/123/issue-snapshot.trace.md', 'plain issue snapshot path should use logical .topics/.github/<owner>/<repo>/.issues scope, not a GitHub URL pseudo-tree');
     assert(!issueLoaded.records[0].id.includes('.topics/tiinex/docs/issues'), 'plain issue snapshot deterministic id must not inherit repo rootPath');
     const issueRecords = issueLoaded.workspace.records.filter((record) => record.source?.id === issueSource.source.id);
     assert.equal(issueRecords.length, 3, 'comment-embedded issue artifacts must survive addWorkspaceSourceRecords as distinct records');
-    assert(issueRecords.some((record) => record.path === '.topics/.issues/github/tiinex-docs/123/comment-001-5001-recovered-one.trace.md'), 'first comment embedded artifact path should normalize to logical issue scope');
-    assert(issueRecords.some((record) => record.path === '.topics/.issues/github/tiinex-docs/123/comment-002-5002-recovered-two.trace.md'), 'second comment embedded artifact path should normalize to logical issue scope');
+    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/comment-001-5001-recovered-one.trace.md'), 'first comment embedded artifact path should normalize to logical issue scope');
+    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/comment-002-5002-recovered-two.trace.md'), 'second comment embedded artifact path should normalize to logical issue scope');
     const outsideRoot = lifecycle.addWorkspaceSourceRecords(issueLoaded.state, issueCreated.workspace.id, issueSource.source.id, [{
       title: 'Outside root embedded artifact',
       path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-003-5003-recovered-outside.trace.md',

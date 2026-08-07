@@ -22,9 +22,5 @@ export function shouldPageWorkspaces(workspaceCount, viewportWidth) {
   const count = Number(workspaceCount || 0);
   if (count <= 1) return false;
   const width = Number(viewportWidth || 0) || 1280;
-  const minimumColumnWidth = width <= 760 ? 320 : 540;
-  const workspaceGap = width <= 760 ? 10 : 16;
-  const safeViewportPadding = width <= 760 ? 18 : 32;
-  const required = (count * minimumColumnWidth) + ((count - 1) * workspaceGap) + safeViewportPadding;
-  return required > width;
+  return width < 980;
 }

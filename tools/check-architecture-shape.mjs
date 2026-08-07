@@ -78,7 +78,7 @@ includes('src/workspaces/workspace.route.js', 'requestedSurfaces: compactSurface
 includes('src/workspaces/workspace.route.js', 'issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested)', 'route shell must preserve issue discovery selection across refresh');
 includes('src/adapters/github/github.issueSnapshot.js', 'await yieldToBrowserIfAvailable();', 'issue snapshot materialization must yield between targets to avoid browser freeze-lag');
 includes('src/adapters/github/github.issueSnapshot.js', 'window.requestIdleCallback(() => resolve(), { timeout: 80 });', 'issue snapshot browser yield must pass IdleRequestOptions to requestIdleCallback, not a numeric timeout');
-includes('src/adapters/github/github.issueSnapshot.js', 'options.maxComments ?? 6', 'bounded issue comments default must stay small enough for browser interaction');
+includes('src/adapters/github/github.issueSnapshot.js', 'DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS = 24', 'bounded issue comments default must stay explicit and finite for browser interaction');
 includes('src/app/workspaceDisplayCounts.js', 'export function buildDisplayOptionCounts', 'display counts bridge must stay outside TiinexApp');
 includes('src/schemas/workspace/workspace.displayOptions.views.jsx', 'export function DisplayOptionsDialog', 'DisplayOptionsDialog must stay outside workspace.views');
 includes('src/schemas/workspace/workspace.lineage.views.jsx', 'export function WorkspaceLineageState', 'Lineage surface must stay outside workspace.views');

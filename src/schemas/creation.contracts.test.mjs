@@ -12,6 +12,7 @@ import {
 const creatable = listCreatableArtifactSchemas(schemaRegistry);
 assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.topic.v1'), 'topic creation contract must be available');
 assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.evidence.v1'), 'evidence creation contract must be available');
+assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.task.v1'), 'task creation contract must be available for the first Topic → Task slice');
 assert(creatable.every((contract) => contract.schema === ARTIFACT_CREATION_CONTRACT_SCHEMA_ID), 'all creation targets are contracts');
 assert(creatable.every((contract) => contract.status === 'ready'), 'registered core artifact contracts should be ready');
 assert(creatable.every((contract) => contract.resultBoundary.remoteWrite === false), 'creation contracts must not remote write');
@@ -32,6 +33,10 @@ const parent = {
   sourceMode: 'local-files',
   source: { adapterId: 'local', kind: 'local-session' }
 };
+
+const taskContract = buildArtifactCreationContract({ schemaId: 'tiinex.task.v1', transitionType: 'continue-from-record' });
+assert.equal(taskContract.status, 'ready', 'task creation contract is ready for continue-from-record');
+assert.equal(validateArtifactCreationContract(taskContract).ok, true, 'ready task contract validates');
 
 const contract = buildArtifactCreationContract({ schemaId: 'tiinex.topic.v1', transitionType: 'continue-from-record' });
 assert.equal(contract.status, 'ready', 'topic creation contract is ready');

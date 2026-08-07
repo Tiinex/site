@@ -6,6 +6,7 @@ import { buildExportPackageContract, buildExportPackageManifest, buildExportPack
 import { buildExportPackageBundle, inspectExportPackageBundle } from '../export/package.builder.js';
 import { buildExportPackageApplyResult, buildExportPackageImportPlan } from '../export/package.apply.js';
 import { buildSourceTransportReport } from '../diagnostics/sourceTransport.report.js';
+import { isSourceBackedSource } from './workspace.authority.js';
 
 export const WORKSPACE_RECOVERABILITY_VIEW_SCHEMA_ID = 'tiinex.workspace.recoverabilityView.v1';
 
@@ -257,5 +258,5 @@ function normalizeIssue(issue = {}) {
 }
 
 function isSourceBacked(source = {}) {
-  return Boolean(source?.adapterId && source.adapterId !== 'local');
+  return isSourceBackedSource(source);
 }

@@ -187,6 +187,9 @@ function schemaCreationRendererFor(schemaId = '', transitionType = '') {
   if (id === 'tiinex.topic.v1' && (transition === 'continue-from-record' || transition === 'create-artifact')) {
     return { status: CapabilityStatus.implemented, id: 'tiinex.topic.v1.continue-renderer', scope: 'topic-continuation' };
   }
+  if (id === 'tiinex.task.v1' && (transition === 'continue-from-record' || transition === 'create-artifact')) {
+    return { status: CapabilityStatus.implemented, id: 'tiinex.task.v1.continue-renderer', scope: 'task-continuation' };
+  }
   if (id === 'tiinex.evidence.v1' && (transition === 'reference-record' || transition === 'create-artifact')) {
     return { status: CapabilityStatus.implemented, id: 'tiinex.evidence.v1.reference-renderer', scope: 'evidence-reference' };
   }

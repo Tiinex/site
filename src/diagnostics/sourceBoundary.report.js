@@ -1,3 +1,5 @@
+import { isSourceBackedSource } from '../workspaces/workspace.authority.js';
+
 export const SOURCE_BOUNDARY_REPORT_SCHEMA_ID = 'tiinex.sourceBoundary.report.v1';
 
 export function buildSourceBoundaryReport(workspace = {}, input = {}) {
@@ -100,7 +102,7 @@ function finding(severity, code, message, extra = {}) {
 }
 
 export function isSourceBacked(source = {}) {
-  return Boolean(source?.adapterId && source.adapterId !== 'local');
+  return isSourceBackedSource(source);
 }
 
 function explicitRepo(source = {}) {

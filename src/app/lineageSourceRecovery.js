@@ -1,5 +1,6 @@
 import { materializeGithubSource } from '../adapters/github/github.adapter.js';
 import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
+import { githubTransportOrderFromTier } from '../sources/github/github.transport.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { lineageBasePathForRecord } from '../lineage/lineage.pathBasis.js';
 
@@ -15,14 +16,7 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
     if (!recoveryPlan.length) break;
     let changed = false;
     for (const plan of recoveryPlan) {
-      const out = await materializeGithubSource(plan.source, { fileRefs: plan.fileRefs, repoDiscovery: false, issueDiscovery: false, issueUrls: '' }, {
-        fetchImpl,
-        maxFiles: 32,
-        allowCache: false, allowMirror: false, allowProxy: false, allowDirect: true,
-        transportOrder: ['direct'], transportOrderExact: true,
-        transportPolicy: buildSourceTransportPolicy({ mode: 'targeted-parent-file-recovery', maxRequestsPerOperation: 64, now: new Date().toISOString() }),
-        workspaceConfig
-      });
+      const out = await materializeLineageRecoveryPlan(plan, { fetchImpl, workspaceConfig });
       if (out.okCount <= 0) continue;
       const inserted = lifecycle?.addWorkspaceSourceRecords?.(sourceState, activeWorkspace.id, plan.sourceId, out.records || [], { discoveryState: 'partial', preserveView: true });
       if (!inserted?.ok) continue;
@@ -37,6 +31,32 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
   return { state: sourceState, workspace: activeWorkspace, lineage, recoveredParents };
 }
 
+async function materializeLineageRecoveryPlan(plan = {}, { fetchImpl, workspaceConfig } = {}) {
+  const fileRefs = Array.isArray(plan.fileRefs) ? plan.fileRefs : [];
+  const issueUrls = Array.isArray(plan.issueUrls) ? plan.issueUrls : [];
+  if (issueUrls.length) {
+    const requestedTier = plan.source?.transportRefreshTier || plan.source?.preferredTransportTier || '';
+    const transportOrder = requestedTier ? githubTransportOrderFromTier(requestedTier) : undefined;
+    return await materializeGithubSource(plan.source, { fileRefs: [], repoDiscovery: false, issueDiscovery: false, issueUrls: issueUrls.join('\n') }, {
+      fetchImpl,
+      maxFiles: 0,
+      allowCache: true, allowMirror: true, allowProxy: true, allowDirect: true,
+      transportOrder, transportOrderExact: Boolean(requestedTier),
+      transportRefreshTier: requestedTier,
+      transportPolicy: buildSourceTransportPolicy({ mode: 'targeted-parent-issue-recovery', maxRequestsPerOperation: 64, requestedTier, now: new Date().toISOString() }),
+      workspaceConfig
+    });
+  }
+  return await materializeGithubSource(plan.source, { fileRefs, repoDiscovery: false, issueDiscovery: false, issueUrls: '' }, {
+    fetchImpl,
+    maxFiles: 32,
+    allowCache: false, allowMirror: false, allowProxy: false, allowDirect: true,
+    transportOrder: ['direct'], transportOrderExact: true,
+    transportPolicy: buildSourceTransportPolicy({ mode: 'targeted-parent-file-recovery', maxRequestsPerOperation: 64, now: new Date().toISOString() }),
+    workspaceConfig
+  });
+}
+
 export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {}) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
   const byId = new Map(records.map((record) => [String(record.id || '').trim(), record]));
@@ -44,19 +64,41 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
   const grouped = new Map();
   for (const edge of missingEdges) {
     const declaring = byId.get(String(edge.to || '').trim());
-    const fileRef = lineageRecoveryFileRefForTarget(edge.target || '', declaring);
     const source = Object.assign({}, declaring?.source || {}, { ref: declaring?.source?.ref || declaring?.source?.config?.ref || '' });
-    if (!fileRef || !isGithubSource(source)) continue;
+    if (!isGithubSource(source)) continue;
     const sourceId = String(source.id || '').trim();
     if (!sourceId) continue;
-    if (!grouped.has(sourceId)) grouped.set(sourceId, { sourceId, source, fileRefs: [], targets: [] });
+    if (!grouped.has(sourceId)) grouped.set(sourceId, { sourceId, source, fileRefs: [], issueUrls: [], targets: [] });
     const entry = grouped.get(sourceId);
+    const issueUrl = lineageRecoveryIssueUrlForTarget(edge.target || '', declaring);
+    if (issueUrl && !entry.issueUrls.some((item) => canonicalGithubIssueUrl(item) === canonicalGithubIssueUrl(issueUrl))) {
+      entry.issueUrls.push(issueUrl);
+      entry.targets.push({ fromRecordId: declaring?.id || '', target: edge.target || '', issueUrl });
+      continue;
+    }
+    const fileRef = lineageRecoveryFileRefForTarget(edge.target || '', declaring);
+    if (!fileRef) continue;
     if (!entry.fileRefs.some((item) => canonicalRepoPath(item.ref || item) === canonicalRepoPath(fileRef))) {
       entry.fileRefs.push({ ref: fileRef, surface: 'lineageRecovery', targetKind: 'lineage-parent', inputTarget: edge.target || '', targetIndex: entry.fileRefs.length });
       entry.targets.push({ fromRecordId: declaring?.id || '', target: edge.target || '', fileRef });
     }
   }
-  return Array.from(grouped.values()).filter((entry) => entry.fileRefs.length);
+  return Array.from(grouped.values()).filter((entry) => entry.fileRefs.length || entry.issueUrls.length);
+}
+
+export function lineageRecoveryIssueUrlForTarget(target = '', declaringRecord = {}) {
+  const raw = String(target || '').trim();
+  const explicitParent = firstNonEmpty(
+    declaringRecord?.sourceTarget?.parentRawUrl,
+    declaringRecord?.sourceTarget?.parentSourceUrl,
+    declaringRecord?.snapshot?.parentRawUrl,
+    declaringRecord?.snapshot?.parentSourceUrl
+  );
+  if (isGitHubSocialTarget(explicitParent) && parentSocialTargetMatchesTrace(explicitParent, raw)) return explicitParent;
+  if (isGitHubSocialTarget(raw)) return raw;
+  const origin = firstNonEmpty(declaringRecord?.origin || '', declaringRecord?.parentOrigin || '');
+  if (isGitHubSocialTarget(origin) && parentSocialTargetMatchesTrace(origin, raw)) return origin;
+  return '';
 }
 
 export function lineageRecoveryFileRefForTarget(target = '', declaringRecord = {}) {
@@ -107,6 +149,34 @@ function originMatchesTarget(originPath = '', target = '') {
   const targetBase = basename(cleanTarget);
   return Boolean(originBase && targetBase && originBase === targetBase);
 }
+function parentSocialTargetMatchesTrace(parentUrl = '', target = '') {
+  if (!parentUrl) return false;
+  const parentComment = githubIssueCommentIdFromValue(parentUrl);
+  const targetComment = githubIssueCommentIdFromValue(target);
+  if (parentComment && targetComment) return parentComment === targetComment;
+  if (isGitHubSocialTarget(target)) return canonicalGithubIssueUrl(parentUrl) === canonicalGithubIssueUrl(target);
+  return true;
+}
+function githubIssueCommentIdFromValue(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const direct = raw.match(/(?:issuecomment-|issues\/comments\/|comment-(?:\d+-)?)(\d{4,})/i)?.[1] || '';
+  if (direct) return direct;
+  try { const url = new URL(raw); return url.hash.match(/issuecomment-(\d+)/i)?.[1] || ''; } catch (_) {}
+  return '';
+}
+function canonicalGithubIssueUrl(value = '') {
+  try {
+    const url = new URL(String(value || '').trim());
+    const parts = url.pathname.split('/').filter(Boolean);
+    if ((url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) && parts.length >= 4 && parts[2] === 'issues') {
+      const hash = url.hash.match(/issuecomment-(\d+)/i)?.[1] || '';
+      return `https://github.com/${parts[0].toLowerCase()}/${parts[1].toLowerCase()}/issues/${parts[3]}${hash ? `#issuecomment-${hash}` : ''}`;
+    }
+  } catch (_) {}
+  return String(value || '').trim().toLowerCase();
+}
+
 function isRecoverableRepoPathCandidate(raw = '', clean = '', options = {}) {
   const text = String(raw || '').trim().replace(/\\/g, '/');
   if (/^\.topics(?:\/|$)/.test(clean)) return true;

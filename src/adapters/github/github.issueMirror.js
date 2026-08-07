@@ -1,4 +1,4 @@
-import { createGithubIssueSnapshotRecords, githubIssueFetchWarning, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
+import { DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS, createGithubIssueSnapshotRecords, githubIssueFetchWarning, parseGithubIssueSnapshotTarget, parseGithubIssueSnapshotTargets } from './github.issueSnapshot.js';
 import { readGithubSourceCacheEntry, writeGithubSourceCacheEntry, makeGithubSourceCacheResponse } from '../../sources/github/github.transport.js';
 
 export async function discoverGithubIssueSnapshotTargetsViaHostedMirror(source = {}, options = {}) {
@@ -39,7 +39,7 @@ export async function materializeGithubIssueSnapshotsViaHostedMirror(issueUrlsOr
   const warnings = [];
   const errors = [...parsed.errors];
   const targetResults = [];
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS)));
   const indexCache = new Map();
   for (const target of parsed.targets) {
     await yieldToBrowserIfAvailable();
@@ -166,7 +166,7 @@ async function loadHostedIssueSnapshotThread(hosted = {}, target = {}, options =
   if (!issueMeta.updatedAt && entry.updated_at) issueMeta.updatedAt = entry.updated_at;
   const comments = [];
   const warnings = [];
-  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? 6)));
+  const maxComments = Math.max(0, Math.min(100, Number(options.maxComments ?? DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS)));
   const refs = Array.isArray(issueMeta.comments) ? issueMeta.comments.slice(0, maxComments) : [];
   for (const ref of refs) {
     const commentJsonUrl = hostedResolve(issueJsonUrl, ref.json || `comments/${ref.id}.json`);

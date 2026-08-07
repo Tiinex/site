@@ -45,13 +45,32 @@ export function isSyntheticPublicationLineageNode(node = {}) {
 function declaredParentBindingMatchesTarget(parent = '', target = '') {
   const parentPath = githubRepoRelativePathFromUrl(parent) || canonicalPath(parent);
   const targetPath = githubRepoRelativePathFromUrl(target) || canonicalPath(target);
-  if (isGitHubIssueTarget(parent)) return normalizeGitHubIssueTarget(parent) === normalizeGitHubIssueTarget(target);
+  if (isGitHubIssueTarget(parent)) {
+    if (isGitHubIssueTarget(target)) return normalizeGitHubIssueTarget(parent) === normalizeGitHubIssueTarget(target);
+    const parentCommentId = githubIssueCommentIdFromValue(parent);
+    const targetCommentId = githubIssueCommentIdFromValue(targetPath || target);
+    if (parentCommentId && targetCommentId && parentCommentId === targetCommentId) return true;
+    return false;
+  }
   if (!parentPath) return false;
   if (!targetPath) return true;
   if (parentPath === targetPath || parentPath.endsWith(`/${targetPath}`) || targetPath.endsWith(`/${parentPath}`)) return true;
   const parentBase = basename(parentPath);
   const targetBase = basename(targetPath);
   return Boolean(parentBase && targetBase && parentBase === targetBase && parentPath.includes('/'));
+}
+
+
+function githubIssueCommentIdFromValue(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const direct = raw.match(/(?:issuecomment-|issues\/comments\/|comment-(?:\d+-)?)(\d{4,})/i)?.[1] || '';
+  if (direct) return direct;
+  try {
+    const url = new URL(raw);
+    return url.hash.match(/issuecomment-(\d+)/i)?.[1] || '';
+  } catch (_) {}
+  return '';
 }
 
 function isStrongDeclaredParentBinding(raw = '', path = '') {

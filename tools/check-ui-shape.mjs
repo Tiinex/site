@@ -63,6 +63,10 @@ if (appAndWorkspace.includes('byte ok')) failures.push('UI must not claim byte o
 if (!appAndWorkspace.includes('schema ok')) failures.push('audit status badge should use schema/readability wording instead of byte integrity wording');
 if (!appAndWorkspace.includes('Preserve evidence')) failures.push('current evidence operation must not be presented as old Reference parity');
 
+if (!read('src/schemas/workspace/workspace.continuationDialog.views.jsx').includes('tx-continuation-dialog-compact')) failures.push('transition draft dialog must stay form-first and not regress to metadata-first boilerplate');
+if (!read('src/schemas/workspace/workspace.continuationDialog.views.jsx').includes('Generated details')) failures.push('transition-generated metadata/Markdown preview must be disclosed behind generated details, not shown before form inputs');
+if (!read('src/schemas/workspace/workspace.continuationDialog.views.jsx').includes('if (validation.ok && severe.length === 0) return null;')) failures.push('transition conformance success must not crowd the first working form slice');
+if (read('src/app/TiinexApp.jsx').includes('setActiveRecordId(result.record.id)')) failures.push('creating a transition draft must not auto-open the post-create read/share preview modal');
 if (!read('src/actions/record.actions.js').includes('actionAvailabilityForRecord')) failures.push('record actions must be gated by schema/transition capability availability, not generic card affordances');
 if (!read('src/actions/record.actions.js').includes('enabled: implemented')) failures.push('create-like record actions must only render from implemented schema capabilities');
 if (read('src/schemas/tiinex.root.v1.schema.js').includes('record.continue') || read('src/schemas/tiinex.root.v1.schema.js').includes('record.reference')) failures.push('Root schema view actions must not declare generic Continue/Reference actions');

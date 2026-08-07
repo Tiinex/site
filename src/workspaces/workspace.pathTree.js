@@ -1,3 +1,4 @@
+import { classifyRecordAuthority } from './workspace.authority.js';
 import { inferRecordMaterialRole, MaterialRole } from './workspace.materialRole.js';
 import { recordLogicalPath, normalizeWorkspacePath } from './workspace.recordPaths.js';
 
@@ -40,6 +41,8 @@ function makeTreeItem(type, source = {}) {
   const path = normalizeTreePath(type === 'record' ? recordLogicalPath(source) : (source.path || source.name || source.title || type));
   const fallbackName = type === 'workspace' ? 'Workspace candidate' : type === 'asset' ? 'Asset' : 'Artifact';
   const name = basename(path) || source.title || source.name || fallbackName;
+  const materialRole = type === 'record' ? inferRecordMaterialRole(source) : type === 'asset' ? MaterialRole.asset : type === 'workspace' ? MaterialRole.workspaceCandidate : '';
+  const authority = type === 'record' ? classifyRecordAuthority(source) : null;
   return {
     type,
     id: source.id || `${type}:${path || name}`,
@@ -48,7 +51,12 @@ function makeTreeItem(type, source = {}) {
     title: source.title || source.name || name,
     kind: source.kind || source.schema || source.type || type,
     previewState: source.previewState || '',
-    materialRole: type === 'record' ? inferRecordMaterialRole(source) : type === 'asset' ? MaterialRole.asset : type === 'workspace' ? MaterialRole.workspaceCandidate : '',
+    materialRole,
+    authorityKind: authority?.authorityKind || '',
+    mutabilityKind: authority?.mutabilityKind || '',
+    presentationPath: path,
+    sourcePath: source.sourcePath || source.sourceTarget?.sourceArtifactPath || source.snapshot?.sourceArtifactPath || '',
+    provenancePath: source.sourceTarget?.browseUrl || source.sourceTarget?.sourceUrl || source.snapshot?.sourceUrl || source.recoveredFromUrl || '',
     source
   };
 }

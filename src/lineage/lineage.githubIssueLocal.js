@@ -47,7 +47,7 @@ function issueLocalAliasesForNode(node = {}) {
     add(`issue-root-recovered-${slug}.trace.md`);
     add(`issue-root-recovered-${slug}.workspace.md`);
   }
-  const commentId = githubIssueCommentIdFromValue(recovered || node.path || record.path || sourceTarget.inputTarget || record.snapshot?.sourceUrl || '');
+  const commentId = githubIssueCommentIdForNode(node);
   if (commentId) {
     add(`comment-id-${commentId}`);
     if (title) {
@@ -59,6 +59,35 @@ function issueLocalAliasesForNode(node = {}) {
     }
   }
   return aliases;
+}
+
+
+function githubIssueCommentIdForNode(node = {}) {
+  const record = node.record || {};
+  const sourceTarget = record.sourceTarget || {};
+  const snapshot = record.snapshot || {};
+  const target = snapshot.target || {};
+  const candidates = [
+    record.recoveredFromUrl,
+    sourceTarget.inputTarget,
+    sourceTarget.rawUrl,
+    sourceTarget.browseUrl,
+    snapshot.sourceUrl,
+    target.canonicalUrl,
+    target.html_url,
+    target.url,
+    node.path,
+    record.path,
+    record.source?.path,
+    record.sourcePath,
+    sourceTarget.sourceArtifactPath,
+    snapshot.sourceArtifactPath
+  ];
+  for (const candidate of candidates) {
+    const id = githubIssueCommentIdFromValue(candidate);
+    if (id) return id;
+  }
+  return '';
 }
 
 function githubIssueContextForNode(node = {}) {
@@ -113,6 +142,11 @@ function githubIssueContextFromValue(value = '') {
     const repo = normalizeSyntheticRepoToken(repoToken);
     if (repo && /^\d+$/.test(number)) return { repo, number };
   }
+  const legacyDotGithubIndex = pathParts.findIndex((part, index) => part.toLowerCase() === '.issues' && pathParts[index - 1]?.toLowerCase() === '.github');
+  if (legacyDotGithubIndex >= 0) {
+    const legacy = legacyIssueFolderContext(pathParts[legacyDotGithubIndex + 1] || '');
+    if (legacy) return legacy;
+  }
   const issueIndex = pathParts.findIndex((part) => part.toLowerCase() === 'issues');
   if (issueIndex >= 2 && pathParts.length > issueIndex + 1) {
     const repo = normalizeRepoKey(`${pathParts[issueIndex - 2]}/${pathParts[issueIndex - 1]}`);
@@ -138,6 +172,17 @@ function normalizeSyntheticRepoToken(value = '') {
   const owner = parts.shift();
   const repo = parts.join('-');
   return owner && repo ? `${owner}/${repo}` : '';
+}
+function legacyIssueFolderContext(value = '') {
+  const token = String(value || '').trim().toLowerCase();
+  const parts = token.split('-').filter(Boolean);
+  const numberIndex = parts.findIndex((part, index) => index >= 2 && /^\d+$/.test(part));
+  if (numberIndex < 2) return null;
+  const owner = parts[0] || '';
+  const repoParts = parts.slice(1, numberIndex).filter((part) => part !== 'issue' && part !== 'issues');
+  const repo = normalizeRepoKey(`${owner}/${repoParts.join('-')}`);
+  const number = parts[numberIndex] || '';
+  return repo && number ? { repo, number } : null;
 }
 function canonicalPath(value = '') {
   let raw = String(value || '').trim();

@@ -1,0 +1,9 @@
+{
+  "label": "Task",
+  "summary": "Browser-local task draft created as a continuation.",
+  "task.schema.mismatch": "Task validator was invoked for a non-task current schema.",
+  "task.title.missing": "Task artifact should begin with a human-readable title.",
+  "task.body.thin": "Task body is thin; the next action may be unclear.",
+  "task.nextStep.missing": "Task body does not include a Next Step section yet.",
+  "task.body.readable": "Task body is readable at scaffold validation depth."
+}
