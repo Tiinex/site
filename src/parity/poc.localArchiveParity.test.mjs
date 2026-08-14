@@ -48,7 +48,7 @@ function fileFromZip(name, zip) {
 try {
   const bundle = makeZip([
     { name: 'viewer.workspace.md', content: '# PoC Import Workspace\n\n## Workspace Entrypoints\n' },
-    { name: 'notes/alpha.trace.md', content: '# Alpha\n\nBody', method: 8 },
+    { name: 'notes/001-alpha.trace.md', content: '# Alpha\n\nBody', method: 8 },
     { name: 'notes/beta.md', content: '# Beta\n\nBody', method: 8 },
     { name: 'assets/diagram.svg', content: '<svg></svg>' },
     { name: '../evil.md', content: '# Evil' }
@@ -71,9 +71,23 @@ try {
   assert.equal(workspace.importResults[0].counts.warnings, 1);
 
   const repeated = applyLocalAdapterResultToWorkspace(lifecycle, applied.state, workspace.id, adapterResult, { clock: () => '2026-07-20T22:01:00.000Z' });
-  const afterRepeat = lifecycle.activeWorkspace(repeated.state);
-  assert.equal(afterRepeat.records.length, 2, 'repeat import must upsert same canonical record paths');
-  assert.equal(afterRepeat.assets.length, 1, 'repeat import must upsert same canonical asset paths');
+  assert.equal(repeated.ok, false, 'repeat import with overlapping local paths must not silently upsert');
+  assert.equal(repeated.error, 'import.conflict.requires-resolution');
+  assert(repeated.conflicts.some((conflict) => conflict.type === 'trace-slot'), 'PoC lineage-slot conflicts are detected even when trace slugs differ');
+  assert(repeated.conflicts.some((conflict) => conflict.type === 'path'), 'same-path conflicts require an explicit user choice');
+
+  const replaced = applyLocalAdapterResultToWorkspace(lifecycle, applied.state, workspace.id, adapterResult, { clock: () => '2026-07-20T22:02:00.000Z', conflictResolution: 'replace' });
+  const afterReplace = lifecycle.activeWorkspace(replaced.state);
+  assert.equal(replaced.ok, true);
+  assert.equal(afterReplace.records.length, 2, 'replace keeps canonical local artifact paths without creating duplicates');
+  assert.equal(afterReplace.assets.length, 1, 'replace keeps canonical local asset path');
+  assert.equal(afterReplace.workspaceMarkdown, adapterResult.workspaceEntries[0].markdown, 'replace updates the current workspace artifact rather than adding a duplicate workspace record');
+
+  const siblinged = applyLocalAdapterResultToWorkspace(lifecycle, applied.state, workspace.id, adapterResult, { clock: () => '2026-07-20T22:03:00.000Z', conflictResolution: 'sibling' });
+  const afterSibling = lifecycle.activeWorkspace(siblinged.state);
+  assert.equal(siblinged.ok, true);
+  assert(afterSibling.records.length > workspace.records.length, 'Import as sibling preserves existing material and adds renamed incoming material');
+  assert(afterSibling.records.some((record) => /notes\/002-/.test(record.path || '')), 'trace sibling import moves the conflicting lineage slot forward');
 
   console.log('✓ PoC local/archive parity tests passed');
   process.exit(0);

@@ -28,17 +28,20 @@
   }
 
   function visibleSources(workspace) {
-    const records = Array.isArray(workspace?.records) ? workspace.records : [];
-    const sourceCount = (source) => source.id === 'local' ? records.length : Number(source.count || 0);
     return (Array.isArray(workspace?.sources) ? workspace.sources : [])
-      .map((source) => Object.assign({}, source, { count: sourceCount(source) }))
-      .filter((source) => source.id !== 'local' ? true : source.count > 0);
+      .map((source) => Object.assign({}, source, { count: Number(source.count || 0) }));
   }
 
   function renderSourcePill(workspace, source, ctx) {
-    const iconName = source.kind === 'local' ? 'folder' : (source.kind && source.kind.includes('github') ? 'github' : 'link');
-    const close = source.closeable ? `<button class="source-close-btn" type="button" data-workspace-id="${ctx.escapeHtml(workspace.id)}" data-close-source="${ctx.escapeHtml(source.id)}" title="Close this source" aria-label="Close source ${ctx.escapeHtml(source.label || source.id)}">${ctx.icon('close')}</button>` : '';
-    return `<span class="workspace-source-pill ${source.kind === 'local' ? 'source-local' : 'source-github'}" title="${ctx.escapeHtml(source.boundary || source.label || 'Source')}">${ctx.icon(iconName)}<span>${ctx.escapeHtml(source.label || source.repo || source.id)}</span><small>${Number(source.count || 0)}</small>${close}</span>`;
+    const local = source.id === 'local' || source.kind === 'local';
+    const originRecovery = source.recoveryOnly === true || source.originReferenceSource === true || source.sourceKind === 'github.origin-reference';
+    const iconName = local ? 'folder' : (source.kind && source.kind.includes('github') ? 'github' : 'link');
+    const closeTitle = local ? 'Clear local/session material' : originRecovery ? 'Dismiss recovery-only origin' : 'Close this source';
+    const closeLabel = local ? 'Clear Local source material from this browser session' : originRecovery ? `Dismiss recovery-only origin ${source.label || source.id}` : `Close source ${source.label || source.id}`;
+    const close = source.closeable ? `<button class="source-close-btn" type="button" data-workspace-id="${ctx.escapeHtml(workspace.id)}" data-close-source="${ctx.escapeHtml(source.id)}" title="${ctx.escapeHtml(closeTitle)}" aria-label="${ctx.escapeHtml(closeLabel)}">${ctx.icon('close')}</button>` : '';
+    const count = originRecovery ? `${Number(source.originReferenceCount || 0)} refs` : Number(source.count || 0);
+    const role = originRecovery ? '<em class="source-role-badge">recovery only</em>' : '';
+    return `<span class="workspace-source-pill ${originRecovery ? 'source-origin-recovery' : local ? 'source-local' : 'source-github'}" title="${ctx.escapeHtml(source.boundary || source.label || 'Source')}">${ctx.icon(iconName)}<span>${ctx.escapeHtml(source.label || source.repo || source.id)}</span><small>${ctx.escapeHtml(count)}</small>${role}${close}</span>`;
   }
 
   function configuredEntrypoint(workspaceConfig) {

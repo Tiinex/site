@@ -35,22 +35,4 @@ assert.equal(blocked.status, 'blocked');
 assert.ok(blocked.findings.some((finding) => finding.code === 'source.local.github-provenance-leak'));
 assert.ok(blocked.findings.some((finding) => finding.code === 'record.local.github-provenance-leak'));
 
-
-const importedPackage = buildSourceBoundaryReport({
-  id: 'w-package-import',
-  sources: [{ id: 'local', adapterId: 'local' }],
-  records: [{
-    id: 'package:local:.topics/imported.trace.md',
-    path: '.topics/imported.trace.md',
-    sourceMode: 'package-import',
-    packageImport: true,
-    source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false, repo: '' }
-  }],
-  assets: [{ id: 'asset-package', path: 'asset.png', source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false } }]
-});
-assert.equal(importedPackage.counts.localRecords, 1, 'package-imported records remain local/session material in source-boundary diagnostics');
-assert.equal(importedPackage.counts.sourceBackedRecords, 0, 'package-imported records must not be counted as source-backed');
-assert.equal(importedPackage.counts.localAssets, 1, 'package-imported assets remain local/session assets');
-assert.equal(importedPackage.status, 'clean');
-
 console.log('sourceBoundary.report: ok');

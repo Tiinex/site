@@ -284,6 +284,12 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
 
   if (recordToken) return finalize(resolveDirectToken());
 
+  // A declared parent binding is stronger evidence than cwd/path inference.
+  // Evaluate it before relative aliases so a weak ambiguous path cannot veto an
+  // exact publication/comment/source binding carried by the declaring artifact.
+  const strongDeclaredParent = resolveDeclaredParentBinding();
+  if (strongDeclaredParent) return strongDeclaredParent;
+
   if ((simpleRelative || dotRelative) && relative) {
     if (relative.blocked) return relative;
     const contextual = exactPathMatches(relative.path, index, declaringConstraint, true);
@@ -294,8 +300,6 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
     if (resolvedIssueLocal) return finalize(resolvedIssueLocal);
     const commentIdMatch = resolveGithubIssueCommentTarget('github-issue-comment-id-relative-path');
     if (commentIdMatch) return commentIdMatch;
-    const declaredParent = resolveDeclaredParentBinding();
-    if (declaredParent) return declaredParent;
     if (dotRelative && isSyntheticPublicationLineageNode(declaringNode) && path.includes('/')) {
       const suffix = [
         ...findPathSuffixMatches(path, index.byPath, declaringConstraint, Boolean(declaringConstraint.hasConstraint)),
@@ -311,9 +315,6 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
     const provenance = resolveProvenanceTarget();
     if (provenance) return finalize(provenance);
   }
-
-  const declaredParent = resolveDeclaredParentBinding();
-  if (declaredParent) return declaredParent;
 
   const issueLocal = issueLocalPathMatches(raw, index, declaringNode);
   const resolvedIssueLocal = resolveCandidateNodes(issueLocal, 'issue-local-path', declaringNode);

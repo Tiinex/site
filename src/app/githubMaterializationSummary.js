@@ -35,7 +35,7 @@ export function githubSurfaceSummary(out = {}) {
   return parts.join(' · ');
 }
 
-export function summarizeGithubAdapterResult(out = {}) {
+export function summarizeGithubAdapterResult(out = {}, options = {}) {
   const warnings = Array.isArray(out.warnings) ? out.warnings : [];
   const errors = Array.isArray(out.errors) ? out.errors : [];
   return {
@@ -52,7 +52,7 @@ export function summarizeGithubAdapterResult(out = {}) {
     },
     warnings,
     errors,
-    diagnostics: Object.assign({ adapterId: 'github' }, out.diagnostics || {})
+    diagnostics: Object.assign({ adapterId: 'github' }, out.diagnostics || {}, options.materialLedgerReceipt ? { materialLedgerReceipt: options.materialLedgerReceipt } : {})
   };
 }
 

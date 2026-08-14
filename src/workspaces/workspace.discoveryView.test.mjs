@@ -87,9 +87,9 @@ const pathOnlyChild = sourceBackedRecord(artifactMarkdown({
 }), '.topics/path-only/child/001.trace.md');
 
 const records = [educationalRoot, slidesBranch, terminalSlide, socialsRoot, socialsTask, pathOnlyParent, pathOnlyChild, metadataOnlyAdapter, routeShell];
-const workspace = { id: 'workspace:discovery-test', title: 'Discovery test', records, assets: [], workspaceMergeCandidates: [] };
+const workspace = { id: 'workspace:discovery-test', title: 'Discovery test', records, assets: [] };
 const view = buildWorkspaceDiscoveryView(workspace, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceArtifacts: false, showAssets: false },
   query: ''
 });
 
@@ -107,7 +107,7 @@ assert.equal(view.hiddenReasonsById.get(routeShell.id), 'hidden-supporting', 'ro
 
 const index = buildDiscoveryMaterialIndex(records);
 const viewWithReusedIndex = buildWorkspaceDiscoveryView(workspace, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceArtifacts: false, showAssets: false },
   query: 'expert',
   materialIndex: index
 });
@@ -129,13 +129,13 @@ const workspaceConfigRecord = sourceBackedRecord(`# Continuity Context
 
 ## Workspace Entrypoints
 `, '.topics/documentation.workspace.md', { currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
-const workspaceRecordView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [], workspaceMergeCandidates: [] }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+const workspaceRecordView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false },
   query: ''
 });
 assert.equal(workspaceRecordView.records.length, 1, 'source-backed .workspace.md records stay visible when workspace candidates are enabled even under Leaves only');
-const workspaceRecordHiddenView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [], workspaceMergeCandidates: [] }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceCandidates: false, showAssets: false },
+const workspaceRecordHiddenView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record', records: [workspaceConfigRecord], assets: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: true, showWorkspaceArtifacts: false, showAssets: false },
   query: ''
 });
 assert.equal(workspaceRecordHiddenView.records.length, 0, 'source-backed .workspace.md records respect the workspace candidates display toggle');
@@ -163,12 +163,12 @@ const childWorkspaceRecord = sourceBackedRecord(`# Continuity Context
 
 # Child Workspace
 `, '.topics/child.workspace.md', { currentSchemaId: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1' });
-const workspaceRecordLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record-lineage', records: [parentWorkspaceRecord, childWorkspaceRecord], assets: [], workspaceMergeCandidates: [] }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+const workspaceRecordLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:workspace-record-lineage', records: [parentWorkspaceRecord, childWorkspaceRecord], assets: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false },
   query: ''
 });
 assert.deepEqual(workspaceRecordLeafView.records.map((record) => record.title), ['Child Workspace'], 'Leaves only hides parent .workspace.md records but keeps terminal workspace cards for Open/Merge');
-assert.equal(workspaceRecordLeafView.hiddenReasonsById.get(parentWorkspaceRecord.id), 'hidden-loaded-parent', 'parent workspace card is hidden by leaf membership rather than the workspace-candidates toggle');
+assert.equal(workspaceRecordLeafView.hiddenReasonsById.get(parentWorkspaceRecord.id), 'hidden-loaded-parent', 'parent workspace card is hidden by leaf membership rather than the workspace-artifacts toggle');
 
 const staleRootWorkspaceRecord = sourceBackedRecord(`# Continuity Context
 
@@ -207,8 +207,8 @@ const staleRootChildTopic = sourceBackedRecord(`# Continuity Context
   - Towards: [issue-root-recovered-start.workspace.md](issue-root-recovered-start.workspace.md)
   - Value: old-start-hash
 `, '.topics/site/2/issue-root-recovered-news.trace.md', { id: 'news-child-topic', currentSchemaId: 'tiinex.topic.v1', schemaId: 'tiinex.topic.v1', sourceTarget: { parentArtifactPath: '.topics/site/1/issue-root-recovered-start.workspace.md' }, snapshot: { parentArtifactPath: '.topics/site/1/issue-root-recovered-start.workspace.md' } });
-const staleWorkspaceRootLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-workspace-root', records: [staleRootWorkspaceRecord, staleRootChildTopic], assets: [], workspaceMergeCandidates: [] }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+const staleWorkspaceRootLeafView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-workspace-root', records: [staleRootWorkspaceRecord, staleRootChildTopic], assets: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false },
   query: ''
 });
 assert.deepEqual(staleWorkspaceRootLeafView.records.map((record) => record.title), ['News'], 'Leaves only hides loaded workspace/root parents even when the edge is stale or integrity-mismatched');
@@ -253,13 +253,13 @@ const staleIssueChild = sourceBackedRecord(`# Continuity Context
   - Towards: [comment-002-5011116876-recovered-klagomuren.trace.md](comment-002-5011116876-recovered-klagomuren.trace.md)
   - Value: stale-parent-integrity
 `, '.topics/.github/tiinusen/socials/.issues/3/comment-004-5011198457-recovered-fler-bondgardar.trace.md', { id: 'stale-issue-child' });
-const staleIssueView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-issue-parent', records: [staleIssueParent, staleIssueChild], assets: [], workspaceMergeCandidates: [] }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false },
+const staleIssueView = buildWorkspaceDiscoveryView({ id: 'workspace:stale-issue-parent', records: [staleIssueParent, staleIssueChild], assets: [] }, {
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false },
   query: ''
 });
 assert.deepEqual(staleIssueView.records.map((record) => record.id), ['stale-issue-child', 'stale-issue-parent'], 'Leaves-only should keep stale/mismatch issue parents visible while Lineage remains navigable with mismatch diagnostics');
 
-const tree = buildWorkspacePathTree({ records: view.records, assets: view.assets, workspaceCandidates: view.workspaceCandidates, rootLabel: 'Visible tree' });
+const tree = buildWorkspacePathTree({ records: view.records, assets: view.assets, rootLabel: 'Visible tree' });
 const treeJson = JSON.stringify(tree);
 assert.equal(treeJson.includes('Educational Root'), false, 'Tree read-model uses same Discovery membership and hides parent root records');
 assert.equal(treeJson.includes('Slides Branch'), false, 'Tree read-model uses same Discovery membership and hides branch parent records');
@@ -288,7 +288,7 @@ const syntheticRecords = Array.from({ length: 325 }, (_, index) => ({
 }));
 const startedAt = Date.now();
 buildWorkspaceDiscoveryView({ id: 'workspace:perf', records: syntheticRecords }, {
-  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceCandidates: false, showAssets: false },
+  displayOptions: { leavesOnly: true, showSupportingMarkdown: false, showWorkspaceArtifacts: false, showAssets: false },
   query: ''
 });
 const elapsed = Date.now() - startedAt;

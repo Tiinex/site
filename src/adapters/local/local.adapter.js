@@ -170,6 +170,7 @@ export async function materializeLocalMarkdownFiles(fileList = [], options = {})
   // This preserves the PoC behavior where folders may contain a mix of leaves, workspace files,
   // and assets. UI must not decide that non-Markdown files are disposable.
   const result = await materializeArchiveFiles(files, {
+    ...options,
     sourceMode: options.sourceMode || 'local-files',
     source: options.sourceMode || 'local-files'
   });

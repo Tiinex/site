@@ -1,7 +1,11 @@
 (function attachWorkspacePersistence(global) {
   'use strict';
 
-  const STORAGE_KEY = 'tiinex.site.workspaceState.v1';
+  const STORAGE_KEY = 'tiinex.site.routeCache.v2';
+  const LEGACY_STORAGE_KEY = 'tiinex.site.workspaceState.v1';
+  const LOCAL_DELTA_KEY = 'tiinex.site.localDeltas.v1';
+  const LOCAL_RECOVERY_INDEX_KEY = 'tiinex.site.localRecoveryIndex.v1';
+  const LOCAL_DELTA_SCHEMA_ID = 'tiinex.workspace.localDeltas.v1';
   const HASH_PREFIX = '#state=';
   const SESSION_CACHE_SCHEMA_ID = 'tiinex.workspace.sessionCache.v1';
   const SESSION_CACHE_LIMITS = { maxRecordMarkdownChars: 160000, maxAssetPreviewChars: 160000, maxWorkspaceMarkdownChars: 160000, maxImportLogEntries: 25 };
@@ -15,7 +19,7 @@
     try {
       const encoded = String(value || '').replace(/^#?state=/, '');
       if (!encoded) return null;
-      return JSON.parse(decodeURIComponent(b64UrlDecode(encoded)));
+      return normalizeLegacyWorkspaceCandidateState(JSON.parse(decodeURIComponent(b64UrlDecode(encoded))));
     } catch (_) {
       return null;
     }
@@ -23,9 +27,11 @@
 
   function readStoredState(storage) {
     try {
-      const value = storage?.getItem?.(STORAGE_KEY);
-      const parsed = value ? JSON.parse(value) : null;
-      return unwrapSessionCache(parsed);
+      const routeEnvelope = readStoredCacheEnvelope(storage);
+      const routeState = unwrapSessionCache(routeEnvelope);
+      const localState = readLocalDeltaState(storage);
+      if (!routeState) return localState ? recoverableStateFromLocalDeltas(localState, readLocalRecoveryIndex(storage)) : null;
+      return normalizeLegacyWorkspaceCandidateState(mergeStateWithLocalDeltas(routeState, localState));
     } catch (_) {
       return null;
     }
@@ -33,8 +39,19 @@
 
   function readStoredCacheEnvelope(storage) {
     try {
-      const value = storage?.getItem?.(STORAGE_KEY);
+      const value = storage?.getItem?.(STORAGE_KEY) || storage?.getItem?.(LEGACY_STORAGE_KEY);
       return value ? JSON.parse(value) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function readLocalDeltaState(storage) {
+    try {
+      const value = storage?.getItem?.(LOCAL_DELTA_KEY);
+      const parsed = value ? JSON.parse(value) : null;
+      if (!parsed || parsed.schema !== LOCAL_DELTA_SCHEMA_ID) return null;
+      return parsed.state && typeof parsed.state === 'object' ? normalizeLegacyWorkspaceCandidateState(parsed.state) : null;
     } catch (_) {
       return null;
     }
@@ -49,17 +66,65 @@
     const storage = env.storage || global.localStorage;
     const locationLike = env.location || global.location;
     const historyLike = env.history || global.history;
-    const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(state) || state;
-    const sessionCache = createSessionCacheEnvelope(state, routeState);
+    const normalizedState = normalizeLegacyWorkspaceCandidateState(state);
+    const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(normalizedState) || normalizedState;
+    const sessionCache = createSessionCacheEnvelope(normalizedState, routeState);
+    const localDeltaEnvelope = createLocalDeltaEnvelope(normalizedState);
+    const localRecoveryIndex = createLocalRecoveryIndex(normalizedState, localDeltaEnvelope.state);
     const encoded = encodeState(routeState);
-    try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(sessionCache)); } catch (_) {
-      try { storage?.setItem?.(STORAGE_KEY, JSON.stringify({ schema: SESSION_CACHE_SCHEMA_ID, degraded: true, state: routeState, routeSummary: global.TiinexWorkspaceRoute?.routeSummary?.(routeState) || {} })); } catch (__) {}
+    const localDeltaText = JSON.stringify(localDeltaEnvelope);
+    const localRecoveryIndexText = JSON.stringify(localRecoveryIndex);
+    const previousLocalDeltaText = safeStorageValue(storage, LOCAL_DELTA_KEY);
+    const previousLocalRecoveryIndexText = safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY);
+    try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(sessionCache)); } catch (_) {}
+    try {
+      writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText);
+    } catch (error) {
+      try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
+      try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_) {}
+      try {
+        writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText);
+      } catch (retryError) {
+        restoreLastKnownGoodLocalSnapshot(storage, previousLocalDeltaText, previousLocalRecoveryIndexText);
+        const lastKnownGoodPreserved = Boolean(previousLocalDeltaText) && safeStorageValue(storage, LOCAL_DELTA_KEY) === previousLocalDeltaText;
+        const recoveryIndexPreserved = previousLocalRecoveryIndexText == null || safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY) === previousLocalRecoveryIndexText;
+        surfaceLocalPersistenceFailure({
+          schema: 'tiinex.local-state.persistence.failure.v1',
+          at: new Date().toISOString(),
+          message: String(retryError?.message || error?.message || 'localStorage write failed'),
+          localMaterialAtRisk: true,
+          newestChangesPersisted: false,
+          previousRecoveryAvailable: Boolean(previousLocalDeltaText),
+          lastKnownGoodPreserved,
+          recoveryIndexPreserved
+        });
+      }
     }
     const nextHash = `${HASH_PREFIX}${encoded}`;
     const mode = env.mode === 'push' ? 'push' : 'replace';
-    writeUrlHash(nextHash, { mode, locationLike, historyLike, historyState: routeHistoryState(routeState, env.historyIndex) });
+    writeUrlHash(nextHash, { mode, locationLike, historyLike, historyState: global.TiinexWorkspaceRoute?.routeHistoryState?.(routeState, env.historyIndex) || null });
     return nextHash;
   }
+
+  function safeStorageValue(storage, key) {
+    try { return storage?.getItem?.(key) ?? null; } catch (_) { return null; }
+  }
+
+  function writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText) {
+    storage?.setItem?.(LOCAL_DELTA_KEY, localDeltaText);
+    storage?.setItem?.(LOCAL_RECOVERY_INDEX_KEY, localRecoveryIndexText);
+  }
+
+  function restoreLastKnownGoodLocalSnapshot(storage, previousLocalDeltaText, previousLocalRecoveryIndexText) {
+    if (previousLocalDeltaText != null && safeStorageValue(storage, LOCAL_DELTA_KEY) !== previousLocalDeltaText) {
+      try { storage?.setItem?.(LOCAL_DELTA_KEY, previousLocalDeltaText); } catch (_) {}
+    }
+    if (previousLocalRecoveryIndexText != null && safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY) !== previousLocalRecoveryIndexText) {
+      try { storage?.setItem?.(LOCAL_RECOVERY_INDEX_KEY, previousLocalRecoveryIndexText); } catch (_) {}
+    }
+  }
+
+  function surfaceLocalPersistenceFailure(receipt = {}) { return recovery().surfaceLocalPersistenceFailure?.(receipt, global) || receipt; }
 
   function writeUrlHash(nextHash, options = {}) {
     const mode = options.mode === 'push' ? 'push' : 'replace';
@@ -75,15 +140,34 @@
     } catch (_) {}
   }
 
-  function routeHistoryState(routeState, explicitIndex) {
-    const index = Number.isFinite(Number(explicitIndex)) ? Number(explicitIndex) : Date.now();
-    return Object.assign({}, global.TiinexWorkspaceRoute?.routeSummary?.(routeState) || {}, { __tiinexRouteIndex: index });
+  function recovery() { return global.TiinexWorkspacePersistenceRecovery || {}; }
+  function readLocalRecoveryIndex(storage) { return recovery().readLocalRecoveryIndex?.(storage) || null; }
+  function createLocalRecoveryIndex(state, localState) { return recovery().createLocalRecoveryIndex?.(state, localState) || { schema: 'tiinex.workspace.localRecoveryIndex.v1', currentWorkspaceId: '', workspaces: [] }; }
+  function normalizeLegacyWorkspaceCandidateState(state) { return recovery().normalizeLegacyWorkspaceCandidateState?.(state) || state; }
+  function recoverableStateFromLocalDeltas(localState, index) { return recovery().recoverableStateFromLocalDeltas?.(localState, index) || null; }
+  function readRecoverableLocalState(storage = global.localStorage) { const localState = readLocalDeltaState(storage); return localState ? recoverableStateFromLocalDeltas(localState, readLocalRecoveryIndex(storage)) : null; }
+
+  function augmentStartupStateWithLocalRecovery(state = {}, storage = global.localStorage, options = {}) { return recovery().augmentStartupStateWithLocalRecovery?.(state, readLocalDeltaState(storage), readLocalRecoveryIndex(storage), options) || normalizeLegacyWorkspaceCandidateState(state); }
+
+  function resolveInitialState(env = {}) {
+    const locationLike = env.location || global.location;
+    const hash = String(locationLike?.hash || '');
+    const requested = hash.startsWith(HASH_PREFIX);
+    if (!requested) return { requested: false, resolved: false, state: null, reason: 'route-not-requested' };
+    const decoded = readHashState(locationLike);
+    if (!decoded) return { requested: true, resolved: false, state: null, reason: 'route-decode-failed' };
+    const validateRoute = global.TiinexWorkspaceRoute?.validateRouteOwnershipState;
+    const validation = typeof validateRoute === 'function' ? validateRoute(decoded) : { ok: false, reason: 'route-validator-unavailable' };
+    if (!validation.ok) return { requested: true, resolved: false, state: null, reason: validation.reason || 'route-shape-invalid' };
+    const storage = env.storage || global.localStorage;
+    const semanticRoute = global.TiinexWorkspaceRoute?.semanticRouteState?.(decoded) || decoded;
+    const state = hydrateHashStateFromSessionCache(semanticRoute, readStoredCacheEnvelope(storage), readLocalDeltaState(storage));
+    return { requested: true, resolved: true, state, reason: validation.reason || 'route-resolved' };
   }
 
   function readInitialState(env = {}) {
-    const hashState = readHashState(env.location || global.location);
-    if (!hashState) return null;
-    return hydrateHashStateFromSessionCache(hashState, readStoredCacheEnvelope(env.storage || global.localStorage));
+    const resolution = resolveInitialState(env);
+    return resolution.resolved ? resolution.state : null;
   }
 
   function clearState(env = {}) {
@@ -92,6 +176,9 @@
     const historyLike = env.history || global.history;
     const mode = env.mode === 'push' ? 'push' : 'replace';
     try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
+    try { storage?.removeItem?.(LOCAL_DELTA_KEY); } catch (_) {}
+    try { storage?.removeItem?.(LOCAL_RECOVERY_INDEX_KEY); } catch (_) {}
+    try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_) {}
     try {
       const pathname = locationLike?.pathname || '';
       const search = locationLike?.search || '';
@@ -101,7 +188,6 @@
       if (!historyLike?.replaceState && locationLike) locationLike.hash = '';
     } catch (_) {}
   }
-
 
   function createSessionCacheEnvelope(state, routeState) {
     return {
@@ -118,9 +204,10 @@
       schema: SESSION_CACHE_SCHEMA_ID,
       version: source.version || 1,
       activeWorkspaceId: source.activeWorkspaceId || '',
-      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, source.view || {}),
+      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, source.view || {}),
       audit: source.audit || null,
-      workspaces: Array.isArray(source.workspaces) ? source.workspaces.map(compactWorkspaceForCache) : []
+      workspaces: Array.isArray(source.workspaces) ? source.workspaces.map(compactWorkspaceForCache) : [],
+      ...global.TiinexWorkspacePersistencePresentation?.createSessionPresentationState?.(source)
     };
   }
 
@@ -132,103 +219,129 @@
     return null;
   }
 
-  function hydrateHashStateFromSessionCache(routeState, storedEnvelope) {
+  function hydrateHashStateFromSessionCache(routeState, storedEnvelope, localDeltaState = null) {
     const route = routeState && typeof routeState === 'object' ? routeState : null;
     if (!route || !Array.isArray(route.workspaces) || !route.workspaces.length) return routeState || null;
     const cached = unwrapSessionCache(storedEnvelope);
-    if (!cached || !Array.isArray(cached.workspaces) || !cached.workspaces.length) return route;
+    if (!cached || !Array.isArray(cached.workspaces) || !cached.workspaces.length) return mergeStateWithLocalDeltas(route, localDeltaState);
     const cachedById = new Map(cached.workspaces.map((workspace) => [workspace.id, workspace]));
     const hydratedWorkspaces = route.workspaces.map((workspace) => {
       const cachedWorkspace = cachedById.get(workspace.id);
       return cachedWorkspace ? mergeWorkspaceRouteShell(workspace, cachedWorkspace) : workspace;
     });
-    return Object.assign({}, route, {
-      view: Object.assign({}, cached.view || {}, route.view || {}),
+    const merged = Object.assign({}, route, {
+      view: global.TiinexWorkspacePersistencePresentation?.mergeSessionView?.(route, cached) || route.view || {},
       audit: cached.audit || route.audit || null,
       workspaces: hydratedWorkspaces,
       activeWorkspaceId: route.activeWorkspaceId || cached.activeWorkspaceId || hydratedWorkspaces[0]?.id || ''
     });
+    const withPresentation = global.TiinexWorkspacePersistencePresentation?.restoreSessionPresentation?.(merged, cached) || merged;
+    return normalizeLegacyWorkspaceCandidateState(mergeStateWithLocalDeltas(withPresentation, localDeltaState));
   }
 
   function mergeWorkspaceRouteShell(routeWorkspace = {}, cachedWorkspace = {}) {
-    return Object.assign({}, cachedWorkspace, routeWorkspace, {
-      source: Object.assign({}, cachedWorkspace.source || {}, routeWorkspace.source || {}),
-      sources: mergeSourceShells(routeWorkspace.sources || [], cachedWorkspace.sources || []),
-      sourceOrder: Array.isArray(cachedWorkspace.sourceOrder) && cachedWorkspace.sourceOrder.length ? cachedWorkspace.sourceOrder : (routeWorkspace.sourceOrder || []),
-      records: Array.isArray(cachedWorkspace.records) ? cachedWorkspace.records : (routeWorkspace.records || []),
-      assets: Array.isArray(cachedWorkspace.assets) ? cachedWorkspace.assets : [],
-      workspaceMergeCandidates: Array.isArray(cachedWorkspace.workspaceMergeCandidates) ? cachedWorkspace.workspaceMergeCandidates : [],
-      importLog: Array.isArray(cachedWorkspace.importLog) ? cachedWorkspace.importLog : [],
-      workspaceMarkdown: cachedWorkspace.workspaceMarkdown || routeWorkspace.workspaceMarkdown || '',
-      workspaceImport: Object.assign({}, cachedWorkspace.workspaceImport || {}, routeWorkspace.workspaceImport || {})
-    });
+    return global.TiinexWorkspacePersistenceRouteCache?.mergeWorkspaceRouteShell?.(routeWorkspace, cachedWorkspace) || routeWorkspace;
   }
-
-  function mergeSourceShells(routeSources = [], cachedSources = []) {
-    const out = new Map();
-    for (const source of Array.isArray(cachedSources) ? cachedSources : []) {
-      if (source?.id) out.set(source.id, Object.assign({}, source));
-    }
-    for (const source of Array.isArray(routeSources) ? routeSources : []) {
-      if (!source?.id) continue;
-      out.set(source.id, Object.assign({}, out.get(source.id) || {}, source));
-    }
-    return Array.from(out.values());
-  }
-
 
   function compactWorkspaceForCache(workspace = {}) {
     return Object.assign({}, workspace, {
       source: Object.assign({}, workspace.source || {}),
       sources: Array.isArray(workspace.sources) ? workspace.sources.map((source) => compactSourceForSessionCache(source, workspace)) : [],
       sourceOrder: Array.isArray(workspace.sourceOrder) ? workspace.sourceOrder.slice() : [],
-      records: Array.isArray(workspace.records) ? workspace.records.map(compactRecordForCache) : [],
-      assets: Array.isArray(workspace.assets) ? workspace.assets.map(compactAssetForCache) : [],
-      workspaceMergeCandidates: Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates.map(compactWorkspaceCandidateForCache) : [],
-      importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, SESSION_CACHE_LIMITS.maxImportLogEntries).map((item) => Object.assign({}, item)) : [],
-      workspaceMarkdown: truncateForCache(workspace.workspaceMarkdown || '', SESSION_CACHE_LIMITS.maxWorkspaceMarkdownChars).value,
+      records: Array.isArray(workspace.records) ? workspace.records.filter((record) => !isLocalForCache(record)).map(compactRecordForCache) : [],
+      assets: Array.isArray(workspace.assets) ? workspace.assets.filter(isSourceBackedForCache).map(compactAssetForCache) : [],
+      importLog: [],
+      workspaceMarkdown: '',
       workspaceImport: Object.assign({}, workspace.workspaceImport || {})
     });
   }
 
-  function compactSourceForSessionCache(source = {}, workspace = {}) {
-    const next = Object.assign({}, source || {});
-    next.surfaces = cacheSurfaceMapForSource(source, workspace);
-    delete next.transportOutcome;
-    delete next.transportPlan;
-    delete next.transportTiers;
-    next.transportRefreshTier = '';
-    return next;
+  function createLocalDeltaEnvelope(state = {}) {
+    return {
+      schema: LOCAL_DELTA_SCHEMA_ID,
+      writtenAt: new Date().toISOString(),
+      state: createLocalDeltaState(state)
+    };
   }
 
-  function cacheSurfaceMapForSource(source = {}, workspace = {}) {
-    const sourceId = String(source.id || '').trim();
-    const base = source.surfaces && typeof source.surfaces === 'object' ? JSON.parse(JSON.stringify(source.surfaces)) : {};
-    const records = Array.isArray(workspace.records) ? workspace.records : [];
-    const counts = {};
-    for (const record of records) {
-      if (sourceId && String(record?.source?.id || '') !== sourceId) continue;
-      const surface = String(record?.sourceTarget?.surface || '').trim();
-      if (!surface) continue;
-      counts[surface] ||= { loaded: 0, records: [] };
-      counts[surface].loaded += 1;
-      if (record.id) counts[surface].records.push(record.id);
-    }
-    for (const [surface, count] of Object.entries(counts)) {
-      base[surface] = Object.assign({}, base[surface] || {}, {
-        requested: true, attempted: true, loaded: count.loaded, records: count.records,
-        transportTier: 'cache', transportTiers: ['cache'], pendingTier: '', transportRefreshTier: ''
-      });
-    }
-    for (const value of Object.values(base)) {
-      if (!value || typeof value !== 'object') continue;
-      delete value.pendingTier;
-      value.transportRefreshTier = '';
-      if (value.loaded && !value.transportTier) value.transportTier = 'cache';
-      if (value.loaded && !Array.isArray(value.transportTiers)) value.transportTiers = ['cache'];
-    }
-    return base;
+  function createLocalDeltaState(state = {}) {
+    const source = state && typeof state === 'object' ? state : {};
+    return {
+      schema: LOCAL_DELTA_SCHEMA_ID,
+      version: source.version || 1,
+      activeWorkspaceId: source.activeWorkspaceId || '',
+      workspaces: Array.isArray(source.workspaces) ? source.workspaces.map(compactLocalWorkspaceDelta).filter(hasLocalWorkspaceDelta) : []
+    };
   }
+
+  function compactLocalWorkspaceDelta(workspace = {}) {
+    return {
+      id: workspace.id || '',
+      name: workspace.name || workspace.title || '',
+      title: workspace.title || workspace.name || '',
+      records: Array.isArray(workspace.records) ? workspace.records.filter(isLocalForCache).map(compactRecordForCache) : [],
+      assets: Array.isArray(workspace.assets) ? workspace.assets.filter((asset) => !isSourceBackedForCache(asset)).map(compactAssetForCache) : [],
+      workspaceMarkdown: localWorkspaceMarkdownForDelta(workspace),
+      workspaceImport: Object.assign({}, workspace.workspaceImport || {}),
+      importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, SESSION_CACHE_LIMITS.maxImportLogEntries).map((item) => Object.assign({}, item)) : []
+    };
+  }
+
+  function localWorkspaceMarkdownForDelta(workspace = {}) {
+    const mode = String(workspace?.workspaceImport?.sourceMode || workspace?.sourceMode || '').trim().toLowerCase();
+    const boundary = String(workspace?.workspaceImport?.boundary || workspace?.source?.boundary || '').trim().toLowerCase();
+    const localOwned = mode.startsWith('local') || mode.startsWith('manual') || mode.startsWith('package-import') || boundary.includes('browser-local') || workspace?.workspaceImport?.localDraft === true;
+    return localOwned ? truncateForCache(workspace.workspaceMarkdown || '', SESSION_CACHE_LIMITS.maxWorkspaceMarkdownChars).value : '';
+  }
+
+  function hasLocalWorkspaceDelta(workspace = {}) {
+    return Boolean((workspace.records || []).length || (workspace.assets || []).length || workspace.workspaceMarkdown);
+  }
+
+  function mergeStateWithLocalDeltas(state = {}, localDeltaState = null) {
+    if (!state || !Array.isArray(state.workspaces) || !localDeltaState || !Array.isArray(localDeltaState.workspaces)) return state;
+    const localById = new Map(localDeltaState.workspaces.map((workspace) => [workspace.id, workspace]));
+    const workspaces = state.workspaces.map((workspace) => mergeWorkspaceLocalDelta(workspace, localById.get(workspace.id)));
+    return Object.assign({}, state, { workspaces });
+  }
+
+  function mergeWorkspaceLocalDelta(workspace = {}, local = null) {
+    if (!local) return workspace;
+    const sourceRecords = Array.isArray(workspace.records) ? workspace.records.filter((record) => !isLocalForCache(record)) : [];
+    const sourceAssets = Array.isArray(workspace.assets) ? workspace.assets.filter(isSourceBackedForCache) : [];
+    const legacyCandidates = Array.isArray(local.workspaceMergeCandidates) ? local.workspaceMergeCandidates : [];
+    return Object.assign({}, workspace, {
+      records: mergeByIdOrPath(sourceRecords, local.records || []),
+      assets: mergeByIdOrPath(sourceAssets, local.assets || []),
+      ...(legacyCandidates.length ? { workspaceMergeCandidates: legacyCandidates.slice() } : {}),
+      workspaceMarkdown: local.workspaceMarkdown || workspace.workspaceMarkdown || '',
+      workspaceImport: Object.assign({}, workspace.workspaceImport || {}, local.workspaceImport || {}),
+      importLog: Array.isArray(local.importLog) ? local.importLog : (workspace.importLog || [])
+    });
+  }
+
+  function mergeByIdOrPath(primary = [], secondary = []) {
+    const out = Array.isArray(primary) ? primary.slice() : [];
+    const keys = new Set(out.map((item) => `${item?.id || ''}::${item?.path || ''}`));
+    for (const item of Array.isArray(secondary) ? secondary : []) {
+      const key = `${item?.id || ''}::${item?.path || ''}`;
+      if (!keys.has(key)) { out.push(item); keys.add(key); }
+    }
+    return out;
+  }
+
+  function hydrateWorkspaceWithLocalDeltas(state = {}, workspaceId = '', storage = global.localStorage) {
+    const localState = readLocalDeltaState(storage);
+    if (!localState || !Array.isArray(state.workspaces)) return state;
+    const id = String(workspaceId || state.activeWorkspaceId || '').trim();
+    const local = localState.workspaces.find((workspace) => workspace.id === id);
+    if (!local) return state;
+    return Object.assign({}, state, {
+      workspaces: state.workspaces.map((workspace) => workspace.id === id ? mergeWorkspaceLocalDelta(workspace, local) : workspace)
+    });
+  }
+
+  function compactSourceForSessionCache(source = {}, workspace = {}) { return global.TiinexWorkspacePersistenceCache?.compactSourceForSessionCache?.(source, workspace) || Object.assign({}, source || {}); }
 
   function compactRecordSourceForCache(source = {}) {
     const config = source.config && typeof source.config === 'object' ? source.config : {};
@@ -253,8 +366,9 @@
     if (isSourceBackedForCache(record) && !isLocalForCache(record)) {
       return Object.assign({}, record, {
         source,
-        markdown: markdown.value,
-        cacheState: markdown.omitted ? 'source-backed-markdown-truncated-for-session-cache' : (record.markdown ? 'source-backed-session-cache-complete' : (record.cacheState || 'source-backed-metadata-only-session-cache'))
+        markdown: '',
+        cacheState: 'source-backed-metadata-only-session-cache',
+        materialAvailability: 'material-unavailable'
       });
     }
     return Object.assign({}, record, {
@@ -271,8 +385,9 @@
         source,
         content: '',
         dataUrl: '',
-        previewState: asset.previewState || 'metadata-only',
-        cacheState: 'source-backed-metadata-only-session-cache'
+        previewState: 'metadata-only',
+        cacheState: 'source-backed-metadata-only-session-cache',
+        materialAvailability: 'material-unavailable'
       });
     }
     const content = truncateForCache(asset.content || '', SESSION_CACHE_LIMITS.maxAssetPreviewChars);
@@ -285,15 +400,6 @@
       cacheState: content.omitted || dataUrl.omitted ? 'preview-truncated-for-session-cache' : (asset.cacheState || 'session-cache-complete')
     });
   }
-
-  function compactWorkspaceCandidateForCache(candidate = {}) {
-    const markdown = truncateForCache(candidate.markdown || '', SESSION_CACHE_LIMITS.maxWorkspaceMarkdownChars);
-    return Object.assign({}, candidate, {
-      markdown: markdown.value,
-      cacheState: markdown.omitted ? 'markdown-truncated-for-session-cache' : (candidate.cacheState || 'session-cache-complete')
-    });
-  }
-
 
   function isLocalForCache(item = {}) {
     const source = item.source || {};
@@ -331,12 +437,24 @@
   global.TiinexWorkspacePersistence = {
     HASH_PREFIX,
     STORAGE_KEY,
+    LOCAL_DELTA_KEY,
+    LOCAL_RECOVERY_INDEX_KEY,
+    LEGACY_STORAGE_KEY,
     clearState,
     decodeState,
     encodeState,
     readHashState,
+    resolveInitialState,
     readInitialState,
     createSessionCacheState,
+    createLocalDeltaState,
+    readLocalDeltaState,
+    readLocalRecoveryIndex,
+    readRecoverableLocalState,
+    augmentStartupStateWithLocalRecovery,
+    createLocalRecoveryIndex,
+    normalizeLegacyWorkspaceCandidateState,
+    hydrateWorkspaceWithLocalDeltas,
     hydrateHashStateFromSessionCache,
     readStoredState,
     writeState,

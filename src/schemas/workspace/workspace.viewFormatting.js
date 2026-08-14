@@ -1,5 +1,4 @@
 import { RecordActionKind } from '../../actions/record.actions.js';
-import { authorityBadgeLabel, mutabilityBadgeLabel } from '../../workspaces/workspace.authority.js';
 import { recordLogicalPath } from '../../workspaces/workspace.recordPaths.js';
 
 export function compactPath(path = '') {
@@ -23,27 +22,40 @@ export function compactRecordDate(record = {}) {
   return match ? match[0] : text.slice(0, 10);
 }
 
+export function recordSchemaOpenValue(record = {}) {
+  return String(record.schemaId || record.currentSchemaId || record.kind || record.schema || 'artifact').trim() || 'artifact';
+}
+
+
+export function recordSchemaCanOpen(record = {}) {
+  const text = recordSchemaOpenValue(record).toLowerCase();
+  return Boolean(text && !['artifact', 'plain', 'markdown', 'unknown'].includes(text));
+}
+
 export function recordSchemaBadge(record = {}) {
-  const schema = record.schemaId || record.currentSchemaId || record.kind || '';
-  const text = String(schema || '').trim();
+  const text = recordSchemaOpenValue(record);
   if (!text) return 'artifact';
   return text.replace(/^tiinex\./, '').replace(/\.v\d+$/, '');
+}
+
+export function recordMaterialBadge(record = {}) {
+  const status = String(record?.materialReconciliation?.status || '').trim();
+  if (status === 'checksum-match') return record.materialReconciliation.displayLabel || 'source + local';
+  if (status === 'source-canonical-pruned-local-duplicate' || status === 'local-duplicate-pruned-source-canonical') return 'source-backed';
+  if (status === 'local-shadowed-by-source') return record.materialReconciliation.displayLabel || 'local snapshot';
+  if (status === 'checksum-mismatch') return record.materialReconciliation.displayLabel || 'material mismatch';
+  if (status === 'same-origin-unverified') return record.materialReconciliation.displayLabel || 'same origin · unverified';
+  if (status === 'source-only-after-local-clear') return 'source only';
+  if (status === 'source-removed-local-restored') return 'local restored';
+  return '';
 }
 
 export function recordSourceBadge(record = {}) {
   const source = record.source || {};
   if (source.label) return source.label;
   if (source.repo) return source.repo;
-  if (source.adapterId && source.adapterId !== 'local' && source.sourceBacked !== false) return source.adapterId;
+  if (source.adapterId && source.adapterId !== 'local') return source.adapterId;
   return 'Local';
-}
-
-export function recordAuthorityBadge(record = {}) {
-  return authorityBadgeLabel(record);
-}
-
-export function recordMutabilityBadge(record = {}) {
-  return mutabilityBadgeLabel(record);
 }
 
 export function recordLifecycleBadge(record = {}) {
@@ -65,12 +77,12 @@ export function actionClassName(action = {}) {
 }
 
 export function actionLabel(action = {}) {
-  if (action.id === RecordActionKind.open) return 'Open details';
+  if (action.id === RecordActionKind.open) return 'Details';
   if (action.id === RecordActionKind.markdown) return 'Show markdown';
   if (action.id === RecordActionKind.lineage) return 'Anchor';
   if (action.id === RecordActionKind.workspaceOpen) return 'Open';
   if (action.id === RecordActionKind.workspaceMerge) return 'Merge';
-  if (action.id === RecordActionKind.deleteLocal) return action.label || 'Delete local draft';
+  if (action.id === RecordActionKind.deleteLocal) return 'Delete local draft';
   return action.label;
 }
 
@@ -112,3 +124,16 @@ export function schemaCoverageLabel(value = '') {
   if (state === 'missing-schema') return 'missing schema';
   return state || 'schema unknown';
 }
+
+export function materialLedgerReceiptSummary(receipt = {}) {
+  const bits = [];
+  if (Number(receipt.rawAdapterRecords || 0)) bits.push(`${Number(receipt.rawAdapterRecords || 0)} adapter records`);
+  if (Number(receipt.sourceRecords || 0)) bits.push(`${Number(receipt.sourceRecords || 0)} inserted`);
+  if (Number(receipt.visibleSourceRecords || receipt.visibleRecords || 0)) bits.push(`${Number(receipt.visibleSourceRecords || receipt.visibleRecords || 0)} visible`);
+  if (Number(receipt.hiddenSourceRecords || receipt.hiddenRecords || 0)) bits.push(`${Number(receipt.hiddenSourceRecords || receipt.hiddenRecords || 0)} hidden`);
+  if (Number(receipt.groupedSourceRecords || receipt.groupedRecords || 0)) bits.push(`${Number(receipt.groupedSourceRecords || receipt.groupedRecords || 0)} grouped`);
+  if (Number(receipt.sourceWorkspaceArtifacts || 0)) bits.push(`${Number(receipt.sourceWorkspaceArtifacts || 0)} workspace artifact${Number(receipt.sourceWorkspaceArtifacts || 0) === 1 ? '' : 's'}`);
+  return bits.join(' · ') || 'material ledger unavailable';
+}
+
+export const recordSchemaFilterValue = recordSchemaOpenValue;

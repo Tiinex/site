@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const source = readFileSync(new URL('./workspace.add.views.jsx', import.meta.url), 'utf8');
+const primaryStart = source.indexOf('<div className="tx-add-choice-grid">');
+const advancedStart = source.indexOf('<details className="tx-add-advanced-imports">');
+assert(primaryStart >= 0 && advancedStart > primaryStart, 'Add surface must keep a primary grid before advanced imports');
+const primary = source.slice(primaryStart, advancedStart);
+for (const label of ['Manual files', 'Manual folder', 'GitHub source', 'Explicit URLs', 'Drag and drop']) assert(primary.includes(`<strong>${label}</strong>`), `primary Add surface must preserve PoC ${label} action`);
+for (const label of ['Tiinex app config', 'Paste trace']) assert.equal(primary.includes(`<strong>${label}</strong>`), false, `${label} must not compete with PoC primary Add actions`);
+const advanced = source.slice(advancedStart, source.indexOf('</details>', advancedStart) + 10);
+assert.equal(source.includes('Tiinex app config'), false, 'workspace/app config is a global workspace lifecycle concern and must not appear in Add-to-workspace');
+assert(advanced.includes('Paste trace'), 'paste trace remains available behind a secondary import boundary');
+assert.equal(source.includes('Fetch hosted app config'), false, 'app-config form must not surface bootstrap implementation copy');
+assert.equal(source.includes('<strong>Convention</strong>'), false, 'app-config form must not surface convention/debug plumbing');
+assert.equal(source.includes('<strong>Boundary</strong><small>Config fetch'), false, 'app-config form must not surface internal config boundary plumbing');
+console.log('✓ workspace Add PoC hierarchy tests passed');

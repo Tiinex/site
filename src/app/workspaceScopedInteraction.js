@@ -1,0 +1,30 @@
+import { stateWithActiveWorkspace, stateWithWorkspacePresentationPruned, stateWithWorkspaceViewPatch, stateWithWorkspaceViewUpdate } from './workspaceMulticolumn.js';
+import { stateWithWorkspaceWindowFocus, stateWithWorkspaceWindowPruned } from './workspaceWindow.js';
+
+export function workspaceById(state = {}, workspaceId = '') {
+  const id = String(workspaceId || '').trim();
+  return (Array.isArray(state.workspaces) ? state.workspaces : []).find((workspace) => workspace.id === id) || null;
+}
+
+export function stateWithWorkspaceFocused(state = {}, workspaceId = '', viewportWidth = 0) {
+  const id = String(workspaceId || '').trim();
+  if (!workspaceById(state, id)) return state;
+  const focused = stateWithActiveWorkspace(state, id);
+  return stateWithWorkspaceWindowFocus(focused, id, viewportWidth);
+}
+
+export function stateWithWorkspaceViewPatchAndFocus(state = {}, workspaceId = '', patch = {}, viewportWidth = 0) {
+  const id = String(workspaceId || '').trim();
+  const patched = stateWithWorkspaceViewPatch(state, id, patch);
+  return stateWithWorkspaceFocused(patched, id, viewportWidth);
+}
+
+export function stateWithWorkspaceViewUpdateAndFocus(state = {}, workspaceId = '', updater = null, viewportWidth = 0) {
+  const id = String(workspaceId || '').trim();
+  const updated = stateWithWorkspaceViewUpdate(state, id, updater);
+  return stateWithWorkspaceFocused(updated, id, viewportWidth);
+}
+
+export function stateAfterWorkspaceClosePresentation(state = {}, viewportWidth = 0) {
+  return stateWithWorkspaceWindowPruned(stateWithWorkspacePresentationPruned(state), viewportWidth);
+}

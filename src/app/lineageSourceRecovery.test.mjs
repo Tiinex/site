@@ -107,4 +107,33 @@ const recoveredSourceFileWithRelativeOrigin = Object.assign(createRecordFromMark
 });
 assert.equal(lineageRecoveryFileRefForTarget('001.trace.md', recoveredSourceFileWithRelativeOrigin), '.topics/odysseus/001.trace.md', 'relative Parent Origin on a real source file must not override cwd-relative parent recovery');
 
+const importedChildMarkdown = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Parent
+  - Parent Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)
+  - Trace: [issue root](issue-root-recovered-fs25-markaryd.workspace.md)
+  - Origin:
+    - relative: issue-root-recovered-fs25-markaryd.workspace.md
+    - [github issue](https://github.com/Tiinusen/socials/issues/3)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Summary: imported child
+
+---
+
+# Imported Child`;
+const importedChild = Object.assign(createRecordFromMarkdown(importedChildMarkdown, { path: '.topics/.github/tiinusen/socials/.issues/3/001-imported-child.trace.md', sourceMode: 'archive-local' }), {
+  id: 'local:imported-child',
+  source: { id: 'local', adapterId: 'local', kind: 'local', sourceKind: 'local.session' }
+});
+const importedWorkspace = { id: 'imported', records: [importedChild], sources: [{ id: 'local', kind: 'local' }, { id: 'origin:github:tiinusen:socials', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.origin-reference', repo: 'Tiinusen/socials', sourceBacked: false, originReferenceSource: true, config: { repo: 'Tiinusen/socials', issueUrls: 'https://github.com/Tiinusen/socials/issues/3' } }] };
+const importedView = buildWorkspaceLineageView(importedWorkspace, { selectedRecordId: importedChild.id });
+const importedPlan = buildLineageSourceRecoveryPlan(importedWorkspace, importedView);
+assert.equal(importedPlan.length, 1, 'imported-local records with explicit origin refs should still be recovery-capable');
+assert.equal(importedPlan[0].sourceId, 'origin:github:tiinusen:socials');
+assert.equal(importedPlan[0].source.sourceBacked, false, 'origin recovery source should not change imported record authority');
+assert.deepEqual(importedPlan[0].issueUrls, ['https://github.com/Tiinusen/socials/issues/3'], 'explicit GitHub issue origin should drive bounded issue recovery');
+
+
 console.log('lineageSourceRecovery: ok');

@@ -5,9 +5,11 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { TiinexAdapterRegistry } from '../../adapters/registry.js';
 import { collectLocalFilesFromDataTransfer } from '../../adapters/local/local.adapter.js';
+import { importConflictSummary } from '../../workspaces/workspace.importConflicts.js';
 
-export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinuation = null, onDismiss, onAddFiles, onAddGitHubSource, onAddUrls, onAddTiinexAppConfig, githubBusy = false }) {
-  const [mode, setMode] = useState(sourceContinuation ? 'git' : '');
+export function AddToWorkspaceDialog({ workspace, sourceContinuation = null, onDismiss, onAddFiles, onAddPastedTrace, onAddGitHubSource, onAddUrls, githubBusy = false }) {
+  const githubContinuation = isGitHubSourceContinuation(sourceContinuation) ? sourceContinuation : null;
+  const [mode, setMode] = useState(githubContinuation ? 'git' : '');
   const [stagedFiles, setStagedFiles] = useState([]);
   const title = `Add to ${workspace.title || workspace.name || 'workspace'}`;
   const modalClass = mode ? 'tx-add-flow-modal tx-add-mode-modal' : 'tx-add-flow-modal';
@@ -18,19 +20,26 @@ export function AddToWorkspaceDialog({ workspace, workspaceConfig, sourceContinu
         <AddChoiceGrid onMode={setMode} onAddFiles={onAddFiles} title={title} />
       ) : null}
       {mode === 'git' ? (
-        <GitHubSourceForm sourceContinuation={sourceContinuation} onBack={() => sourceContinuation ? onDismiss?.() : setMode('')} onSubmit={onAddGitHubSource} busy={githubBusy} />
+        <GitHubSourceForm sourceContinuation={githubContinuation} onBack={() => githubContinuation ? onDismiss?.() : setMode('')} onSubmit={onAddGitHubSource} busy={githubBusy} />
       ) : null}
       {mode === 'urls' ? (
         <ExplicitUrlsForm onBack={() => setMode('')} onSubmit={onAddUrls} />
       ) : null}
-      {mode === 'app-config' ? (
-        <TiinexAppConfigForm onBack={() => setMode('')} onSubmit={onAddTiinexAppConfig} busy={githubBusy} />
-      ) : null}
       {mode === 'drop' ? (
         <DropMode stagedFiles={stagedFiles} setStagedFiles={setStagedFiles} onBack={() => setMode('')} onSubmit={() => onAddFiles(stagedFiles, { sourceMode: 'drop' })} />
       ) : null}
+      {mode === 'paste-trace' ? (
+        <PasteTraceForm onBack={() => setMode('')} onSubmit={onAddPastedTrace} />
+      ) : null}
     </Modal>
   );
+}
+
+
+function isGitHubSourceContinuation(source = null) {
+  if (!source || source.id === 'local' || source.recoveryOnly === true || source.originReferenceSource === true) return false;
+  const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
+  return kind.includes('github') && source.loadable !== false;
 }
 
 function AddChoiceGrid({ onMode, onAddFiles, title }) {
@@ -61,17 +70,22 @@ function AddChoiceGrid({ onMode, onAddFiles, title }) {
           <span className="tx-add-choice-copy"><strong>Explicit URLs</strong><small>Raw / blob URLs</small></span>
           <Icon name="source" />
         </button>
-        <button type="button" className="tx-add-choice-card" onClick={() => onMode('app-config')}>
-          <span className="tx-add-choice-icon"><Icon name="source" /></span>
-          <span className="tx-add-choice-copy"><strong>Tiinex app config</strong><small>Fetch hosted workspace plan</small></span>
-          <Icon name="source" />
-        </button>
         <button type="button" className="tx-add-choice-card tx-desktop-only-choice" onClick={() => onMode('drop')}>
           <span className="tx-add-choice-icon"><Icon name="handPointer" /></span>
           <span className="tx-add-choice-copy"><strong>Drag and drop</strong><small>Files, folders, zip</small></span>
           <Icon name="drop" />
         </button>
       </div>
+      <details className="tx-add-advanced-imports">
+        <summary>Advanced imports</summary>
+        <div className="tx-add-choice-grid tx-add-choice-grid-secondary">
+          <button type="button" className="tx-add-choice-card" onClick={() => onMode('paste-trace')}>
+            <span className="tx-add-choice-icon"><Icon name="markdown" /></span>
+            <span className="tx-add-choice-copy"><strong>Paste trace</strong><small>Paste existing trace Markdown</small></span>
+            <Icon name="continue" />
+          </button>
+        </div>
+      </details>
     </div>
   );
 }
@@ -81,17 +95,13 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const [repository, setRepository] = useState(continuation?.repo || continuation?.config?.repo || '');
   const [ref, setRef] = useState(continuation?.ref || continuation?.config?.ref || '');
   const [rootPath, setRootPath] = useState(continuation?.rootPath || continuation?.config?.rootPath || '.topics');
-  const rememberedSurfaces = continuation?.surfaces || continuation?.requestedSurfaces || {};
-  const rememberedIssue = continuation?.surfaces?.issueSnapshots || continuation?.requestedSurfaces?.issueSnapshots || {};
-  const rememberedRepo = continuation?.surfaces?.repoFiles || continuation?.requestedSurfaces?.repoFiles || {};
-  const repoRequested = Boolean(continuation?.repoDiscovery || rememberedRepo.requested || Number(rememberedRepo.discovered || 0) || Number(rememberedRepo.loaded || 0));
-  const issueRequested = Boolean(continuation?.issueDiscovery || rememberedIssue.requested || rememberedIssue.deferred || rememberedIssue.unavailable || rememberedIssue.failed || Number(rememberedIssue.requestedCount || 0) || Number(rememberedIssue.discovered || 0) || Number(rememberedIssue.loaded || 0));
-  // v232: continuation defaults preserve the user's/source's selected surfaces across F5/hash restore.
-  // Incomplete-state still belongs in the receipt summary; it must not silently uncheck issue discovery.
+  const repoRequested = Boolean(continuation?.repoDiscovery);
+  const issueRequested = Boolean(continuation?.issueDiscovery);
+  // Broad discovery is a user-owned source setting. Requested/loaded issue surfaces may also come from explicit targets and must not re-enable it.
   const [repoDiscovery, setRepoDiscovery] = useState(continuation ? repoRequested : true);
-  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : true);
+  const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : false);
   const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '');
-  const [fileRefs, setFileRefs] = useState('');
+  const [fileRefs, setFileRefs] = useState(() => (Array.isArray(continuation?.explicitFileRefs || continuation?.config?.explicitFileRefs) ? Array.from(continuation?.explicitFileRefs || continuation?.config?.explicitFileRefs).join('\n') : String(continuation?.explicitFileRefs || continuation?.config?.explicitFileRefs || '')));
   const [error, setError] = useState('');
 
   function send(intent = 'load') {
@@ -108,19 +118,19 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
     const shouldLoadIssues = !registerOnly && (issueDiscovery || Boolean(explicitIssues));
     const wantsLoad = !registerOnly && (repoDiscovery || Boolean(explicitRefs) || shouldLoadIssues);
     if (!registerOnly && !wantsLoad) {
-      setError('Choose at least one discovery surface, add explicit paths, or use Register only.');
+      setError('Choose at least one discovery surface, add explicit paths, or use Save source.');
       return;
     }
-    const saveOnly = registerOnly && Boolean(continuation);
     onSubmit({
       repository,
       ref,
       rootPath,
       operation: registerOnly ? 'register' : 'materialize',
-      repoDiscovery: saveOnly ? repoDiscovery : wantsLoad && repoDiscovery,
-      issueDiscovery: saveOnly ? (issueDiscovery || Boolean(explicitIssues)) : shouldLoadIssues,
-      issueUrls: saveOnly || shouldLoadIssues ? issueUrls : '',
+      repoDiscovery: Boolean(repoDiscovery),
+      issueDiscovery: Boolean(issueDiscovery),
+      issueUrls,
       label: repository,
+      explicitFileRefs: fileRefs,
       fileRefs: wantsLoad ? fileRefs : '',
       sourceId: continuation?.id || ''
     });
@@ -136,16 +146,17 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
   const activeSurfaces = [
     repoDiscovery ? 'repo files' : '',
     explicitRefs ? 'explicit paths' : '',
-    issueDiscovery || explicitIssues ? 'issue snapshots' : ''
+    issueDiscovery ? 'public issues' : '',
+    explicitIssues ? 'specific issue targets' : ''
   ].filter(Boolean);
   const primaryLabel = activeSurfaces.length === 0
     ? 'Choose material to load'
     : activeSurfaces.length === 1 && activeSurfaces[0] === 'repo files'
       ? (continuation ? 'Reload repo Markdown' : 'Discover repo Markdown')
-      : `${continuation ? 'Reload' : 'Load'} ${activeSurfaces.length} selected surface${activeSurfaces.length === 1 ? '' : 's'}`;
+      : `${continuation ? 'Reload' : 'Load'} material`;
   const sourceLabel = continuation?.label || repository || 'GitHub source';
   const backLabel = continuation ? 'Cancel' : 'Back';
-  const saveLabel = continuation ? 'Save source' : 'Register only';
+  const saveLabel = 'Save source';
 
   return (
     <form className="tx-add-source-form tx-github-source-form tx-github-source-plan-form" onSubmit={submit} data-operation={continuation ? "source-edit" : "source-plan"}>
@@ -155,45 +166,38 @@ function GitHubSourceForm({ sourceContinuation = null, onBack, onSubmit, busy = 
           <span><strong>Continue {sourceLabel}</strong><small>{continuation.count || 0} loaded · {sourceContinuationSummary(continuation)}</small></span>
         </div>
       ) : null}
-      <section className="tx-github-boundary-panel" aria-label="GitHub source boundary">
-        <strong>Source boundary</strong>
-        <small>Registering the boundary is separate from reading material. No GitHub request runs until you submit a loading action.</small>
-      </section>
+      <p className="tx-github-source-intro">Read-only GitHub source. Saving the source and loading material are separate.</p>
       <div className="tx-github-source-field-grid">
-        <TextField id="source-repo" label="Repo URL or owner/name" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
-        <TextField id="source-ref" label="Ref optional" value={ref} onChange={setRef} placeholder="default branch" />
+        <TextField id="source-repo" label="Repository" value={repository} onChange={setRepository} placeholder="Tiinex/docs" />
+        <TextField id="source-ref" label="Ref" value={ref} onChange={setRef} placeholder="default branch" />
       </div>
       <label className="tx-textarea-field">
         <span>Root paths</span>
         <textarea value={rootPath} onChange={(event) => setRootPath(event.target.value)} placeholder=".topics&#10;.github/agents/.topics" />
       </label>
-      <fieldset className="tx-github-discovery-surfaces" aria-label="Discovery surfaces">
-        <legend>Discovery surfaces</legend>
+      <fieldset className="tx-github-discovery-surfaces" aria-label="Discover broadly">
+        <legend>Discover broadly</legend>
         <label className={`tx-github-discovery-card ${repoDiscovery ? 'is-active' : ''}`}>
           <input type="checkbox" checked={repoDiscovery} onChange={(event) => setRepoDiscovery(event.target.checked)} />
-          <span><strong>Repo files discovery</strong><small>Read bounded Markdown artifacts from the repo tree under the selected root paths.</small></span>
+          <span><strong>Repo Markdown under root paths</strong><small>Discover bounded Markdown material under the configured roots.</small></span>
         </label>
         <label className={`tx-github-discovery-card ${issueDiscovery ? 'is-active' : ''}`}>
           <input type="checkbox" checked={issueDiscovery} onChange={(event) => setIssueDiscovery(event.target.checked)} />
-          <span><strong>Issue snapshot discovery</strong><small>Read bounded public issues or explicit issue URLs as read-only source snapshots; discussion URLs stay degraded when unsupported.</small></span>
+          <span><strong>Public issues</strong><small>Discover a bounded set of public issues. Specific targets below are independent and always included.</small></span>
         </label>
       </fieldset>
       <label className="tx-textarea-field">
-        <span>Explicit Markdown paths / URLs <small>optional additional targets</small></span>
+        <span>Include specific targets · Markdown paths / URLs <small>optional; always included</small></span>
         <textarea value={fileRefs} onChange={(event) => setFileRefs(event.target.value)} placeholder="One path or URL per line, e.g. .topics/foo.md or https://raw.githubusercontent.com/owner/repo/main/.topics/foo.md" />
       </label>
       <label className="tx-textarea-field">
-        <span>Issue / Discussion URLs <small>{issueDiscovery ? 'used by issue snapshot discovery' : 'optional; entering URLs enables issue snapshots'}</small></span>
-        <textarea value={issueUrls} onFocus={() => setIssueDiscovery(true)} onChange={(event) => { setIssueUrls(event.target.value); if (event.target.value.trim()) setIssueDiscovery(true); }} placeholder="https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
+        <span>Issue / Discussion URLs <small>optional; exact targets are included independently of broad discovery</small></span>
+        <textarea value={issueUrls} onChange={(event) => setIssueUrls(event.target.value)} placeholder="https://github.com/Tiinex/docs/issues/123&#10;https://github.com/Tiinex/docs/discussions/123" />
       </label>
-      <div className="tx-github-operation-receipt tx-github-selected-plan" role="status">
-        <strong>{activeSurfaces.length ? `Selected: ${activeSurfaces.join(' + ')}` : 'Selected: register boundary only'}</strong>
-        <small>{activeSurfaces.length ? 'Submit starts visible source materialization with progress and a loaded/skipped/failed receipt.' : 'Use Register only to create a source boundary with no loading running.'}</small>
-      </div>
-      <div className="tx-transport-contract-panel" aria-label="Transport contract">
-        <span><strong>Transport</strong><small>cache → mirror → proxy → direct · only configured/available tiers are used</small></span>
-        <span><strong>Result</strong><small>{activeSurfaces.length ? 'progress, transport tier, then loaded/skipped/failed summary' : 'source boundary only'}</small></span>
-      </div>
+      <details className="tx-github-technical-details">
+        <summary>Technical details</summary>
+        <p>Transport tries available cache, mirror, proxy, then direct tiers. Operation results are shown after loading.</p>
+      </details>
       {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
       <div className="tx-dialog-actions tx-github-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>{backLabel}</Button>
@@ -232,36 +236,6 @@ function ExplicitUrlsForm({ onBack, onSubmit }) {
       <div className="tx-dialog-actions">
         <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
         <Button type="submit" variant="primary" icon="source">Add URLs</Button>
-      </div>
-    </form>
-  );
-}
-
-function TiinexAppConfigForm({ onBack, onSubmit, busy = false }) {
-  const [target, setTarget] = useState('');
-  const [error, setError] = useState('');
-  function submit(event) {
-    event.preventDefault();
-    const value = String(target || '').trim();
-    if (!value) return setError('Enter a Tiinex app URL, e.g. https://tiinex.dev/.');
-    setError('');
-    onSubmit?.(value);
-  }
-  return (
-    <form className="tx-add-source-form tx-app-config-source-form" onSubmit={submit}>
-      <section className="tx-github-boundary-panel" aria-label="Tiinex app config source">
-        <strong>Fetch hosted app config</strong>
-        <small>Reads a Tiinex web app's declared or PoC-hosted workspace config and prefers its Workspace Discovery catalog before falling back to the first entrypoint. It supports link/meta config, PoC runtime candidates, GitHub issue pointers, and embedded defaults when browser-readable.</small>
-      </section>
-      <TextField id="tiinex-app-config-url" label="Tiinex app URL" value={target} onChange={setTarget} placeholder="https://tiinex.dev/" />
-      {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
-      <div className="tx-transport-contract-panel" aria-label="Config source contract">
-        <span><strong>Convention</strong><small>HTML link/meta, PoC window.TiinexWorkspace candidates, issue pointer, embedded default, or known workspace paths</small></span>
-        <span><strong>Boundary</strong><small>Config fetch chooses a workspace discovery/source plan; Open/Merge remains explicit on workspace artifacts.</small></span>
-      </div>
-      <div className="tx-dialog-actions">
-        <Button type="button" variant="ghost" icon="previous" onClick={onBack}>Back</Button>
-        <Button type="submit" variant="primary" icon="source" disabled={busy}>{busy ? 'Source operation running…' : 'Fetch config source'}</Button>
       </div>
     </form>
   );
@@ -309,7 +283,45 @@ function modeTitle(mode, title) {
   if (mode === 'git') return 'GitHub source';
   if (mode === 'urls') return 'Explicit URLs';
   if (mode === 'drop') return 'Drag and drop';
-  if (mode === 'app-config') return 'Tiinex app config';
   return title;
 }
 
+
+
+export function ImportConflictDialog({ conflicts = [], onResolve, onDismiss }) {
+  const examples = conflicts.slice(0, 5);
+  return (
+    <Modal title="Incoming material overlaps this workspace" onDismiss={onDismiss} className="tx-import-conflict-modal">
+      <div className="tx-import-conflict-copy">
+        <p>{importConflictSummary(conflicts)}</p>
+        <p><strong>.trace.md conflicts use lineage slot numbers.</strong> Different slugs in the same numbered slot still conflict.</p>
+        {examples.length ? <ul>{examples.map((item, index) => <li key={`${item.type}:${item.incoming}:${index}`}><strong>{item.type === 'trace-slot' ? 'Same lineage slot' : 'Same file path'}</strong><br /><span>{item.incoming} → {item.existing}</span></li>)}</ul> : null}
+      </div>
+      <div className="tx-dialog-actions">
+        <Button variant="primary" onClick={() => onResolve?.('sibling')}>Import as sibling</Button>
+        <Button onClick={() => onResolve?.('replace')}>Replace existing</Button>
+        <Button variant="subtle" onClick={onDismiss}>Cancel import</Button>
+      </div>
+    </Modal>
+  );
+}
+
+function PasteTraceForm({ onBack, onSubmit }) {
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  function submit(event) {
+    event.preventDefault();
+    if (!String(text || '').trim()) { setError('Paste trace Markdown first.'); return; }
+    const ok = onSubmit?.(text);
+    if (ok === false) setError('Clipboard text does not look like Tiinex trace Markdown.');
+  }
+  return (
+    <form className="tx-add-source-form tx-paste-trace-form" onSubmit={submit}>
+      <p className="tx-boundary-note">Paste an existing Tiinex trace. It stays local/session material until explicitly published.</p>
+      <label><span>Trace Markdown</span><textarea rows="14" value={text} onChange={(event) => setText(event.target.value)} placeholder="# Continuity Context
+..." /></label>
+      {error ? <p role="alert" className="tx-field-error">{error}</p> : null}
+      <div className="tx-dialog-actions"><Button onClick={onBack}>Back</Button><Button variant="primary" type="submit">Add trace</Button></div>
+    </form>
+  );
+}

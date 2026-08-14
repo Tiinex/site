@@ -1,6 +1,5 @@
 import { resolveLineage } from '../lineage/lineage.resolve.js';
 import { traverseLoadedLineage } from '../lineage/lineage.traverse.js';
-import { isRecordSourceBacked } from './workspace.authority.js';
 
 export const WORKSPACE_LINEAGE_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedLineageView.v1';
 
@@ -89,7 +88,7 @@ function presentSelectedTraversal(traversal = {}, nodesById = new Map(), resolve
         sourceLabel: source.label || '',
         sourceBoundary: resolvedNode.boundary || source.boundary || '',
         sourceRef: source.ref || '',
-        sourceBacked: isRecordSourceBacked(resolvedNode.record || { source }),
+        sourceBacked: Boolean(source.adapterId && source.adapterId !== 'local'),
         record: resolvedNode.record || null,
         findings: findingsByNodeId.get(node.id) || [],
         terminal: terminalNodes.some((terminal) => terminal.id === node.id),
@@ -129,7 +128,7 @@ function presentNode(node = {}) {
     origin: node.origin || '',
     boundary: node.boundary || '',
     sourceLabel: record.source?.label || '',
-    sourceBacked: isRecordSourceBacked(record),
+    sourceBacked: Boolean(record.source?.adapterId && record.source.adapterId !== 'local'),
     hasContinuityContext: Boolean(node.hasContinuityContext),
     hasIntegrity: Boolean(node.hasIntegrity),
     record

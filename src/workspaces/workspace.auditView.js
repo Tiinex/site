@@ -2,7 +2,6 @@ import { runAudit } from '../audit/audit.run.js';
 import { auditReport } from '../audit/audit.report.js';
 import { resolveAuditLineage } from '../audit/lineage/auditLineage.resolve.js';
 import { schemaReadPresentation } from '../schemas/companion.js';
-import { isRecordSourceBacked } from './workspace.authority.js';
 
 export const WORKSPACE_AUDIT_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedAuditView.v1';
 
@@ -57,7 +56,7 @@ function auditRecord(record = {}) {
     title: record.title || result.artifact?.title || 'Untitled artifact',
     path: record.path || '',
     sourceLabel: record.source?.label || '',
-    sourceBacked: isRecordSourceBacked(record),
+    sourceBacked: Boolean(record.source?.adapterId && record.source.adapterId !== 'local'),
     status: result.status,
     schemaId: report.schemaId || record.schemaId || record.kind || '',
     moduleId: report.moduleId || '',

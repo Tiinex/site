@@ -21,7 +21,15 @@ function copy(source, target = source) {
 }
 
 rmSync(out, { recursive: true, force: true });
+if (!existsSync(viteBin)) {
+  console.error(`[tiinex] Vite binary not found at ${viteBin}. Run node tools/ensure-deps.mjs or npm ci before public build; public PASS is not claimable without a real Vite bundle.`);
+  process.exit(1);
+}
 const build = spawnSync(viteBin, ['build', '--outDir', out], { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
+if (build.error) {
+  console.error(`[tiinex] Could not start Vite public build: ${build.error.message}`);
+  process.exit(1);
+}
 if (build.status !== 0) {
   console.error(build.stdout || '');
   console.error(build.stderr || '');

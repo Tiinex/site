@@ -7,7 +7,7 @@ if (!persistence.includes('tiinex.site.workspaceState.v1')) failures.push('missi
 if (!persistence.includes('#state=')) failures.push('missing URL hash state prefix');
 if (!persistence.includes('writeState')) failures.push('missing state writer');
 if (!persistence.includes('readInitialState')) failures.push('missing restore path');
-if (!app.includes('persistence?.readInitialState')) failures.push('React runtime must use persistence readInitialState');
+if (!app.includes('persistence?.resolveInitialState')) failures.push('React runtime must use semantic persistence resolveInitialState');
 if (app.includes('localStorage.getItem')) failures.push('React runtime must not direct-bootstrap from localStorage');
 if (failures.length) {
   console.error(failures.map((f) => `- ${f}`).join('\n'));

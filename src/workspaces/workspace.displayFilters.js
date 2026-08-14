@@ -47,9 +47,3 @@ export function assetMatchesQuery(asset = {}, query = '') {
   if (!q) return true;
   return [asset.name, asset.path, asset.type, asset.previewState, asset.sourceMode].some((value) => String(value || '').toLowerCase().includes(q));
 }
-
-export function workspaceCandidateMatchesQuery(candidate = {}, query = '') {
-  const q = String(query || '').trim().toLowerCase();
-  if (!q) return true;
-  return [candidate.title, candidate.path, candidate.sourceMode, candidate.schema].some((value) => String(value || '').toLowerCase().includes(q));
-}

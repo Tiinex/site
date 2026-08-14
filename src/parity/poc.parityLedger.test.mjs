@@ -20,8 +20,23 @@ for (const scenario of pocParityLedger.scenarios) {
 }
 
 const localArchive = pocParityLedger.scenarios.find((item) => item.id === 'local-archive-intake');
-assert.equal(localArchive.status, PoCParityStatus.parity, 'local/archive intake is the current proven parity loop');
+assert.equal(localArchive.status, PoCParityStatus.partial, 'local/archive intake remains partial until PoC-like browser/Q proof covers conflict/password/paste flows');
 assert(localArchive.automatedChecks.some((name) => name.includes('poc.localArchiveParity')), 'local archive scenario must name parity test');
+assert(localArchive.automatedChecks.includes('src/workspaces/workspace.importConflicts.test.mjs'), 'local archive scenario must name explicit conflict contract test');
+assert(localArchive.manualChecks.some((item) => item.includes('password')), 'local archive scenario must keep password zip browser proof explicit');
+
+
+const bootstrapOwnership = pocParityLedger.scenarios.find((item) => item.id === 'bootstrap-config-ownership');
+assert.equal(bootstrapOwnership.status, PoCParityStatus.partial, 'bootstrap ownership remains partial until clean-start browser parity is observed');
+assert(bootstrapOwnership.automatedChecks.includes('src/app/emptyStageProductHierarchy.test.mjs'), 'bootstrap ownership must guard against technical start controls returning to empty stage');
+
+const workspaceSpine = pocParityLedger.scenarios.find((item) => item.id === 'workspace-artifact-canonical-spine');
+assert.equal(workspaceSpine.status, PoCParityStatus.partial, 'workspace artifact spine remains partial until candidate-vs-record product parity is browser-confirmed');
+assert(workspaceSpine.automatedChecks.includes('src/app/githubSourceMaterializationCommand.test.mjs'), 'workspace artifact spine must cover source materialization without parallel candidates');
+
+const sourceTakeover = pocParityLedger.scenarios.find((item) => item.id === 'source-over-import-canonical-takeover');
+assert.equal(sourceTakeover.status, PoCParityStatus.partial, 'source-over-import canonical takeover remains partial until browser proof');
+assert(sourceTakeover.legacyBehavior.includes('never resurrects'), 'source-over-import ledger must explicitly reject snapshot resurrection drift');
 
 const githubScenario = pocParityLedger.scenarios.find((item) => item.id === 'github-source-discovery');
 assert(githubScenario.automatedChecks.includes('src/adapters/github/github.issueSnapshot.test.mjs'), 'github scenario must name issue snapshot parser test');

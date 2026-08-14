@@ -1,3 +1,4 @@
+import { isWorkspaceRecord } from '../actions/record.actions.js';
 import { buildPublicationPreflight } from '../publication/publication.preflight.js';
 import { buildSourceBoundaryReport } from '../diagnostics/sourceBoundary.report.js';
 import { buildReingestPlan } from '../reingest/reingest.plan.js';
@@ -6,14 +7,15 @@ import { buildExportPackageContract, buildExportPackageManifest, buildExportPack
 import { buildExportPackageBundle, inspectExportPackageBundle } from '../export/package.builder.js';
 import { buildExportPackageApplyResult, buildExportPackageImportPlan } from '../export/package.apply.js';
 import { buildSourceTransportReport } from '../diagnostics/sourceTransport.report.js';
-import { isSourceBackedSource } from './workspace.authority.js';
 
 export const WORKSPACE_RECOVERABILITY_VIEW_SCHEMA_ID = 'tiinex.workspace.recoverabilityView.v1';
 
 export function buildWorkspaceRecoverabilityView(workspace = {}, input = {}) {
   const records = Array.isArray(input.records) ? input.records : (Array.isArray(workspace.records) ? workspace.records : []);
   const assets = Array.isArray(input.assets) ? input.assets : (Array.isArray(workspace.assets) ? workspace.assets : []);
-  const workspaceCandidates = Array.isArray(input.workspaceCandidates) ? input.workspaceCandidates : (Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : []);
+  // Compatibility-only descriptor input. Canonical product runtime must already normalize legacy candidates into records.
+  const legacyWorkspaceCandidates = Array.isArray(input.workspaceCandidates) ? input.workspaceCandidates : [];
+  const workspaceArtifacts = records.filter(isWorkspaceRecord);
   const importResults = Array.isArray(workspace.importResults) ? workspace.importResults : [];
   const importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
   const sourceBackedRecords = records.filter((record) => isSourceBacked(record.source));
@@ -25,13 +27,13 @@ export function buildWorkspaceRecoverabilityView(workspace = {}, input = {}) {
   const errors = importResults.flatMap((result) => Array.isArray(result.errors) ? result.errors : []);
   const sourceBoundary = buildSourceBoundaryReport(workspace, { records, assets });
   const sourceTransport = buildSourceTransportReport(workspace);
-  const publicationPreflight = buildPublicationPreflight(workspace, { records, assets, workspaceCandidates });
-  const reingestPlan = buildReingestPlan(workspace, { records, assets, workspaceCandidates, sourceBoundary, publicationPreflight });
-  const exportPackagePreflight = buildExportPackagePreflight(workspace, { records, assets, workspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan });
-  const exportPackageManifest = buildExportPackageManifest(workspace, { records, assets, workspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan, preflight: exportPackagePreflight });
+  const publicationPreflight = buildPublicationPreflight(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates });
+  const reingestPlan = buildReingestPlan(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates, sourceBoundary, publicationPreflight });
+  const exportPackagePreflight = buildExportPackagePreflight(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan });
+  const exportPackageManifest = buildExportPackageManifest(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan, preflight: exportPackagePreflight });
   const exportPackageReceipt = buildExportPackageReceipt(exportPackageManifest);
-  const exportPackageContract = buildExportPackageContract(workspace, { records, assets, workspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan, preflight: exportPackagePreflight, manifest: exportPackageManifest, receipt: exportPackageReceipt });
-  const exportPackageBundle = buildExportPackageBundle(workspace, { records, assets, workspaceCandidates, contract: exportPackageContract });
+  const exportPackageContract = buildExportPackageContract(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates, sourceBoundary, publicationPreflight, reingestPlan, preflight: exportPackagePreflight, manifest: exportPackageManifest, receipt: exportPackageReceipt });
+  const exportPackageBundle = buildExportPackageBundle(workspace, { records, assets, workspaceCandidates: legacyWorkspaceCandidates, contract: exportPackageContract });
   const exportPackageBundleInspection = inspectExportPackageBundle(exportPackageBundle);
   const exportPackageImportPlan = buildExportPackageImportPlan(exportPackageBundle, { inspection: exportPackageBundleInspection });
   const exportPackageApplyResult = buildExportPackageApplyResult(exportPackageBundle, { importPlan: exportPackageImportPlan });
@@ -49,7 +51,7 @@ export function buildWorkspaceRecoverabilityView(workspace = {}, input = {}) {
       sourceBackedRecords: sourceBackedRecords.length,
       assets: assets.length,
       localAssets: localAssets.length,
-      workspaceCandidates: workspaceCandidates.length,
+      workspaceArtifacts: workspaceArtifacts.length,
       importResults: importResults.length,
       warnings: warnings.length,
       errors: errors.length,
@@ -103,7 +105,7 @@ export function buildWorkspaceRecoverabilityView(workspace = {}, input = {}) {
     guarantees: [
       `${localRecords.length} local/session artifact${localRecords.length === 1 ? '' : 's'} retained without GitHub provenance.`,
       `${localAssets.length} local asset${localAssets.length === 1 ? '' : 's'} retained as assets, not fake leaves.`,
-      `${workspaceCandidates.length} workspace candidate${workspaceCandidates.length === 1 ? '' : 's'} available for explicit open/merge.`,
+      `${workspaceArtifacts.length} workspace artifact${workspaceArtifacts.length === 1 ? '' : 's'} available with ordinary artifact inspection plus Open/Merge capabilities.`,
       `${sourceBackedRecords.length} source-backed artifact${sourceBackedRecords.length === 1 ? '' : 's'} retain explicit source boundary.`
     ],
     warnings: warnings.slice(0, 10).map(normalizeIssue),
@@ -258,5 +260,5 @@ function normalizeIssue(issue = {}) {
 }
 
 function isSourceBacked(source = {}) {
-  return isSourceBackedSource(source);
+  return Boolean(source?.adapterId && source.adapterId !== 'local');
 }

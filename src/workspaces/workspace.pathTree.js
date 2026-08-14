@@ -1,8 +1,7 @@
-import { classifyRecordAuthority } from './workspace.authority.js';
 import { inferRecordMaterialRole, MaterialRole } from './workspace.materialRole.js';
-import { recordLogicalPath, normalizeWorkspacePath } from './workspace.recordPaths.js';
+import { buildRecordLogicalPathMap, recordLogicalPathFromMap, normalizeWorkspacePath } from './workspace.recordPaths.js';
 
-const ITEM_TYPE_ORDER = { record: 0, workspace: 1, asset: 2 };
+const ITEM_TYPE_ORDER = { record: 0, asset: 1 };
 
 export function normalizeTreePath(value = '') {
   return normalizeWorkspacePath(value);
@@ -11,15 +10,12 @@ export function normalizeTreePath(value = '') {
 export function buildWorkspacePathTree(input = {}) {
   const records = Array.isArray(input.records) ? input.records : [];
   const assets = Array.isArray(input.assets) ? input.assets : [];
-  const workspaceCandidates = Array.isArray(input.workspaceCandidates) ? input.workspaceCandidates : [];
   const query = String(input.query || '').trim();
   const root = makeFolderNode('', '', 0);
+  const recordPathMap = buildRecordLogicalPathMap(records);
 
   for (const record of records) {
-    addItem(root, makeTreeItem('record', record));
-  }
-  for (const candidate of workspaceCandidates) {
-    addItem(root, makeTreeItem('workspace', candidate));
+    addItem(root, makeTreeItem('record', record, recordPathMap));
   }
   for (const asset of assets) {
     addItem(root, makeTreeItem('asset', asset));
@@ -37,12 +33,10 @@ export function buildWorkspacePathTree(input = {}) {
   };
 }
 
-function makeTreeItem(type, source = {}) {
-  const path = normalizeTreePath(type === 'record' ? recordLogicalPath(source) : (source.path || source.name || source.title || type));
-  const fallbackName = type === 'workspace' ? 'Workspace candidate' : type === 'asset' ? 'Asset' : 'Artifact';
+function makeTreeItem(type, source = {}, recordPathMap = null) {
+  const path = normalizeTreePath(type === 'record' ? recordLogicalPathFromMap(source, recordPathMap) : (source.path || source.name || source.title || type));
+  const fallbackName = type === 'asset' ? 'Asset' : 'Artifact';
   const name = basename(path) || source.title || source.name || fallbackName;
-  const materialRole = type === 'record' ? inferRecordMaterialRole(source) : type === 'asset' ? MaterialRole.asset : type === 'workspace' ? MaterialRole.workspaceCandidate : '';
-  const authority = type === 'record' ? classifyRecordAuthority(source) : null;
   return {
     type,
     id: source.id || `${type}:${path || name}`,
@@ -51,12 +45,7 @@ function makeTreeItem(type, source = {}) {
     title: source.title || source.name || name,
     kind: source.kind || source.schema || source.type || type,
     previewState: source.previewState || '',
-    materialRole,
-    authorityKind: authority?.authorityKind || '',
-    mutabilityKind: authority?.mutabilityKind || '',
-    presentationPath: path,
-    sourcePath: source.sourcePath || source.sourceTarget?.sourceArtifactPath || source.snapshot?.sourceArtifactPath || '',
-    provenancePath: source.sourceTarget?.browseUrl || source.sourceTarget?.sourceUrl || source.snapshot?.sourceUrl || source.recoveredFromUrl || '',
+    materialRole: type === 'record' ? inferRecordMaterialRole(source) : type === 'asset' ? MaterialRole.asset : '',
     source
   };
 }
@@ -92,13 +81,13 @@ function makeFolderNode(name, path, depth) {
     depth,
     folders: [],
     items: [],
-    counts: { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceCandidates: 0, total: 0 },
+    counts: { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceArtifacts: 0, total: 0 },
     _folderMap: new Map()
   };
 }
 
 function finalizeFolder(folder) {
-  const counts = { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceCandidates: 0, total: 0 };
+  const counts = { records: 0, leaves: 0, supporting: 0, schemaDefinitions: 0, assets: 0, workspaceArtifacts: 0, total: 0 };
   for (const child of folder.folders) {
     finalizeFolder(child);
     counts.records += child.counts.records;
@@ -106,18 +95,18 @@ function finalizeFolder(folder) {
     counts.leaves += child.counts.leaves || 0;
     counts.supporting += child.counts.supporting || 0;
     counts.schemaDefinitions += child.counts.schemaDefinitions || 0;
-    counts.workspaceCandidates += child.counts.workspaceCandidates;
+    counts.workspaceArtifacts += child.counts.workspaceArtifacts;
     counts.total += child.counts.total;
   }
   for (const item of folder.items) {
     if (item.type === 'asset') counts.assets += 1;
-    else if (item.type === 'workspace') counts.workspaceCandidates += 1;
     else {
       counts.records += 1;
       const role = item.materialRole || inferRecordMaterialRole(item.source || {});
+      if (role === MaterialRole.workspaceArtifact) counts.workspaceArtifacts += 1;
       if (role === MaterialRole.leaf) counts.leaves += 1;
       else if (role === MaterialRole.schemaDefinition) counts.schemaDefinitions += 1;
-      else counts.supporting += 1;
+      else if (role !== MaterialRole.workspaceArtifact) counts.supporting += 1;
     }
     counts.total += 1;
   }

@@ -5,9 +5,9 @@ import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js
 import { buildWorkspaceRecoverabilityView } from '../../workspaces/workspace.recoverabilityView.js';
 import { compactPath, validationStateLabel } from './workspace.viewFormatting.js';
 
-export function WorkspaceAuditState({ workspace, query = '', records = [], assets = [], workspaceCandidates = [], onOpenRecord }) {
+export function WorkspaceAuditState({ workspace, query = '', records = [], assets = [], onOpenRecord }) {
   const audit = buildWorkspaceAuditView(workspace, { records, query });
-  const recovery = buildWorkspaceRecoverabilityView(workspace, { records, assets, workspaceCandidates });
+  const recovery = buildWorkspaceRecoverabilityView(workspace, { records, assets });
   const counts = audit.visibleCounts || audit.counts || {};
   return (
     <section className="tx-workspace-audit-state" aria-label="Loaded audit">
@@ -67,7 +67,7 @@ function AuditRecoverabilitySummary({ recovery }) {
         <span><strong>{counts.localRecords || 0}</strong><small>local records</small></span>
         <span><strong>{counts.sourceBackedRecords || 0}</strong><small>source-backed</small></span>
         <span><strong>{counts.assets || 0}</strong><small>assets</small></span>
-        <span><strong>{counts.workspaceCandidates || 0}</strong><small>workspaces</small></span>
+        <span><strong>{counts.workspaceArtifacts || 0}</strong><small>workspaces</small></span>
         <span><strong>{counts.previewOmitted || 0}</strong><small>preview omitted</small></span>
       </div>
       {latest ? <p className="tx-audit-recovery-latest"><Icon name={latest.ok ? 'check' : 'warning'} /> {latest.message}</p> : null}

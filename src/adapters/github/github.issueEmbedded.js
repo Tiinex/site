@@ -27,6 +27,7 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       parentSourceUrl: parentBinding.sourceUrl || '',
       sourceUpdatedAt: sourceSortAt,
       sourceSortAt,
+      sourceOrdinal: context.ordinal || 0,
       loaded: true
     },
     snapshot: {
@@ -41,7 +42,8 @@ export function createGithubEmbeddedArtifactRecord(markdown = '', context = {}, 
       parentRawUrl: parentBinding.rawUrl || '',
       parentSourceUrl: parentBinding.sourceUrl || '',
       sourceUpdatedAt: sourceSortAt,
-      sourceSortAt
+      sourceSortAt,
+      sourceOrdinal: context.ordinal || 0
     }
   });
 }
@@ -202,10 +204,12 @@ export function sourceArtifactPathFromPublicationBody(body = '') {
   const text = normalizeNewlines(body || '').trim();
   const beforeSource = text.split(/^##\s+Source Markdown(?:\s+Excerpt|\s+Payload)?\s*$/im)[0] || '';
   const sourcePath = beforeSource.match(/(?:^|\n)-\s+(?:Tiinex\s+)?Source(?:\s+Artifact)?\s+Path:\s*(.*)$/im)?.[1]
-    || beforeSource.match(/(?:^|\n)-\s+Source\s+Artifact:\s*(.*)$/im)?.[1]
     || beforeSource.match(/(?:^|\n)-\s+Source\s+Path:\s*(.*)$/im)?.[1]
     || beforeSource.match(/(?:^|\n)>\s*Source\s+Path:\s*(.*)$/im)?.[1]
     || '';
+  // Plain `Source Artifact:` is parent/provenance binding in legacy issue
+  // comments, not the current artifact's source path. Treating it as a
+  // path collapses multiple artifacts from the same issue/comment container.
   return stripMarkdownInline(sourcePath || '').trim();
 }
 
@@ -218,12 +222,15 @@ function embeddedSourceArtifactPath(markdown = '') {
 
 function githubRecoveredEmbeddedArtifactPath(target = {}, item = {}, ordinal = 0, markdown = '', sourceKind = 'issue') {
   const folder = githubIssueSyntheticFolder(target);
-  const id = String(item?.id || ordinal || sourceKind || 'source').replace(/[^A-Za-z0-9_.-]+/g, '-');
   const parsedTitle = embeddedArtifactTitle(markdown) || item.title || `${sourceKind} artifact`;
   const slug = slugPart(parsedTitle).slice(0, 52) || 'artifact';
   const extension = /Current Schema:\s*\[[^\]]*workspace/i.test(markdown) || /Current Schema:\s*tiinex\.workspace\.v1/i.test(markdown) ? '.workspace.md' : '.trace.md';
-  if (sourceKind === 'issue') return `${folder}/issue-root-recovered-${slug}${extension}`;
-  return `${folder}/comment-${String(ordinal || 1).padStart(3, '0')}-${id}-recovered-${slug}${extension}`;
+  const numericOrdinal = Number(ordinal || 0);
+  if (sourceKind === 'issue') {
+    const prefix = Number.isFinite(numericOrdinal) && numericOrdinal > 0 ? String(numericOrdinal).padStart(3, '0') : '000';
+    return `${folder}/${prefix}-${slug}${extension}`;
+  }
+  return `${folder}/${String(ordinal || 1).padStart(3, '0')}-${slug}${extension}`;
 }
 
 export function githubIssueSyntheticFolder(target = {}) {

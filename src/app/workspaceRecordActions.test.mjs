@@ -2,78 +2,58 @@ import assert from 'node:assert/strict';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
 
-await import('../sources/source.identity.js');
 await import('../workspaces/workspace.lifecycle.js');
-await import('../workspaces/workspace.config.js');
 const lifecycle = globalThis.TiinexWorkspaceLifecycle;
-const parseWorkspaceConfig = globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig;
 
-function workspaceMarkdown(title, body = '') {
-  return `# Continuity Context\n\n- Current\n  - Current Schema: [tiinex.workspace.v1](schema.md)\n  - Summary: ${title}.\n\n---\n\n# ${title}\n\n${body}\n`;
+function workspaceMarkdown(title = 'Opened Workspace') {
+  return `# ${title}\n\n- Browser Title: ${title}\n`;
 }
 
-function workspaceRecord(title, path, body = '') {
-  return Object.assign(createRecordFromMarkdown(workspaceMarkdown(title, body), { path, sourceMode: 'source-backed' }), {
-    title,
-    path,
-    sourceMode: 'source-backed',
-    schemaId: 'tiinex.workspace.v1',
-    currentSchemaId: 'tiinex.workspace.v1',
-    kind: 'tiinex.workspace.v1'
-  });
+function sourceEntrypointMarkdown(title = 'Source Entrypoint') {
+  return `# ${title}\n\n- Tiinex Workspace Entrypoints\n  - Repository: Tiinusen/socials\n    Workspace Label: Gaming\n    Issue Discovery: true\n    Repo Files Discovery: false\n`;
 }
 
-function seedChooser() {
-  let state = lifecycle.makeEmptyAppState();
-  const created = lifecycle.createWorkspace(state, { name: 'Chooser' }, { clock: () => '2026-08-05T00:00:00.000Z' });
-  state = created.state;
-  const source = lifecycle.addWorkspaceSource(state, created.workspace.id, { repository: 'Tiinusen/socials', ref: 'master', rootPath: '.topics', label: 'Tiinusphere', repoDiscovery: false, issueDiscovery: true, issueUrls: 'https://github.com/Tiinusen/socials/issues/1' });
-  state = source.state;
-  const parent = workspaceRecord('Tiinusphere', '.topics/issue-root-recovered-tiinusphere.workspace.md', `## Workspace Entrypoints\n\n### Tiinusphere\n\n- Source Kind: github-tree\n- Workspace Label: Tiinusphere\n- Repository: Tiinusen/socials\n- Ref: master\n- Root Path: .topics\n- Repo Files Discovery: off\n- Issue Discovery: on\n- Issue URL: https://github.com/Tiinusen/socials/issues/1\n`);
-  const child = workspaceRecord('Hobbies', '.topics/comment-001-recovered-hobbies.workspace.md');
-  const loaded = lifecycle.addWorkspaceSourceRecords(state, created.workspace.id, source.source.id, [parent, child], { discoveryState: 'loaded' });
-  assert.equal(loaded.ok, true);
-  return loaded.state;
+function parseWorkspaceConfig(markdown = '') {
+  if (!/Tiinex Workspace Entrypoints/i.test(markdown)) return { workspaceEntrypoints: [] };
+  return { workspaceEntrypoints: [{ repository: 'Tiinusen/socials', workspaceLabel: 'Gaming', issueDiscovery: true, repoFilesDiscovery: false, rootPath: '.topics' }] };
 }
 
-let state = seedChooser();
-const sourceWorkspace = lifecycle.activeWorkspace(state);
-assert.equal(sourceWorkspace.records.length, 2);
+const first = lifecycle.createWorkspace(lifecycle.makeEmptyAppState(), { name: 'M.O.W.S' }, { clock: () => '2026-08-08T00:00:00.000Z' });
+let state = first.state;
+const sourceWorkspaceId = first.workspace.id;
+const draftWorkspaceCreated = lifecycle.createWorkspace(state, { name: 'Local draft notes' }, { clock: () => '2026-08-08T00:00:01.000Z' });
+const draftWorkspaceId = draftWorkspaceCreated.workspace.id;
+const draftAdded = lifecycle.addWorkspaceRecord(draftWorkspaceCreated.state, draftWorkspaceId, { title: 'Unpublished local draft', path: 'draft.trace.md', markdown: '# Draft', sourceMode: 'local-draft', status: 'draft' });
+state = draftAdded.state;
+state.activeWorkspaceId = sourceWorkspaceId;
+state.view = { universe: 'column', workspaceVerse: 'lineage', selectedRecordId: 'some-record', lineageQuery: 'parent', expandedLineageRecordIds: ['some-record'], lineageAuditReport: { stale: true }, lineageLoadReport: { stale: true } };
 
-const opened = openWorkspaceRecordAction({
-  lifecycle,
-  parseWorkspaceConfig,
-  state,
-  record: sourceWorkspace.records.find((record) => record.title === 'Tiinusphere')
-});
-assert.equal(opened.ok, true, opened.error || opened.message);
-const active = lifecycle.activeWorkspace(opened.state);
-assert.equal(active.title, 'Tiinusphere');
-assert.deepEqual(active.records.map((record) => record.title), [], 'Open replaces chooser material with the exact workspace artifact context before source loading');
-assert.equal(opened.state.workspaces.length, 1, 'Open replaces the multi-workspace session with the opened workspace entrypoint set');
-assert.equal(active.sources.some((item) => item.label === 'Tiinusphere' && item.discoveryState === 'deferred'), true, 'opened workspace registers its configured source boundary');
-assert.equal(opened.sourceInputs.length, 1, 'Open returns source materialization inputs for the caller to load');
-assert.equal(opened.sourceInputs[0].workspaceId, active.id, 'source materialization input targets the opened workspace');
-assert.equal(opened.sourceInputs[0].issueUrls, 'https://github.com/Tiinusen/socials/issues/1', 'source materialization input preserves explicit issue target');
+const record = createRecordFromMarkdown(workspaceMarkdown('FS25 Markaryd'), { path: '.topics/.github/tiinusen/socials/.issues/3/000-fs25-markaryd.workspace.md' });
+const opened = openWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, record });
+assert.equal(opened.ok, true, opened.error);
+assert.equal(opened.workspace.title, 'Fs25 Markaryd');
+assert.equal(opened.state.workspaces.some((workspace) => workspace.id === sourceWorkspaceId), false, 'Open replaces the previous non-draft workspace like PoC');
+assert.equal(opened.state.workspaces.some((workspace) => workspace.id === draftWorkspaceId), true, 'Open preserves workspaces that contain durable unpublished local material');
+assert.deepEqual(opened.openBoundary.closedNonDraftWorkspaces, [sourceWorkspaceId], 'Open reports the non-draft workspace it replaced');
+assert.equal(opened.state.activeWorkspaceId, opened.workspace.id, 'open focuses the opened workspace');
+assert.equal(Boolean(opened.state.workspaceViews?.[sourceWorkspaceId]), false, 'closed workspace view state does not survive Open replacement');
+assert.equal(opened.state.view.workspaceVerse, 'feed', 'opened workspace starts from a clean feed view');
+assert.equal(opened.state.view.selectedRecordId, '', 'opened workspace cannot inherit a selected record from another workspace');
 
-state = seedChooser();
-const mergeTarget = lifecycle.createWorkspace(state, { name: 'Notes' }, { clock: () => '2026-08-05T00:01:00.000Z' });
-state = mergeTarget.state;
-const mergeSourceWorkspace = state.workspaces.find((workspace) => workspace.title === 'Chooser');
-const mergeRecord = mergeSourceWorkspace.records.find((record) => record.title === 'Tiinusphere');
-const mergedMissing = mergeWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, workspaceId: mergeSourceWorkspace.id, record: mergeRecord });
-assert.equal(mergedMissing.ok, true, mergedMissing.error || mergedMissing.message);
-assert.equal(mergedMissing.state.workspaces.some((workspace) => workspace.title === 'Tiinusphere'), true, 'Merge opens missing workspace entrypoints instead of mutating only the chooser workspace');
-assert.equal(mergedMissing.sourceInputs.length, 1, 'Merge queues loading for a newly opened workspace entrypoint');
-assert.equal(mergedMissing.state.activeWorkspaceId, mergeTarget.workspace.id, 'Merge preserves the current active workspace when it adds missing workspace columns');
+const mergeResult = mergeWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, workspaceId: sourceWorkspaceId, record });
+assert.equal(mergeResult.ok, true, mergeResult.error);
+assert.equal(mergeResult.state.activeWorkspaceId, sourceWorkspaceId, 'merge keeps active workspace identity');
+assert.equal(Object.prototype.hasOwnProperty.call(mergeResult.workspace, 'workspaceMergeCandidates'), false, 'workspace artifact merge must stay on canonical records without legacy candidate runtime shape');
+assert.equal(mergeResult.workspace.workspaceMergedEntries.length, 1, 'workspace artifact merge records context metadata on the canonical workspace');
+assert.equal(mergeResult.merge.mode, 'artifact-context', 'workspace artifact merge uses the canonical artifact-context contract');
 
-let loadedMergedState = mergedMissing.state;
-const tiinusphere = loadedMergedState.workspaces.find((workspace) => workspace.title === 'Tiinusphere');
-const sourceForMerged = tiinusphere.sources.find((source) => source.label === 'Tiinusphere');
-loadedMergedState = lifecycle.addWorkspaceSourceRecords(loadedMergedState, tiinusphere.id, sourceForMerged.id, [{ title: 'Hobbies', path: '.topics/hobbies.workspace.md', markdown: '# Hobbies', sourceMode: 'source-backed' }], { discoveryState: 'loaded' }).state;
-const noOpMerge = mergeWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state: loadedMergedState, workspaceId: mergeSourceWorkspace.id, record: mergeRecord });
-assert.equal(noOpMerge.ok, true, noOpMerge.error || noOpMerge.message);
-assert.equal(noOpMerge.state.workspaces.filter((workspace) => workspace.title === 'Tiinusphere').length, 1, 'Merge does not duplicate an already open matching workspace');
-assert.equal(noOpMerge.sourceInputs.length, 0, 'Merge does not queue discovery when an already open workspace source is loaded and matching');
+const sourceEntrypointRecord = createRecordFromMarkdown(sourceEntrypointMarkdown('Gaming config'), { path: '000-gaming.workspace.md' });
+const openedEntrypoint = openWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, record: sourceEntrypointRecord });
+assert.equal(openedEntrypoint.ok, true, openedEntrypoint.error);
+assert.equal(openedEntrypoint.openedWorkspaceSet, true, 'workspace entrypoint Open reports that it opened the configured workspace set');
+assert.equal(openedEntrypoint.state.workspaces.some((workspace) => workspace.id === sourceWorkspaceId), false, 'workspace entrypoint Open replaces the previous non-draft workspace');
+assert.equal(openedEntrypoint.state.workspaces.some((workspace) => workspace.id === draftWorkspaceId), true, 'workspace entrypoint Open preserves durable local work');
+assert(openedEntrypoint.sourceInputs.some((input) => input.repository === 'Tiinusen/socials' && input.issueDiscovery === true), 'source entrypoint open queues issue discovery source loading');
+assert.equal(openedEntrypoint.state.activeWorkspaceId, openedEntrypoint.workspace.id, 'source entrypoint open focuses the new workspace');
 
 console.log('✓ workspaceRecordActions tests passed');

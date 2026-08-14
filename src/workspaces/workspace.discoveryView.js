@@ -3,12 +3,12 @@ import { LineageEdgeKind, LineageResolutionStatus } from '../lineage/lineage.mod
 import { inferRecordMaterialRole, isDiscoveryWorkLeafEligible, isSupportingRecord, sourceBoundaryClass, MaterialRole } from './workspace.materialRole.js';
 import { sortWorkspaceFeedRecords } from './workspace.feedSort.js';
 import { normalizeWorkspaceDisplayOptions, normalizeDisplayFilterValue } from './workspace.displayOptions.js';
-import { auditIsMismatch, recordSchemaValue, recordMatchesQuery, assetMatchesQuery, workspaceCandidateMatchesQuery } from './workspace.displayFilters.js';
+import { auditIsMismatch, recordSchemaValue, recordMatchesQuery, assetMatchesQuery } from './workspace.displayFilters.js';
+import { isLocalShadowedBySourceRecord } from './workspace.materialReconciliation.js';
 
 export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
   const records = Array.isArray(options.records) ? options.records : (Array.isArray(workspace.records) ? workspace.records : []);
   const assets = Array.isArray(options.assets) ? options.assets : (Array.isArray(workspace.assets) ? workspace.assets : []);
-  const workspaceCandidates = Array.isArray(options.workspaceCandidates) ? options.workspaceCandidates : (Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : []);
   const displayOptions = normalizeWorkspaceDisplayOptions(options.displayOptions || {});
   const query = String(options.query || '').trim();
   const auditById = options.auditById instanceof Map ? options.auditById : new Map();
@@ -16,10 +16,14 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
     ? options.materialIndex
     : buildDiscoveryMaterialIndex(records);
   const hiddenReasonsById = new Map();
+  const hiddenReasonsByRecordId = new Map();
   const membershipById = new Map();
+  const membershipByRecordId = new Map();
 
   const visibleRecords = sortWorkspaceFeedRecords(records.filter((record) => {
     const inclusion = discoveryRecordMembership(record, displayOptions, auditById, materialIndex, query);
+    membershipByRecordId.set(String(record?.id || record?.path || ''), inclusion);
+    if (!inclusion.visible) hiddenReasonsByRecordId.set(String(record?.id || record?.path || ''), inclusion.reason);
     for (const key of descriptorFor(record, materialIndex)?.keys || recordKeys(record)) {
       membershipById.set(key, inclusion);
       if (!inclusion.visible) hiddenReasonsById.set(key, inclusion.reason);
@@ -28,28 +32,31 @@ export function buildWorkspaceDiscoveryView(workspace = {}, options = {}) {
   }));
 
   const visibleAssets = displayOptions.showAssets ? assets.filter((asset) => assetMatchesQuery(asset, query)) : [];
-  const visibleWorkspaceCandidates = displayOptions.showWorkspaceCandidates ? workspaceCandidates.filter((candidate) => workspaceCandidateMatchesQuery(candidate, query)) : [];
+  const projectedRecords = visibleRecords;
+  const visibleWorkspaceArtifactCount = projectedRecords.filter((record) => inferRecordMaterialRole(record) === MaterialRole.workspaceArtifact).length;
+  const workspaceArtifactCount = records.filter((record) => inferRecordMaterialRole(record) === MaterialRole.workspaceArtifact).length;
   const choices = discoveryOptionChoices(records, auditById, materialIndex);
 
   return Object.freeze({
-    records: visibleRecords,
+    records: projectedRecords,
     assets: visibleAssets,
-    workspaceCandidates: visibleWorkspaceCandidates,
     materialIndex,
     choices,
     counts: Object.freeze({
       records: records.length,
-      visibleRecords: visibleRecords.length,
+      visibleRecords: projectedRecords.length,
       leaves: choices.leafCount,
       supportingMarkdown: choices.supportingCount,
       mismatches: choices.mismatchCount,
       assets: assets.length,
       visibleAssets: visibleAssets.length,
-      workspaceCandidates: workspaceCandidates.length,
-      visibleWorkspaceCandidates: visibleWorkspaceCandidates.length
-    }),
+      workspaceArtifacts: workspaceArtifactCount,
+      visibleWorkspaceArtifacts: visibleWorkspaceArtifactCount,
+          }),
     hiddenReasonsById,
-    membershipById
+    hiddenReasonsByRecordId,
+    membershipById,
+    membershipByRecordId
   });
 }
 
@@ -58,11 +65,12 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const role = descriptor?.role || inferRecordMaterialRole(record);
   const supporting = descriptor ? descriptor.supporting : isSupportingRecord(record);
   const discoveryLeaf = isDiscoveryLeafRecord(record, materialIndex);
-  const workspaceCandidateRecord = role === MaterialRole.workspaceCandidate;
+  const workspaceArtifactRecord = role === MaterialRole.workspaceArtifact;
   const parentReason = discoveryParentReason(record, materialIndex);
-  if (workspaceCandidateRecord && options.showWorkspaceCandidates === false) return hidden('hidden-workspace-candidates', role, discoveryLeaf, supporting);
-  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || (workspaceCandidateRecord ? 'hidden-workspace-parent' : 'hidden-not-terminal-work-leaf'), role, discoveryLeaf, supporting);
-  if (!workspaceCandidateRecord && !options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
+  if (isLocalShadowedBySourceRecord(record)) return hidden('hidden-local-shadowed-by-source', role, discoveryLeaf, supporting);
+  if (workspaceArtifactRecord && options.showWorkspaceArtifacts === false) return hidden('hidden-workspace-artifacts', role, discoveryLeaf, supporting);
+  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || (workspaceArtifactRecord ? 'hidden-workspace-parent' : 'hidden-not-terminal-work-leaf'), role, discoveryLeaf, supporting);
+  if (!workspaceArtifactRecord && !options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
   if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
   if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
@@ -80,11 +88,10 @@ export function buildDiscoveryDisplayOptionCounts(workspace = {}, options = {}) 
   const view = buildWorkspaceDiscoveryView(workspace, {
     records: Array.isArray(options.records) ? options.records : workspace.records,
     assets: Array.isArray(options.assets) ? options.assets : workspace.assets,
-    workspaceCandidates: Array.isArray(options.workspaceCandidates) ? options.workspaceCandidates : workspace.workspaceMergeCandidates,
     displayOptions: Object.assign({}, options.displayOptions || {}, {
       leavesOnly: false,
       showSupportingMarkdown: true,
-      showWorkspaceCandidates: true,
+      showWorkspaceArtifacts: true,
       showAssets: true,
       mismatchesOnly: false,
       schemaFilter: 'all',
@@ -100,7 +107,7 @@ export function buildDiscoveryDisplayOptionCounts(workspace = {}, options = {}) 
     supportingMarkdown: view.counts.supportingMarkdown,
     mismatches: view.counts.mismatches,
     assets: view.counts.assets,
-    workspaceCandidates: view.counts.workspaceCandidates,
+    workspaceArtifacts: view.counts.workspaceArtifacts,
     schemaChoices: view.choices.schemas,
     artifactChoices: view.choices.artifacts,
     sourceChoices: view.choices.sources
@@ -186,6 +193,7 @@ export function discoveryParentReason(record = {}, materialIndex = null) {
   return '';
 }
 
+
 function hidden(reason, role, discoveryLeaf, supporting) {
   return Object.freeze({ visible: false, reason, role, discoveryLeaf, supporting });
 }
@@ -246,7 +254,7 @@ function buildDiscoveryRecordIndex(records = []) {
       name,
       keys,
       keySet: new Set(keys),
-      workEligible: (role === MaterialRole.leaf && isDiscoveryWorkLeafEligible(record)) || role === MaterialRole.workspaceCandidate
+      workEligible: (role === MaterialRole.leaf && isDiscoveryWorkLeafEligible(record)) || role === MaterialRole.workspaceArtifact
     });
     descriptors.push(descriptor);
     byRecord.set(record, descriptor);
@@ -267,7 +275,7 @@ function mismatchedEdgeStillOwnsDiscoveryParenthood(parent = null, child = null)
   // A mismatched/stale edge between ordinary work leaves should stay visible in Discovery so
   // users can inspect the changed parent material. Workspace/root entrypoints are containers;
   // if a loaded child still points at them, Leaves only should not show them as terminal work.
-  return parent.role === MaterialRole.workspaceCandidate && Boolean(child.workEligible);
+  return parent.role === MaterialRole.workspaceArtifact && Boolean(child.workEligible);
 }
 
 function addPathParentMembership(recordIndex, pathParentKeys, pathChildKeys, parentReasonsByKey) {

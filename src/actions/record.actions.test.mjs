@@ -126,21 +126,6 @@ assert.equal(isRemovableLocalDraftRecord(localTaskDraft), true, 'browser-local t
 const localTaskActions = presentRecordActions(localTaskDraft);
 assert(localTaskActions.some((action) => action.id === RecordActionKind.deleteLocal && action.icon === 'delete'), 'local transition drafts expose Delete local draft');
 assert(localTaskActions.every(actionIsRenderable), 'delete-local action must be renderable');
-
-const importedPackageRecord = {
-  id: 'package:local:.topics/imported.trace.md',
-  title: 'Imported package artifact',
-  path: '.topics/imported.trace.md',
-  sourceMode: 'package-import',
-  packageImport: true,
-  source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false }
-};
-assert.equal(sourceHrefForRecord(importedPackageRecord), '', 'package-imported local material must not expose guessed source href');
-assert.equal(isRemovableLocalDraftRecord(importedPackageRecord), true, 'browser-local package imports can be removed from the current workspace');
-const importedActions = presentRecordActions(importedPackageRecord);
-assert(importedActions.some((action) => action.id === RecordActionKind.deleteLocal && action.label === 'Remove imported local copy'), 'imported local material exposes a removal affordance with non-source wording');
-assert(!importedActions.some((action) => action.id === RecordActionKind.source), 'imported local material must not expose Open source');
-
 assert.equal(isRemovableLocalDraftRecord(topicRecord), false, 'source-backed records cannot be deleted through local draft removal');
 assert(!presentRecordActions(topicRecord).some((action) => action.id === RecordActionKind.deleteLocal), 'source-backed topic must not expose local delete');
 

@@ -25,14 +25,15 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   const sourceFetchImpl = options.sourceFetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   const surface = { attempted: true, requested: true, requestedCount: 0, discovered: 0, loaded: 0, failed: 0, records: [] };
   let result = { records: [], warnings: [], errors: [], counts: { targets: 0, records: 0, warnings: 0, errors: 0 } };
-  let parsed = parseGithubIssueSnapshotTargets(input.issueUrls || []);
-  progress(options, { phase: 'issue-snapshots', percent: 32, label: 'Discovering bounded GitHub issue snapshots' });
+  const explicitParsed = parseGithubIssueSnapshotTargets(input.issueUrls || []);
+  let parsed = explicitParsed;
+  progress(options, { phase: 'issue-snapshots', percent: 32, label: input.issueDiscovery ? 'Discovering bounded GitHub issue snapshots' : 'Loading explicit GitHub issue targets' });
 
-  if (!parsed.counts.targets && input.issueDiscovery) {
+  if (input.issueDiscovery) {
     const auth = policyInput ? authorizeSourceTransport({ kind: 'github.issue-discovery', sourceId, adapterId, requestedRequests: Number(options.maxIssues || 25) + 1 }, policyInput) : null;
     if (auth && !auth.allowed) {
       diagnostics.transportPolicy = auth;
-      Object.assign(surface, { skipped: true, unavailable: true });
+      Object.assign(surface, explicitParsed.counts.targets ? { discoveryUnavailable: true } : { skipped: true, unavailable: true });
       for (const issue of auth.findings || []) {
         const warning = { code: issue.code, severity: issue.severity || 'warning', surface: 'issueSnapshots', message: issue.message, sourceId, adapterId, retryable: issue.retryable === true };
         warnings.push(warning);
@@ -42,9 +43,10 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
       const discovered = await discoverIssueTargetsForTiers(source, Object.assign({}, options, { fetchImpl, sourceFetchImpl }), issueTiers, diagnostics);
       warnings.push(...(discovered.warnings || []).map((warning) => Object.assign({ surface: 'issueSnapshots' }, warning)));
       errors.push(...(discovered.errors || []).map((error) => Object.assign({ surface: 'issueSnapshots' }, error)));
-      parsed = { targets: discovered.targets || [], errors: [], counts: { targets: discovered.targets?.length || 0, errors: 0 } };
-      diagnostics.issueSnapshotDiscovery = { status: discovered.status, url: discovered.url || '', discovered: discovered.counts?.discovered || 0, transportTier: discovered.transportTier || '' };
-      surface.discovered = parsed.counts.targets;
+      const unionTargets = uniqueIssueTargets((discovered.targets || []).concat(explicitParsed.targets || []));
+      parsed = { targets: unionTargets, errors: explicitParsed.errors || [], counts: { targets: unionTargets.length, errors: Number(explicitParsed.counts?.errors || 0) } };
+      diagnostics.issueSnapshotDiscovery = { status: discovered.status, url: discovered.url || '', discovered: discovered.counts?.discovered || 0, explicitTargets: Number(explicitParsed.counts?.targets || 0), unionTargets: unionTargets.length, transportTier: discovered.transportTier || '' };
+      surface.discovered = Number(discovered.counts?.discovered || 0);
     }
   }
 
@@ -64,7 +66,7 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
       warnings.push(warning);
       diagnostics.transportEvents.push(Object.assign({ resultKind: 'issue-snapshot-load-policy' }, warning));
     }
-  } else if (options.issueSnapshotFixtures && parsed.counts.targets && input.issueUrls) result = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
+  } else if (options.issueSnapshotFixtures && parsed.counts.targets && input.issueUrls && !input.issueDiscovery) result = materializeGithubIssueSnapshotFixtures(input.issueUrls || [], options.issueSnapshotFixtures);
   else if (parsed.counts.targets) result = await materializeIssueTargetsForTiers(parsed.targets, source, Object.assign({}, options, { fetchImpl, sourceFetchImpl, maxComments }), issueTiers, diagnostics);
   else if (!surface.skipped) {
     warnings.push({ code: 'github.issue.discovery.no-targets', severity: 'warning', surface: 'issueSnapshots', requested: true, attempted: true, unavailable: true, targetCount: 0, message: 'Issue snapshot discovery was selected, but no issue targets were discovered or provided.' });
@@ -98,6 +100,18 @@ export async function materializeGithubIssueSurface(source = {}, input = {}, opt
   return { records: result.records || [], warnings, errors, diagnostics, surface, counts: result.counts || {} };
 }
 
+
+
+function uniqueIssueTargets(targets = []) {
+  const seen = new Set();
+  const out = [];
+  for (const target of Array.isArray(targets) ? targets : []) {
+    const key = String(target?.canonicalUrl || target?.issueCanonicalUrl || target?.input || '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key); out.push(target);
+  }
+  return out;
+}
 
 function issueTransportFallbackTiers(tier = '', options = {}) {
   const normalized = normalizeGithubTransportTier(tier);

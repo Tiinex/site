@@ -73,9 +73,10 @@ includes('src/app/appShell.views.jsx', 'export function HelpDialog', 'HelpDialog
 includes('src/app/runtimeState.js', 'export function runtime', 'runtime/default state must stay outside TiinexApp');
 includes('src/app/githubMaterializationSummary.js', 'export function summarizeGithubMaterialization', 'GitHub materialization summary helpers must stay outside TiinexApp');
 includes('src/app/githubProgress.js', 'export function shouldCommitGithubProgress', 'GitHub progress throttling must be owned outside TiinexApp');
-includes('src/app/TiinexApp.jsx', "from './githubProgress.js'", 'TiinexApp must import GitHub progress throttling helpers instead of owning them inline');
+includes('src/app/githubSourceOperation.js', "from './githubProgress.js'", 'GitHub source operation must use extracted progress throttling helpers instead of owning them inline');
 includes('src/workspaces/workspace.route.js', 'requestedSurfaces: compactSurfaceMap', 'route shell must preserve requested source surfaces across F5/hash restore');
-includes('src/workspaces/workspace.route.js', 'issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested)', 'route shell must preserve issue discovery selection across refresh');
+includes('src/workspaces/workspace.route.js', 'issueDiscovery: Boolean(source.issueDiscovery)', 'route shell must preserve broad issue-discovery choice without inferring it from requested material surfaces');
+includes('src/workspaces/workspace.route.js', "issueUrls: source.issueUrls || config.issueUrls || ''", 'route shell must preserve explicit issue targets independently of broad discovery');
 includes('src/adapters/github/github.issueSnapshot.js', 'await yieldToBrowserIfAvailable();', 'issue snapshot materialization must yield between targets to avoid browser freeze-lag');
 includes('src/adapters/github/github.issueSnapshot.js', 'window.requestIdleCallback(() => resolve(), { timeout: 80 });', 'issue snapshot browser yield must pass IdleRequestOptions to requestIdleCallback, not a numeric timeout');
 includes('src/adapters/github/github.issueSnapshot.js', 'DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS = 24', 'bounded issue comments default must stay explicit and finite for browser interaction');
@@ -89,14 +90,18 @@ includes('src/schemas/workspace/workspace.recordDialogs.views.jsx', 'export func
 includes('src/app/TiinexApp.jsx', "from './viewState.js'", 'TiinexApp must use pure view-state helpers');
 includes('src/app/TiinexApp.jsx', "from './appShell.views.jsx'", 'TiinexApp must render app shell through extracted presentation module');
 includes('src/app/TiinexApp.jsx', "from './runtimeState.js'", 'TiinexApp must import runtime/default state from extracted module');
-includes('src/app/TiinexApp.jsx', "from './githubMaterializationSummary.js'", 'TiinexApp must import source-summary helpers from extracted module');
+includes('src/app/githubSourceOperation.js', "from './githubMaterializationSummary.js'", 'GitHub source operation must use extracted source-summary helpers');
+includes('src/app/TiinexApp.jsx', "from './githubSourceOperation.js'", 'TiinexApp must dispatch GitHub source loading through operation boundary');
+includes('src/app/githubSourceOperation.js', 'export async function runGithubSourceOperation', 'GitHub source loading must have a testable operation boundary outside TiinexApp');
 includes('src/app/sourceTransportRefresh.js', 'sourceTransportRefreshInputForSource', 'transport badge refresh input must stay outside TiinexApp controller');
 includes('src/sources/github/github.transport.js', 'transportOrderExact', 'explicit transport badge refresh must not silently fall through the full ladder');
 includes('src/adapters/github/github.issueTransport.js', 'Native Response fields are brand-checked accessors', 'issue transport wrappers must document native Response brand-safety');
 excludes('src/adapters/github/github.issueTransport.js', 'Object.create(Object.getPrototypeOf(res)', 'issue transport wrappers must not shell native Response prototypes; use plain delegating transport responses');
 includes('src/app/TiinexApp.jsx', "workspace.displayOptions.views.jsx", 'TiinexApp must import DisplayOptionsDialog from its own module');
 includes('src/app/TiinexApp.jsx', "import { schemaRegistry } from '../schemas/registry.js';", 'TiinexApp must import schemaRegistry when passing it into RecordActionDialog');
-includes('src/app/TiinexApp.jsx', 'onExportWorkspace={exportWorkspacePackage}', 'workspace export action must be wired from TiinexApp into WorkspaceColumnSurface');
+includes('src/app/TiinexApp.jsx', "onExportWorkspace={() => openWorkspaceExportDialog(workspace.id)}", 'visible sibling workspace export must target the clicked workspace through the export adapter boundary');
+excludes('src/app/TiinexApp.jsx', 'itemActive ? openWorkspaceExportDialog : undefined', 'visible sibling workspaces must not be inert previews');
+includes('src/app/TiinexApp.jsx', 'WorkspaceExportDialog', 'TiinexApp must render the export adapter dialog instead of direct-exporting from chrome');
 includes('src/app/TiinexApp.jsx', 'RenameWorkspaceDialog,', 'Rename workspace dialog must be imported when rendered by TiinexApp');
 includes('src/app/TiinexApp.jsx', "import { TIINEX_RUNTIME_ID } from '../build.identity.js';", 'TiinexApp runtime badge must use build identity, not stale hard-coded runtime');
 includes('src/app/TiinexApp.jsx', 'data-runtime={TIINEX_RUNTIME_ID}', 'TiinexApp DOM runtime identity must stay tied to src/build.identity.js');
@@ -124,6 +129,42 @@ includes('src/schemas/tiinex.root.v1.schema.js', "./tiinex.root.v1.en.i18n.json"
 excludes('src/schemas/core/topic/tiinex.topic.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
 excludes('src/schemas/core/evidence/tiinex.evidence.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
 excludes('src/schemas/core/preservation/tiinex.preservation.v1.validate.js', 'rootValidate', 'child validators must not import/call Root validation manually');
+
+
+const canonicalWorkspaceCandidateForbiddenFiles = [
+  'src/app/TiinexApp.jsx',
+  'src/workspaces/workspace.openSemantics.js',
+  'src/workspaces/workspace.localSourceLifecycle.js',
+  'src/workspaces/workspace.lifecycle.js',
+  'src/workspaces/workspace.sourceRecords.js',
+  'src/workspaces/workspace.sourceMaterial.js',
+  'src/workspaces/workspace.importConflicts.js',
+  'src/workspaces/workspace.discoveryView.js',
+  'src/workspaces/workspace.pathTree.js',
+  'src/workspaces/workspace.materialLedger.js',
+  'src/workspaces/workspace.summary.js',
+  'src/workspaces/workspace.displayOptions.js',
+  'src/workspaces/workspace.displayFilters.js'
+];
+const canonicalWorkspaceCandidateForbiddenTerms = ['workspaceMergeCandidates', 'WorkspaceCandidate', 'workspaceCandidate', 'workspace-candidate', 'showWorkspaceCandidates', 'hidden-workspace-candidates'];
+for (const file of canonicalWorkspaceCandidateForbiddenFiles) {
+  const source = read(file);
+  for (const term of canonicalWorkspaceCandidateForbiddenTerms) {
+    if (source.includes(term)) fail(`${file} contains legacy candidate runtime/readmodel term ${term}; candidates are allowed only behind compatibility/I/O normalization`);
+  }
+}
+for (const file of walk('src/schemas/workspace')) {
+  const path = rel(file);
+  if (/\.test\.mjs$/.test(path)) continue;
+  const source = read(path);
+  for (const term of canonicalWorkspaceCandidateForbiddenTerms) {
+    if (source.includes(term)) fail(`${path} contains legacy candidate product/readmodel term ${term}; Workspace Artifact must use the ordinary artifact model`);
+  }
+}
+excludes('src/workspaces/workspace.sourceRecords.js', "from './workspace.candidates.js'", 'canonical source-record insertion must not import the legacy candidate runtime adapter');
+excludes('src/workspaces/workspace.lifecycle.js', 'restoreWorkspaceCandidateForRemovedSource', 'canonical lifecycle must not restore legacy candidate objects after product normalization');
+excludes('src/workspaces/workspace.localSourceLifecycle.js', 'ReconciledLocalWorkspaceCandidate', 'canonical local clear/count must operate on records/assets only');
+excludes('src/workspaces/workspace.sourceMaterial.js', 'WorkspaceCandidate', 'canonical source material clearing must operate on records/assets only');
 
 for (const file of walk('src/schemas')) {
   const path = rel(file);

@@ -1,4 +1,6 @@
 import { extractConfigLinks, extractEmbeddedWorkspaceMarkdowns, extractHostedViewerSourceDeclarations, extractRuntimeWorkspaceDeclarations, extractScriptUrls, isLikelyConfigUrl, looksLikeWorkspaceConfig, normalizeConfigTargetUrl, normalizeNewlines, normalizeWorkspaceBootstrapCandidate, parseGithubIssueSpec, sameOriginOrExplicit, scriptFileName, sourceDeclarationFromPublicBuildIdentity, toFetchableWorkspaceUrl, tryFetchText, workspaceUrlFromPointerMarkdown } from './tiinexHostedWorkspaceConventions.js';
+import { tiinexAppConfigSourceToGithubInput, tiinexAppConfigSourceToStartupPlan } from './tiinexAppConfigPlan.js';
+export { tiinexAppConfigSourceToGithubInput, tiinexAppConfigSourceToStartupPlan } from './tiinexAppConfigPlan.js';
 
 const DEFAULT_CONFIG_PATHS = Object.freeze([
   '/.well-known/tiinex/workspace.md',
@@ -159,40 +161,13 @@ export async function fetchTiinexAppConfigSource(targetUrl = '', options = {}) {
   return failure(`No Tiinex workspace config was found at ${target.origin}.`, { targetUrl: target.href, diagnostics });
 }
 
-export function tiinexAppConfigSourceToGithubInput(result = {}) {
-  const config = result.config || {};
-  const entrypoint = result.entrypoint || firstWorkspaceEntrypoint(config);
-  const preferEntrypoint = shouldPreferWorkspaceEntrypoint(result);
-  const discovery = preferEntrypoint ? null : firstWorkspaceDiscovery(config);
-  const source = discovery || entrypoint;
-  const sourceKind = String(source?.sourceKind || source?.kind || '').trim() || 'github-tree';
-  const repository = String(source?.repository || source?.repo || githubRepositoryFromUrl(source?.href || source?.url || '') || '').trim();
-  if (!repository) return { ok: false, message: 'The Tiinex app config did not declare a GitHub repository or workspace discovery target.' };
-  const discoveryMode = Boolean(discovery);
-  return {
-    ok: true,
-    selectedPlan: discoveryMode ? 'workspace-discovery' : 'workspace-entrypoint',
-    input: {
-      repository,
-      ref: source.ref || '',
-      rootPath: source.rootPath || '.topics',
-      operation: 'materialize',
-      repoDiscovery: discoveryMode ? true : truthyConfigValue(source.repoFilesDiscovery ?? source.repoDiscovery ?? true),
-      issueDiscovery: discoveryMode ? false : truthyConfigValue(source.issueDiscovery ?? source.issueSnapshots ?? false),
-      issueUrls: discoveryMode ? '' : (source.issueUrl || source.issueUrls || ''),
-      label: source.label || source.name || source.title || config.viewerIdentity?.browserTitle || repository,
-      fileRefs: source.fileRefs || source.explicitMarkdownPaths || '',
-      sourceKind,
-      appConfigSourceUrl: result.configUrl || result.targetUrl || '',
-      appConfigPlan: discoveryMode ? 'workspace-discovery' : 'workspace-entrypoint',
-      workspaceMatch: source.match || source.pattern || '',
-      openBehavior: source.openBehavior || '',
-      preserveView: discoveryMode,
-      preferredDisplay: discoveryMode ? 'workspace-candidates' : '',
-      hostedRepoMirrorBaseUrls: source.hostedRepoMirrorBaseUrls || source.repositoryMirrorBaseUrls || [],
-      hostedIssueSnapshotBaseUrls: source.hostedIssueSnapshotBaseUrls || source.mirrorIssueSnapshotBaseUrls || []
-    }
-  };
+
+export async function resolveTiinexRuntimeWorkspaceCandidate(candidate = {}, options = {}) {
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const parseWorkspaceConfig = options.parseWorkspaceConfig || ((markdown) => ({ workspaceEntrypoints: [] }));
+  const target = normalizeConfigTargetUrl(options.targetUrl || options.locationLike?.href || globalThis.location?.href || candidate?.url || candidate?.path || '', options.baseUrl);
+  if (!target) return failure('Tiinex runtime workspace target is unavailable.');
+  return resolveWorkspaceBootstrapCandidate(candidate, { fetchImpl, target, parseWorkspaceConfig, diagnostics: options.diagnostics || {} });
 }
 
 export async function resolveTiinexAppConfigGithubInput(targetUrl = '', options = {}) {
@@ -352,13 +327,9 @@ function workspacePointerMarkdownResult(markdown = '', baseUrl = '') {
   return failure('Workspace pointer did not declare a workspace URL.');
 }
 
+
 function firstWorkspaceEntrypoint(config = {}) {
   return Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints[0] || null : null;
-}
-
-function firstWorkspaceDiscovery(config = {}) {
-  const items = Array.isArray(config.workspaceDiscovery) ? config.workspaceDiscovery : [];
-  return items.find((item) => String(item?.kind || item?.sourceKind || '').trim().toLowerCase().includes('github') || githubRepositoryFromUrl(item?.href || item?.url || '') || item?.repository || item?.repo) || items[0] || null;
 }
 
 function githubRepositoryFromUrl(value = '') {
@@ -370,13 +341,6 @@ function githubRepositoryFromUrl(value = '') {
   } catch (_) {}
   const match = String(value || '').trim().match(/^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\.git)?$/u);
   return match ? `${match[1]}/${match[2]}` : '';
-}
-
-function truthyConfigValue(value) {
-  if (typeof value === 'boolean') return value;
-  const text = String(value ?? '').trim().toLowerCase();
-  if (!text) return false;
-  return !['off', 'false', 'no', '0', 'disabled'].includes(text);
 }
 
 function failure(message, extra = {}) {

@@ -191,15 +191,22 @@ export function createGithubIssueSnapshotRecords(snapshot = {}, options = {}) {
   const issueEmbedded = extractEmbeddedTiinexMarkdownBlocks(snapshot.body || '');
   const records = [];
   if (issueEmbedded.length) {
-    records.push(createGithubEmbeddedArtifactRecord(issueEmbedded[0], { target, item: snapshot, ordinal: 0, sourceKind: 'issue', sourceUrl: target.canonicalUrl, sourceArtifactPath: sourceArtifactPathFromPublicationBody(snapshot.body || ''), sourceUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+    const issueSourcePath = issueEmbedded.length === 1 ? sourceArtifactPathFromPublicationBody(snapshot.body || '') : '';
+    issueEmbedded.forEach((embedded, index) => {
+      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: snapshot, ordinal: index, sourceKind: 'issue', sourceUrl: target.canonicalUrl, sourceArtifactPath: issueSourcePath, sourceUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+    });
   } else {
     records.push(createGithubIssueSnapshotEvidenceRecord(snapshot, options));
   }
   const comments = Array.isArray(snapshot.comments) ? snapshot.comments : [];
+  let commentOrdinal = 0;
   comments.forEach((comment, index) => {
-    for (const embedded of extractEmbeddedTiinexMarkdownBlocks(comment.body || '')) {
-      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: index + 1, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, sourceArtifactPath: sourceArtifactPathFromPublicationBody(comment.body || ''), threadUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
-    }
+    const commentEmbedded = extractEmbeddedTiinexMarkdownBlocks(comment.body || '');
+    const commentSourcePath = commentEmbedded.length === 1 ? sourceArtifactPathFromPublicationBody(comment.body || '') : '';
+    commentEmbedded.forEach((embedded) => {
+      commentOrdinal += 1;
+      records.push(createGithubEmbeddedArtifactRecord(embedded, { target, item: comment, ordinal: commentOrdinal, sourceKind: 'comment', sourceUrl: comment.html_url || `${target.canonicalUrl}#issuecomment-${comment.id || index + 1}`, sourceArtifactPath: commentSourcePath, threadUpdatedAt: issueSnapshotSortAt(snapshot), method: snapshot.method || 'github-explicit-snapshot-fixture', snapshotSchema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID }, options));
+    });
   });
   return records;
 }
@@ -277,7 +284,7 @@ function createGithubIssueSnapshotEvidenceRecord(snapshot = {}, options = {}) {
     `  - Method: ${method}`,
     `  - Value: ${target.canonicalUrl}`
   ].filter(Boolean).join('\n');
-  const record = createRecordFromMarkdown(markdown, { path: `${githubIssueSyntheticFolder(target)}/issue-snapshot.trace.md`, name: title, sourceMode: 'github-issue-snapshot' });
+  const record = createRecordFromMarkdown(markdown, { path: `${githubIssueSyntheticFolder(target)}/000-${slugPart(title || 'issue-snapshot')}.trace.md`, name: title, sourceMode: 'github-issue-snapshot' });
   return Object.assign({}, record, {
     sourceTarget: {
       schema: 'tiinex.source.material.target.v1',
@@ -481,3 +488,5 @@ function yieldToBrowserIfAvailable() {
 export function __testYieldToBrowserIfAvailable() {
   return yieldToBrowserIfAvailable();
 }
+
+function slugPart(value = '') { return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item'; }

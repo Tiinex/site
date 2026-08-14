@@ -49,6 +49,40 @@ function makeZip(entries) {
   const eocd=Buffer.concat([u32(0x06054b50), u16(0), u16(0), u16(entries.length), u16(entries.length), u32(cd.length), u32(offset), u16(0)]);
   return Buffer.concat([...locals, cd, eocd]);
 }
+
+function zipCryptoUpdateKeys(keys, byte) {
+  keys.k0 = (CRC[(keys.k0 ^ byte) & 0xff] ^ (keys.k0 >>> 8)) >>> 0;
+  keys.k1 = (Math.imul((keys.k1 + (keys.k0 & 0xff)) >>> 0, 134775813) + 1) >>> 0;
+  keys.k2 = (CRC[(keys.k2 ^ ((keys.k1 >>> 24) & 0xff)) & 0xff] ^ (keys.k2 >>> 8)) >>> 0;
+}
+function zipCryptoEncryptBytes(bytes, password) {
+  const keys={ k0:0x12345678>>>0, k1:0x23456789>>>0, k2:0x34567890>>>0 };
+  for (const byte of encoder.encode(password)) zipCryptoUpdateKeys(keys, byte);
+  const out=Buffer.alloc(bytes.length);
+  for (let i=0;i<bytes.length;i+=1) {
+    const temp=(keys.k2|2)>>>0;
+    const keyByte=((Math.imul(temp,(temp^1)>>>0)>>>8)&0xff)>>>0;
+    const plain=bytes[i];
+    out[i]=plain^keyByte;
+    zipCryptoUpdateKeys(keys, plain);
+  }
+  return out;
+}
+function makeEncryptedStoredZip(name, content, password) {
+  const fileName=Buffer.from(name);
+  const data=Buffer.from(content,'utf8');
+  const crc=crc32(data);
+  const header=Buffer.alloc(12,0);
+  header[11]=(crc>>>24)&0xff;
+  const encrypted=zipCryptoEncryptBytes(Buffer.concat([header,data]),password);
+  const flag=1;
+  const method=0;
+  const local=Buffer.concat([u32(0x04034b50),u16(20),u16(flag),u16(method),dosTime(),u32(crc),u32(encrypted.length),u32(data.length),u16(fileName.length),u16(0),fileName,encrypted]);
+  const central=Buffer.concat([u32(0x02014b50),u16(20),u16(20),u16(flag),u16(method),dosTime(),u32(crc),u32(encrypted.length),u32(data.length),u16(fileName.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(0),fileName]);
+  const eocd=Buffer.concat([u32(0x06054b50),u16(0),u16(0),u16(1),u16(1),u32(central.length),u32(local.length),u16(0)]);
+  return Buffer.concat([local,central,eocd]);
+}
+
 function fileFromZip(name, zip) {
   return { name, size: zip.length, type: 'application/zip', arrayBuffer: async () => zip.buffer.slice(zip.byteOffset, zip.byteOffset + zip.byteLength) };
 }
@@ -59,7 +93,7 @@ try {
   assert.equal(safeArchivePath('/evil.md'), '');
   assert.equal(safeArchivePath('./a//b/trace.md'), 'a/b/trace.md');
   assert.equal(classifyArchiveEntry('viewer.workspace.md', '# Tiinex Viewer'), 'workspace');
-  assert.equal(classifyArchiveEntry('docs/viewer.md', '# Tiinex Viewer\n\n## Workspace Entrypoints'), 'record', 'generic viewer docs must not become workspace candidates');
+  assert.equal(classifyArchiveEntry('docs/viewer.md', '# Tiinex Viewer\n\n## Workspace Entrypoints'), 'workspace', 'legacy Tiinex Viewer + Workspace Entrypoints must retain PoC workspace-artifact classification');
   assert.equal(classifyArchiveEntry('docs/explicit.md', '# Explicit\n\n- Current Schema: tiinex.workspace.v1'), 'workspace', 'explicit workspace schema can still become a candidate');
   assert.equal(classifyArchiveEntry('src/workspaces/workspace.config.js', 'const DEFAULT_WORKSPACE_MARKDOWN = `- Current Schema: tiinex.workspace.v1`;'), 'asset', 'embedded workspace markdown inside JS must remain an asset, not an open/merge candidate');
   assert.equal(classifyArchiveEntry('a/001.trace.md', '# A'), 'record');
@@ -84,6 +118,9 @@ try {
   assert.equal(result.workspaceEntries[0].path, 'viewer.workspace.md');
   assert.equal(result.diagnostics.recordCount, 1);
   assert.equal(result.diagnostics.assetCount, 1);
+  assert.equal(result.diagnostics.transportLevel, 'TL0');
+  assert.equal(result.diagnostics.transportOperation, 'local-import');
+  assert.equal(result.diagnostics.transport.credentialMaterialIncluded, false);
   assert.equal(result.diagnostics.suggestedWorkspaceName, 'Bundle');
 
 
@@ -155,11 +192,17 @@ try {
   assert.equal(largeResult.assets[0].dataUrl, '');
   assert.equal(largeResult.assets[0].previewState, 'omitted-large');
 
-  const encrypted = makeZip([{ name: 'secret.md', content: '# Secret', encrypted: true }]);
+  const encrypted = makeEncryptedStoredZip('secret.md', '# Secret', 'correct horse');
   assert.equal(zipBufferHasEncryptedEntries(encrypted), true);
-  const encryptedResult = await materializeArchiveFiles([fileFromZip('secret.zip', encrypted)]);
-  assert.equal(encryptedResult.records.length, 0);
-  assert(encryptedResult.errors.some((e) => e.code === 'archive.encrypted-entry'));
+  const encryptedWithoutPassword = await materializeArchiveFiles([fileFromZip('secret.zip', encrypted)]);
+  assert.equal(encryptedWithoutPassword.records.length, 0);
+  assert(encryptedWithoutPassword.errors.some((e) => e.code === 'archive.password-required'));
+  const encryptedWrongPassword = await materializeArchiveFiles([fileFromZip('secret.zip', encrypted)], { password: 'wrong' });
+  assert.equal(encryptedWrongPassword.records.length, 0);
+  assert(encryptedWrongPassword.errors.some((e) => e.code === 'archive.entry-read-failed'));
+  const encryptedResult = await materializeArchiveFiles([fileFromZip('secret.zip', encrypted)], { password: 'correct horse' });
+  assert.equal(encryptedResult.records.length, 1, 'PoC-compatible stored ZipCrypto entry imports with explicit password');
+  assert.equal(encryptedResult.records[0].path, 'secret.md');
 
   console.log('✓ archive.adapter tests passed');
   process.exit(0);

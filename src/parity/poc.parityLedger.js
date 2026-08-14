@@ -1,4 +1,5 @@
 import { TIINEX_SITE_CHECKPOINT } from '../build.identity.js';
+import { m1PoCParityScenarioDefinitions } from './poc.m1ParityScenarios.js';
 
 export const POC_PARITY_LEDGER_SCHEMA_ID = 'tiinex.poc.parity.ledger.v1';
 
@@ -17,16 +18,7 @@ export const pocParityLedger = Object.freeze({
   checkpoint: TIINEX_SITE_CHECKPOINT,
   principle: 'Recover one observed PoC loop at a time under explicit semantic/runtime owners before claiming parity.',
   scenarios: Object.freeze([
-    scenario({
-      id: 'local-archive-intake',
-      status: PoCParityStatus.parity,
-      legacyBehavior: 'Drop/select local file, folder, zip, and source zip; classify workspace entries, markdown leaves, and assets without navigation loss.',
-      semanticOwner: 'adapter result + workspace import contract',
-      runtimeOwner: 'src/adapters/archive, src/adapters/local, src/workspaces/workspace.import',
-      automatedChecks: ['src/parity/poc.localArchiveParity.test.mjs', 'src/adapters/archive/archive.adapter.test.mjs', 'src/adapters/local/local.adapter.test.mjs'],
-      manualChecks: ['drop source zip on empty stage', 'repeat import', 'refresh recovery'],
-      failureResult: 'partial/degraded adapter result with warnings/errors; no fake GitHub provenance'
-    }),
+    ...m1PoCParityScenarioDefinitions.map(scenario),
     scenario({
       id: 'path-tree-material-lineage',
       status: PoCParityStatus.partial,
@@ -70,11 +62,11 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'github-source-discovery',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'GitHub source registration, explicit file materialization, degraded repo discovery under rate limits, and explicit issue/discussion snapshot targets.',
+      legacyBehavior: 'GitHub source registration keeps broad discovery independent from exact explicit targets; broad + explicit issue intake is additive/unioned, explicit-only survives refresh, and degraded transport remains truthful.',
       semanticOwner: 'github adapter result + source boundary',
       runtimeOwner: 'src/adapters/github + src/sources/github',
-      automatedChecks: ['src/adapters/github/github.issueSnapshot.test.mjs', 'src/adapters/github/github.adapter.test.mjs', 'src/sources/github/github.loader.test.mjs'],
-      manualChecks: ['register source without discovery', 'explicit raw/blob/file refs', '403 degraded notice'],
+      automatedChecks: ['src/adapters/github/github.issueSnapshot.test.mjs', 'src/adapters/github/github.adapter.test.mjs', 'src/sources/github/github.loader.test.mjs', 'src/acceptance/m2QProductContractCorrection.test.mjs'],
+      manualChecks: ['broad discovery off + exact issue targets', 'broad discovery on + exact targets union/dedupe', 'explicit raw/blob/file refs', '403 degraded notice'],
       failureResult: 'source registered with warning/diagnostics; issue snapshots require explicit targets/fixtures; no fake progress'
     }),
     scenario({
@@ -90,12 +82,12 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'reload-safe-material-cache',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Refreshing an explicit workspace route restores loaded local/archive material, assets, and workspace candidates without clean-url stale bootstrap.',
-      semanticOwner: 'workspace persistence/session cache boundary',
-      runtimeOwner: 'src/workspaces/workspace.persistence + src/workspaces/workspace.route',
-      automatedChecks: ['src/workspaces/workspace.persistence.test.mjs', 'src/workspaces/workspace.route.test.mjs'],
-      manualChecks: ['import zip, switch Tree/Lineage, refresh same URL'],
-      failureResult: 'clean URL ignores stale cache; explicit hash may hydrate cached session material only for matching workspaces'
+      legacyBehavior: 'Refreshing an explicit workspace route restores durable local deltas/assets around a metadata-only route/source shell while cold public/clean targets stay isolated from stale unrelated local state.',
+      semanticOwner: 'route shell + durable local delta + source-cache boundary',
+      runtimeOwner: 'src/workspaces/workspace.persistence + src/workspaces/workspace.persistenceRecovery + src/workspaces/workspace.route',
+      automatedChecks: ['src/workspaces/workspace.persistence.test.mjs', 'src/workspaces/workspace.route.test.mjs', 'src/workspaces/workspace.importLifecycle.test.mjs'],
+      manualChecks: ['import local/source material, refresh explicit route, verify local deltas restore without source Markdown authority', 'lose route/hash and verify durable local-only work remains recoverable through the local recovery index', 'open cold public/share target and confirm unrelated local state does not bootstrap'],
+      failureResult: 'route/source cache stays metadata-only; durable local deltas remain recoverable; cold targets do not hydrate stale unrelated local workspace state'
     }),
     scenario({
       id: 'lineage-audit-traversal',
@@ -162,12 +154,12 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'storage-session-cache-policy',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Reload/cache recovery should preserve local/session work while avoiding silent source-backed content authority or oversized localStorage payloads.',
-      semanticOwner: 'storage policy + workspace persistence/session cache boundary',
+      legacyBehavior: 'Local/draft/upload/generated deltas are durable local workspace state, while source material is transport/cache-owned and route/view shells are disposable. Quota pressure must prioritize preserving local work over cache convenience.',
+      semanticOwner: 'storage policy + split route/source-cache/local-delta authority',
       runtimeOwner: 'src/storage/storage.policy + src/workspaces/workspace.persistence',
-      automatedChecks: ['src/storage/storage.policy.test.mjs', 'src/workspaces/workspace.persistence.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['refresh explicit #state route after local/archive and GitHub imports'],
-      failureResult: 'source-backed material is metadata-only in session cache; large previews are truncated with cacheState disclosure'
+      automatedChecks: ['src/storage/storage.policy.test.mjs', 'src/workspaces/workspace.persistence.test.mjs', 'src/workspaces/workspace.importLifecycle.test.mjs', 'src/conformance/conformance.run.test.mjs'],
+      manualChecks: ['refresh explicit #state route after local/archive and GitHub imports', 'simulate localStorage quota pressure and verify local-work failure is surfaced'],
+      failureResult: 'source-backed Markdown is metadata-only outside source transport; route cache may be discarded first; local-delta write failure emits explicit localMaterialAtRisk receipt'
     }),
     scenario({
       id: 'source-transport-diagnostics',

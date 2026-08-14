@@ -2,6 +2,7 @@ import { parseArtifactMarkdown } from './artifact.parse.js';
 import { schemaBadgeClass, schemaKey } from '../schemas/tiinex.root.v1.classify.js';
 import { createRootFallbackModel } from '../schemas/tiinex.root.v1.fallback.js';
 import { inferRecordMaterialRole } from '../workspaces/workspace.materialRole.js';
+import { collectOriginReferencesFromMarkdown } from '../sources/origin.references.js';
 
 export function createRecordFromMarkdown(markdown = '', meta = {}) {
   const parsed = parseArtifactMarkdown(markdown || '');
@@ -12,6 +13,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
   const schemaId = current.schema?.id || '';
   const resolvedKind = schemaId || (parsed.hasContinuityContext ? 'tiinex.root.v1' : 'markdown');
   const fallbackModel = createRootFallbackModel(parsed, meta.schemaResolution || { status: schemaId ? 'declared' : 'unknown', fallbackUsed: !schemaId }, meta.findings || []);
+  const originReferences = collectOriginReferencesFromMarkdown(markdown || '');
   return {
     title,
     summary: current.summary || parsed.body?.sections?.slice(0, 3).join(' · ') || meta.path || 'Local Markdown artifact.',
@@ -34,6 +36,7 @@ export function createRecordFromMarkdown(markdown = '', meta = {}) {
     trace: parent.trace || '',
     traceLabel: parent.traceLabel || '',
     origin: parent.origin || envelope.origin || '',
+    originReferences,
     boundary: parent.boundary || envelope.boundary || '',
     repairsDeclared: Boolean(envelope.repairsDeclared),
     rootReadable: fallbackModel.rootReadable,

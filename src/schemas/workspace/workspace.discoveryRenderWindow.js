@@ -30,12 +30,11 @@ export function discoveryInitialRecordWindowLimitForScroll(scrollTop = 0, viewpo
   return Math.max(initial, needed);
 }
 
-export function discoveryRecordWindowKey(records = [], workspaceCandidates = [], assets = []) {
+export function discoveryRecordWindowKey(records = [], assets = []) {
   const first = records[0]?.id || records[0]?.path || '';
   const last = records[records.length - 1]?.id || records[records.length - 1]?.path || '';
-  const firstCandidate = workspaceCandidates[0]?.id || workspaceCandidates[0]?.path || '';
   const firstAsset = assets[0]?.id || assets[0]?.path || '';
-  return `${records.length}:${first}:${last}:${workspaceCandidates.length}:${firstCandidate}:${assets.length}:${firstAsset}`;
+  return `${records.length}:${first}:${last}:${assets.length}:${firstAsset}`;
 }
 
 export function discoveryWindowState(records = [], requestedLimit = 0, profile = discoveryRenderWindowProfile()) {

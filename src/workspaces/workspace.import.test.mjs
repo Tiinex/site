@@ -1,7 +1,9 @@
 import assert from 'assert';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { applyLocalAdapterResultToWorkspace, ensureWorkspaceForLocalMaterial, summarizeAdapterImportResult } from './workspace.import.js';
-import { mergeWorkspaceCandidate, openWorkspaceCandidate } from './workspace.candidates.js';
+import { makeAdapterResult } from '../adapters/adapter.contracts.js';
+import { materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
+import { exportTreeZipUint8Array } from '../export/package.zip.js';
 import '../sources/source.identity.js';
 import './workspace.lifecycle.js';
 
@@ -99,10 +101,10 @@ try {
     diagnostics: {}
   }, { clock });
   const candidateWorkspace = lifecycle.activeWorkspace(multiWorkspace.state);
-  assert.equal(candidateWorkspace.records.length, 1, 'material imported with the workspace bundle should be present before opening a candidate');
+  assert.equal(candidateWorkspace.records.length, 2, 'material plus additional workspace artifact should share the canonical record spine');
   assert.equal(candidateWorkspace.assets.length, 1, 'assets imported with the workspace bundle should be present before opening a candidate');
-  assert.equal(candidateWorkspace.workspaceMergeCandidates.length, 1, 'extra workspace files should remain visible/actionable as candidates');
-  assert.equal(candidateWorkspace.workspaceMergeCandidates[0].path, 'b.workspace.md');
+  assert.equal(Object.prototype.hasOwnProperty.call(candidateWorkspace, 'workspaceMergeCandidates'), false, 'workspace artifacts must not create the legacy candidate runtime shape');
+  assert(candidateWorkspace.records.some((record) => record.path === 'b.workspace.md' && (record.schemaId === 'tiinex.workspace.v1' || /workspace/.test(record.kind || '') || /\.workspace\.md$/i.test(record.path))), 'additional workspace file remains a normal artifact record with workspace capability');
   const repeatedCandidateImport = applyLocalAdapterResultToWorkspace(lifecycle, multiWorkspace.state, candidateWorkspace.id, {
     schema: 'tiinex.adapter.result.v1',
     adapterId: 'archive',
@@ -114,18 +116,75 @@ try {
     errors: [],
     diagnostics: {}
   }, { clock });
-  assert.equal(lifecycle.activeWorkspace(repeatedCandidateImport.state).workspaceMergeCandidates.length, 1, 'same workspace candidate path should upsert, not duplicate');
-  const openedCandidate = openWorkspaceCandidate(lifecycle, multiWorkspace.state, candidateWorkspace.id, 'b.workspace.md', { clock });
-  assert.equal(openedCandidate.ok, true, 'workspace candidates should be openable');
-  const openedCandidateWorkspace = lifecycle.activeWorkspace(openedCandidate.state);
-  assert.equal(openedCandidateWorkspace.name, 'Workspace B');
-  assert.equal(openedCandidateWorkspace.records.length, 1, 'opening a workspace candidate should preserve imported material from the source bundle by default');
-  assert.equal(openedCandidateWorkspace.assets.length, 1, 'opening a workspace candidate should preserve imported assets from the source bundle by default');
-  assert.equal(openedCandidateWorkspace.workspaceMergeCandidates.length, 0, 'opened candidate should be removed from remaining candidates in the new workspace context');
-  const mergedCandidate = mergeWorkspaceCandidate(lifecycle, multiWorkspace.state, candidateWorkspace.id, 'b.workspace.md', { clock });
-  assert.equal(mergedCandidate.ok, true, 'workspace candidates should be mergeable');
-  assert.equal(lifecycle.activeWorkspace(mergedCandidate.state).workspaceMergeCandidates.length, 0);
-  assert.equal(lifecycle.activeWorkspace(mergedCandidate.state).workspaceMergedEntries.length, 1);
+  const repeatedWorkspace = lifecycle.activeWorkspace(repeatedCandidateImport.state);
+  assert.equal(Object.prototype.hasOwnProperty.call(repeatedWorkspace, 'workspaceMergeCandidates'), false, 'repeat workspace import must remain on canonical artifact records without legacy candidate shape');
+  assert.equal(repeatedWorkspace.records.filter((record) => record.path === 'b.workspace.md').length, 1, 'same local workspace artifact path currently resolves to one canonical record pending explicit conflict UI');
+
+
+
+  const originMarkdown = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Parent
+  - Parent Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)
+  - Trace: [issue root](issue-root-recovered-fs25-markaryd.workspace.md)
+  - Origin:
+    - relative: issue-root-recovered-fs25-markaryd.workspace.md
+    - [github issue](https://github.com/Tiinusen/socials/issues/3)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Summary: origin child
+
+---
+
+# Origin Child`;
+  const originAdapterResult = makeAdapterResult({
+    adapterId: 'archive',
+    sourceId: 'local',
+    records: [createRecordFromMarkdown(originMarkdown, { path: '.topics/.github/tiinusen/socials/.issues/3/001-origin-child.trace.md', sourceMode: 'archive-local' })],
+    assets: [],
+    workspaceEntries: [],
+    warnings: [],
+    errors: [],
+    diagnostics: { suggestedWorkspaceName: 'Origin Archive' }
+  });
+  assert(Object.isFrozen(originAdapterResult.diagnostics), 'adapter diagnostics are immutable at the adapter boundary');
+  const originImport = applyLocalAdapterResultToWorkspace(lifecycle, lifecycle.makeEmptyAppState(), '', originAdapterResult, { clock });
+  const originWorkspace = lifecycle.activeWorkspace(originImport.state);
+  assert.equal(originWorkspace.records[0].source.kind, lifecycle.SESSION_SOURCE_KIND, 'imported origin-linked artifacts remain browser-local authority');
+  const recoverySource = originWorkspace.sources.find((source) => source.id === 'origin:github:tiinusen:socials');
+  assert(recoverySource, 'explicit origin reference should register a recovery source row');
+  assert.equal(recoverySource.sourceBacked, false, 'origin recovery source must not make imported records source-backed');
+  assert.equal(recoverySource.config.issueUrls, 'https://github.com/Tiinusen/socials/issues/3');
+  assert.equal(originWorkspace.importResults[0].diagnostics.originReferenceSourceCount, 1, 'origin reference diagnostics should be copied into import summary without mutating frozen adapter result');
+  assert.equal(originAdapterResult.diagnostics.originReferenceSourceCount, undefined, 'adapter result remains immutable/input-only');
+
+  const treeZip = exportTreeZipUint8Array({
+    schema: 'tiinex.export.tree.bundle.v1',
+    packageEnvelope: false,
+    files: [
+      { path: '.topics/example/001-origin-child.trace.md', kind: 'artifact-markdown', content: originMarkdown },
+      { path: '.topics/example/000-example.workspace.md', kind: 'artifact-markdown', content: '# Example Workspace\n\n- Current Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)\n' }
+    ]
+  });
+  const treeFile = {
+    name: '001-example.zip',
+    size: treeZip.byteLength,
+    type: 'application/zip',
+    arrayBuffer: async () => treeZip.buffer.slice(treeZip.byteOffset, treeZip.byteOffset + treeZip.byteLength)
+  };
+  const localZipResult = await materializeLocalMarkdownFiles([treeFile], { sourceMode: 'drop' });
+  assert(Object.isFrozen(localZipResult), 'local adapter result should be immutable');
+  assert.equal(localZipResult.records.length, 1, 'tree zip import should materialize record entries');
+  assert.equal(localZipResult.workspaceEntries.length, 1, 'tree zip import should stage workspace entries through the same path');
+  const target = lifecycle.createWorkspace(lifecycle.makeEmptyAppState(), { name: 'Drop Target' }, { clock });
+  const appliedTreeZip = applyLocalAdapterResultToWorkspace(lifecycle, target.state, target.workspace.id, localZipResult, { clock });
+  assert.equal(appliedTreeZip.ok, true, 'drag/drop tree zip should apply into the active workspace');
+  const dropWorkspace = lifecycle.activeWorkspace(appliedTreeZip.state);
+  assert.equal(dropWorkspace.records.length, 2, 'drag/drop tree zip should preserve trace + workspace artifact on one canonical record spine');
+  assert.equal(Object.prototype.hasOwnProperty.call(dropWorkspace, 'workspaceMergeCandidates'), false, 'drag/drop workspace artifact must not create the legacy candidate runtime shape');
+  assert.equal(dropWorkspace.importResults[0].counts.records, 2);
+  assert.equal(dropWorkspace.importResults[0].counts.workspaceEntries, 1);
 
   const summary = summarizeAdapterImportResult({ warnings: [], errors: [{ code: 'x' }], diagnostics: {} }, { addedRecords: 0, addedAssets: 0, workspaceOpened: false, workspaceEntries: 0 });
   assert.equal(summary.schema, 'tiinex.workspace.import.result.v1');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fetchTiinexAppConfigSource, resolveTiinexAppConfigGithubInput, tiinexAppConfigUrlCandidates } from './tiinexAppConfigSource.js';
+import { fetchTiinexAppConfigSource, resolveTiinexAppConfigGithubInput, tiinexAppConfigSourceToStartupPlan, tiinexAppConfigUrlCandidates } from './tiinexAppConfigSource.js';
 import '../workspaces/workspace.config.js';
 
 const markdown = `# Viewer
@@ -493,17 +493,27 @@ ${markdown.replace('Tiinex/docs', 'Wrong/embedded')}`);
 
 ## Workspace Entrypoints
 
-### Tiinex
+### News
 
 - Source Kind: github-tree
-- Workspace Label: Tiinex
+- Workspace Label: News
 - Repository: Tiinex/site
 - Ref: master
-- Root Path: .topics
-- Repo Files Discovery: off
-- Issue Discovery: off
+- Root Path: .topics/news
+- Repo Files Discovery: on
+- Issue Discovery: on
 - Issue URL: https://github.com/Tiinex/site/issues/1
-- Issue URL: https://github.com/Tiinex/site/issues/2
+
+### Documentation
+
+- Source Kind: github-tree
+- Workspace Label: Documentation
+- Repository: Tiinex/docs
+- Ref: master
+- Root Path: .topics/documentation
+- Repo Files Discovery: on
+- Issue Discovery: on
+- Issue URL: https://github.com/Tiinex/docs/issues/9
 `;
   const fetched = [];
   const fetchImpl = async (url) => {
@@ -531,13 +541,44 @@ ${markdown.replace('Tiinex/docs', 'Wrong/embedded')}`);
   };
   const result = await resolveTiinexAppConfigGithubInput('https://issue-sync.example/', { fetchImpl, parseWorkspaceConfig: globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig });
   assert.equal(result.ok, true);
-  assert.equal(result.selectedPlan, 'workspace-entrypoint', 'issue-sync root workspace should apply the active/source entrypoint, not chooser discovery');
+  assert.equal(result.selectedPlan, 'workspace-entrypoint', 'single-source app-config intake may expose the first entrypoint, but this is not the startup parity oracle');
   assert.equal(result.input.repository, 'Tiinex/site');
-  assert.equal(result.input.repoDiscovery, false);
-  assert.equal(result.input.issueDiscovery, false, 'issue discovery stays off; explicit issue URLs still request issue snapshots');
-  assert.equal(result.input.issueUrls, 'https://github.com/Tiinex/site/issues/1\nhttps://github.com/Tiinex/site/issues/2');
+  assert.equal(result.input.label, 'News');
+  const startupPlan = tiinexAppConfigSourceToStartupPlan({ config: globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig(issueWorkspace), configUrl: result.configUrl, diagnostics: result.diagnostics });
+  assert.equal(startupPlan.ok, true);
+  assert.equal(startupPlan.selectedPlan, 'workspace-entrypoints', 'startup follows PoC Workspace Entrypoints rather than reducing config to discovery-or-first-entrypoint');
+  assert.deepEqual(startupPlan.inputs.map((input) => input.label), ['News', 'Documentation']);
+  assert.deepEqual(startupPlan.inputs.map((input) => input.repository), ['Tiinex/site', 'Tiinex/docs']);
   assert.equal(result.diagnostics.selectedConvention, 'github-issue-embedded-workspace');
   assert.equal(fetched.includes('https://issue-sync.example/.topics/.workspaces/viewer.workspace.md'), false, 'weak packaged workspace fallback must not be fetched before issue-sync root pointer');
 }
 
 console.log('tiinexAppConfigSource: ok');
+
+{
+  const { tiinexAppStartupCandidates, resolveTiinexAppStartupGithubInput } = await import('./tiinexAppStartupSource.js');
+  const locationLike = { href: 'https://app.example/?workspace=https%3A%2F%2Fcfg.example%2Fviewer.workspace.md', search: '?workspace=https%3A%2F%2Fcfg.example%2Fviewer.workspace.md' };
+  const candidates = tiinexAppStartupCandidates({ locationLike, hostWorkspace: { defaultWorkspace: 'https://host.example/host.workspace.md' } });
+  assert.equal(candidates[0].source, 'query');
+  assert.equal(candidates[1].source, 'window.TiinexWorkspace.defaultWorkspace');
+  const fetchImpl = async (url) => ({ ok: url === 'https://cfg.example/viewer.workspace.md', text: async () => markdown });
+  const resolved = await resolveTiinexAppStartupGithubInput(locationLike.href, { locationLike, hostWorkspace: {}, fetchImpl, parseWorkspaceConfig: globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig });
+  assert.equal(resolved.ok, true);
+  assert.equal(resolved.startupClass, 'explicit-runtime-config');
+  assert.equal(resolved.input.repository, 'Tiinex/docs');
+}
+
+{
+  const { resolveTiinexAppStartupGithubInput } = await import('./tiinexAppStartupSource.js');
+  const hostedMarkdown = markdown.replace('Tiinex/docs', 'Tiinex/site');
+  const fetchImpl = async (url) => {
+    if (url === 'https://host.example/') return { ok: true, text: async () => '<link rel="tiinex-workspace" href="/viewer.workspace.md">' };
+    if (url === 'https://host.example/viewer.workspace.md') return { ok: true, text: async () => hostedMarkdown };
+    return { ok: false, status: 404, text: async () => '' };
+  };
+  const resolved = await resolveTiinexAppStartupGithubInput('https://host.example/', { locationLike: { href: 'https://host.example/', search: '' }, hostWorkspace: {}, fetchImpl, parseWorkspaceConfig: globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig });
+  assert.equal(resolved.ok, true);
+  assert.equal(resolved.startupClass, 'hosted-config');
+}
+
+{ const { resolveTiinexAppStartupGithubInput } = await import('./tiinexAppStartupSource.js'); const locationLike={href:'https://app.example/?workspace=https%3A%2F%2Fmissing.example%2Fviewer.workspace.md',search:'?workspace=https%3A%2F%2Fmissing.example%2Fviewer.workspace.md'}; const missing=await resolveTiinexAppStartupGithubInput(locationLike.href,{locationLike,hostWorkspace:{},fetchImpl:async()=>({ok:false,status:404,text:async()=>''}),parseWorkspaceConfig:globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig}); assert.equal(missing.ok,false); assert.equal(missing.explicitQueryRequested,true,'resolver must preserve explicit query ownership through failed candidate/fallback resolution'); }

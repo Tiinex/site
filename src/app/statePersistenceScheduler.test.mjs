@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createStatePersistenceScheduler } from './statePersistenceScheduler.js';
+import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
 
 const calls = [];
 const timers = [];
@@ -28,5 +28,45 @@ scheduler.schedule({ state: state1, mode: 'push', runtime }, { reason: 'share' }
 scheduler.cancel();
 scheduler.flush('after-cancel');
 assert.equal(calls.length, 1, 'cancel prevents stale scheduled route writes');
+
+const canonicalWrites = [];
+let rendered = null;
+const canonicalRuntime = () => ({
+  persistence: {
+    normalizeLegacyWorkspaceCandidateState(state) {
+      return {
+        ...state,
+        workspaces: (state.workspaces || []).map((workspace) => {
+          const canonical = {
+            ...workspace,
+            records: [
+              ...(workspace.records || []),
+              ...(workspace.workspaceMergeCandidates || []).map((candidate) => ({
+                id: candidate.id,
+                path: candidate.path,
+                workspaceArtifactRole: {
+                  schema: 'tiinex.workspace.artifact.role.v1',
+                  openEligible: true,
+                  mergeEligible: true,
+                  migratedFromLegacyCandidate: true
+                }
+              }))
+            ]
+          };
+          delete canonical.workspaceMergeCandidates;
+          return canonical;
+        })
+      };
+    },
+    writeState(state) { canonicalWrites.push(state); },
+    clearState() {}
+  }
+});
+const legacyProductState = { workspaces: [{ id: 'w', records: [], workspaceMergeCandidates: [{ id: 'legacy-workspace', path: 'legacy.workspace.md' }] }] };
+const committed = commitStateWithPersistence({ nextState: legacyProductState, sourceState: {}, setState: (state) => { rendered = state; }, runtime: canonicalRuntime, scheduler: { cancel() {} } });
+assert.equal(Object.prototype.hasOwnProperty.call(committed.workspaces[0], 'workspaceMergeCandidates'), false, 'product commit must consume legacy candidate shape before UI/runtime state');
+assert.equal(Object.prototype.hasOwnProperty.call(rendered.workspaces[0], 'workspaceMergeCandidates'), false, 'candidate compatibility must not reach rendered product state');
+assert.equal(committed.workspaces[0].records[0].workspaceArtifactRole.schema, 'tiinex.workspace.artifact.role.v1', 'product commit produces canonical Workspace Artifact role');
+
 
 console.log('✓ state persistence scheduler tests passed');

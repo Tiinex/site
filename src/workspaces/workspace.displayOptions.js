@@ -3,7 +3,7 @@ export const DEFAULT_DISPLAY_OPTIONS = Object.freeze({
   leavesOnly: true,
   mismatchesOnly: false,
   showSupportingMarkdown: false,
-  showWorkspaceCandidates: true,
+  showWorkspaceArtifacts: true,
   showAssets: false,
   schemaFilter: 'all',
   artifactFilter: 'all',
@@ -17,7 +17,7 @@ export function normalizeWorkspaceDisplayOptions(input = {}) {
     leavesOnly: source.leavesOnly !== false,
     mismatchesOnly: source.mismatchesOnly === true,
     showSupportingMarkdown: source.showSupportingMarkdown === true ? true : DEFAULT_DISPLAY_OPTIONS.showSupportingMarkdown,
-    showWorkspaceCandidates: source.showWorkspaceCandidates !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceCandidates : false,
+    showWorkspaceArtifacts: source.showWorkspaceArtifacts !== false ? DEFAULT_DISPLAY_OPTIONS.showWorkspaceArtifacts : false,
     showAssets: source.showAssets === true ? true : DEFAULT_DISPLAY_OPTIONS.showAssets,
     schemaFilter: normalizeDisplayFilterValue(source.schemaFilter),
     artifactFilter: normalizeDisplayFilterValue(source.artifactFilter),
@@ -35,7 +35,7 @@ export function lineageDisplayOptions(input = {}) {
   return Object.assign({}, normalized, {
     leavesOnly: false,
     showSupportingMarkdown: true,
-    showWorkspaceCandidates: true,
+    showWorkspaceArtifacts: true,
     showAssets: true
   });
 }
@@ -50,7 +50,7 @@ export function displayOptionsHiddenCount(options = {}, scope = 'discovery') {
   if (lineageScope) return common;
   return common
     + (normalized.showAssets === false ? 1 : 0)
-    + (normalized.showWorkspaceCandidates === false ? 1 : 0)
+    + (normalized.showWorkspaceArtifacts === false ? 1 : 0)
     + (normalized.showSupportingMarkdown === false ? 1 : 0)
     + (normalized.leavesOnly ? 1 : 0);
 }

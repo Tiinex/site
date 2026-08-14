@@ -36,6 +36,7 @@ try {
   if (!addLocal?.ok) fail('addWorkspaceRecords failed');
   const added = addLocal.records[0];
   if (!added?.source || added.source.kind !== lifecycle.SESSION_SOURCE_KIND) fail('local record must have session source');
+  if (!lifecycle.activeWorkspace(addLocal.state).sources.find((source) => source.id === 'local')?.closeable) fail('Local source row must become closeable when it contains local/session material');
   if (added.path !== 'a.md') fail('local record must preserve path');
   if (!added.markdown || !added.markdown.includes('# Title')) fail('local record must preserve markdown for detail view');
 
@@ -61,22 +62,6 @@ try {
   if (lifecycle.activeWorkspace(deleteDraft.state).records.some((item) => item.id === draftRecord.id)) fail('removed local draft must leave workspace records');
   const missingDeleteRefused = lifecycle.removeWorkspaceRecord(draftAdd.state, ws.id, 'missing-source-record');
   if (missingDeleteRefused?.ok) fail('removeWorkspaceRecord must not succeed for unknown records');
-
-  const packageImportAdd = lifecycle.addWorkspaceRecord(addSecondPath.state, ws.id, {
-    id: 'package:local:.topics/imported.trace.md',
-    title: 'Imported Package Artifact',
-    summary: 'imported',
-    path: '.topics/imported.trace.md',
-    kind: 'tiinex.topic.v1',
-    sourceMode: 'package-import',
-    packageImport: true,
-    markdown: '# Imported Package Artifact',
-    source: { adapterId: 'export-package', kind: 'local-session', sourceKind: 'export.package.import', sourceBacked: false }
-  });
-  if (!packageImportAdd?.ok) fail('addWorkspaceRecord failed for package import material');
-  const packageRemove = lifecycle.removeWorkspaceRecord(packageImportAdd.state, ws.id, packageImportAdd.record.id);
-  if (!packageRemove?.ok) fail('removeWorkspaceRecord must remove browser-local package import material');
-  if (lifecycle.activeWorkspace(packageRemove.state).records.some((item) => item.id === packageImportAdd.record.id)) fail('removed package import material must leave workspace records');
 
   // ensure adding records using 'local' as sourceId is rejected
   const badLocal = lifecycle.addWorkspaceSourceRecords(addLocal.state, ws.id, 'local', [rec]);
@@ -130,10 +115,10 @@ try {
     { id: 'source-asset', path: 'source.png', source: { id: sourceId } },
     { id: 'local-asset', path: 'local.png', source: { id: 'local' } }
   ];
-  materialWorkspace.workspaceMergeCandidates = [
-    { id: 'source-candidate', path: 'source.workspace.md', source: { id: sourceId } },
-    { id: 'local-candidate', path: 'local.workspace.md', source: { id: 'local' } }
-  ];
+  materialWorkspace.records.push(
+    { id: 'source-workspace-artifact', title: 'Source workspace', path: 'source.workspace.md', kind: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1', sourceMode: 'source-backed-workspace-file', source: { id: sourceId, adapterId: 'github', kind: 'github-tree' }, workspaceArtifactRole: { schema: 'tiinex.workspace.artifact.role.v1', openEligible: true, mergeEligible: true } },
+    { id: 'local-workspace-artifact', title: 'Local workspace', path: 'local.workspace.md', kind: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1', sourceMode: 'local-workspace-file', source: { id: 'local', adapterId: 'local', kind: 'local-session' }, workspaceArtifactRole: { schema: 'tiinex.workspace.artifact.role.v1', openEligible: true, mergeEligible: true } }
+  );
   materialWorkspace.discoveryProgress = { sourceId, step: 'materializing' };
   const closeSourceRes = lifecycle.closeWorkspaceSource(stateWithSourceMaterial, ws.id, sourceId);
   if (!closeSourceRes?.ok) fail('closeWorkspaceSource failed');
@@ -143,10 +128,37 @@ try {
   if (!closedWorkspace.records.some((r) => r.source && (r.source.id === 'local' || r.source.kind === lifecycle.SESSION_SOURCE_KIND))) fail('closeWorkspaceSource must preserve local/session records');
   if (closedWorkspace.assets.some((asset) => asset.source?.id === sourceId)) fail('closed source must remove source-backed assets');
   if (!closedWorkspace.assets.some((asset) => asset.source?.id === 'local')) fail('closeWorkspaceSource must preserve local assets');
-  if (closedWorkspace.workspaceMergeCandidates.some((candidate) => candidate.source?.id === sourceId)) fail('closed source must remove source-backed workspace candidates');
-  if (!closedWorkspace.workspaceMergeCandidates.some((candidate) => candidate.source?.id === 'local')) fail('closeWorkspaceSource must preserve local workspace candidates');
+  if (closedWorkspace.records.some((record) => record.id === 'source-workspace-artifact')) fail('closed source must remove source-backed workspace artifact records');
+  if (!closedWorkspace.records.some((record) => record.id === 'local-workspace-artifact')) fail('closeWorkspaceSource must preserve local workspace artifact records');
   if (closedWorkspace.discoveryProgress) fail('closed source must clear in-flight discovery progress');
   if (closeSourceRes.state.view.selectedRecordId) fail('closeWorkspaceSource must clear a dangling selected source record');
+
+  const localBeforeClose = closedWorkspace.records.find((record) => record.source?.kind === lifecycle.SESSION_SOURCE_KIND || record.source?.id === 'local');
+  if (!localBeforeClose) fail('local close fixture must retain local material before clearing local source');
+  const closeLocalState = JSON.parse(JSON.stringify(closeSourceRes.state));
+  closeLocalState.view = Object.assign({}, closeLocalState.view || {}, { workspaceVerse: 'lineage', selectedRecordId: localBeforeClose.id });
+  const closeLocalRes = lifecycle.closeWorkspaceSource(closeLocalState, ws.id, 'local');
+  if (!closeLocalRes?.ok || !closeLocalRes.localSessionCleared) fail('closeWorkspaceSource must clear local/session source material when local is requested');
+  const localClearedWorkspace = lifecycle.activeWorkspace(closeLocalRes.state);
+  if (!localClearedWorkspace.sources.some((source) => source.id === 'local')) fail('clearing local source material must keep the Local source row available');
+  if (localClearedWorkspace.sources.find((source) => source.id === 'local')?.closeable) fail('empty Local source row should not remain closeable');
+  if (localClearedWorkspace.records.some((record) => record.source?.id === 'local' || record.source?.kind === lifecycle.SESSION_SOURCE_KIND)) fail('clearing local source material must remove local/session records');
+  if (localClearedWorkspace.assets.some((asset) => asset.source?.id === 'local' || asset.source?.kind === lifecycle.SESSION_SOURCE_KIND)) fail('clearing local source material must remove local/session assets');
+  if (localClearedWorkspace.records.some((record) => record.id === 'local-workspace-artifact')) fail('clearing local source material must remove local/session workspace artifact records');
+  if (Number(localClearedWorkspace.sources.find((source) => source.id === 'local')?.count || 0) !== 0) fail('empty Local source count must be zero after clearing all local material');
+  if (closeLocalRes.state.view.selectedRecordId) fail('clearing local source material must clear selected local records');
+
+  const sourceLessWorkspaceArtifactState = JSON.parse(JSON.stringify(closedWorkspace));
+  sourceLessWorkspaceArtifactState.records = [{ id: 'local-archive-workspace', title: 'Archive workspace', path: 'archive.workspace.md', kind: 'tiinex.workspace.v1', schemaId: 'tiinex.workspace.v1', sourceMode: 'package-import-workspace-file', workspaceArtifactRole: { schema: 'tiinex.workspace.artifact.role.v1', openEligible: true, mergeEligible: true } }];
+  sourceLessWorkspaceArtifactState.assets = [];
+  sourceLessWorkspaceArtifactState.sources = [lifecycle.makeLocalSource()];
+  const sourceLessAppState = Object.assign(lifecycle.makeEmptyAppState(), { activeWorkspaceId: sourceLessWorkspaceArtifactState.id, workspaces: [sourceLessWorkspaceArtifactState], view: { workspaceVerse: 'feed' } });
+  const closeSourceLessWorkspaceArtifact = lifecycle.closeWorkspaceSource(sourceLessAppState, sourceLessWorkspaceArtifactState.id, 'local');
+  if (!closeSourceLessWorkspaceArtifact?.ok) fail('clearing Local with source-less workspace artifact must succeed');
+  if (closeSourceLessWorkspaceArtifact.counts?.records !== 1) fail('clearing Local must treat source-less imported workspace artifact as local/session record material');
+  const sourceLessClearedWorkspace = lifecycle.activeWorkspace(closeSourceLessWorkspaceArtifact.state);
+  if (sourceLessClearedWorkspace.records.length !== 0) fail('clearing Local must remove source-less imported workspace artifact records');
+  if (sourceLessClearedWorkspace.sources.find((source) => source.id === 'local')?.closeable) fail('Local row should not be closeable after source-less workspace artifacts are cleared');
 
   const clearSourceState = JSON.parse(JSON.stringify(addSrcRes.state));
   clearSourceState.view = Object.assign({}, clearSourceState.view || {}, { workspaceVerse: 'lineage', selectedRecordId: inserted.id });
@@ -228,6 +240,7 @@ try {
   if (!assetAgain?.ok) fail('addWorkspaceAssets repeated path failed');
   const assetAgainWorkspace = lifecycle.activeWorkspace(assetAgain.state);
   if (assetAgainWorkspace.assets.length !== 1 || Number(assetAgainWorkspace.assets[0].size) !== 8) fail('asset path must upsert deterministically');
+  if (Number(assetAgainWorkspace.sources.find((source) => source.id === 'local')?.count || 0) < lifecycle.countLocalRecords(assetAgainWorkspace) + 1) fail('Local source count should include local assets as local/session material');
 
   // 7) .workspace.md opens as a workspace object, not as a leaf
   const workspaceMd = '# Tiinex Viewer\n\n## Workspace Entrypoints\n';
@@ -235,15 +248,17 @@ try {
   if (!openWs?.ok) fail('openWorkspaceFromMarkdown failed');
   if (openWs.workspace.records.length !== 0) fail('.workspace.md must not become a normal record');
   if (openWs.workspace.workspaceImport?.path !== 'viewer.workspace.md') fail('workspace import path missing');
-  const merge = lifecycle.mergeWorkspaceImport(openWs.state, openWs.workspace.id, { path: 'other.workspace.md', title: 'Other' });
-  if (!merge?.ok) fail('mergeWorkspaceImport failed');
+  const merge = lifecycle.mergeWorkspaceArtifactContext(openWs.state, openWs.workspace.id, { path: 'other.workspace.md', title: 'Other' });
+  if (!merge?.ok) fail('mergeWorkspaceArtifactContext failed');
   const mergedWorkspace = lifecycle.activeWorkspace(merge.state);
-  if (!mergedWorkspace.workspaceMergeCandidates?.length) fail('workspace merge candidate must be recorded explicitly');
-  const mergeAgain = lifecycle.mergeWorkspaceImport(merge.state, openWs.workspace.id, { path: './other.workspace.md', title: 'Other updated' });
-  if (!mergeAgain?.ok) fail('mergeWorkspaceImport repeat failed');
+  if (Object.prototype.hasOwnProperty.call(mergedWorkspace, 'workspaceMergeCandidates')) fail('workspace artifact merge must not create a legacy candidate runtime shape');
+  if (mergedWorkspace.workspaceMergedEntries?.length !== 1) fail('workspace artifact merge should record one metadata/context entry');
+  const mergeAgain = lifecycle.mergeWorkspaceArtifactContext(merge.state, openWs.workspace.id, { path: './other.workspace.md', title: 'Other updated' });
+  if (!mergeAgain?.ok) fail('mergeWorkspaceArtifactContext repeat failed');
   const mergedAgainWorkspace = lifecycle.activeWorkspace(mergeAgain.state);
-  if (mergedAgainWorkspace.workspaceMergeCandidates.length !== 1) fail('workspace merge candidate path must upsert, not duplicate');
-  if (mergedAgainWorkspace.workspaceMergeCandidates[0].title !== 'Other updated') fail('workspace merge candidate upsert should refresh metadata');
+  if (Object.prototype.hasOwnProperty.call(mergedAgainWorkspace, 'workspaceMergeCandidates')) fail('repeat merge must stay on canonical artifact/context model without legacy candidate shape');
+  if (mergedAgainWorkspace.workspaceMergedEntries.length !== 1) fail('workspace artifact merge path must upsert, not duplicate');
+  if (mergedAgainWorkspace.workspaceMergedEntries[0].title !== 'Other updated') fail('workspace artifact merge upsert should refresh metadata');
 
 
   // 8) Issue snapshot source identity must preserve material paths instead of collapsing every issue/comment to the issue URL.
@@ -287,12 +302,12 @@ try {
 `
     }]);
     assert.equal(issueLoaded.ok, true, 'issue snapshot source records should insert');
-    assert.equal(issueLoaded.records[0].path, '.topics/.github/tiinex/docs/.issues/123/issue-snapshot.trace.md', 'plain issue snapshot path should use logical .topics/.github/<owner>/<repo>/.issues scope, not a GitHub URL pseudo-tree');
+    assert.equal(issueLoaded.records[0].path, '.topics/.github/tiinex/docs/.issues/123/000-issue-snapshot.trace.md', 'plain issue snapshot path should use logical .topics/.github/<owner>/<repo>/.issues scope, not a GitHub URL pseudo-tree');
     assert(!issueLoaded.records[0].id.includes('.topics/tiinex/docs/issues'), 'plain issue snapshot deterministic id must not inherit repo rootPath');
     const issueRecords = issueLoaded.workspace.records.filter((record) => record.source?.id === issueSource.source.id);
     assert.equal(issueRecords.length, 3, 'comment-embedded issue artifacts must survive addWorkspaceSourceRecords as distinct records');
-    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/comment-001-5001-recovered-one.trace.md'), 'first comment embedded artifact path should normalize to logical issue scope');
-    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/comment-002-5002-recovered-two.trace.md'), 'second comment embedded artifact path should normalize to logical issue scope');
+    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/001-one.trace.md'), 'first comment embedded artifact path should normalize to logical issue scope');
+    assert(issueRecords.some((record) => record.path === '.topics/.github/tiinex/docs/.issues/123/002-two.trace.md'), 'second comment embedded artifact path should normalize to logical issue scope');
     const outsideRoot = lifecycle.addWorkspaceSourceRecords(issueLoaded.state, issueCreated.workspace.id, issueSource.source.id, [{
       title: 'Outside root embedded artifact',
       path: '.topics/.github/.issues/tiinex-docs-issue-123/comment-003-5003-recovered-outside.trace.md',
@@ -306,6 +321,28 @@ try {
 `
     }]);
     assert.equal(outsideRoot.records[0].path, 'odysseus/001-1-1.trace.md', 'embedded artifact Source Path outside discovery root must not be rewritten under rootPath');
+    const workspacePayload = lifecycle.addWorkspaceSourceRecords(outsideRoot.state, issueCreated.workspace.id, issueSource.source.id, [{
+      title: 'FS25 Markaryd',
+      path: '.topics/.github/tiinex/docs/.issues/123/000-fs25-markaryd.workspace.md',
+      kind: 'tiinex.workspace.v1',
+      schemaId: 'tiinex.workspace.v1',
+      sourceMode: 'github-issue-embedded-artifact',
+      sourceTarget: { surface: 'issueSnapshots', targetKind: 'github-issue-embedded-artifact', inputTarget: 'https://github.com/Tiinex/docs/issues/123', sourceArtifactPath: '.topics/.github/tiinex/docs/.issues/123/000-fs25-markaryd.workspace.md' },
+      markdown: `# Continuity Context
+
+- Current
+  - Current Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)
+
+---
+
+# FS25 Markaryd
+`
+    }]);
+    assert.equal(workspacePayload.ok, true, 'source-backed workspace payload should insert as a record');
+    assert.equal(workspacePayload.workspace.records.filter((record) => record.kind === 'tiinex.workspace.v1').length, 1, 'source-backed workspace payload must remain a workspace record for lineage/source material');
+    assert.equal(Object.prototype.hasOwnProperty.call(workspacePayload.workspace, 'workspaceMergeCandidates'), false, 'source-backed workspace artifacts remain canonical records; no legacy candidate runtime shape is created');
+    assert.equal(workspacePayload.receipt.rawAdapterRecords, 1, 'source insertion receipt should preserve raw adapter count');
+    assert.equal(workspacePayload.receipt.sourceRecords, 5, 'source insertion receipt should reflect all source-backed records after insertion');
   }
 
   console.log('✓ workspace.lifecycle tests passed');

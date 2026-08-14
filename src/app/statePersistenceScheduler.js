@@ -1,3 +1,5 @@
+import { canonicalProductState } from './productStateBoundary.js';
+
 export function createStatePersistenceScheduler(win = globalThis) {
   const state = {
     timer: null,
@@ -78,22 +80,24 @@ export function createStatePersistenceScheduler(win = globalThis) {
 
 export function commitStateWithPersistence({ nextState, mode = 'push', options = {}, sourceState = {}, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler } = {}) {
   const withScroll = preserveCapturedViewScroll?.(nextState, sourceState) || nextState;
-  if (latestStateRef) latestStateRef.current = withScroll;
-  setState?.(withScroll);
-  if (!withScroll?.workspaces?.length) {
+  const persistence = runtime?.().persistence || {};
+  const canonicalState = canonicalProductState(withScroll, persistence, 'commit');
+  if (latestStateRef) latestStateRef.current = canonicalState;
+  setState?.(canonicalState);
+  if (!canonicalState?.workspaces?.length) {
     scheduler?.cancel?.();
-    runtime?.().persistence?.clearState?.({ mode });
-    return withScroll;
+    persistence.clearState?.({ mode });
+    return canonicalState;
   }
   if (options.deferPersistence) {
-    scheduler?.schedule?.({ state: withScroll, mode, runtime }, {
+    scheduler?.schedule?.({ state: canonicalState, mode, runtime }, {
       reason: options.persistenceReason || 'view-state',
       delayMs: options.persistenceDelayMs,
       idleTimeout: options.persistenceIdleTimeout
     });
-    return withScroll;
+    return canonicalState;
   }
   scheduler?.cancel?.();
-  runtime?.().persistence?.writeState?.(withScroll, { mode });
-  return withScroll;
+  persistence.writeState?.(canonicalState, { mode });
+  return canonicalState;
 }

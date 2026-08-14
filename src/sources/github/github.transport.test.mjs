@@ -119,6 +119,7 @@ const refreshAfterIssueMirrorFallback = sourceTransportRefreshInputForSource({
   transportRefreshTier: 'mirror',
   transportOutcome: { activeTier: 'direct' },
   transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  issueDiscovery: true,
   requestedSurfaces: { issueSnapshots: { requested: true } }
 });
 assert.equal(refreshAfterIssueMirrorFallback.nextTier, 'proxy', 'transport refresh should advance from requested mirror, not skip to direct because issue fallback delivered via direct');
@@ -129,6 +130,7 @@ const refreshFromRouteRestoredSource = sourceTransportRefreshInputForSource({
   repo: 'owner/repo',
   transportOutcome: { activeTier: 'direct' },
   transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  issueDiscovery: true,
   requestedSurfaces: { issueSnapshots: { requested: true } }
 });
 assert.equal(refreshFromRouteRestoredSource.nextTier, 'mirror', 'route-restored sources must restart transport sequencing from cache/mirror, not from stale direct outcome');
@@ -139,6 +141,7 @@ const refreshFromSelectedProxyEvenWhenActiveProxy = sourceTransportRefreshInputF
   transportRefreshTier: 'proxy',
   transportOutcome: { activeTier: 'proxy', activeStatus: 'unavailable' },
   transportPlan: { configured: { cache: true, mirror: true, proxy: true, direct: true } },
+  issueDiscovery: true,
   requestedSurfaces: { issueSnapshots: { requested: true } }
 });
 assert.equal(refreshFromSelectedProxyEvenWhenActiveProxy.nextTier, 'direct', 'badge clicks should advance from selected sequence position even if proxy failed too quickly to see pending UI');
@@ -157,6 +160,7 @@ assert.equal(refreshWhilePending.pendingTier, 'direct', 'pending tier should sti
 const refreshWhileProxyPending = sourceTransportRefreshInputForSource({
   id: 'gh',
   repo: 'owner/repo',
+  repoDiscovery: true,
   transportRefreshTier: 'proxy',
   transportOutcome: { pendingTier: 'proxy', pendingSurfaces: ['repoFiles'] },
   requestedSurfaces: { repoFiles: { requested: true } }

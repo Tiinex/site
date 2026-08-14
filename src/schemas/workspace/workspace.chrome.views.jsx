@@ -1,18 +1,23 @@
 import React from 'react';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
+import { workspaceEmptyStateCopy } from '../../workspaces/workspace.emptyStateCopy.js';
 import { displayOptionsHiddenCount } from '../../workspaces/workspace.displayOptions.js';
 import { recordSourceClass } from '../../workspaces/workspace.displayFilters.js';
 import { shouldShowWorkspaceSummary } from '../../workspaces/workspace.summary.js';
+import { isLocalSessionMaterial } from '../../workspaces/workspace.localSourceLifecycle.js';
 import { normalizeGithubTransportTier } from '../../sources/github/github.transport.js';
+import { isOriginReferenceSource } from '../../sources/origin.references.js';
 import { sourceTransportBadgesForSource } from '../../app/sourceTransportRefresh.js';
 import { buildGovernanceBoundaryForSource, GOVERNANCE_BOUNDARY_SCHEMA_ID } from '../../governance/governance.boundary.js';
+import { SourceReceiptDetails } from './workspace.sourceReceipt.views.jsx';
 
 export function WorkspaceBoundaryKicker({ workspace = {} }) {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
   const assets = Array.isArray(workspace.assets) ? workspace.assets : [];
-  const candidates = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates : [];
-  const localCount = records.filter((record) => recordSourceClass(record) === 'local').length + assets.length + candidates.length;
+  const localCount = records.filter((record) => recordSourceClass(record) === 'local').length
+    + records.filter((record) => record?.materialReconciliation?.status === 'checksum-match' && record.materialReconciliation.localSnapshot).length
+    + assets.filter((asset) => isLocalSessionMaterial(asset)).length;
   const sourceCount = records.filter((record) => recordSourceClass(record) === 'source-backed').length;
   if (!localCount && !sourceCount) return null;
   const label = sourceCount && localCount ? 'mixed' : sourceCount ? 'source-backed' : 'local';
@@ -25,11 +30,7 @@ export function WorkspaceBoundaryKicker({ workspace = {} }) {
 }
 
 export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSourceTransportRefresh, onOpenGovernance }) {
-  const sources = (Array.isArray(workspace.sources) ? workspace.sources : []).filter((source) => {
-    const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
-    const isLocal = kind.includes('local');
-    return !(isLocal && Number(source.count || 0) <= 0);
-  });
+  const sources = (Array.isArray(workspace.sources) ? workspace.sources : []);
   if (!sources.length) return null;
   return (
     <div className="tx-source-strip workspace-source-strip tx-compact-source-strip" aria-label="Workspace sources">
@@ -37,18 +38,29 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
         {sources.map((source) => {
           const closeable = Boolean(source.closeable);
           const kind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
-          const transport = sourceTransportSummary(source);
+          const isLocal = kind.includes('local') || source.id === 'local';
+          const isOriginRecovery = isOriginReferenceSource(source) || source.recoveryOnly === true;
+          const isTargetedFileRecovery = source.sourceKind === 'github.file' && source.loadable === false;
+          const transport = isOriginRecovery ? originRecoveryTransportSummary(source) : sourceTransportSummary(source);
+          const sourceLabel = source.label || source.id || 'Source';
+          const addTitle = isLocal ? 'Add local files, archive imports, or workspace artifacts' : 'Open source controls for this source: choose repo files, explicit files, or issue snapshots';
+          const addLabel = isLocal ? 'Add' : 'Discover';
+          const canLoadFromSource = closeable && !isOriginRecovery && source.loadable !== false;
+          const closeTitle = isLocal ? (source.closeLabel || 'Clear local/session material') : isOriginRecovery ? `Dismiss recovery origin ${sourceLabel}` : `Close ${sourceLabel}`;
+          const closeAria = isLocal ? 'Clear Local source material from this browser session' : isOriginRecovery ? `Dismiss recovery-only origin ${sourceLabel}` : `Close ${sourceLabel}`;
           return (
             <span
               key={source.id || source.label}
-              className={`tx-source-pill ${closeable ? 'tx-source-pill-closeable' : ''} ${kind.includes('github') ? 'source-github' : 'source-local'}`}
+              className={`tx-source-pill ${closeable ? 'tx-source-pill-closeable' : ''} ${isOriginRecovery ? 'tx-source-origin-recovery' : kind.includes('github') ? 'source-github' : 'source-local'}`}
               title={source.boundary || boundary || ''}
               data-discovery-state={source.discoveryState || undefined}
               data-source-kind={kind || undefined}
+              data-source-role={isOriginRecovery ? 'origin-recovery' : isLocal ? 'local-session' : isTargetedFileRecovery ? 'targeted-provenance' : 'configured-source'}
             >
               <Icon name={kind.includes('github') ? 'source' : 'workspace'} />
-              <strong>{source.label || source.id || 'Source'}</strong>
-              <small>{source.count || 0}</small>
+              <strong>{sourceLabel}</strong>
+              <small title={isOriginRecovery ? 'Explicit origin references recovered from imported/local artifacts, not loaded source records.' : undefined}>{sourceCountText(source, isOriginRecovery)}</small>
+              {isOriginRecovery ? <span className="tx-source-role-badge" title="Recovery-only origin: imported records remain local/session authority.">recovery only</span> : null}
               {transport.badges?.length ? <span className={`tx-source-transport-group ${transport.mixed ? 'is-mixed' : ''}`} aria-label={transport.mixed ? 'Surface transports' : 'Source transport'}>
                 {transport.badges.map((badge) => badge.refreshable ? (
                   <button key={badge.key} type="button" className={`tx-source-transport tx-source-transport-button ${badge.className}`} title={badge.title} aria-label={badge.title} onClick={() => onSourceTransportRefresh?.(source.id, badge.refreshTier || badge.tier, badge.surfaceKeys || [])}>{badge.label}</button>
@@ -57,8 +69,8 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
                 ))}
               </span> : null}
               <SourceGovernanceBadge source={source} onOpenGovernance={onOpenGovernance} />
-              {closeable ? <button type="button" className="tx-source-load" aria-label={`Discover material for ${source.label || 'source'}`} title="Open source controls for this source: choose repo files, explicit files, or issue snapshots" onClick={() => onOpenAddDialog?.(source.id)}><Icon name="add" /><span>Discover</span></button> : null}
-              {closeable ? <button type="button" className="tx-source-close" aria-label={`Close ${source.label || 'source'}`} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
+              {canLoadFromSource ? <button type="button" className="tx-source-load" aria-label={`${addLabel} material for ${sourceLabel}`} title={addTitle} onClick={() => onOpenAddDialog?.(isLocal ? '' : source.id)}><Icon name="add" /><span>{addLabel}</span></button> : null}
+              {closeable ? <button type="button" className="tx-source-close" aria-label={closeAria} title={closeTitle} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
           );
         })}
@@ -67,7 +79,30 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
   );
 }
 
+
+function sourceCountText(source = {}, originRecovery = false) {
+  if (!originRecovery) return Number(source.count || 0);
+  const refs = Number(source.originReferenceCount || 0);
+  return refs ? `${refs} ref${refs === 1 ? '' : 's'}` : '0 loaded';
+}
+
+function originRecoveryTransportSummary(source = {}) {
+  return {
+    badges: [{
+      key: 'origin-recovery',
+      label: 'recovery',
+      tier: 'direct',
+      refreshTier: '',
+      refreshable: false,
+      title: source.boundary || 'Explicit origin metadata is available for user-invoked lineage recovery; this is not a configured source and does not make imported material source-backed.',
+      className: 'tx-transport-tier-direct tx-transport-origin-recovery'
+    }],
+    mixed: false
+  };
+}
+
 function SourceGovernanceBadge({ source = {}, onOpenGovernance }) {
+  if (isOriginReferenceSource(source) || source.recoveryOnly === true) return null;
   const sourceKind = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
   const repo = String(source.repo || source.repository || source.config?.repo || '').trim();
   const explicitBoundary = source.governanceBoundary && typeof source.governanceBoundary === 'object' && source.governanceBoundary.schema === GOVERNANCE_BOUNDARY_SCHEMA_ID
@@ -136,14 +171,25 @@ export function WorkspaceMaterialSummary({ summary }) {
   if (!shouldShowWorkspaceSummary(summary)) return null;
   const counts = summary.counts || {};
   const latest = summary.latestImport;
-  const noisyLatest = latest && (latest.ok === false || counts.errors || counts.warnings || counts.previewOmitted);
+  const latestDiagnostics = latest?.diagnostics || {};
+  const latestLedger = latestDiagnostics.materialLedgerReceipt || latestDiagnostics.materialLedger || null;
+  const ledgerExplainsVisibility = Boolean(latestLedger && (Number(latestLedger.hiddenRecords || 0) || Number(latestLedger.groupedRecords || 0) || Number(latestLedger.sourceWorkspaceArtifacts || latestLedger.legacySourceWorkspaceArtifacts || latestLedger.sourceWorkspaceArtifacts || 0)));
+  const noisyLatest = latest && (latest.ok === false || counts.errors || counts.warnings || counts.previewOmitted || ledgerExplainsVisibility);
   return (
     <section className="tx-workspace-material-summary" aria-label="Workspace material summary">
       <div className="tx-material-summary-counts">
         <span title="Loaded records before Display options"><Icon name="manualFiles" /><strong>{counts.records || 0}</strong><small>loaded records</small></span>
         <span><Icon name="asset" /><strong>{counts.assets || 0}</strong><small>assets</small></span>
-        <span><Icon name="workspace" /><strong>{counts.workspaceCandidates || 0}</strong><small>workspaces</small></span>
+        <span><Icon name="workspace" /><strong>{counts.workspaceArtifacts || 0}</strong><small>workspaces</small></span>
         {counts.sourceBackedRecords ? <span><Icon name="source" /><strong>{counts.sourceBackedRecords}</strong><small>source-backed</small></span> : null}
+        {counts.hiddenRecords ? <span title="Loaded records not visible in the current feed/tree view. Grouped records are source+local material shown as one canonical card; display-hidden records are filtered/supporting/parent material still available for lineage."><Icon name="filters" /><strong>{counts.visibleRecords || 0}/{counts.records || 0}</strong><small>visible</small></span> : null}
+        {counts.groupedRecords ? <span title="Records grouped under a canonical source/local artifact cluster, not lost."><Icon name="check" /><strong>{counts.groupedRecords}</strong><small>grouped</small></span> : null}
+        {counts.hiddenByDisplayRecords ? <span title="Records hidden by Display options/search/leaf membership; still available for lineage and recovery."><Icon name="filters" /><strong>{counts.hiddenByDisplayRecords}</strong><small>display-hidden</small></span> : null}
+        {counts.lineageUsableRecords && counts.lineageUsableRecords !== counts.visibleRecords ? <span title="Records available to lineage/read-models, including material hidden by current display filters."><Icon name="lineage" /><strong>{counts.lineageUsableRecords}</strong><small>lineage usable</small></span> : null}
+        {counts.materialChecksumMatches ? <span title="Verified local/source equivalents were reconciled to one canonical source-backed artifact; redundant local duplicates are pruned instead of hidden for later resurrection."><Icon name="check" /><strong>{counts.materialChecksumMatches}</strong><small>deduped matches</small></span> : null}
+        {counts.localAssets ? <span title="Browser-local assets are locally available only; they are not source or public truth."><Icon name="asset" /><strong>{counts.localAssets}</strong><small>local assets</small></span> : null}
+        {counts.materialChecksumMismatches ? <span title="Imported/local material and source material share identity but checksum differs."><Icon name="warning" /><strong>{counts.materialChecksumMismatches}</strong><small>mismatch</small></span> : null}
+        {counts.recoveryOriginSources ? <span title="Explicit origins preserved from imported/local artifacts; recovery-only, not source-backed authority."><Icon name="source" /><strong>{counts.recoveryOriginSources}</strong><small>recovery origins</small></span> : null}
       </div>
       {noisyLatest ? (
         <div className={`tx-material-summary-import ${latest.ok ? 'tx-import-ok' : 'tx-import-degraded'}`} title={latest.message}>
@@ -156,41 +202,6 @@ export function WorkspaceMaterialSummary({ summary }) {
         </div>
       ) : null}
     </section>
-  );
-}
-
-function SourceReceiptDetails({ latest }) {
-  const surfaces = latest?.diagnostics?.surfaces || latest?.diagnostics?.sourcePlan?.surfaces || null;
-  const outcome = latest?.diagnostics?.transportOutcome || null;
-  if (!surfaces && !outcome) return null;
-  const rows = [];
-  const pushSurface = (key, label) => {
-    const item = surfaces?.[key];
-    if (!item?.requested && !item?.attempted && !Number(item?.loaded || 0) && !item?.deferred && !item?.unavailable) return;
-    const bits = [];
-    if (item.requested) bits.push('requested');
-    if (item.attempted) bits.push('attempted');
-    if (Number(item.discovered || 0)) bits.push(`${Number(item.discovered || 0)} discovered`);
-    if (Number(item.requestedCount || 0) && key !== 'repoFiles') bits.push(`${Number(item.requestedCount || 0)} targets`);
-    if (Number(item.loaded || 0)) bits.push(`${Number(item.loaded || 0)} loaded`);
-    if (Number(item.failed || 0)) bits.push(`${Number(item.failed || 0)} failed`);
-    const surfaceTiers = Array.isArray(item.transportTiers) && item.transportTiers.length ? item.transportTiers.join(' + ') : String(item.transportTier || '').trim();
-    if (surfaceTiers) bits.push(`via ${surfaceTiers}`);
-    if (item.deferred) bits.push('deferred');
-    if (item.unavailable) bits.push('unavailable');
-    if (item.skipped) bits.push('skipped');
-    rows.push({ key, label, text: bits.join(' · ') || 'no result' });
-  };
-  pushSurface('repoFiles', 'Repo files');
-  pushSurface('explicitFiles', 'Explicit files');
-  pushSurface('issueSnapshots', 'Issue snapshots');
-  const attempted = Array.isArray(outcome?.attemptedTiers) ? outcome.attemptedTiers.join(' → ') : '';
-  const winning = Array.isArray(outcome?.winningTiers) ? outcome.winningTiers.join(' + ') : '';
-  return (
-    <div className="tx-source-receipt-details" aria-label="Source receipt details">
-      {rows.map((row) => <span key={row.key}><strong>{row.label}</strong><small>{row.text}</small></span>)}
-      {outcome ? <span><strong>Transport</strong><small>{attempted ? `attempted ${attempted}` : 'attempted tiers unavailable'}{winning ? ` · used ${winning}` : ''}</small></span> : null}
-    </div>
   );
 }
 
@@ -220,12 +231,15 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
   const selectedRecordId = String(state.view?.selectedRecordId || '');
-  const lineageLoaded = Boolean(lineageVerse && selectedRecord && (lineageReady || (lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId)));
+  const selectedLineageReport = lineageLoadReport && String(lineageLoadReport.selectedRecordId || '') === selectedRecordId ? lineageLoadReport : null;
+  const lineageAttempted = Boolean(lineageVerse && selectedRecord && (lineageReady || selectedLineageReport));
+  const lineageComplete = Boolean(lineageAttempted && (lineageReady || (selectedLineageReport && selectedLineageReport.state === 'complete' && !selectedLineageReport.hasMissing)));
+  const needsLineageLoad = Boolean(lineageVerse && selectedRecord && (!selectedLineageReport || selectedLineageReport.state !== 'complete' || selectedLineageReport.hasMissing));
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
   const hiddenPresentationCount = displayOptionsHiddenCount(displayOptions, lineageVerse ? 'lineage' : 'discovery');
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
-  const canDisplayOptions = discoveryVerse || lineageLoaded;
-  const canSearch = !lineageVerse || lineageLoaded;
+  const canDisplayOptions = discoveryVerse || lineageAttempted;
+  const canSearch = !lineageVerse || lineageAttempted;
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
       <strong className="tx-mode-name">{modeLabel}</strong>
@@ -237,12 +251,12 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
       ) : (
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
-      {lineageVerse && selectedRecord && !lineageLoaded ? (
-        <button type="button" className="tx-mode-load-lineage-button" onClick={onLoadFullLineage} title="Load the full loaded-workspace lineage index before search, filters, or Audit" aria-label="Load full lineage">
+      {needsLineageLoad ? (
+        <button type="button" className="tx-mode-load-lineage-button" onClick={onLoadFullLineage} title="Load or retry the full lineage index from available source/direct transport before Audit" aria-label="Load full lineage">
           <Icon name="lineage" /><span>Load full lineage</span>
         </button>
       ) : null}
-      {lineageLoaded ? (
+      {lineageComplete ? (
         <button type="button" className="tx-mode-action-button tx-mode-audit-button tx-mode-audit-run-button" onClick={onRunLineageAudit} title="Audit lineage" aria-label="Audit lineage">
           <Icon name="audit" /><span>Audit</span>
         </button>
@@ -263,29 +277,14 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
   );
 }
 
-export function EmptyWorkspaceState({ filtered, hasMaterial, query, summary = null }) {
-  const latest = summary?.latestImport || null;
-  const hasDeferredSourceReceipt = Boolean(!hasMaterial && latest && (latest.message || latest.warnings?.length || latest.errors?.length));
-  const message = filtered
-    ? 'No nodes match this view.'
-    : hasMaterial
-      ? 'No artifacts match this view.'
-      : hasDeferredSourceReceipt
-        ? 'No readable material was produced.'
-        : 'No material yet.';
-  const hint = filtered && query
-    ? `Search filter: ${query}`
-    : hasDeferredSourceReceipt
-      ? String(latest.message || 'The source boundary is registered, but the selected reader did not produce records.').slice(0, 260)
-      : '';
-  const firstWarning = hasDeferredSourceReceipt && latest.warnings?.length ? latest.warnings[0] : null;
-  const firstError = hasDeferredSourceReceipt && latest.errors?.length ? latest.errors[0] : null;
+export function EmptyWorkspaceState({ filtered, hasMaterial, query, summary = null, progress = null }) {
+  const copy = workspaceEmptyStateCopy({ filtered, hasMaterial, query, summary, progress });
   return (
     <div className="tx-empty-node-state tx-compact-empty-node-state" role="status" aria-live="polite">
-      <p>{message}</p>
-      {hint ? <small>{hint}</small> : null}
-      {firstWarning?.message ? <small className="tx-empty-receipt-detail">Warning: {String(firstWarning.message).slice(0, 220)}</small> : null}
-      {firstError?.error ? <small className="tx-empty-receipt-detail">Error: {String(firstError.error).slice(0, 220)}</small> : null}
+      <p>{copy.message}</p>
+      {copy.hint ? <small>{copy.hint}</small> : null}
+      {copy.firstWarning?.message ? <small className="tx-empty-receipt-detail">Warning: {String(copy.firstWarning.message).slice(0, 220)}</small> : null}
+      {copy.firstError?.error ? <small className="tx-empty-receipt-detail">Error: {String(copy.firstError.error).slice(0, 220)}</small> : null}
     </div>
   );
 }

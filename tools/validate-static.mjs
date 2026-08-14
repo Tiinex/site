@@ -100,13 +100,13 @@ for (const required of [
 has('src/main.jsx', 'createRoot', 'React entry must mount with react-dom/client');
 has('src/main.jsx', './workspaces/workspace.config.js', 'React entry must load workspace config runtime');
 if (!reactAppAndWorkspace.includes('schemaRegistry')) failures.push('React app must stay schema-companion aware');
-has('src/app/TiinexApp.jsx', 'readInitialState', 'React app must restore from hash state');
+has('src/app/TiinexApp.jsx', 'resolveInitialState', 'React app must resolve semantic hash ownership before rendering route state');
 if (!reactAppAndWorkspace.includes('clean-url-does-not-bootstrap-stale-local-storage')) failures.push('React runtime must retain clean URL source-boundary invariant');
 if (!reactAppAndWorkspace.includes('No nodes match this view.')) failures.push('UC-001 empty workspace state missing');
 if (!reactAppAndWorkspace.includes('no source files or GitHub provenance inferred')) failures.push('local/session workspace boundary missing');
 if (!reactAppAndWorkspace.includes('workspace-source-strip')) failures.push('source row must remain available');
-if (!reactAppAndWorkspace.includes('count <= 1')) failures.push('pager arrows must only be possible with multiple workspaces');
-if (!reactAppAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must also be gated by viewport size');
+if (!reactAppAndWorkspace.includes('const showPager = Boolean(hasWorkspace && pagerVisible)')) failures.push('pager arrows must be driven by workspace overflow state');
+if (!reactAppAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must be gated by workspace count versus viewport capacity');
 has('src/ui/primitives/Icon.jsx', '@fortawesome/react-fontawesome', 'Icon primitive must use Font Awesome React integration');
 has('src/styles/app.css', 'tx-react-runtime', 'React shell CSS missing');
 has('src/styles/app.css', '--tx-gap-icon', 'icon/text spacing must be token-owned');

@@ -1,15 +1,31 @@
 import { inspectExportPackageBundle } from './package.builder.js';
+import { inspectTreeExportBundle } from './tree.bundle.js';
 
 export function exportPackageZipUint8Array(bundle = {}) {
   const inspection = inspectExportPackageBundle(bundle);
   if (inspection.status !== 'valid') throw new Error('export.package.zip.bundle.invalid');
-  const entries = (bundle.files || []).map((file) => ({ name: safeZipPath(file.path), data: utf8(String(file.content ?? '')) }));
-  if (entries.some((entry) => !entry.name)) throw new Error('export.package.zip.path.invalid');
+  return exportFileMapZipUint8Array(bundle.files || [], 'export.package.zip.path.invalid');
+}
+
+export function exportTreeZipUint8Array(bundle = {}) {
+  const inspection = inspectTreeExportBundle(bundle);
+  if (inspection.status === 'invalid') throw new Error('export.tree.zip.bundle.invalid');
+  return exportFileMapZipUint8Array(bundle.files || [], 'export.tree.zip.path.invalid');
+}
+
+export function exportFileMapZipUint8Array(files = [], invalidPathError = 'export.zip.path.invalid') {
+  const entries = (files || []).map((file) => ({ name: safeZipPath(file.path), data: utf8(String(file.content ?? '')) }));
+  if (entries.some((entry) => !entry.name)) throw new Error(invalidPathError);
   return storedZip(entries);
 }
 
 export function exportPackageZipBlob(bundle = {}) {
   const bytes = exportPackageZipUint8Array(bundle);
+  return new Blob([bytes], { type: 'application/zip' });
+}
+
+export function exportTreeZipBlob(bundle = {}) {
+  const bytes = exportTreeZipUint8Array(bundle);
   return new Blob([bytes], { type: 'application/zip' });
 }
 

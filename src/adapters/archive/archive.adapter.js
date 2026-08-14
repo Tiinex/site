@@ -2,6 +2,7 @@ import { AdapterAvailability, makeAdapterDefinition, makeAdapterResult } from '.
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { filterArchiveTransportEntries } from './archive.transport.js';
 import { qualifyPortableChangesetEntries } from './archive.portableChangeset.js';
+import { resolveTransportPlan } from '../../sources/transport.levels.js';
 
 export const ARCHIVE_ADAPTER_ID = 'archive';
 
@@ -29,7 +30,7 @@ export function createArchiveAdapter() {
     configShape: {
       files: 'File[] where .zip is parsed and other files are routed by extension',
       paths: 'safe relative archive paths only',
-      encrypted: 'detected and reported; no fake import'
+      encrypted: 'ZipCrypto stored entries supported with an explicit password; unsupported encrypted forms are reported'
     },
     boundary: 'user-provided local archive; paths are sanitized; material remains browser-local/session until explicitly exported or published',
     resultShape: {
@@ -39,7 +40,7 @@ export function createArchiveAdapter() {
       diagnostics: 'counts, skipped unsafe paths, encryption/unsupported entries'
     },
     notes: [
-      'Ported from .old archive intake: preserve relative paths, split workspace files/leaves/assets, and report encrypted/unsupported zip entries honestly.',
+      'Ported from .old archive intake: preserve relative paths, split workspace files/leaves/assets, and support password-protected ZipCrypto stored entries through an explicit password boundary.',
       'This adapter never infers GitHub provenance from archive paths.'
     ]
   });
@@ -55,18 +56,20 @@ export function safeArchivePath(value = '', options = {}) {
 }
 
 export function isWorkspaceMarkdownPath(path = '') {
-  return /\.workspace\.md$/i.test(String(path || '').trim());
+  const name = String(path || '').trim();
+  return /\.workspace(?:\s*\(\d+\))?\.md$/iu.test(name);
 }
+
 
 export function looksLikeWorkspaceMarkdown(markdown = '') {
   const text = String(markdown || '');
-  // Only explicit workspace schema declarations classify an arbitrary Markdown
-  // entry as a workspace import candidate. Generic headings such as
-  // `# Tiinex Viewer` or `## Workspace Entrypoints` occur in normal docs too
-  // and must remain records; otherwise source zips flood the feed with false
-  // open/merge candidates. Path-based `.workspace.md` detection still applies.
-  return /Current Schema:\s*\[[^\]]*tiinex\.workspace\.v1/i.test(text)
-    || /Current Schema:\s*tiinex\.workspace\.v1/i.test(text);
+  if (!text.trim()) return false;
+  if (/Current Schema:\s*(?:\[[^\]]*\]\([^)]*\)|[^\n]*)tiinex\.workspace\.v1/iu.test(text)) return true;
+  if (/Current Schema:\s*tiinex\.workspace\.v1/iu.test(text)) return true;
+  if (/^#\s+Tiinex Viewer\s*$/imu.test(text) && /^##\s+Workspace Entrypoints\s*$/imu.test(text)) return true;
+  if (/^##\s+Workspace State\s*$/imu.test(text) && /tiinex\.workspace\.machineState\.v1/iu.test(text)) return true;
+  if (/^##\s+Workspaces\s*$/imu.test(text) && /^##\s+Workspace Entrypoints\s*$/imu.test(text)) return true;
+  return false;
 }
 
 export function classifyArchiveEntry(path = '', content = null) {
@@ -107,13 +110,23 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
       warnings.push({ code: 'archive.unsafe-path-skipped', ref: central.name, message: 'Unsafe archive path skipped.' });
       continue;
     }
-    if (central.flag & 0x0001) {
-      encrypted.push(path);
-      errors.push({ code: 'archive.encrypted-entry', ref: path, message: 'Encrypted zip entries require a password bridge and are not imported in this viewer pass.' });
-      continue;
-    }
     try {
-      const compressed = readLocalFileData(bytes, central);
+      let compressed = readLocalFileData(bytes, central);
+      if (central.flag & 0x0001) {
+        encrypted.push(path);
+        if (!options.password) {
+          errors.push({ code: 'archive.password-required', ref: path, message: 'Password required for password-protected zip material.' });
+          continue;
+        }
+        if (central.flag & 0x0008) throw new Error('zip.encrypted-data-descriptor.unsupported');
+        if (central.method !== 0) throw new Error(`zip.encrypted-method.unsupported:${central.method}`);
+        const plain = zipCryptoDecryptBytes(compressed, options.password);
+        const verificationByte = (central.crc >>> 24) & 0xff;
+        if (plain.byteLength < 12 || plain[11] !== verificationByte) throw new Error('zip.password.invalid');
+        compressed = plain.slice(12);
+        if (compressed.byteLength !== central.uncompressedSize) throw new Error('zip.encrypted-size-mismatch');
+        if (crc32Bytes(compressed) !== central.crc) throw new Error('zip.password.invalid-or-corrupt');
+      }
       const data = await decompressZipEntry(compressed, central.method);
       let content = null;
       if (MARKDOWN_RE.test(path) || (TEXT_ASSET_RE.test(path) && data.byteLength <= MAX_TEXT_ASSET_PREVIEW_BYTES)) content = TEXT_DECODER.decode(data);
@@ -173,11 +186,11 @@ export async function fileToArchiveImportEntries(file, options = {}) {
   }
   if (/\.zip$/i.test(relativePath || file?.name || '')) {
     const buffer = await file.arrayBuffer();
-    if (zipBufferHasEncryptedEntries(buffer)) {
-      // Continue through parser so unencrypted files are still recoverable if a mixed archive is supplied.
-      // Each encrypted entry is reported explicitly; no fake password prompt is shown in React.
+    let password = options.password || '';
+    if (zipBufferHasEncryptedEntries(buffer) && !password && typeof options.passwordProvider === 'function') {
+      password = await options.passwordProvider(file);
     }
-    return zipBufferToImportEntries(buffer, { ...options, source: options.source || 'zip', excludeRepositoryInternals: true });
+    return zipBufferToImportEntries(buffer, { ...options, password, source: options.source || 'zip', excludeRepositoryInternals: true });
   }
   const bytes = new Uint8Array(await file.arrayBuffer?.() || TEXT_ENCODER.encode(await file.text?.() || ''));
   let content = null;
@@ -191,7 +204,8 @@ export async function materializeArchiveFiles(files = [], options = {}) {
   const workspaceEntries = [];
   const errors = [];
   const warnings = [];
-  const diagnostics = { sourceBoundary: 'local-archive', fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, controlCount: 0, portableChangesetCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, bootstrapDetected: false, bootstrapStrippedCount: 0, portableControlDetected: false, portableControlStrippedCount: 0, mergePreflight: null, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
+  const transport = resolveTransportPlan(options.sourceConfig || {}, 'local-import', { defaultLevel: 'TL0', allowFallback: false });
+  const diagnostics = { sourceBoundary: 'local-archive', transportLevel: transport.selectedLevel, transportOperation: transport.operation, transport, fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, controlCount: 0, portableChangesetCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, bootstrapDetected: false, bootstrapStrippedCount: 0, portableControlDetected: false, portableControlStrippedCount: 0, mergePreflight: null, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
 
   for (const file of Array.from(files || []).filter(Boolean)) {
     diagnostics.fileCount += 1;
@@ -305,9 +319,10 @@ function readCentralEntries(bytes) {
     const nameLength = zipU16(bytes, offset + 28);
     const extraLength = zipU16(bytes, offset + 30);
     const commentLength = zipU16(bytes, offset + 32);
+    const crc = zipU32(bytes, offset + 16);
     const localOffset = zipU32(bytes, offset + 42);
     const name = decodeZipName(bytes.slice(offset + 46, offset + 46 + nameLength), flag);
-    entries.push({ flag, method, compressedSize, uncompressedSize, name, localOffset, isDirectory: name.endsWith('/') });
+    entries.push({ flag, method, crc, compressedSize, uncompressedSize, name, localOffset, isDirectory: name.endsWith('/') });
     offset += 46 + nameLength + extraLength + commentLength;
   }
   return entries;
@@ -342,6 +357,40 @@ async function decompressZipEntry(compressed, method) {
   if (typeof DecompressionStream === 'undefined') throw new Error('zip.deflate.bridge-unavailable');
   const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n += 1) {
+    let c = n;
+    for (let k = 0; k < 8; k += 1) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function crc32Update(crc, byte) { return (CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8)) >>> 0; }
+function crc32Bytes(bytes) { let crc = 0xffffffff; for (const byte of bytes) crc = crc32Update(crc, byte); return (crc ^ 0xffffffff) >>> 0; }
+function zipCryptoKeys(password = '') {
+  const keys = { k0: 0x12345678 >>> 0, k1: 0x23456789 >>> 0, k2: 0x34567890 >>> 0 };
+  for (const byte of TEXT_ENCODER.encode(password)) zipCryptoUpdateKeys(keys, byte);
+  return keys;
+}
+function zipCryptoUpdateKeys(keys, byte) {
+  keys.k0 = crc32Update(keys.k0, byte);
+  keys.k1 = (Math.imul((keys.k1 + (keys.k0 & 0xff)) >>> 0, 134775813) + 1) >>> 0;
+  keys.k2 = crc32Update(keys.k2, (keys.k1 >>> 24) & 0xff);
+}
+function zipCryptoDecryptByte(keys) { const temp = (keys.k2 | 2) >>> 0; return ((Math.imul(temp, (temp ^ 1) >>> 0) >>> 8) & 0xff) >>> 0; }
+function zipCryptoDecryptBytes(bytes, password) {
+  const keys = zipCryptoKeys(password);
+  const out = new Uint8Array(bytes.byteLength);
+  for (let i = 0; i < bytes.byteLength; i += 1) {
+    const plain = bytes[i] ^ zipCryptoDecryptByte(keys);
+    out[i] = plain;
+    zipCryptoUpdateKeys(keys, plain);
+  }
+  return out;
 }
 
 function bytesFrom(value) {

@@ -22,6 +22,6 @@ Start from an empty Column surface, create a browser-local workspace, preserve v
 
 Workspace lifecycle code lives in `src/workspaces/workspace.lifecycle.js` and avoids DOM access. Persistence lives in `src/workspaces/workspace.persistence.js`. Both files have co-located Node smoke tests so the behavior can later be mapped to CLI/remote renderers without treating UI glyphs as semantics.
 
-## File-size discipline
+## Responsibility discipline
 
-Runtime orchestration in `src/app/TiinexApp.jsx` and workspace modules has a v107 ceiling of 420 lines. Future growth should move behavior to feature-local modules with adjacent tests instead of growing another monolith.
+Runtime orchestration in `src/app/TiinexApp.jsx` should stay a React wiring layer: state hooks, dialogs, shell rendering, command dispatch, and persistence commit. Source loading, local/URL import, source close, Open/Merge, lineage, export, and schema navigation belong to feature-local command/read-model modules with adjacent tests. Line count is only a smell; ownership and behavior contracts are the pass signal.

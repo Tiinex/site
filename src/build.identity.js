@@ -1,16 +1,9 @@
-export const TIINEX_SITE_CHECKPOINT = 'v322';
-export const TIINEX_SITE_VERSION = '0.2.142-v322';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v322';
-export const TIINEX_RUNTIME_ID = 'react-v322-authority-mutability-boundaries';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v322-authority-mutability-boundaries';
+export const TIINEX_SITE_CHECKPOINT = 'v383';
+export const TIINEX_SITE_VERSION = '0.2.202-v383';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v383';
+export const TIINEX_RUNTIME_ID = 'react-v383-lineage-parent-authority-correction';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v383-lineage-parent-authority-correction';
 
 export function tiinexBuildIdentity() {
-  return Object.freeze({
-    schema: 'tiinex.build.identity.v1',
-    checkpoint: TIINEX_SITE_CHECKPOINT,
-    siteVersion: TIINEX_SITE_VERSION,
-    title: TIINEX_SITE_TITLE,
-    runtimeId: TIINEX_RUNTIME_ID,
-    publicBuildSource: TIINEX_PUBLIC_BUILD_SOURCE
-  });
+  return { checkpoint: TIINEX_SITE_CHECKPOINT, siteVersion: TIINEX_SITE_VERSION, siteTitle: TIINEX_SITE_TITLE, runtimeId: TIINEX_RUNTIME_ID, publicBuildSource: TIINEX_PUBLIC_BUILD_SOURCE };
 }

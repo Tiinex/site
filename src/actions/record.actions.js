@@ -1,5 +1,5 @@
+import { isWorkspaceEntrypointArtifact, workspaceEntrypointCapability } from '../workspaces/workspace.entrypointCapability.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
-import { deleteActionLabelForRecord, isRemovableLocalRecord } from '../workspaces/workspace.authority.js';
 
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
@@ -24,7 +24,7 @@ export function presentRecordActions(record = {}, options = {}) {
   const actions = [
     {
       id: RecordActionKind.open,
-      label: 'Open details',
+      label: 'Details',
       icon: 'open',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
@@ -77,35 +77,13 @@ export function presentRecordActions(record = {}, options = {}) {
   if (isRemovableLocalDraftRecord(record)) {
     actions.push({
       id: RecordActionKind.deleteLocal,
-      label: deleteActionLabelForRecord(record),
+      label: 'Delete local draft',
       icon: 'delete',
       enabled: true,
       contract: RECORD_ACTIONS_CONTRACT_ID,
       capabilityStatus: 'implemented',
       capabilityReason: 'Only browser-local draft/session material is removed; source material is not mutated.'
     });
-  }
-  if (isWorkspaceRecord(record)) {
-    actions.push(
-      {
-        id: RecordActionKind.workspaceOpen,
-        label: 'Open',
-        icon: 'workspace',
-        enabled: true,
-        contract: RECORD_ACTIONS_CONTRACT_ID,
-        capabilityStatus: 'implemented',
-        capabilityReason: '.workspace.md can become the active workspace context'
-      },
-      {
-        id: RecordActionKind.workspaceMerge,
-        label: 'Merge',
-        icon: 'continue',
-        enabled: true,
-        contract: RECORD_ACTIONS_CONTRACT_ID,
-        capabilityStatus: 'implemented',
-        capabilityReason: '.workspace.md can be merged as workspace context without closing current work'
-      }
-    );
   }
   actions.push({
     id: RecordActionKind.share,
@@ -115,6 +93,29 @@ export function presentRecordActions(record = {}, options = {}) {
     contract: RECORD_ACTIONS_CONTRACT_ID,
     capabilityStatus: 'implemented'
   });
+  const workspaceCapability = workspaceEntrypointCapability(record);
+  if (workspaceCapability.open) {
+    actions.push({
+      id: RecordActionKind.workspaceOpen,
+      label: 'Open',
+      icon: 'workspace',
+      enabled: true,
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented',
+      capabilityReason: 'workspace entrypoint capability allows this artifact to become the active workspace context'
+    });
+  }
+  if (workspaceCapability.merge) {
+    actions.push({
+      id: RecordActionKind.workspaceMerge,
+      label: 'Merge',
+      icon: 'continue',
+      enabled: true,
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented',
+      capabilityReason: 'workspace entrypoint capability allows this artifact to merge into the current workspace context'
+    });
+  }
   return Object.freeze(actions);
 }
 
@@ -144,13 +145,16 @@ function actionAvailability(capability = {}, { fallbackUsed = false, action = ''
 }
 
 export function isRemovableLocalDraftRecord(record = {}) {
-  return Boolean(record?.id && isRemovableLocalRecord(record));
+  const source = record.source || {};
+  const sourceMode = String(record.sourceMode || '').trim().toLowerCase();
+  const status = String(record.status || record.lifecycleStatus || record.currentStatus || record.envelope?.current?.status || '').trim().toLowerCase();
+  const localSource = source.adapterId === 'local' || source.kind === 'local-session' || source.kind === 'local' || source.sourceKind === 'local.session';
+  const draftLike = sourceMode.startsWith('local-transition') || sourceMode.startsWith('local-reference') || sourceMode.startsWith('local-draft') || status === 'draft' || status === 'local' || status === 'draft/local';
+  return Boolean(localSource && draftLike && record.id);
 }
 
 export function isWorkspaceRecord(record = {}) {
-  const path = String(record.path || record.sourcePath || record.sourceTarget?.sourceArtifactPath || record.name || '').trim().toLowerCase();
-  const schema = String(record.schemaId || record.currentSchemaId || record.kind || '').trim().toLowerCase();
-  return /(?:^|\/)[^/]+\.workspace\.md$/i.test(path) || schema === 'tiinex.workspace.v1' || schema.includes('workspace');
+  return isWorkspaceEntrypointArtifact(record);
 }
 
 function recordSchemaId(record = {}) {

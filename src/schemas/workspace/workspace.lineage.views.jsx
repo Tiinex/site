@@ -7,7 +7,7 @@ import { displayRecordIncluded } from '../../workspaces/workspace.displayFilters
 import { MemoRecordCard as RecordCard } from './workspace.cards.views.jsx';
 import { compactPath } from './workspace.viewFormatting.js';
 
-export function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, lineageAuditReport = null, lineageLoadReport = null, lineageReady = false, displayOptions = null, expandedRecordIds = [], onToggleLineageCard, actionStateKey = '' }) {
+export function WorkspaceLineageState({ workspace, query = '', records = [], selectedRecordId = '', auditById = new Map(), onOpenRecord, onRecordAction, onFocusRecordLineage, onShareRecord, onOpenSchema, lineageAuditReport = null, lineageLoadReport = null, lineageReady = false, displayOptions = null, expandedRecordIds = [], onToggleLineageCard, actionStateKey = '' }) {
   const lineage = buildWorkspaceLineageView(workspace, { records, query, selectedRecordId });
   const selectedFromTraversal = selectedRecordId && lineage.selectedTraversal?.nodes?.length
     ? lineage.selectedTraversal.nodes.find((node) => node.id === selectedRecordId) || lineage.selectedTraversal.nodes[0]
@@ -35,7 +35,7 @@ export function WorkspaceLineageState({ workspace, query = '', records = [], sel
       {selected ? <>
           <LineageLoadStatus report={lineageLoadReport} selectedRecordId={selected.id} ready={lineageLoadReady} />
           <LineageAuditInlineReport report={lineageAuditReport} selectedRecordId={selected.id} />
-          <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} query={query} displayOptions={lineageLoadReady ? displayOptions : null} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onFocusRecordLineage={onFocusRecordLineage} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} actionStateKey={actionStateKey} />
+          <LineageSelectedSummary node={selected} auditItem={selectedAudit} lineage={lineage} query={query} displayOptions={lineageLoadReady ? displayOptions : null} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onShareRecord={onShareRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenSchema={onOpenSchema} auditById={auditById} expandedRecordIds={expandedRecordIds} onToggleLineageCard={onToggleLineageCard} actionStateKey={actionStateKey} />
         </> : null}
       {!selected ? (
         <details className="tx-lineage-workspace-overview" open aria-label="Workspace lineage overview">
@@ -116,7 +116,7 @@ function LineageAuditInlineReport({ report = null, selectedRecordId = '' }) {
 }
 
 
-function LineageSelectedSummary({ node, auditItem, lineage, query = '', displayOptions = null, onOpenRecord, onRecordAction, onShareRecord, onFocusRecordLineage, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard, actionStateKey = '' }) {
+function LineageSelectedSummary({ node, auditItem, lineage, query = '', displayOptions = null, onOpenRecord, onRecordAction, onShareRecord, onFocusRecordLineage, onOpenSchema, auditById = new Map(), expandedRecordIds = [], onToggleLineageCard, actionStateKey = '' }) {
   const traversal = lineage.selectedTraversal || null;
   const rawFindings = traversal?.selectedFindings?.length ? traversal.selectedFindings : (lineage.findings || []).filter((finding) => finding.nodeId === node.id);
   const selectedLineage = selectedLineageStatus(node, lineage, traversal);
@@ -153,6 +153,7 @@ function LineageSelectedSummary({ node, auditItem, lineage, query = '', displayO
                 onFocusRecordLineage={onFocusRecordLineage}
                 onShareRecord={onShareRecord}
                 onRecordAction={onRecordAction}
+                onOpenSchema={onOpenSchema}
               />
             </li>
           );

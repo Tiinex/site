@@ -10,9 +10,17 @@ const index = readFileSync(join(root,'index.html'),'utf8');
 const app = readFileSync(join(root,'src/app/TiinexApp.jsx'),'utf8');
 const appShell = readFileSync(join(root,'src/app/appShell.views.jsx'),'utf8');
 const viewport = readFileSync(join(root,'src/app/viewport.js'),'utf8');
-const appSurface = `${app}\n${appShell}\n${viewport}`;
+const localMaterialCommand = readFileSync(join(root,'src/app/localMaterialCommand.js'),'utf8');
+const defaultWorkspaceStart = readFileSync(join(root,'src/app/defaultWorkspaceStart.js'),'utf8');
+const workspaceStartupTransition = readFileSync(join(root,'src/app/workspaceStartupTransition.js'),'utf8');
+const initialWorkspaceBootstrapOperation = readFileSync(join(root,'src/app/initialWorkspaceBootstrapOperation.js'),'utf8');
+const localMaterialIntake = readFileSync(join(root,'src/app/useLocalMaterialIntake.js'),'utf8');
+const appSurface = `${app}\n${appShell}\n${viewport}\n${localMaterialCommand}`;
 const workspaceViews = readFileSync(join(root,'src/schemas/workspace/workspace.views.jsx'),'utf8');
 const workspaceAddViews = readFileSync(join(root,'src/schemas/workspace/workspace.add.views.jsx'),'utf8');
+const publicBuildDir = join(root, '.site-publish');
+const publicAssetsDir = join(publicBuildDir, 'assets');
+const publicBundleExists = existsSync(join(publicBuildDir, 'tiinex.build.json')) && existsSync(publicAssetsDir) && readdirSync(publicAssetsDir, { withFileTypes: true }).some((entry) => entry.isFile() && entry.name.endsWith('.js'));
 console.log(JSON.stringify({
   type:'tiinex.site.metrics.v119.3',
   architectureReadyForProductWork:'react-foundation-workspace-schema-companion-source-boundary-slice',
@@ -31,18 +39,19 @@ console.log(JSON.stringify({
   dockLogoLargerThanButtons: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('tx-dock-logo-large'),
   dockFitsVisibleControls: readFileSync(join(root,'src/styles/app.css'),'utf8').includes('/* v119.3 dock ergonomics:') && readFileSync(join(root,'src/styles/app.css'),'utf8').includes('display: inline-flex !important;'),
   workspacePagerSizeGated: appSurface.includes('shouldPageWorkspaces') && appSurface.includes('data-overflow-pager'),
-  publicBuildBundled:true,
-  publicRuntime:'vite-react-bundle',
+  publicBuildBundled: publicBundleExists,
+  publicRuntime: publicBundleExists ? 'vite-react-bundle' : 'not-built',
   fontAwesomePrimitive: readFileSync(join(root,'src/ui/primitives/Icon.jsx'),'utf8').includes('@fortawesome/react-fontawesome'),
   schemaCompanionAware: appSurface.includes('schemaRegistry') && workspaceViews.includes('data-schema-id="tiinex.workspace.v1"'),
   workspaceSchemaCompanion: existsSync(join(root,'src/schemas/workspace/tiinex.workspace.v1.schema.js')),
   oldLikeAddFlow: workspaceAddViews.includes('AddToWorkspaceDialog') && workspaceAddViews.includes('Manual files') && workspaceAddViews.includes('GitHub source'),
-  localMarkdownIntake: app.includes('materializeLocalMarkdownFiles') && app.includes('applyLocalAdapterResultToWorkspace'),
+  localMarkdownIntake: localMaterialCommand.includes('materializeLocalMarkdownFiles') && localMaterialCommand.includes('applyLocalAdapterResultToWorkspace') && localMaterialIntake.includes('runLocalMaterialImportCommand') && app.includes('useLocalMaterialIntake'),
   githubSourceRegistrationFlow: app.includes('addGitHubSource') && app.includes('addWorkspaceSource'),
   columnOnlyRuntimeVerse:true,
   workspaceMapVerseRuntime:false,
   plannedMapAtlasOnly:true,
   uc001EmptyStart:true,
+  uc001DefaultBootstrapPath: app.includes('runWorkspaceStartupTransition') && workspaceStartupTransition.includes('runInitialWorkspaceBootstrapOperation') && initialWorkspaceBootstrapOperation.includes('prepareDefaultWorkspaceStartCommand') && defaultWorkspaceStart.includes('DEFAULT_WORKSPACE_START_ID') && !appShell.includes('Start from Tiinex docs'),
   uc001CreateWorkspace:true,
   uc001WorkspaceNameRequired:true,
   uc001HashState:true,

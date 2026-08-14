@@ -8,7 +8,9 @@ export function declaredParentBindingTargetValuesForNode(node = {}, rawTarget = 
     record?.snapshot?.parentRawUrl,
     record?.snapshot?.parentSourceUrl,
     record?.sourceTarget?.parentArtifactPath,
-    record?.snapshot?.parentArtifactPath
+    record?.snapshot?.parentArtifactPath,
+    record?.parentOrigin,
+    record?.origin
   ];
   const out = [];
   const seen = new Set();

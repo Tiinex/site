@@ -12,9 +12,13 @@ const workspaceViews = readFileSync(join(root, 'src/schemas/workspace/workspace.
 const workspaceModule = readFileSync(join(root, 'src/schemas/workspace/tiinex.workspace.v1.schema.js'), 'utf8');
 const workspaceI18n = readFileSync(join(root, 'src/schemas/workspace/tiinex.workspace.v1.en.i18n.json'), 'utf8');
 const lifecycle = readFileSync(join(root, 'src/workspaces/workspace.lifecycle.js'), 'utf8');
+const configuredSource = readFileSync(join(root, 'src/workspaces/workspace.configuredSource.js'), 'utf8');
+const localSourceLifecycle = readFileSync(join(root, 'src/workspaces/workspace.localSourceLifecycle.js'), 'utf8');
+const sourceRecords = readFileSync(join(root, 'src/workspaces/workspace.sourceRecords.js'), 'utf8');
+const statePersistenceScheduler = readFileSync(join(root, 'src/app/statePersistenceScheduler.js'), 'utf8');
 const persistence = readFileSync(join(root, 'src/workspaces/workspace.persistence.js'), 'utf8');
 const config = readFileSync(join(root, 'src/workspaces/workspace.config.js'), 'utf8');
-const uiSource = `${app}\n${appShell}\n${viewport}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n}\n${lifecycle}`;
+const uiSource = `${app}\n${appShell}\n${viewport}\n${workspaceViews}\n${workspaceModule}\n${workspaceI18n}\n${lifecycle}\n${localSourceLifecycle}\n${statePersistenceScheduler}`;
 function expect(text, needle, label) { if (!text.includes(needle)) failures.push(label); }
 function reject(text, needle, label) { if (text.includes(needle)) failures.push(label); }
 
@@ -25,13 +29,13 @@ function expectRegex(text, regex, label) { if (!regex.test(text)) failures.push(
 expectRegex(lifecycle, /function\s+createWorkspace[\s\S]*?sources\s*:\s*\[\s*makeLocalSource\(/, 'createWorkspace must initialize local pinned source');
 
 // Ensure local pinned source does NOT include discoveryState (only configured sources get discoveryState)
-const makeLocalMatch = lifecycle.match(/function\s+makeLocalSource\([\s\S]*?return\s*{([\s\S]*?)};/);
+const makeLocalMatch = localSourceLifecycle.match(/export\s+function\s+makeLocalSource\([\s\S]*?return\s*{([\s\S]*?)};/);
 if (!makeLocalMatch) failures.push('makeLocalSource function must exist');
 else if (/discoveryState/.test(makeLocalMatch[1])) failures.push('local pinned source must not include discoveryState');
 
-// Ensure configured source factory exists and includes canonical fields + discoveryState default
-const makeConfiguredMatch = lifecycle.match(/function\s+makeConfiguredSource\([\s\S]*?return\s*{([\s\S]*?)};/);
-if (!makeConfiguredMatch) failures.push('makeConfiguredSource function must exist');
+// Ensure configured source factory remains bounded and includes canonical fields + discoveryState default
+const makeConfiguredMatch = configuredSource.match(/export\s+function\s+makeConfiguredSource\([\s\S]*?return\s*{([\s\S]*?)};/);
+if (!makeConfiguredMatch) failures.push('makeConfiguredSource function must exist in configured-source owner');
 else {
   const cfgBody = makeConfiguredMatch[1];
   const requiredFields = ['id', 'kind', 'label', 'repo', 'ref', 'rootPath', 'count', 'boundary', 'transportLabel', 'closeable', 'discoveryState'];
@@ -39,11 +43,11 @@ else {
     const regex = new RegExp('(?:' + f + '\\s*:|\\b' + f + '\\b\\s*(?:,|$))');
     if (!regex.test(cfgBody)) failures.push(`configured source must include ${f}`);
   }
-  if (!/discoveryState\s*:\s*normalizeSourceDiscoveryState\(input\.discoveryState,\s*["']deferred["']\)/.test(cfgBody)) failures.push('configured source must normalize discoveryState and default to "deferred"');
+  if (!/normalizeSourceDiscoveryState\s*\?\s*runtime\.normalizeSourceDiscoveryState\(input\.discoveryState,\s*["']deferred["']\)/.test(configuredSource)) failures.push('configured source must normalize discoveryState through lifecycle-owned finite state contract');
 }
-expectRegex(lifecycle, /const\s+SOURCE_STATES\s*=\s*new\s+Set\([\s\S]*["']deferred["'][\s\S]*["']loaded["'][\s\S]*\)/, 'source discovery states must be finite and include loaded/deferred');
+expectRegex(lifecycle, /SOURCE_STATES\s*=\s*new\s+Set\([\s\S]*["']deferred["'][\s\S]*["']loaded["'][\s\S]*\)/, 'source discovery states must be finite and include loaded/deferred');
 expectRegex(lifecycle, /function\s+normalizeSourceDiscoveryState/, 'source discovery state normalization must be lifecycle-owned');
-expectRegex(lifecycle, /addWorkspaceSourceRecords[\s\S]*discoveryState\s*:\s*normalizeSourceDiscoveryState\(options\.discoveryState\s*\|\|\s*["']loaded["'],\s*["']loaded["']\)/, 'source-backed material insertion must mark materialized source as loaded');
+expectRegex(sourceRecords, /discoveryState\s*:\s*runtime\.normalizeSourceDiscoveryState\(options\.discoveryState\s*\|\|\s*["']loaded["'],\s*["']loaded["']\)/, 'source-backed material insertion must mark materialized source as loaded');
 reject(app, "discoveryState: 'resolved'", 'React app must not write non-canonical source discoveryState "resolved"');
 reject(app, 'discoveryState: "resolved"', 'React app must not write non-canonical source discoveryState "resolved"');
 
@@ -59,8 +63,8 @@ expect(lifecycle, 'SESSION_SOURCE_KIND', 'local/session source kind must remain 
 expect(lifecycle, 'no source files or GitHub provenance inferred', 'local workspace must not guess GitHub provenance');
 expect(persistence, 'readInitialState', 'hash restore must be persistence-owned');
 expect(persistence, 'readStoredState', 'localStorage must remain cache/mirror, not clean-url bootstrap');
-expect(app, 'persistence?.readInitialState', 'React app must restore from hash');
-expect(app, 'persistence?.clearState', 'closing last workspace must clean URL/storage state');
+expect(app, 'persistence?.resolveInitialState', 'React app route navigation must use semantic route resolution');
+expect(statePersistenceScheduler, 'persistence.clearState?.', 'closing last workspace must clean URL/storage state through persistence scheduler');
 expect(uiSource, 'createWorkspace(name)', 'create dialog must use lifecycle createWorkspace');
 expect(uiSource, 'Workspace name is required.', 'create dialog must expose required name validation');
 expect(uiSource, 'Clean start restored.', 'close last workspace must restore clean start');
@@ -70,8 +74,8 @@ expect(app, 'href="https://github.com/Tiinex"', 'footer must be visible and link
 expect(uiSource, 'data-flow="old-like-add-menu"', 'old-like Add flow must be owned by workspace schema companions');
 expect(uiSource, 'closeWorkspaceSource', 'explicit source close must use lifecycle');
 expect(workspaceModule, "id: 'tiinex.workspace.v1'", 'workspace schema companion module must be registered near schema');
-expect(uiSource, 'count <= 1', 'pager arrows must only render for multiple workspaces');
-expect(uiSource, 'shouldPageWorkspaces', 'pager arrows must be viewport-size gated');
+expect(uiSource, 'const showPager = Boolean(hasWorkspace && pagerVisible)', 'pager visibility must be driven by workspace overflow state, not workspace-count trimming');
+expect(uiSource, 'shouldPageWorkspaces', 'pager arrows must be gated by workspace count versus viewport capacity');
 reject(app, 'localStorage.getItem', 'React app must not bootstrap directly from stale localStorage');
 reject(uiSource, 'Create your first workspace', 'UC-001 must not use onboarding-card copy');
 reject(uiSource, 'actionButton', 'React UC-001 must not depend on legacy actionButton renderer');

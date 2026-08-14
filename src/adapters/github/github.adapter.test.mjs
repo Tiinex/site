@@ -152,8 +152,9 @@ assert.equal(issueLoaded.diagnostics.surfaces.repoFiles.loaded, 0, 'issue target
 assert.equal(issueLoaded.diagnostics.recordAttribution[0].surface, 'issueSnapshots', 'issue targets must claim issueSnapshots attribution');
 assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.requested, true, 'normalized source plan should preserve requested issue surface');
 assert.equal(issueLoaded.diagnostics.sourcePlan.surfaces.issueSnapshots.attempted, true, 'normalized source plan should preserve attempted issue surface');
-assert(issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.proxy.ok'), 'default issue reader should expose GitHub API issue reads as the proxy tier');
-assert(!issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueApi && event.code === 'github.transport.direct.ok'), 'default issue reader must not label GitHub API reads as direct');
+assert(issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueListApi && event.code === 'github.transport.proxy.ok'), 'broad issue discovery should expose its GitHub API list read as the proxy tier even when an explicit target is also included');
+assert(!issueLoaded.diagnostics.transportEvents.some((event) => event.url === issueListApi && event.code === 'github.transport.direct.ok'), 'broad discovery must not label GitHub API reads as direct');
+assert.equal(issueLoaded.diagnostics.issueSnapshotDiscovery.unionTargets, 1, 'broad + explicit duplicate target should dedupe to one issue');
 
 const issueUrlAsExplicitFile = await materializeGithubSource(source, { repoDiscovery: false, fileRefs: ['https://github.com/owner/repo/issues/1'], issueDiscovery: false, issueUrls: '' }, { fetchImpl });
 assert.equal(issueUrlAsExplicitFile.okCount, 0, 'issue URL in explicit file surface must not become a repo file');
@@ -214,7 +215,7 @@ assert(discoveryBudgetBlocked.warnings.some((warning) => warning.code === 'trans
 const proxyIssueCalls = [];
 const proxyIssueLoaded = await materializeGithubSource(
   source,
-  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { issueDiscovery: false, issueUrls: 'https://github.com/owner/repo/issues/1' },
   { fetchImpl: async () => { throw new Error('direct fetch must not run for configured proxy issue test'); }, proxyFetchImpl: makeFetch(map, proxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
 );
 assert.equal(proxyIssueLoaded.records.length, 1, 'explicit proxy transport should read issue snapshots through the GitHub issue API tier');
@@ -236,7 +237,7 @@ function makeNativeResponseFetch(map, called = []) {
 const nativeProxyIssueCalls = [];
 const nativeProxyIssueLoaded = await materializeGithubSource(
   source,
-  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { issueDiscovery: false, issueUrls: 'https://github.com/owner/repo/issues/1' },
   { fetchImpl: async () => { throw new Error('direct fetch must not run for configured native proxy issue test'); }, proxyFetchImpl: makeNativeResponseFetch(map, nativeProxyIssueCalls), preferredTransports: ['proxy'], transportOrderExact: true }
 );
 assert.equal(nativeProxyIssueLoaded.records.length, 1, 'explicit proxy transport should work with native Fetch Response objects');
@@ -342,7 +343,7 @@ assert(!directStaticCalls.some((url) => url.includes('api.github.com')), 'direct
 const mirrorIssueFallbackCalls = [];
 const mirrorIssueFallbackLoaded = await materializeGithubSource(
   source,
-  { issueDiscovery: true, issueUrls: 'https://github.com/owner/repo/issues/1' },
+  { issueDiscovery: false, issueUrls: 'https://github.com/owner/repo/issues/1' },
   { fetchImpl: makeFetch(map, mirrorIssueFallbackCalls), preferredTransports: ['mirror'], transportOrderExact: true, hostedIssueSnapshotBaseUrls: ['https://viewer.example/missing/'] }
 );
 assert.equal(mirrorIssueFallbackLoaded.records.length, 1, 'issue snapshots should fall back from hosted mirror to the next issue transport');

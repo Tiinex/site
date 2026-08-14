@@ -180,6 +180,8 @@ const parentSourceArtifactMaterialized = materializeGithubIssueSnapshotFixtures(
 const parentSourceArtifactRecord = parentSourceArtifactMaterialized.records.find((item) => item.title === 'Fler bondgårdar');
 assert.equal(parentSourceArtifactRecord.sourceTarget.parentArtifactPath, 'comment-002-5011116876-recovered-klagomuren.trace.md', 'embedded comment recovery keeps legacy Parent Artifact Path');
 assert.equal(parentSourceArtifactRecord.sourceTarget.parentSourceUrl, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'embedded comment recovery preserves Source Artifact URL as parent provenance fallback');
+assert.notEqual(parentSourceArtifactRecord.sourceTarget.sourceArtifactPath, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'legacy Source Artifact URL is parent provenance, not the recovered child artifact identity/path');
+assert.match(parentSourceArtifactRecord.path, /fler-bondg-rdar|fler-bondgardar/i, 'legacy Source Artifact parent URL must not replace the child artifact material path');
 
 const parentTargetFallbackMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinusen/socials/issues/3', {
   'https://github.com/Tiinusen/socials/issues/3': {
@@ -232,6 +234,65 @@ const parentTargetFallbackMaterialized = materializeGithubIssueSnapshotFixtures(
 });
 const parentTargetFallbackRecord = parentTargetFallbackMaterialized.records.find((item) => item.title === 'Fler bondgårdar');
 assert.equal(parentTargetFallbackRecord.sourceTarget.parentSourceUrl, 'https://github.com/Tiinusen/socials/issues/3#issuecomment-5011116876', 'create-continuation issue comments may use Boundary Target as parent provenance when older payloads lack explicit parent source URL');
+
+
+const multiIssueBodyMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinusen/socials/issues/7', {
+  'https://github.com/Tiinusen/socials/issues/7': {
+    title: 'Multi payload issue',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-08-08T00:00:00.000Z',
+    body: [
+      'GitHub presentation before multiple Tiinex payloads.',
+      '',
+      '## Source Markdown',
+      '',
+      '```md',
+      embeddedChild.replace('Embedded Feedback', 'Issue Body First'),
+      '```',
+      '',
+      '## Source Markdown',
+      '',
+      '```md',
+      embeddedChild.replace('Embedded Feedback', 'Issue Body Second'),
+      '```'
+    ].join('\n')
+  }
+});
+assert.equal(multiIssueBodyMaterialized.records.length, 2, 'issue body can contain multiple embedded Tiinex artifacts; materializer must not keep only the first payload');
+assert.deepEqual([...multiIssueBodyMaterialized.records.map((record) => record.title)].sort(), ['Issue Body First', 'Issue Body Second']);
+assert.notEqual(multiIssueBodyMaterialized.records[0].path, multiIssueBodyMaterialized.records[1].path, 'multiple embedded records from one issue body need distinct artifact paths/ids');
+
+const multiCommentMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinusen/socials/issues/8', {
+  'https://github.com/Tiinusen/socials/issues/8': {
+    title: 'Multi comment payload issue',
+    state: 'open',
+    user: { login: 'q' },
+    created_at: '2026-08-08T00:00:00.000Z',
+    body: 'plain issue body',
+    comments: [{
+      id: 7771,
+      html_url: 'https://github.com/Tiinusen/socials/issues/8#issuecomment-7771',
+      user: { login: 'q' },
+      body: [
+        '## Source Markdown',
+        '',
+        '```md',
+        embeddedChild.replace('Embedded Feedback', 'Comment Payload One'),
+        '```',
+        '',
+        '## Source Markdown',
+        '',
+        '```md',
+        embeddedChild.replace('Embedded Feedback', 'Comment Payload Two'),
+        '```'
+      ].join('\n')
+    }]
+  }
+});
+assert.equal(multiCommentMaterialized.records.length, 3, 'plain issue evidence plus two comment-embedded artifacts should all survive materialization');
+assert(multiCommentMaterialized.records.some((record) => record.title === 'Comment Payload One'));
+assert(multiCommentMaterialized.records.some((record) => record.title === 'Comment Payload Two'));
 
 const detailsEmbeddedMaterialized = materializeGithubIssueSnapshotFixtures('https://github.com/Tiinex/docs/issues/9', {
   'https://github.com/Tiinex/docs/issues/9': {
@@ -394,8 +455,8 @@ assert.equal(commentRecovered.length, 2, 'both embedded comment payloads should 
 assert.notEqual(commentRecovered[0].path, commentRecovered[1].path, 'comment recovered artifacts must not share one material path');
 assert(commentRecovered.every((record) => record.sourceTarget.sourceArtifactPath && record.sourceTarget.sourceArtifactPath === record.path), 'embedded source target must expose the material path used for lifecycle identity');
 assert(commentRecovered.every((record) => /#issuecomment-500[12]$/.test(record.sourceTarget.inputTarget)), 'comment embedded records must keep comment URL anchors as provenance');
-assert(commentRecovered.some((record) => /recovered-comment-one\.trace\.md$/.test(record.path)), 'comment recovered material path should use the embedded artifact title, not the envelope heading');
-assert(commentRecovered.some((record) => /recovered-comment-two\.trace\.md$/.test(record.path)), 'each comment recovered material path should remain title-addressable for issue-local lineage aliases');
+assert(commentRecovered.some((record) => /001-comment-one\.trace\.md$/.test(record.path)), 'comment recovered material path should use the embedded artifact title, not the envelope heading');
+assert(commentRecovered.some((record) => /002-comment-two\.trace\.md$/.test(record.path)), 'each comment recovered material path should remain title-addressable for issue-local lineage aliases');
 
 
 const syntheticIssuePaths = createGithubIssueSnapshotRecords({
@@ -411,6 +472,6 @@ const syntheticIssuePaths = createGithubIssueSnapshotRecords({
   }]
 });
 assert(syntheticIssuePaths.every((record) => String(record.path || '').startsWith('.topics/.github/tiinex/docs/.issues/9/')), 'issue/comment material without an explicit Source Path should live under the logical .topics/.github/<owner>/<repo>/.issues scope');
-assert(syntheticIssuePaths.some((record) => /comment-001-4881782365-recovered-silicon-valley\.trace\.md$/.test(record.path)), 'comment recovered artifacts should preserve comment id and title under the logical issue scope');
+assert(syntheticIssuePaths.some((record) => /001-silicon-valley\.trace\.md$/.test(record.path)), 'comment recovered artifacts should use dimension-prefixed canonical filenames under the logical issue scope');
 
 console.log('github.issueSnapshot: ok');

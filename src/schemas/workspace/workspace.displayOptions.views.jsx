@@ -64,8 +64,8 @@ export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery'
               <input id="displaySupportingMarkdown" type="checkbox" checked={draft.showSupportingMarkdown} onChange={(event) => setFlag('showSupportingMarkdown', event.target.checked)} />
             </label>
             <label className="tx-display-option-row">
-              <span><strong>Workspace candidates</strong><small>{Number(counts.workspaceCandidates || 0)} candidate{Number(counts.workspaceCandidates || 0) === 1 ? '' : 's'} · open/merge stays explicit</small></span>
-              <input type="checkbox" checked={draft.showWorkspaceCandidates} onChange={(event) => setFlag('showWorkspaceCandidates', event.target.checked)} />
+              <span><strong>Workspace artifacts</strong><small>{Number(counts.workspaceArtifacts || 0)} artifact{Number(counts.workspaceArtifacts || 0) === 1 ? '' : 's'} · Open/Merge remain artifact capabilities</small></span>
+              <input type="checkbox" checked={draft.showWorkspaceArtifacts} onChange={(event) => setFlag('showWorkspaceArtifacts', event.target.checked)} />
             </label>
             <label className="tx-display-option-row">
               <span><strong>Assets</strong><small>{Number(counts.assets || 0)} asset{Number(counts.assets || 0) === 1 ? '' : 's'} · hidden by default, never fake leaves</small></span>

@@ -1,4 +1,8 @@
 import{canonicalizeSourceRecordPath}from'./workspace.sourceRecordPath.js';
+import{clearLocalSourceBoundary,countLocalRecords,isLocalSessionMaterial,makeLocalSource,makeLocalSourceForWorkspace as localSourceFor}from'./workspace.localSourceLifecycle.js';
+import{reconcileLocalRecordWithSourceBackedWorkspace,restoreLocalShadowForRemovedSource,restoreLocalSnapshotsForRemovedSourceRecord}from'./workspace.materialReconciliation.js';
+import{addWorkspaceSourceRecordsWithReconciliation}from'./workspace.sourceRecords.js';
+import{makeConfiguredSource as configuredSource}from'./workspace.configuredSource.js';
 (function attachWorkspaceLifecycle(global) {
 const WORKSPACE_NAME_MAX_LENGTH=72,RECORD_TITLE_MAX_LENGTH=96,RECORD_SUMMARY_MAX_LENGTH=280,SESSION_SOURCE_KIND='local-session',CONFIGURED_SOURCE_KIND='github-tree',GITHUB_ADAPTER_ID='github',GITHUB_REPO_SOURCE_KIND='github.repo',SOURCE_STATES=new Set(['not-started','deferred','loading','loaded','partial','failed','unavailable']);
 function nowIso(clock){return typeof clock==='function'?clock():new Date().toISOString();}
@@ -41,7 +45,6 @@ const slug = normalizeRecordTitle(title)
 const stamp = String(createdAt || nowIso()).replace(/[^0-9]/g, '').slice(0, 17) || 'session';
 return `${workspaceId || 'workspace'}-${slug}-${stamp}`;
 }
-function countLocalRecords(workspace={}){return(Array.isArray(workspace.records)?workspace.records:[]).filter((record)=>{const source=record&&record.source;return !source||source.kind===SESSION_SOURCE_KIND||source.adapterId==='local';}).length;}
 function makeEmptyAppState() {
 return {
 version: 1,
@@ -57,7 +60,7 @@ if (!name) return { ok: false, error: 'workspace.name.required', state };
 const createdAt = nowIso(options.clock), id = input.id || makeWorkspaceId(name, createdAt);
 const workspace = { id, name, title: name, createdAt, kind: 'workspace', source: makeSessionSource(), sources: [makeLocalSource()], sourceOrder: ['local'], discoveryProgress: null, records: [], assets: [], importLog: [], mode: 'feed' };
 const next = cloneState(state);
-next.workspaces = [workspace].concat(next.workspaces.filter((item) => item.id !== workspace.id));
+next.workspaces = next.workspaces.filter((item) => item.id !== workspace.id).concat(workspace);
 next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, workspace, state: next };
@@ -93,16 +96,22 @@ if (existingIndex >= 0) {
 workspace.records = workspace.records.slice();
 workspace.records[existingIndex] = record;
 } else {
+const reconciled = reconcileLocalRecordWithSourceBackedWorkspace(workspace, record);
+if (reconciled?.reconciled) {
+workspace.sources=ensureWorkspaceSources(workspace);upsertSource(workspace,localSourceFor(workspace));
+next.activeWorkspaceId = workspace.id;
+next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
+return { ok: true, record: reconciled.record, localSnapshotRecord: record, reconciliationAction: reconciled.action, workspace, state: next };
+}
 workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
 }
-workspace.sources = ensureWorkspaceSources(workspace);
-upsertSource(workspace, makeLocalSource({ count: countLocalRecords(workspace) }));
+workspace.sources=ensureWorkspaceSources(workspace);upsertSource(workspace,localSourceFor(workspace));
 next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, record, workspace, state: next };
 }
 
-function removableLocalSessionRecord(r){const s=r&&r.source||{},m=String(r&&r.sourceMode||'').toLowerCase(),st=String(r&&(r.status||r.lifecycleStatus||r.currentStatus)||'').toLowerCase(),l=s.sourceBacked===false||s.adapterId==='local'||s.kind===SESSION_SOURCE_KIND||s.kind==='local'||s.sourceKind==='local.session'||s.sourceKind==='export.package.import',d=/^local-(transition|reference|draft)/.test(m)||st==='draft'||st==='local'||st==='draft/local',i=/^(package-import|archive-local|local-import)/.test(m)||s.sourceKind==='export.package.import'||s.adapterId==='export-package'||r.packageImport===true;return!!(l&&(d||i));}
+function removableLocalSessionRecord(record){const source=record&&record.source||{};const sourceMode=String(record&&record.sourceMode||'').trim().toLowerCase();const status=String(record&&(record.status||record.lifecycleStatus||record.currentStatus)||'').trim().toLowerCase();const localSource=source.adapterId==='local'||source.kind===SESSION_SOURCE_KIND||source.kind==='local'||source.sourceKind==='local.session';const draftLike=sourceMode.startsWith('local-transition')||sourceMode.startsWith('local-reference')||sourceMode.startsWith('local-draft')||status==='draft'||status==='local'||status==='draft/local';return Boolean(localSource&&draftLike);}
 function removeWorkspaceRecord(state,workspaceId,recordId){
 const next=cloneState(state);
 const targetId=workspaceId||next.activeWorkspaceId;
@@ -115,8 +124,7 @@ const record=records.find((item)=>String(item&&item.id||'')===cleanId)||null;
 if(!record)return{ok:false,error:'record.not.found',state};
 if(!removableLocalSessionRecord(record))return{ok:false,error:'record.remove.refused',state};
 workspace.records=records.filter((item)=>String(item&&item.id||'')!==cleanId);
-workspace.sources=ensureWorkspaceSources(workspace);
-upsertSource(workspace,makeLocalSource({count:countLocalRecords(workspace)}));
+workspace.sources=ensureWorkspaceSources(workspace);upsertSource(workspace,localSourceFor(workspace));
 if(String(next.view?.selectedRecordId||'')===cleanId)next.view=Object.assign({},next.view||{},{selectedRecordId:'',lineageAuditReport:null,lineageLoadReport:null});
 next.activeWorkspaceId=workspace.id;
 return{ok:true,record,workspace,state:next};
@@ -148,7 +156,7 @@ for (const input of assets) {
 const canonicalPath = canonicalizeLocalPath(input.path || input.name || 'asset');
 if (!canonicalPath) continue;
 const id = input.id || `asset:${workspace.id}:${canonicalPath}`;
-const asset = {
+const asset = Object.assign({}, input, {
 schema: input.schema || 'tiinex.local.asset.v1',
 id,
 path: canonicalPath,
@@ -158,9 +166,13 @@ size: Number(input.size || 0),
 content: input.content || '',
 dataUrl: input.dataUrl || '',
 sourceMode: input.sourceMode || 'local-asset',
-source: input.source || makeSessionSource(),
-createdAt: input.createdAt || nowIso(options.clock).slice(0, 10)
-};
+source: makeSessionSource(),
+createdAt: input.createdAt || nowIso(options.clock).slice(0, 10),
+assetBoundary: 'local-asset-store',
+materialAvailability: input.materialAvailability || (input.content || input.dataUrl ? 'local-available' : 'local-metadata-only'),
+publicAvailability: 'not-public',
+boundary: 'browser-local asset availability; not source or public truth'
+});
 const idx = existing.findIndex((item) => item.id === id || canonicalizeLocalPath(item.path || '') === canonicalPath);
 if (idx >= 0) existing[idx] = asset;
 else existing.unshift(asset);
@@ -169,6 +181,8 @@ added.push(asset);
 workspace.assets = existing;
 workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
 if (added.length) workspace.importLog.unshift({ kind: 'assets', count: added.length, at: nowIso(options.clock) });
+workspace.sources = ensureWorkspaceSources(workspace);
+upsertSource(workspace, localSourceFor(workspace));
 next.activeWorkspaceId = workspace.id;
 return { ok: Boolean(added.length), assets: added, workspace, state: next, error: added.length ? '' : 'assets.empty' };
 }
@@ -199,26 +213,30 @@ boundary: 'browser-local workspace file; no GitHub provenance inferred'
 }
 };
 const next = cloneState(state);
-next.workspaces = [workspace].concat((next.workspaces || []).filter((item) => item.id !== workspace.id));
+next.workspaces = (next.workspaces || []).filter((item) => item.id !== workspace.id).concat(workspace);
 next.activeWorkspaceId = workspace.id;
 next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
 return { ok: true, workspace, state: next };
 }
-function mergeWorkspaceImport(state, workspaceId, workspaceEntry = {}, options = {}) {
+function mergeWorkspaceArtifactContext(state, workspaceId, workspaceEntry = {}, options = {}) {
 const next = cloneState(state);
 const workspace = next.workspaces.find((item) => item.id === (workspaceId || next.activeWorkspaceId));
 if (!workspace) return { ok: false, error: 'workspace.not.found', state };
 const path = canonicalizeLocalPath(workspaceEntry.path || 'workspace.workspace.md') || 'workspace.workspace.md';
-const candidate = Object.assign({}, workspaceEntry, { id: workspaceEntry.id || `workspace-candidate:local:${path}`, path, mergedAt: nowIso(options.clock) });
+const mergedAt = nowIso(options.clock);
+const merged = Object.assign({}, workspaceEntry, { path, mergedAt, mergeMode: 'artifact-context', mergedIntoWorkspaceId: workspace.id || '', mergedIntoWorkspaceTitle: workspace.title || workspace.name || '' });
+workspace.workspaceMergedEntries = Array.isArray(workspace.workspaceMergedEntries) ? workspace.workspaceMergedEntries.slice() : [];
+const idx = workspace.workspaceMergedEntries.findIndex((item) => canonicalizeLocalPath(item.path || '') === path);
+if (idx >= 0) workspace.workspaceMergedEntries[idx] = merged;
+else workspace.workspaceMergedEntries.unshift(merged);
 workspace.importLog = Array.isArray(workspace.importLog) ? workspace.importLog : [];
-workspace.importLog.unshift({ kind: 'workspace-merge-candidate', path, title: candidate.title || '', at: candidate.mergedAt });
-const existing = Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates.slice() : [];
-const idx = existing.findIndex((item) => canonicalizeLocalPath(item.path || '') === path || item.id === candidate.id);
-if (idx >= 0) existing[idx] = candidate;
-else existing.unshift(candidate);
-workspace.workspaceMergeCandidates = existing;
+workspace.importLog.unshift({ kind: 'workspace-artifact-merge', path, title: merged.title || '', at: mergedAt });
 next.activeWorkspaceId = workspace.id;
-return { ok: true, workspace, state: next };
+return { ok: true, workspace, state: next, entry: merged, merge: { mode: 'artifact-context', targetWorkspaceId: workspace.id || '', targetWorkspaceTitle: workspace.title || workspace.name || '' } };
+}
+// Compatibility alias for older callers/checkpoints. Canonical runtime material remains record-based.
+function mergeWorkspaceImport(state, workspaceId, workspaceEntry = {}, options = {}) {
+return mergeWorkspaceArtifactContext(state, workspaceId, workspaceEntry, options);
 }
 function workspaceTitleFromMarkdown(markdown = '') {
 const text = String(markdown || '');
@@ -231,58 +249,7 @@ function stripMarkdown(value = '') {
 return String(value || '').replace(/^\[([^\]]+)\]\([^)]*\)$/, '$1').trim();
 }
 function addWorkspaceSourceRecords(state, workspaceId, sourceId, inputs = [], options = {}) {
-const records = Array.isArray(inputs) ? inputs : [];
-let next = cloneState(state);
-const targetId = workspaceId || next.activeWorkspaceId;
-const workspace = next.workspaces.find((item) => item.id === targetId);
-if (!workspace) return { ok: false, error: 'workspace.not.found', state };
-const existingSource = Array.isArray(workspace.sources) ? workspace.sources.find((s) => s.id === sourceId) : null;
-if (!existingSource) return { ok: false, error: 'source.not.found', state };
-if (existingSource.kind !== CONFIGURED_SOURCE_KIND) return { ok: false, error: 'source.not.configured', state };
-const added = [];
-for (const input of records) {
-const title = normalizeRecordTitle(input.title || input.name);
-if (!title) continue;
-const createdAt = nowIso(options.clock);
-const canonicalPath = canonicalizeSourceRecordPath(input, existingSource);
-const deterministicId = `source:${existingSource.id}:${canonicalPath || 'root'}`;
-const existingIndex = Array.isArray(workspace.records)
-? workspace.records.findIndex((r) => r.id === deterministicId || (r.source && r.source.id === existingSource.id && String(r.path || '').trim() === canonicalPath))
-: -1;
-const record = Object.assign({}, input, {
-id: deterministicId,
-title,
-summary: normalizeRecordSummary(input.summary || input.body || 'Source-backed material added in Tiinex.'),
-kind: input.kind || 'local.material',
-status: input.status || 'local',
-createdAt: input.createdAt || createdAt.slice(0, 10),
-path: canonicalPath || '',
-markdown: input.markdown || '',
-sourceMode: input.sourceMode || 'source-backed',
-hasContinuityContext: Boolean(input.hasContinuityContext),
-hasIntegrity: Boolean(input.hasIntegrity),
-source: Object.assign({}, existingSource)
-});
-if (existingIndex >= 0) {
-workspace.records = workspace.records.slice();
-workspace.records[existingIndex] = record;
-} else {
-workspace.records = [record].concat(Array.isArray(workspace.records) ? workspace.records : []);
-}
-added.push(record);
-}
-if (!added.length) return { ok: false, error: 'records.empty', state };
-const count = workspace.records.filter((r) => r.source && r.source.id === existingSource.id).length;
-const materializedSource = Object.assign({}, existingSource, {
-count,
-discoveryState: normalizeSourceDiscoveryState(options.discoveryState || 'loaded', 'loaded')
-});
-workspace.sources = ensureWorkspaceSources(workspace);
-upsertSource(workspace, materializedSource);
-next.activeWorkspaceId = workspace.id;
-if (!options.preserveView) next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '' }, next.view || {}, { workspaceVerse: 'feed' });
-const finalWorkspace = activeWorkspace(next);
-return { ok: true, records: added, workspace: finalWorkspace, state: next };
+return addWorkspaceSourceRecordsWithReconciliation(state,workspaceId,sourceId,inputs,options,{cloneState,activeWorkspace,nowIso,normalizeRecordTitle,normalizeRecordSummary,normalizeSourceDiscoveryState,canonicalizeSourceRecordPath,CONFIGURED_SOURCE_KIND,ensureWorkspaceSources,upsertSource});
 }
 function addWorkspaceSource(state, workspaceId, input = {}, options = {}) {
 const next = cloneState(state);
@@ -296,21 +263,7 @@ workspace.discoveryProgress = input.progress ? sourceProgress(input.progress || 
 next.activeWorkspaceId = workspace.id;
 return { ok: true, source, workspace, state: next };
 }
-function closeWorkspaceSource(state, workspaceId, sourceId) {
-const next = cloneState(state);
-const targetId = workspaceId || next.activeWorkspaceId;
-const workspace = next.workspaces.find((item) => item.id === targetId);
-if (!workspace) return { ok: false, error: 'workspace.not.found', state };
-const cleanId = String(sourceId || '').trim();
-if (!cleanId || cleanId === 'local') return { ok: false, error: 'source.close.refused', state };
-workspace.sources=ensureWorkspaceSources(workspace).filter(source=>source.id!==cleanId);
-workspace.sourceOrder=workspace.sources.map(source=>source.id);
-const keep=item=>String(item?.source?.id||'')!==cleanId;
-for(const key of ['records','assets','workspaceMergeCandidates'])workspace[key]=Array.isArray(workspace[key])?workspace[key].filter(keep):[];
-if(workspace.discoveryProgress?.sourceId===cleanId)workspace.discoveryProgress=null;const selected=String(next.view?.selectedRecordId||'').trim();
-if(selected&&!workspace.records.some((record)=>String(record?.id||'')===selected))next.view=Object.assign(next.view||{},{selectedRecordId:''});
-return { ok: true, workspace, state: next };
-}
+function closeWorkspaceSource(state,workspaceId,sourceId){const next=cloneState(state),targetId=workspaceId||next.activeWorkspaceId,workspace=next.workspaces.find((item)=>item.id===targetId);if(!workspace)return{ok:false,error:'workspace.not.found',state};const cleanId=String(sourceId||'').trim();if(!cleanId)return{ok:false,error:'source.close.refused',state};if(cleanId==='local'){const counts=clearLocalSourceBoundary(workspace,next);next.activeWorkspaceId=workspace.id;return{ok:true,workspace,state:next,localSessionCleared:true,counts};}workspace.sources=ensureWorkspaceSources(workspace).filter(source=>source.id!==cleanId);workspace.sourceOrder=workspace.sources.map(source=>source.id);const keep=item=>String(item?.source?.id||'')!==cleanId;workspace.records=Array.isArray(workspace.records)?workspace.records.flatMap((record)=>{if(keep(record))return[restoreLocalShadowForRemovedSource(record,cleanId)];const restored=restoreLocalSnapshotsForRemovedSourceRecord(record);return restored?[restored]:[];}):[];workspace.assets=Array.isArray(workspace.assets)?workspace.assets.filter(keep):[];if(workspace.discoveryProgress?.sourceId===cleanId)workspace.discoveryProgress=null;workspace.sources=ensureWorkspaceSources(workspace);const selected=String(next.view?.selectedRecordId||'').trim();if(selected&&!workspace.records.some((record)=>String(record?.id||'')===selected))next.view=Object.assign(next.view||{},{selectedRecordId:'',lineageAuditReport:null,lineageLoadReport:null});next.activeWorkspaceId=workspace.id;return{ok:true,workspace,state:next};}
 function renameWorkspace(state,workspaceId,name){const next=cloneState(state),workspace=next.workspaces.find((item)=>item.id===(workspaceId||next.activeWorkspaceId));if(!workspace)return{ok:false,error:'workspace.not.found',state};const cleanName=normalizeWorkspaceName(name);if(!cleanName)return{ok:false,error:'workspace.name.required',state};workspace.name=cleanName;workspace.title=cleanName;workspace.renamedAt=nowIso();next.activeWorkspaceId=workspace.id;return{ok:true,workspace,state:next};}
 function closeWorkspace(state, workspaceId) {
 const next = cloneState(state);
@@ -342,8 +295,8 @@ function activeWorkspace(state){return (state.workspaces || []).find((workspace)
 function cloneState(state){const base=state&&typeof state==='object'?state:makeEmptyAppState();return JSON.parse(JSON.stringify(Object.assign(makeEmptyAppState(),base)));}
 function ensureWorkspaceSources(workspace) {
 const sources = Array.isArray(workspace?.sources) ? workspace.sources.slice() : [];
-if (!sources.some((source) => source.id === 'local')) sources.unshift(makeLocalSource({ count: countLocalRecords(workspace) }));
-return sources.map((source) => Object.assign({}, source));
+if (!sources.some((source) => source.id === 'local')) sources.unshift(localSourceFor(workspace));
+return sources.map((source) => source.id === 'local' ? Object.assign({}, source, localSourceFor(workspace)) : Object.assign({}, source));
 }
 function upsertSource(workspace, source) {
 const sources = ensureWorkspaceSources(workspace).filter((item) => item.id !== source.id);
@@ -352,15 +305,8 @@ workspace.sources = sources;
 workspace.sourceOrder = sources.map((item) => item.id);
 return source;
 }
-function makeLocalSource(input={}){return{id:'local',kind:'local',adapterId:'local',sourceKind:'local.session',label:'Local',count:Number(input.count||0),config:{persistence:'browser-local'},boundary:'browser-local session material',closeable:false};}
 function normalizeSourceDiscoveryState(value,fallback='deferred'){const candidate=String(value||'').trim();return SOURCE_STATES.has(candidate)?candidate:fallback;}
-function makeConfiguredSource(input = {}, options = {}) {
-const repo = String(input.repository || input.repo || '').trim();
-const label = String(input.label || repo || 'Source').trim();
-const rootPath = String(input.rootPath || '.topics').trim() || '.topics';
-const ref = String(input.ref || '').trim();
-return { id: input.id || global.TiinexSourceIdentity?.makeConfiguredSourceId?.({ repo, ref, rootPath }) || `github:${repo.toLowerCase() || 'source'}`, kind: input.kind || CONFIGURED_SOURCE_KIND, adapterId: input.adapterId || GITHUB_ADAPTER_ID, sourceKind: input.sourceKind || GITHUB_REPO_SOURCE_KIND, label, repo, ref, rootPath, config: { repo, ref, rootPath, issueUrls: input.issueUrls || input.config?.issueUrls || '' }, count: Number(input.count || 0), boundary: 'explicit source boundary; no material is trusted until loaded', transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror', transportRefreshTier: input.transportRefreshTier || input.preferredTransportTier || '', transportPlan: input.transportPlan ? Object.assign({}, input.transportPlan) : undefined, transportOutcome: input.transportOutcome ? Object.assign({}, input.transportOutcome) : undefined, governanceBoundary: input.governanceBoundary ? Object.assign({}, input.governanceBoundary) : undefined, transportTiers: input.transportTiers ? Object.assign({}, input.transportTiers) : undefined, repoDiscovery: Boolean(input.repoDiscovery || input.requestedSurfaces?.repoFiles?.requested), issueDiscovery: Boolean(input.issueDiscovery || input.requestedSurfaces?.issueSnapshots?.requested), issueUrls: input.issueUrls || input.config?.issueUrls || '', workspaceMatch: input.workspaceMatch || input.config?.workspaceMatch || '', appConfigPlan: input.appConfigPlan || input.config?.appConfigPlan || '', openBehavior: input.openBehavior || input.config?.openBehavior || '', preferredDisplay: input.preferredDisplay || input.config?.preferredDisplay || '', requestedSurfaces: input.requestedSurfaces ? Object.assign({}, input.requestedSurfaces) : { repoFiles: { requested: Boolean(input.repoDiscovery) }, explicitFiles: { requested: Boolean(input.explicitFileRefs || input.fileRefs) }, issueSnapshots: { requested: Boolean(input.issueDiscovery || input.issueUrls) } }, surfaces: Object.assign({}, input.surfaces || input.surfaceState || {}), discoveryState: normalizeSourceDiscoveryState(input.discoveryState, 'deferred'), closeable: true };
-}
+function makeConfiguredSource(input={},options={}){return configuredSource(input,options,{configuredSourceKind:CONFIGURED_SOURCE_KIND,githubAdapterId:GITHUB_ADAPTER_ID,githubRepoSourceKind:GITHUB_REPO_SOURCE_KIND,normalizeSourceDiscoveryState});}
 function sourceProgress(progress={},source={}){const percent=Math.max(0,Math.min(100,Number(progress.percent??48)));return{sourceId:source.id||'',phase:progress.phase||'snapshot-processing',label:progress.label||`Preparing repository snapshot from ${source.transportLabel||'repository mirror'}`,percent,active:progress.active!==false};}
 function makeSessionSource(){return{kind:SESSION_SOURCE_KIND,adapterId:'local',sourceKind:'local.session',label:'local session workspace',boundary:'browser-local session state; no source files or GitHub provenance inferred',githubPolicy:'not guessed',sourceBacked:false,writeCapability:'session-local'};}
 global.TiinexWorkspaceLifecycle = {
@@ -377,6 +323,7 @@ addWorkspaceRecords,
 removeWorkspaceRecord,
 addWorkspaceAssets,
 openWorkspaceFromMarkdown,
+mergeWorkspaceArtifactContext,
 mergeWorkspaceImport,
 addWorkspaceSourceRecords,
 addWorkspaceSource,

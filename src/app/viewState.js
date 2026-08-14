@@ -1,6 +1,6 @@
-export function workspaceViewScrollKeyFor(sourceState = {}, viewOverride = null, fallbackWorkspaceId = 'workspace') {
+export function workspaceViewScrollKeyFor(sourceState = {}, viewOverride = null, explicitWorkspaceId = '') {
   const view = viewOverride || sourceState?.view || {};
-  const workspaceId = sourceState?.activeWorkspaceId || fallbackWorkspaceId || 'workspace';
+  const workspaceId = explicitWorkspaceId || sourceState?.activeWorkspaceId || 'workspace';
   const verse = view.workspaceVerse || 'feed';
   const query = verse === 'lineage' ? (view.lineageQuery || '') : (view.query || '');
   const selected = verse === 'lineage' ? (view.selectedRecordId || '') : '';
@@ -21,8 +21,8 @@ export function stateWithViewUpdate(sourceState = {}, updater = null) {
   return Object.assign({}, sourceState, { view: nextView });
 }
 
-export function stateWithCapturedViewScroll(nextState = {}, sourceState = {}, capturedScroll = {}, fallbackWorkspaceId = 'workspace') {
-  const key = workspaceViewScrollKeyFor(sourceState, null, fallbackWorkspaceId);
+export function stateWithCapturedViewScroll(nextState = {}, sourceState = {}, capturedScroll = {}, explicitWorkspaceId = '') {
+  const key = workspaceViewScrollKeyFor(sourceState, null, explicitWorkspaceId);
   const top = capturedScroll?.[key];
   if (!Number.isFinite(Number(top))) return nextState;
   const scrollPositions = Object.assign({}, nextState.view?.scrollPositions || {});

@@ -3,6 +3,7 @@ import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { githubTransportOrderFromTier } from '../sources/github/github.transport.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { lineageBasePathForRecord } from '../lineage/lineage.pathBasis.js';
+import { githubFileRefsForRecord, githubIssueUrlsForRecord, recoverySourceForRecord } from '../sources/origin.references.js';
 
 const GITHUB_ADAPTER_ID = 'github';
 
@@ -18,6 +19,9 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
     for (const plan of recoveryPlan) {
       const out = await materializeLineageRecoveryPlan(plan, { fetchImpl, workspaceConfig });
       if (out.okCount <= 0) continue;
+      const registered = ensureLineageRecoverySource(lifecycle, sourceState, activeWorkspace.id, plan.source);
+      sourceState = registered.state || sourceState;
+      activeWorkspace = registered.workspace || activeWorkspace;
       const inserted = lifecycle?.addWorkspaceSourceRecords?.(sourceState, activeWorkspace.id, plan.sourceId, out.records || [], { discoveryState: 'partial', preserveView: true });
       if (!inserted?.ok) continue;
       sourceState = inserted.state;
@@ -29,6 +33,47 @@ export async function recoverMissingLineageParentsFromSource({ lifecycle, state,
     if (!changed || !lineage.selectedTraversal?.hasMissing) break;
   }
   return { state: sourceState, workspace: activeWorkspace, lineage, recoveredParents };
+}
+
+
+export function ensureLineageRecoverySource(lifecycle, state = {}, workspaceId = '', source = {}) {
+  const cleanId = String(source?.id || '').trim();
+  if (!cleanId || !source || typeof source !== 'object') return { state, workspace: workspaceById(state, workspaceId) || lifecycle?.activeWorkspace?.(state) || null, inserted: false };
+  const currentWorkspace = workspaceById(state, workspaceId) || lifecycle?.activeWorkspace?.(state) || null;
+  if (!currentWorkspace) return { state, workspace: null, inserted: false };
+  const existing = (Array.isArray(currentWorkspace.sources) ? currentWorkspace.sources : []).find((item) => String(item?.id || '') === cleanId);
+  if (existing) return { state, workspace: currentWorkspace, inserted: false, source: existing };
+  const next = typeof lifecycle?.cloneState === 'function' ? lifecycle.cloneState(state) : JSON.parse(JSON.stringify(state || {}));
+  const workspace = workspaceById(next, workspaceId) || lifecycle?.activeWorkspace?.(next) || null;
+  if (!workspace) return { state, workspace: currentWorkspace, inserted: false };
+  const recoverySource = normalizeLineageRecoverySource(source);
+  workspace.sources = (Array.isArray(workspace.sources) ? workspace.sources.slice() : []).filter((item) => String(item?.id || '') !== cleanId);
+  workspace.sources.push(recoverySource);
+  workspace.sourceOrder = workspace.sources.map((item) => item.id).filter(Boolean);
+  next.activeWorkspaceId = workspace.id || next.activeWorkspaceId || workspaceId;
+  return { state: next, workspace, inserted: true, source: recoverySource };
+}
+
+function normalizeLineageRecoverySource(source = {}) {
+  const repo = String(source.repo || source.repository || source.config?.repo || '').trim();
+  const ref = String(source.ref || source.config?.ref || '').trim();
+  const rootPath = String(source.rootPath || source.config?.rootPath || '.topics').trim() || '.topics';
+  return Object.assign({}, source, {
+    id: String(source.id || '').trim(),
+    kind: source.kind || 'github-tree',
+    adapterId: source.adapterId || 'github',
+    sourceKind: source.sourceKind || (source.originReferenceSource ? 'github.origin-reference' : 'github.repo'),
+    repo,
+    repository: String(source.repository || repo || '').trim(),
+    ref,
+    rootPath,
+    config: Object.assign({}, source.config || {}, { repo, ref, rootPath }),
+    discoveryState: source.discoveryState || 'deferred',
+    recoveryOnly: source.recoveryOnly === true || source.originReferenceSource === true,
+    sourceBacked: source.sourceBacked === false ? false : source.originReferenceSource === true ? false : true,
+    originReferenceSource: source.originReferenceSource === true || source.sourceKind === 'github.origin-reference',
+    closeable: source.closeable !== false
+  });
 }
 
 async function materializeLineageRecoveryPlan(plan = {}, { fetchImpl, workspaceConfig } = {}) {
@@ -64,7 +109,7 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
   const grouped = new Map();
   for (const edge of missingEdges) {
     const declaring = byId.get(String(edge.to || '').trim());
-    const source = Object.assign({}, declaring?.source || {}, { ref: declaring?.source?.ref || declaring?.source?.config?.ref || '' });
+    const source = recoverySourceForRecord(declaring, workspace);
     if (!isGithubSource(source)) continue;
     const sourceId = String(source.id || '').trim();
     if (!sourceId) continue;
@@ -96,6 +141,9 @@ export function lineageRecoveryIssueUrlForTarget(target = '', declaringRecord = 
   );
   if (isGitHubSocialTarget(explicitParent) && parentSocialTargetMatchesTrace(explicitParent, raw)) return explicitParent;
   if (isGitHubSocialTarget(raw)) return raw;
+  for (const url of githubIssueUrlsForRecord(declaringRecord)) {
+    if (isGitHubSocialTarget(url) && parentSocialTargetMatchesTrace(url, raw)) return url;
+  }
   const origin = firstNonEmpty(declaringRecord?.origin || '', declaringRecord?.parentOrigin || '');
   if (isGitHubSocialTarget(origin) && parentSocialTargetMatchesTrace(origin, raw)) return origin;
   return '';
@@ -126,6 +174,10 @@ function declaredParentFileRef(record = {}, target = '') {
   const explicitParent = firstNonEmpty(record?.sourceTarget?.parentRawUrl, record?.sourceTarget?.parentSourceUrl, record?.snapshot?.parentRawUrl, record?.snapshot?.parentSourceUrl, record?.sourceTarget?.parentArtifactPath, record?.snapshot?.parentArtifactPath);
   const explicit = recoverableParentFileRef(explicitParent, target, { allowRelative: isSyntheticPublicationRecord(record) });
   if (explicit) return explicit;
+  for (const ref of githubFileRefsForRecord(record)) {
+    const explicitRef = recoverableParentFileRef(ref, target, { allowRelative: false });
+    if (explicitRef) return explicitRef;
+  }
   const origin = recoverableParentFileRef(record?.origin || record?.parentOrigin || '', target, { allowRelative: false });
   if (origin) return origin;
   return '';
@@ -238,4 +290,9 @@ function canonicalRepoPath(value = '') {
     else out.push(clean);
   }
   return out.join('/');
+}
+
+function workspaceById(state = {}, workspaceId = '') {
+  const cleanId = String(workspaceId || '').trim();
+  return (Array.isArray(state?.workspaces) ? state.workspaces : []).find((workspace) => String(workspace?.id || '') === cleanId) || null;
 }

@@ -6,13 +6,12 @@ const workspace = {
   title: 'Recoverability Test',
   records: [
     { id: 'r1', title: 'Local', source: { adapterId: 'local', boundary: 'local' } },
-    { id: 'r2', title: 'GitHub', path: 'topics/source.md', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef', boundary: 'source' } }
+    { id: 'r2', title: 'GitHub Workspace', path: 'root.workspace.md', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef', boundary: 'source' } }
   ],
   assets: [
     { id: 'a1', path: 'assets/a.png', previewState: 'metadata-only', source: { adapterId: 'local', boundary: 'asset local' } },
     { id: 'a2', path: 'assets/large.bin', previewState: 'omitted-large', source: { adapterId: 'local', boundary: 'asset local' } }
   ],
-  workspaceMergeCandidates: [{ id: 'wc1', path: 'root.workspace.md' }],
   importResults: [{
     ok: true,
     message: 'Imported test material.',
@@ -30,7 +29,7 @@ assert.equal(view.status, 'degraded');
 assert.equal(view.counts.localRecords, 1);
 assert.equal(view.counts.sourceBackedRecords, 1);
 assert.equal(view.counts.localAssets, 2);
-assert.equal(view.counts.workspaceCandidates, 1);
+assert.equal(view.counts.workspaceArtifacts, 1);
 assert.equal(view.counts.previewOmitted, 1);
 assert.equal(view.counts.warnings, 1);
 assert.equal(view.latestImport.ok, true);

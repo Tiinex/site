@@ -1,3 +1,5 @@
+import{makeLocalSource}from'./workspace.localSourceLifecycle.js';
+import{restoreLocalShadowForRemovedSource,restoreLocalSnapshotsForRemovedSourceRecord}from'./workspace.materialReconciliation.js';
 const SOURCE_STATES = new Set(['not-started', 'deferred', 'loading', 'loaded', 'partial', 'failed', 'unavailable']);
 
 export function stateWithSourceMaterialCleared(state = {}, workspaceId = '', sourceId = '', options = {}) {
@@ -19,7 +21,7 @@ export function stateWithSourceMaterialCleared(state = {}, workspaceId = '', sou
 
 export function clearSourceMaterialFromWorkspace(workspace = {}, sourceId = '', options = {}) {
   const cleanId = String(sourceId || '').trim();
-  const counts = { records: 0, assets: 0, workspaceMergeCandidates: 0 };
+  const counts = { records: 0, assets: 0 };
   if (!workspace || !cleanId) return counts;
   const surfaceSet = new Set((Array.isArray(options.surfaces) ? options.surfaces : []).map((item) => String(item || '').trim()).filter(Boolean));
   const keep = (item) => {
@@ -27,12 +29,18 @@ export function clearSourceMaterialFromWorkspace(workspace = {}, sourceId = '', 
     if (!surfaceSet.size) return false;
     return !surfaceSet.has(String(item?.sourceTarget?.surface || '').trim());
   };
-  for (const key of ['records', 'assets', 'workspaceMergeCandidates']) {
-    const before = Array.isArray(workspace[key]) ? workspace[key] : [];
-    const after = before.filter(keep);
-    counts[key] = before.length - after.length;
-    workspace[key] = after;
-  }
+  const beforeRecords = Array.isArray(workspace.records) ? workspace.records : [];
+  let removedRecords = 0;
+  workspace.records = beforeRecords.flatMap((record) => {
+    if (keep(record)) return [restoreLocalShadowForRemovedSource(record, cleanId)];
+    removedRecords += 1;
+    const restored = restoreLocalSnapshotsForRemovedSourceRecord(record);
+    return restored ? [restored] : [];
+  });
+  counts.records = removedRecords;
+  const beforeAssets = Array.isArray(workspace.assets) ? workspace.assets : [];
+  workspace.assets = beforeAssets.filter(keep);
+  counts.assets = beforeAssets.length - workspace.assets.length;
   if (workspace.discoveryProgress?.sourceId === cleanId) workspace.discoveryProgress = null;
   return counts;
 }
@@ -49,7 +57,7 @@ export function workspaceHasRecord(workspace = {}, recordId = '') {
 
 function upsertSource(sources = [], source = {}) {
   const hasLocal = sources.some((item) => item.id === 'local');
-  const local = hasLocal ? [] : [{ id: 'local', kind: 'local', adapterId: 'local', sourceKind: 'local.session', label: 'Local', count: 0, closeable: false }];
+  const local = hasLocal ? [] : [makeLocalSource()];
   return local.concat(sources.filter((item) => item.id !== source.id), [source]);
 }
 

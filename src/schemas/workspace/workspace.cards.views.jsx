@@ -3,31 +3,15 @@ import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
-import { presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
-import { isTransitionAction, transitionActionsForRecord } from '../../transitions/transition.presentation.js';
+import { isWorkspaceRecord, presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
+import { transitionActionsForRecord } from '../../transitions/transition.presentation.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { appendTransitionActionsToStaticRow } from './workspace.cardActions.js';
-import { actionClassName, actionLabel, compactPath, compactRecordDate, recordAuthorityBadge, recordDisplayPath, recordLifecycleBadge, recordSchemaBadge, recordSourceBadge } from './workspace.viewFormatting.js';
+import { compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordMaterialBadge, recordSchemaBadge, recordSchemaCanOpen, recordSourceBadge } from './workspace.viewFormatting.js';
+import { workspaceArtifactActionModel, workspaceArtifactBoundaryBadge } from '../../workspaces/workspace.artifactActions.js';
+import { RecordActionButton } from './workspace.recordActionButton.views.jsx';
 
-export const WorkspaceCandidateCard = React.memo(function WorkspaceCandidateCard({ candidate, actionStateKey = '', onOpenWorkspaceCandidate, onMergeWorkspaceCandidate }) {
-  return (
-    <article className="tx-artifact-card tx-workspace-candidate-card">
-      <div className="tx-card-badges">
-        <Badge>workspace</Badge>
-        <Badge>open/merge candidate</Badge>
-        <Badge>local/session</Badge>
-      </div>
-      <h3>{candidate.title || candidate.path || 'Workspace candidate'}</h3>
-      {candidate.path ? <div className="tx-card-pathline" title={candidate.path}><Icon name="folderOpen" />{compactPath(candidate.path)}</div> : null}
-      <p>Workspace file staged from local/archive intake. Open it as a workspace or merge its context into the current workspace.</p>
-      <footer className="tx-artifact-actions">
-        <Button icon="open" variant="ghost" onClick={() => onOpenWorkspaceCandidate?.(candidate.id || candidate.path)}>Open</Button>
-        <Button icon="continue" variant="ghost" onClick={() => onMergeWorkspaceCandidate?.(candidate.id || candidate.path)}>Merge</Button>
-      </footer>
-    </article>
-  );
-}, candidateCardPropsEqual);
 
 export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey = '', onOpenAsset }) {
   return (
@@ -47,10 +31,12 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
   );
 }, assetCardPropsEqual);
 
-export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, context = 'discovery', expanded = false, onToggleExpanded }) {
+export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
   const transitionActions = transitionActionsForRecord(record, { surface: context, maxPrimary: 1 });
+  const isWorkspaceArtifact = isWorkspaceRecord(record);
+  const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
   const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
   const contextualActions = lineageContext
     ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
@@ -58,6 +44,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecor
   const actions = appendTransitionActionsToStaticRow(contextualActions, transitionActions);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
+  const schemaOpenable = recordSchemaCanOpen(record);
   const sourceBadge = recordSourceBadge(record);
   const primaryClick = () => {
     if (lineageContext) return onToggleExpanded?.(record.id);
@@ -67,14 +54,17 @@ export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecor
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); primaryClick(); }
   };
   return (
-    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey}>
+    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
       <div className="tx-card-badges tx-legacy-card-badges">
+        {isWorkspaceArtifact ? <Badge>workspace</Badge> : null}
+        {isWorkspaceArtifact ? <Badge>{workspaceActionModel.roleLabel}</Badge> : null}
+        {isWorkspaceArtifact ? <Badge>{workspaceArtifactBoundaryBadge(record)}</Badge> : null}
         <AuditStatusBadge record={record} item={auditItem} />
         {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
-        <Badge>{schemaBadge}</Badge>
+        {schemaOpenable ? <button type="button" className="tx-badge tx-badge-default tx-schema-nav-badge" title={`Open reading contract schema lineage for ${schemaBadge}`} aria-label={`Open reading contract schema lineage for ${schemaBadge}`} onClick={(event) => { event.stopPropagation(); onOpenSchema?.(record); }}>{schemaBadge}</button> : <Badge>{schemaBadge}</Badge>}
         {dateBadge ? <Badge>{dateBadge}</Badge> : null}
         <Badge>{sourceBadge}</Badge>
-        <Badge title="Authority/mutability boundary">{recordAuthorityBadge(record)}</Badge>
+        {recordMaterialBadge(record) ? <Badge title={record.materialReconciliation?.message || 'Material reconciliation'}>{recordMaterialBadge(record)}</Badge> : null}
       </div>
       <h3>{record.title || 'Untitled'}</h3>
       <p>{record.summary || 'No summary available yet.'}</p>
@@ -85,32 +75,18 @@ export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecor
         </div>
       ) : null}
       <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions" onClick={(event) => event.stopPropagation()}>
-        {actions.map((action) => action.href ? (
-          <a key={action.id} className={actionClassName(action)} href={action.href} target="_blank" rel="noopener noreferrer" title={actionLabel(action)} aria-label={actionLabel(action)}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></a>
-        ) : (
-          <button key={action.id} type="button" className={actionClassName(action)} title={actionLabel(action)} aria-label={actionLabel(action)} onClick={() => {
-            if (action.id === RecordActionKind.open) return onOpenRecord?.(record.id);
-            if (action.id === RecordActionKind.lineage) return onFocusRecordLineage?.(record.id);
-            if (action.id === RecordActionKind.share) return onShareRecord?.(record);
-            if (isTransitionAction(action)) return onRecordAction?.(record, action);
-            return onRecordAction?.(record, action);
-          }}><Icon name={action.icon} /><strong>{actionLabel(action)}</strong></button>
-        ))}
+        {actions.map((action) => <RecordActionButton key={action.id} action={action} record={record} workspaceActionModel={workspaceActionModel} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
       </footer>
     </article>
   );
 }
 
+
+
 export const MemoRecordCard = React.memo(RecordCard, recordCardPropsEqual);
 
 
 
-export function candidateCardPropsEqual(previous = {}, next = {}) {
-  return previous.candidate === next.candidate
-    && previous.actionStateKey === next.actionStateKey
-    && Boolean(previous.onOpenWorkspaceCandidate) === Boolean(next.onOpenWorkspaceCandidate)
-    && Boolean(previous.onMergeWorkspaceCandidate) === Boolean(next.onMergeWorkspaceCandidate);
-}
 
 export function assetCardPropsEqual(previous = {}, next = {}) {
   return previous.asset === next.asset
@@ -127,7 +103,8 @@ export function recordCardPropsEqual(previous = {}, next = {}) {
     && Boolean(previous.onOpenRecord) === Boolean(next.onOpenRecord)
     && Boolean(previous.onFocusRecordLineage) === Boolean(next.onFocusRecordLineage)
     && Boolean(previous.onShareRecord) === Boolean(next.onShareRecord)
-    && Boolean(previous.onRecordAction) === Boolean(next.onRecordAction);
+    && Boolean(previous.onRecordAction) === Boolean(next.onRecordAction)
+    && Boolean(previous.onOpenSchema) === Boolean(next.onOpenSchema);
 }
 
 export function AssetDetailDialog({ asset, onDismiss }) {

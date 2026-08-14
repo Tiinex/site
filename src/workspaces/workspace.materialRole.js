@@ -1,8 +1,9 @@
+import { isSchemaDefinitionPath as isWorkspaceSchemaDefinitionPath, isWorkspaceEntrypointArtifact } from './workspace.entrypointCapability.js';
 export const MaterialRole = Object.freeze({
   leaf: 'leaf',
   schemaDefinition: 'schema-definition',
   supporting: 'supporting',
-  workspaceCandidate: 'workspace-candidate',
+  workspaceArtifact: 'workspace-artifact',
   asset: 'asset',
   unknown: 'unknown'
 });
@@ -10,35 +11,39 @@ export const MaterialRole = Object.freeze({
 export function sourceBoundaryClass(record = {}) {
   const source = record.source || {};
   const mode = String(record.sourceMode || '').toLowerCase();
-  if (source.sourceBacked === false || source.adapterId === 'local' || source.kind === 'local-session' || source.kind === 'local' || source.sourceKind === 'local.session' || source.sourceKind === 'export.package.import' || mode.startsWith('local') || mode.startsWith('archive-local') || mode.startsWith('package-import')) return 'local';
   if (source.adapterId === 'github' || source.kind === 'github-tree' || source.sourceKind === 'github.repo' || mode === 'source-backed') return 'source-backed';
+  if (source.adapterId === 'local' || source.kind === 'local-session' || mode.startsWith('local')) return 'local';
   return 'unknown';
 }
 
 export function inferRecordMaterialRole(record = {}) {
-  const declared = normalizeMaterialRole(record.materialRole || record.materialKind || record.artifactRole || record.presentationRole);
-  if (declared) return declared;
   const path = String(record.path || record.name || '').toLowerCase();
   const kind = String(record.kind || '').toLowerCase();
   const schema = String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').toLowerCase();
   const markdown = String(record.markdown || '');
   const hasBody = markdown.trim().length > 0 || String(record.body || record.raw || '').trim().length > 0;
 
-  if (isWorkspaceCandidatePath(path) || kind.includes('workspace')) return MaterialRole.workspaceCandidate;
+  // Schema/type information must never gain workspace-entrypoint capability merely
+  // because its schema id or kind contains the word "workspace".
+  if (isWorkspaceSchemaDefinitionPath(path) || isCanonicalSchemaArtifactPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
+
+  const declared = normalizeMaterialRole(record.materialRole || record.materialKind || record.artifactRole || record.presentationRole);
+  if (declared && declared !== MaterialRole.workspaceArtifact) return declared;
+  if (isWorkspaceEntrypointArtifact(record)) return MaterialRole.workspaceArtifact;
+
   if (sourceBoundaryClass(record) === 'source-backed' && !hasBody) {
     if (isRouteOnlyMaterialUnavailableShell(record)) return MaterialRole.unknown;
-    if (isCanonicalSchemaArtifactPath(path) || isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
     if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
     if (hasSourceBackedLeafEvidence(record, path, schema)) return MaterialRole.leaf;
     return MaterialRole.unknown;
   }
-  if (isCanonicalSchemaArtifactPath(path) || isSchemaDefinitionPath(path) || kind.includes('schema module') || kind.includes('schema-definition')) return MaterialRole.schemaDefinition;
   if (isKnownSupportSurfacePath(path) || isKnownSupportSchema(schema) || kind.includes('supporting') || schema.includes('tiinex.markdown.supporting')) return MaterialRole.supporting;
   if (hasDeclaredTiinexLeaf(record, markdown)) return MaterialRole.leaf;
   if (markdown.trim()) return MaterialRole.supporting;
   if (sourceBoundaryClass(record) === 'source-backed' && (schema || record.hasContinuityContext || record.hasIntegrity)) return MaterialRole.leaf;
   return MaterialRole.unknown;
 }
+
 
 
 export function isWorkLeafRecord(record = {}) {
@@ -67,7 +72,7 @@ export function materialRoleLabel(role = '') {
   if (normalized === MaterialRole.leaf) return 'Leaves';
   if (normalized === MaterialRole.schemaDefinition) return 'Schema definitions';
   if (normalized === MaterialRole.supporting) return 'Supporting docs';
-  if (normalized === MaterialRole.workspaceCandidate) return 'Workspace candidates';
+  if (normalized === MaterialRole.workspaceArtifact) return 'Workspace artifacts';
   if (normalized === MaterialRole.asset) return 'Assets';
   return 'Unknown/supporting';
 }
@@ -77,7 +82,7 @@ function normalizeMaterialRole(value = '') {
   if (role === MaterialRole.leaf || role === 'work-leaf' || role === 'artifact-leaf') return MaterialRole.leaf;
   if (role === MaterialRole.schemaDefinition || role === 'schema' || role === 'schema-definition') return MaterialRole.schemaDefinition;
   if (role === MaterialRole.supporting || role === 'doc' || role === 'supporting-material') return MaterialRole.supporting;
-  if (role === MaterialRole.workspaceCandidate || role === 'workspace') return MaterialRole.workspaceCandidate;
+  if (role === MaterialRole.workspaceArtifact || role === 'workspace') return MaterialRole.workspaceArtifact;
   if (role === MaterialRole.asset) return MaterialRole.asset;
   if (role === MaterialRole.unknown) return MaterialRole.unknown;
   return '';
@@ -234,8 +239,4 @@ function isSchemaDefinitionPath(path = '') {
     || path.includes('/schemas/')
     || path.includes('/schema/')
     || path.endsWith('schema.json');
-}
-
-function isWorkspaceCandidatePath(path = '') {
-  return /(?:^|\/)[^/]+\.workspace\.md$/i.test(path);
 }

@@ -10,9 +10,29 @@
     return {
       v: STATE_VERSION,
       activeWorkspaceId: state.activeWorkspaceId || '',
-      view: Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, state.view || {}),
+      view: semanticRouteView(state.view || {}),
       workspaces: Array.isArray(state.workspaces) ? state.workspaces.map(compactWorkspace) : []
     };
+  }
+
+  function semanticRouteView(view = {}) {
+    const out = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, view || {});
+    delete out.layoutMode;
+    delete out.scrollPositions;
+    const displayOptions = Object.assign({}, out.displayOptions || {});
+    if (displayOptions.showWorkspaceArtifacts == null && displayOptions.showWorkspaceCandidates != null) displayOptions.showWorkspaceArtifacts = displayOptions.showWorkspaceCandidates !== false;
+    delete displayOptions.showWorkspaceCandidates;
+    if (displayOptions.artifactFilter === 'workspace-candidate') displayOptions.artifactFilter = 'workspace-artifact';
+    out.displayOptions = displayOptions;
+    return out;
+  }
+
+  function semanticRouteState(routeState = {}) {
+    const source = routeState && typeof routeState === 'object' && !Array.isArray(routeState) ? routeState : {};
+    const out = Object.assign({}, source, { view: semanticRouteView(source.view || {}) });
+    delete out.workspaceViews;
+    delete out.workspaceWindow;
+    return out;
   }
 
   function compactWorkspace(workspace) {
@@ -27,7 +47,6 @@
       sourceOrder: Array.isArray(workspace.sourceOrder) ? workspace.sourceOrder.slice() : [],
       records: Array.isArray(workspace.records) ? workspace.records.map(compactRecord) : [],
       assets: Array.isArray(workspace.assets) ? workspace.assets.map(compactAsset) : [],
-      workspaceMergeCandidates: Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates.map(compactWorkspaceCandidate) : [],
       importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, 10).map(compactImportLogEntry) : [],
       mode: workspace.mode || 'feed'
     };
@@ -64,9 +83,10 @@
       count: Number(source.count || 0),
       boundary: source.boundary || '',
       discoveryState: source.discoveryState || '',
-      repoDiscovery: Boolean(source.repoDiscovery || source.requestedSurfaces?.repoFiles?.requested),
-      issueDiscovery: Boolean(source.issueDiscovery || source.requestedSurfaces?.issueSnapshots?.requested),
+      repoDiscovery: Boolean(source.repoDiscovery),
+      issueDiscovery: Boolean(source.issueDiscovery),
       issueUrls: source.issueUrls || config.issueUrls || '',
+      explicitFileRefs: Array.isArray(source.explicitFileRefs || config.explicitFileRefs) ? Array.from(source.explicitFileRefs || config.explicitFileRefs) : [],
       workspaceMatch: source.workspaceMatch || config.workspaceMatch || '',
       appConfigPlan: source.appConfigPlan || config.appConfigPlan || '',
       openBehavior: source.openBehavior || config.openBehavior || '',
@@ -75,6 +95,7 @@
       surfaces: compactSurfaceMap(source.surfaces || {}),
       governanceBoundary: compactGovernanceBoundary(source.governanceBoundary || null),
       closeable: Boolean(source.closeable),
+      loadable: source.loadable !== false,
       config
     };
   }
@@ -122,7 +143,6 @@
 
   function compactAsset(asset = {}) {
     const source = compactRecordSource(asset.source || {});
-    const sourceBacked = isSourceBackedAsset(asset, source);
     return {
       id: asset.id || '',
       name: asset.name || asset.path || 'asset',
@@ -130,9 +150,9 @@
       type: asset.type || asset.mimeType || '',
       size: Number(asset.size || asset.sizeBytes || 0),
       kind: asset.kind || 'asset',
-      previewState: asset.previewState || (sourceBacked ? 'metadata-only' : 'material-unavailable'),
-      cacheState: asset.cacheState || 'route-shell-material-unavailable',
-      materialAvailability: asset.materialAvailability || 'material-unavailable',
+      previewState: 'metadata-only',
+      cacheState: 'route-shell-material-unavailable',
+      materialAvailability: 'material-unavailable',
       source
     };
   }
@@ -146,8 +166,8 @@
       path: candidate.path || '',
       kind: candidate.kind || 'workspace-candidate',
       summary: candidate.summary || '',
-      cacheState: candidate.cacheState || 'route-shell-material-unavailable',
-      materialAvailability: candidate.materialAvailability || 'material-unavailable',
+      cacheState: 'route-shell-material-unavailable',
+      materialAvailability: 'material-unavailable',
       source
     };
   }
@@ -178,8 +198,8 @@
       path: record.path || '',
       markdown: routeMarkdown,
       sourceMode: record.sourceMode || (sourceBacked ? 'source-backed' : 'local-route-shell'),
-      cacheState: record.cacheState || (materialUnavailable ? 'route-shell-material-unavailable' : ''),
-      materialAvailability: record.materialAvailability || (materialUnavailable ? 'material-unavailable' : 'available'),
+      cacheState: materialUnavailable ? 'route-shell-material-unavailable' : 'route-issue-snapshot-cache-complete',
+      materialAvailability: materialUnavailable ? 'material-unavailable' : 'available',
       hasContinuityContext: Boolean(record.hasContinuityContext),
       hasIntegrity: Boolean(record.hasIntegrity),
       schemaId: record.schemaId || '',
@@ -194,10 +214,6 @@
     if (sourceTarget) out.sourceTarget = sourceTarget;
     const snapshot = compactSnapshot(record.snapshot || null);
     if (snapshot) out.snapshot = snapshot;
-    if (routeMarkdown) {
-      out.cacheState = 'route-issue-snapshot-cache-complete';
-      out.materialAvailability = 'available';
-    }
     return out;
   }
 
@@ -251,15 +267,33 @@
     return adapter === 'github' || mode === 'source-backed' || Boolean(source.repo || source.config?.repo);
   }
 
+  function validateRouteOwnershipState(routeState) {
+    if (!routeState || typeof routeState !== 'object' || Array.isArray(routeState)) return { ok: false, reason: 'route-not-object' };
+    const routeVersion = routeState.v == null ? null : Number(routeState.v);
+    const legacyVersion = routeState.version == null ? null : Number(routeState.version);
+    const canonical = routeVersion === STATE_VERSION;
+    const legacy = routeVersion === 1 || (routeVersion == null && legacyVersion === 1);
+    if (!canonical && !legacy) return { ok: false, reason: 'route-version-unsupported' };
+    if (!Array.isArray(routeState.workspaces)) return { ok: false, reason: 'route-workspaces-missing' };
+    if (routeState.view != null && (typeof routeState.view !== 'object' || Array.isArray(routeState.view))) return { ok: false, reason: 'route-view-invalid' };
+    for (const workspace of routeState.workspaces) {
+      if (!workspace || typeof workspace !== 'object' || Array.isArray(workspace)) return { ok: false, reason: 'route-workspace-invalid' };
+      if (!String(workspace.id || '').trim()) return { ok: false, reason: 'route-workspace-id-missing' };
+    }
+    if (legacy) return { ok: true, reason: routeState.workspaces.length ? 'route-owned-legacy-v1' : 'route-owned-legacy-v1-empty' };
+    return { ok: true, reason: routeState.workspaces.length ? 'route-owned-workspaces' : 'route-owned-empty' };
+  }
+
   function routeHasWorkspaces(routeState) {
     return Array.isArray(routeState?.workspaces) && routeState.workspaces.length > 0;
   }
 
   function normalizeRouteState(routeState, lifecycle) {
+    const semanticRoute = semanticRouteState(routeState);
     const empty = lifecycle?.makeEmptyAppState?.() || { version: 1, activeWorkspaceId: '', view: {}, workspaces: [], audit: null };
-    if (!routeState || !routeHasWorkspaces(routeState)) return empty;
-    const next = lifecycle?.cloneState?.(Object.assign({}, empty, routeState)) || JSON.parse(JSON.stringify(Object.assign({}, empty, routeState)));
-    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceCandidates: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, next.view || {});
+    if (!routeState || !routeHasWorkspaces(semanticRoute)) return empty;
+    const next = lifecycle?.cloneState?.(Object.assign({}, empty, semanticRoute)) || JSON.parse(JSON.stringify(Object.assign({}, empty, semanticRoute)));
+    next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', displayOptions: { leavesFirst: false, leavesOnly: true, mismatchesOnly: false, showSupportingMarkdown: false, showWorkspaceArtifacts: true, showAssets: false, schemaFilter: 'all', artifactFilter: 'all' } }, next.view || {});
     next.workspaces = Array.isArray(next.workspaces) ? next.workspaces.map(normalizeRouteWorkspaceShell) : [];
     next.activeWorkspaceId = next.workspaces.some((workspace) => workspace.id === next.activeWorkspaceId)
       ? next.activeWorkspaceId
@@ -274,50 +308,55 @@
       sources: Array.isArray(workspace.sources) ? workspace.sources.map(compactSource) : [],
       records: Array.isArray(workspace.records) ? workspace.records.map(normalizeRouteRecordShell) : [],
       assets: Array.isArray(workspace.assets) ? workspace.assets.map(normalizeRouteAssetShell) : [],
-      workspaceMergeCandidates: Array.isArray(workspace.workspaceMergeCandidates) ? workspace.workspaceMergeCandidates.map(normalizeRouteWorkspaceCandidateShell) : []
+      ...(Array.isArray(workspace.workspaceMergeCandidates) && workspace.workspaceMergeCandidates.length ? { workspaceMergeCandidates: workspace.workspaceMergeCandidates.map(normalizeRouteWorkspaceCandidateShell) } : {})
     });
   }
 
   function normalizeRouteAssetShell(asset = {}) {
     const source = compactSource(asset.source || {});
-    const materialAvailability = asset.materialAvailability || 'material-unavailable';
     return Object.assign({}, asset, {
       source,
       content: '',
       dataUrl: '',
-      previewState: asset.previewState || 'metadata-only',
-      cacheState: asset.cacheState || 'route-shell-material-unavailable',
-      materialAvailability,
+      previewState: 'metadata-only',
+      cacheState: 'route-shell-material-unavailable',
+      materialAvailability: 'material-unavailable',
       routeShell: asset.routeShell !== false,
-      materialUnavailable: materialAvailability === 'material-unavailable'
+      materialUnavailable: true
     });
   }
 
   function normalizeRouteWorkspaceCandidateShell(candidate = {}) {
     const source = compactRecordSource(candidate.source || {});
-    const materialAvailability = candidate.materialAvailability || 'material-unavailable';
     return Object.assign({}, candidate, {
       source,
       markdown: '',
-      cacheState: candidate.cacheState || 'route-shell-material-unavailable',
-      materialAvailability,
+      cacheState: 'route-shell-material-unavailable',
+      materialAvailability: 'material-unavailable',
       routeShell: candidate.routeShell !== false,
-      materialUnavailable: materialAvailability === 'material-unavailable'
+      materialUnavailable: true
     });
   }
 
   function normalizeRouteRecordShell(record = {}) {
     const source = compactRecordSource(record.source || {});
-    const materialAvailability = record.materialAvailability || (String(record.markdown || '').trim() ? 'available' : 'material-unavailable');
+    const markdown = String(record.markdown || '');
+    const materialAvailability = markdown.trim() ? 'available' : 'material-unavailable';
+    const inlineCacheState = isIssueSnapshotRecord(record) ? 'route-issue-snapshot-cache-complete' : 'route-inline-material-cache-complete';
     return Object.assign({}, record, {
       source,
-      markdown: record.markdown || '',
+      markdown,
       sourceMode: record.sourceMode || (isSourceBackedShell(record, source) ? 'source-backed' : 'local-route-shell'),
-      cacheState: record.cacheState || (materialAvailability === 'material-unavailable' ? 'route-shell-material-unavailable' : ''),
+      cacheState: materialAvailability === 'available' ? inlineCacheState : 'route-shell-material-unavailable',
       materialAvailability,
       routeShell: record.routeShell !== false,
       materialUnavailable: materialAvailability === 'material-unavailable'
     });
+  }
+
+  function routeHistoryState(routeState, explicitIndex) {
+    const index = Number.isFinite(Number(explicitIndex)) ? Number(explicitIndex) : Date.now();
+    return Object.assign({}, routeSummary(routeState), { __tiinexRouteIndex: index });
   }
 
   function routeSummary(routeState) {
@@ -339,8 +378,12 @@
     compactAsset,
     compactWorkspaceCandidate,
     makeRouteState,
+    semanticRouteView,
+    semanticRouteState,
     normalizeRouteState,
+    validateRouteOwnershipState,
     routeHasWorkspaces,
-    routeSummary
+    routeSummary,
+    routeHistoryState
   };
 })(typeof window !== 'undefined' ? window : globalThis);

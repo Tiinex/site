@@ -7,6 +7,10 @@ import { tiinexBuildIdentity, TIINEX_RUNTIME_ID } from './build.identity.js';
 import './sources/source.identity.js';
 import './workspaces/workspace.lifecycle.js';
 import './workspaces/workspace.route.js';
+import './workspaces/workspace.persistenceRecovery.js';
+import './workspaces/workspace.persistenceRouteCache.js';
+import './workspaces/workspace.persistencePresentation.js';
+import './workspaces/workspace.persistenceCache.js';
 import './workspaces/workspace.persistence.js';
 
 import './styles/tokens.css';

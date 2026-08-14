@@ -35,9 +35,8 @@ const appAndWorkspace = combo(...appModules, 'src/schemas/workspace/workspace.ad
 function has(file, needle, label) { if (!read(file).includes(needle)) failures.push(label || `${file} missing ${needle}`); }
 function lacks(file, needle, label) { if (read(file).includes(needle)) failures.push(label || `${file} must not include ${needle}`); }
 
-if (!appAndWorkspace.includes('tx-centered-dock-core')) failures.push('global dock must keep centered Tiinex logo pattern');
-if (!appAndWorkspace.includes('tx-dock-left')) failures.push('Create/multiverse must live left of logo');
-if (!appAndWorkspace.includes('tx-dock-right')) failures.push('Share/help must live right of logo');
+if (!appAndWorkspace.includes('tx-poc-brand-first-dock')) failures.push('global dock must preserve PoC brand-first action order');
+if (!appAndWorkspace.includes('tx-dock-actions')) failures.push('Create/Share/Help must share one action group after the brand');
 if (!appAndWorkspace.includes('shouldPageWorkspaces')) failures.push('pager arrows must be size-gated, not count-only');
 if (!appAndWorkspace.includes("data-overflow-pager={showPager ? 'visible' : 'hidden'}")) failures.push('dock must expose overflow pager state for regression checks');
 if (!appAndWorkspace.includes('tx-empty-stage tx-old-empty-stage')) failures.push('empty start must keep old empty-stage semantics');
@@ -96,15 +95,21 @@ if (!appAndWorkspace.includes('showAssets: false')) failures.push('assets must b
 if (!appAndWorkspace.includes('tx-progress-strip')) failures.push('source progress placement must exist for progress state');
 if (appAndWorkspace.includes('tx-source-motion-state') || appAndWorkspace.includes('tx-source-state-')) failures.push('source rail must not render idle/deferred raw discovery labels');
 if (!appAndWorkspace.includes('tx-empty-node-state')) failures.push('created empty workspace must not become onboarding card');
-if (!appAndWorkspace.includes('schemaRegistry.modules.length')) failures.push('help surface should disclose schema companion state');
+if (appAndWorkspace.includes('schemaRegistry.modules.length')) failures.push('PoC-parity Help must not surface schema-building/module-count diagnostics');
+const appShellSource = read('src/app/appShell.views.jsx');
+if (!appShellSource.includes('>Share</Button>')) failures.push('global dock must preserve PoC-visible Share label');
+if (appShellSource.includes('Share session')) failures.push('global dock must not expose deferred Share session redesign during parity recovery');
+if (appShellSource.includes('Change multiverse')) failures.push('global dock must not expose deferred Multiverse control during PoC parity recovery');
 has('src/schemas/workspace/tiinex.workspace.v1.schema.js', "id: 'tiinex.workspace.v1'", 'workspace schema companion module must live under src/schemas/workspace');
 has('src/schemas/workspace/workspace.add.views.jsx', 'data-flow="old-like-add-menu"', 'workspace Add dialog must be schema-owned and old-like');
 lacks('src/schemas/workspace/workspace.add.views.jsx', 'Start from', 'GitHub source Add must not prefill from workspace entrypoints/presets');
 has('src/schemas/workspace/workspace.add.views.jsx', 'tx-github-discovery-card', 'GitHub repo discovery must be a visible checkbox surface, not a hidden operation mode');
-has('src/schemas/workspace/workspace.add.views.jsx', 'continuation defaults preserve', 'source continuation must preserve selected discovery surfaces across F5/hash restore');
-has('src/schemas/workspace/workspace.add.views.jsx', 'const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : true)', 'new GitHub sources must default issue snapshots on while continuations preserve requested source state');
-has('src/schemas/workspace/workspace.add.views.jsx', 'Register only', 'GitHub source Add must preserve explicit register-only/no-loading action');
-has('src/schemas/workspace/workspace.add.views.jsx', 'Save source', 'GitHub source continuation/edit must expose an explicit Save source action');
+has('src/schemas/workspace/workspace.add.views.jsx', 'const issueRequested = Boolean(continuation?.issueDiscovery)', 'source continuation must restore broad issue-discovery checkbox only from explicit source issueDiscovery state');
+has('src/schemas/workspace/workspace.add.views.jsx', 'const [issueDiscovery, setIssueDiscovery] = useState(continuation ? issueRequested : false)', 'new GitHub sources must not silently enable broad issue discovery');
+has('src/schemas/workspace/workspace.add.views.jsx', "const [issueUrls, setIssueUrls] = useState(continuation?.issueUrls || continuation?.config?.issueUrls || '')", 'source continuation must preserve explicit issue targets independently of broad discovery');
+lacks('src/schemas/workspace/workspace.add.views.jsx', 'Register only', 'GitHub source UI should use human-facing Save source instead of implementation registration terminology');
+has('src/schemas/workspace/workspace.add.views.jsx', "const saveLabel = 'Save source'", 'GitHub source create/edit must expose one human-facing Save source action');
+has('src/schemas/workspace/workspace.add.views.jsx', 'continuation?.explicitFileRefs', 'source continuation must restore durable explicit Markdown/file targets');
 has('src/schemas/workspace/workspace.views.jsx', 'Rename workspace', 'workspace header must expose rename without changing source/material boundaries');
 has('src/schemas/workspace/workspace.views.jsx', 'tx-workspace-title-rename-button', 'workspace title itself must expose reachable rename affordance');
 has('src/styles/app.css', '.tx-workspace-title-rename-button', 'workspace title rename affordance needs CSS ownership');
@@ -148,7 +153,7 @@ has('src/styles/app.css', 'display: inline-flex !important;', 'desktop dock must
 has('src/styles/app.css', 'data-overflow-pager="hidden"', 'pager arrows must remain hidden until overflow calculation requires them');
 has('src/styles/app.css', 'tx-dock-logo-large', 'dock logo must stay slightly larger than neighboring buttons');
 has('src/styles/app.css', '/* v229: canonical global-dock/header contract.', 'canonical global dock/header contract must be the final owner');
-has('src/styles/app.css', 'grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr) !important;', 'dock logo must remain center-anchored with symmetric side tracks');
+has('src/styles/app.css', 'grid-template-columns: auto auto !important;', 'PoC parity dock must render brand first followed by the action group');
 has('src/styles/app.css', 'width: 136%;', 'logo image itself must remain larger without increasing the button size');
 has('src/styles/app.css', 'transform: none;', 'logo glyph should be centered by layout contract, not accumulating optical transform patches');
 

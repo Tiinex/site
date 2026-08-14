@@ -40,6 +40,17 @@ export function sourceTransportSurfaceTier(source = {}, key = '', fallbackTier =
   ) || sourceTransportSequenceTier(source, '');
 }
 
+export function sourceTransportConfiguredSurfaces(source = {}) {
+  const keys = [];
+  const explicitFileRefs = Array.isArray(source.explicitFileRefs || source.config?.explicitFileRefs)
+    ? Array.from(source.explicitFileRefs || source.config?.explicitFileRefs).filter(Boolean)
+    : [];
+  if (source.repoDiscovery === true) keys.push('repoFiles');
+  if (explicitFileRefs.length) keys.push('explicitFiles');
+  if (source.issueDiscovery === true || Boolean(source.issueUrls || source.config?.issueUrls)) keys.push('issueSnapshots');
+  return keys;
+}
+
 export function sourceTransportActiveSurfaces(source = {}) {
   return GITHUB_SOURCE_TRANSPORT_SURFACES.filter((surface) => {
     const state = sourceTransportSurfaceState(source, surface.key);
@@ -51,17 +62,21 @@ export function sourceTransportActiveSurfaces(source = {}) {
 }
 
 export function normalizeTransportSurfaceKeys(value, source = {}) {
+  const configured = new Set(sourceTransportConfiguredSurfaces(source));
   const requested = Array.isArray(value) ? value : String(value || '').split(',');
-  const keys = requested.map((item) => String(item || '').trim()).filter(Boolean).filter((key) => Boolean(SURFACE_BY_KEY[key]));
+  const keys = requested
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .filter((key) => Boolean(SURFACE_BY_KEY[key]) && configured.has(key));
   if (keys.length) return Array.from(new Set(keys));
-  const active = sourceTransportActiveSurfaces(source).filter((key) => key !== 'explicitFiles');
-  return active.length ? active : [];
+  return Array.from(configured);
 }
 
 export function sourceTransportBadgesForSource(source = {}) {
   const activeKeys = sourceTransportActiveSurfaces(source).filter((key) => key !== 'explicitFiles');
   if (!activeKeys.length) return [];
   const configured = source.transportOutcome?.configured || source.transportPlan?.configured || {};
+  const configuredKeys = new Set(sourceTransportConfiguredSurfaces(source));
   const rows = activeKeys.map((key) => {
     const surface = sourceTransportSurfaceState(source, key);
     const pendingTier = normalizeGithubTransportTier(surface.pendingTier || '');
@@ -76,7 +91,7 @@ export function sourceTransportBadgesForSource(source = {}) {
       pendingTier,
       status,
       nextTier,
-      refreshable: Boolean(nextTier),
+      refreshable: Boolean(nextTier) && configuredKeys.has(key),
       loaded: Number(surface.loaded || 0),
       unavailable: Boolean(surface.unavailable || surface.skipped),
       failed: Number(surface.failed || 0) > 0
@@ -109,10 +124,15 @@ export function sourceTransportRefreshInputForSource(source = {}, currentTier = 
   const observedTier = pendingTier || normalizeGithubTransportTier(currentTier) || (selectedSurfaceKeys.length === 1 ? sourceTransportSurfaceTier(source, selectedSurfaceKeys[0]) : sourceTransportSequenceTier(source, currentTier));
   const nextTier = nextGithubTransportTier(observedTier, configured);
   if (!nextTier) return { ok: false, reason: 'last-tier', observedTier, selectedSurfaceKeys, pendingTier, pendingSurfaces };
-  const issueUrls = source.issueUrls || source.config?.issueUrls || '';
-  const repoDiscovery = selectedSurfaceKeys.includes('repoFiles');
-  const issueDiscovery = selectedSurfaceKeys.includes('issueSnapshots');
-  if (!repoDiscovery && !issueDiscovery && !issueUrls) return { ok: false, reason: 'no-surfaces', nextTier, observedTier, selectedSurfaceKeys, pendingTier, pendingSurfaces };
+  const issueSurfaceSelected = selectedSurfaceKeys.includes('issueSnapshots');
+  const explicitFileSurfaceSelected = selectedSurfaceKeys.includes('explicitFiles');
+  const issueUrls = issueSurfaceSelected ? (source.issueUrls || source.config?.issueUrls || '') : '';
+  const explicitFileRefs = explicitFileSurfaceSelected && Array.isArray(source.explicitFileRefs || source.config?.explicitFileRefs)
+    ? Array.from(source.explicitFileRefs || source.config?.explicitFileRefs)
+    : [];
+  const repoDiscovery = selectedSurfaceKeys.includes('repoFiles') && source.repoDiscovery === true;
+  const issueDiscovery = issueSurfaceSelected && Boolean(source.issueDiscovery);
+  if (!repoDiscovery && !explicitFileRefs.length && !issueDiscovery && !issueUrls) return { ok: false, reason: 'no-surfaces', nextTier, observedTier, selectedSurfaceKeys, pendingTier, pendingSurfaces };
   return {
     ok: true,
     nextTier,
@@ -130,6 +150,7 @@ export function sourceTransportRefreshInputForSource(source = {}, currentTier = 
       repoDiscovery,
       issueDiscovery,
       issueUrls,
+      explicitFileRefs,
       transportRefreshTier: nextTier,
       transportRefreshSurfaces: selectedSurfaceKeys
     }
