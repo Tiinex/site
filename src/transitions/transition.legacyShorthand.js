@@ -1,0 +1,133 @@
+export const CANONICAL_TRANSITION_DEFINITION_SCHEMA_ID = 'tiinex.transition.definition.v1';
+export const LEGACY_TRANSITION_SHORTHAND_CONTRACT_ID = 'tiinex.site.transition.legacy-shorthand.v1';
+export const LEGACY_TRANSITION_SHORTHAND_MODEL = 'legacy-companion-shorthand';
+
+export const LEGACY_TRANSITION_INTENTS = Object.freeze({
+  continue: 'continue',
+  reference: 'reference',
+  custom: 'custom'
+});
+
+export const LEGACY_TRANSITION_PRESENTATION_VARIANTS = Object.freeze(['icon-only', 'icon-label', 'label-only', 'auto']);
+export const LEGACY_TRANSITION_ICON_TOKENS = Object.freeze(['continue', 'reference', 'task', 'decision', 'evidence', 'feedback', 'more']);
+
+export function normalizeLegacyTransitionDefinition(input = {}, module = {}) {
+  const fromSchema = String(input.fromSchema || module.id || '').trim();
+  const id = String(input.id || '').trim();
+  const intent = normalizeLegacyIntent(input.intent);
+  const resultSchema = String(input.resultSchema || input.toSchema || '').trim();
+  const resultKind = String(input.resultKind || '').trim();
+  const label = String(input.label || '').trim();
+  const shortLabel = String(input.shortLabel || label || '').trim();
+  const availability = normalizeAvailability(input.availability);
+  const resultBoundary = normalizeResultBoundary(input.resultBoundary);
+  const presentation = normalizeLegacyPresentation(input.presentation, { intent, label, shortLabel });
+  const findings = [];
+
+  if (!id) findings.push(error('transition.id.required', 'Transition definition requires an id.'));
+  if (!fromSchema) findings.push(error('transition.fromSchema.required', 'Transition definition requires fromSchema.'));
+  if (!intent) findings.push(error('transition.intent.required', 'Transition definition requires a supported intent.'));
+  if (!resultSchema && !resultKind) findings.push(error('transition.result.required', 'Transition definition requires resultSchema or resultKind.'));
+  if (!label) findings.push(error('transition.label.required', 'Transition definition requires a label.'));
+  if (!presentation.group) findings.push(error('transition.presentation.group.required', 'Transition presentation requires a group.'));
+  if (presentation.variant === 'icon-only' && !presentation.tooltip) findings.push(error('transition.presentation.tooltip.required', 'Icon-only transition actions require tooltip text.'));
+  if (presentation.variant === 'icon-only' && !presentation.ariaLabel) findings.push(error('transition.presentation.ariaLabel.required', 'Icon-only transition actions require aria-label text.'));
+  if (presentation.icon && !LEGACY_TRANSITION_ICON_TOKENS.includes(presentation.icon)) findings.push(error('transition.presentation.icon.unknown', `Unknown transition icon token: ${presentation.icon}.`));
+  if (resultBoundary.remoteWrite !== false) findings.push(error('transition.boundary.remoteWrite.blocked', 'Initial transition definitions must not remote write.'));
+  if (resultBoundary.sourceMutation !== 'none') findings.push(error('transition.boundary.sourceMutation.blocked', 'Initial transition definitions must not mutate source material.'));
+  if (resultBoundary.mayInheritParentSource !== false) findings.push(error('transition.boundary.sourceInheritance.blocked', 'Transition drafts must not inherit parent source objects.'));
+
+  return Object.freeze({
+    schema: LEGACY_TRANSITION_SHORTHAND_CONTRACT_ID,
+    compatibilityModel: LEGACY_TRANSITION_SHORTHAND_MODEL,
+    id,
+    fromSchema,
+    intent,
+    resultSchema,
+    resultKind,
+    label,
+    shortLabel,
+    priority: Number.isFinite(Number(input.priority)) ? Number(input.priority) : 0,
+    availability,
+    resultBoundary,
+    presentation,
+    status: findings.some((finding) => finding.severity === 'error') ? 'invalid' : 'active',
+    findings: Object.freeze(findings)
+  });
+}
+
+export function validateLegacyTransitionDefinitions(definitions = []) {
+  const findings = [];
+  const seen = new Set();
+  for (const definition of Array.isArray(definitions) ? definitions : []) {
+    const normalized = definition?.schema === LEGACY_TRANSITION_SHORTHAND_CONTRACT_ID ? definition : normalizeLegacyTransitionDefinition(definition);
+    if (seen.has(normalized.id)) findings.push(error('transition.id.duplicate', `Duplicate transition id: ${normalized.id}.`));
+    if (normalized.id) seen.add(normalized.id);
+    findings.push(...(normalized.findings || []));
+  }
+  return Object.freeze({ ok: !findings.some((finding) => finding.severity === 'error'), findings: Object.freeze(findings) });
+}
+
+export function legacyIntentDisplayLabel(intent = '') {
+  const value = String(intent || '').trim().toLowerCase();
+  if (value === LEGACY_TRANSITION_INTENTS.continue) return 'Continue';
+  if (value === LEGACY_TRANSITION_INTENTS.reference) return 'Reference';
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Transition';
+}
+
+export function legacyIconForIntent(intent = '') {
+  const value = String(intent || '').trim().toLowerCase();
+  if (value === LEGACY_TRANSITION_INTENTS.reference) return 'reference';
+  if (value === LEGACY_TRANSITION_INTENTS.continue) return 'continue';
+  return 'more';
+}
+
+function normalizeLegacyIntent(value = '') {
+  const intent = String(value || '').trim().toLowerCase();
+  return Object.values(LEGACY_TRANSITION_INTENTS).includes(intent) ? intent : '';
+}
+
+function normalizeAvailability(value = {}) {
+  return Object.freeze({
+    sourceModes: Object.freeze(normalizeStringList(value.sourceModes)),
+    parentKinds: Object.freeze(normalizeStringList(value.parentKinds)),
+    requiresEditableParent: Boolean(value.requiresEditableParent)
+  });
+}
+
+function normalizeResultBoundary(value = {}) {
+  return Object.freeze({
+    mode: String(value.mode || 'browser-local-draft').trim(),
+    sourceMutation: String(value.sourceMutation || 'none').trim(),
+    remoteWrite: Boolean(value.remoteWrite),
+    mayInheritParentSource: Boolean(value.mayInheritParentSource)
+  });
+}
+
+function normalizeLegacyPresentation(value = {}, { intent = '', label = '', shortLabel = '' } = {}) {
+  const variant = LEGACY_TRANSITION_PRESENTATION_VARIANTS.includes(value.variant) ? value.variant : 'auto';
+  return Object.freeze({
+    group: String(value.group || legacyGroupFromIntent(intent)).trim(),
+    placement: String(value.placement || 'overflow').trim(),
+    variant,
+    icon: String(value.icon || '').trim(),
+    tooltip: String(value.tooltip || '').trim(),
+    ariaLabel: String(value.ariaLabel || '').trim(),
+    mobileLabel: String(value.mobileLabel || shortLabel || label || '').trim()
+  });
+}
+
+function legacyGroupFromIntent(intent = '') {
+  if (intent === LEGACY_TRANSITION_INTENTS.continue) return 'Continue';
+  if (intent === LEGACY_TRANSITION_INTENTS.reference) return 'Reference';
+  return 'More';
+}
+
+function normalizeStringList(value) {
+  if (!value) return [];
+  return (Array.isArray(value) ? value : [value]).map((item) => String(item || '').trim()).filter(Boolean);
+}
+
+function error(code, message) {
+  return Object.freeze({ severity: 'error', code, message, source: LEGACY_TRANSITION_SHORTHAND_CONTRACT_ID });
+}

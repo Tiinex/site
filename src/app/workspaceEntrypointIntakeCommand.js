@@ -1,6 +1,7 @@
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
 import { assertCanonicalWorkspaceRuntimeState } from '../workspaces/workspace.runtimeCanonical.js';
+import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
 
 export async function prepareWorkspaceEntrypointIntake({ fileList = [], adapterResult = null, options = {} } = {}) {
   const collectFiles = options.collectFiles || collectLocalFilesFromDataTransfer;
@@ -32,8 +33,11 @@ export async function runWorkspaceEntrypointIntakeCommand({
   fileList = [],
   adapterResult = null,
   mode = '',
-  options = {}
+  options = {},
+  persistenceOwnership = null
 } = {}) {
+  const authority = durableLocalMutationDecision(persistenceOwnership, DurableLocalMutationOperation.localWorkspaceEntrypointIntake);
+  if (!authority.ok) return { ok: false, error: authority.error, state, notice: authority.notice, authority };
   const prepared = await prepareWorkspaceEntrypointIntake({ fileList, adapterResult, options });
   if (!prepared.ok) return Object.assign({ state }, prepared);
   const requestedMode = String(mode || '').trim().toLowerCase();

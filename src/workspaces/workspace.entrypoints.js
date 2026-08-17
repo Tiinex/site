@@ -1,14 +1,33 @@
 import { normalizeExplicitFileRefs } from '../sources/source.explicitTargets.js';
 
 export function workspaceSourceInputsFromMarkdown(markdown = '', parseWorkspaceConfig = null) {
+  return workspaceDeclaredSourceInputsFromMarkdown(markdown, parseWorkspaceConfig).filter((sourceInput) => workspaceEntrypointApplies(sourceInput.workspaceEntrypoint));
+}
+
+export function workspaceDeclaredSourceInputsFromMarkdown(markdown = '', parseWorkspaceConfig = null) {
   if (typeof parseWorkspaceConfig !== 'function') return [];
   let config = null;
   try { config = parseWorkspaceConfig(markdown); } catch (_) { return []; }
   const entrypoints = Array.isArray(config?.workspaceEntrypoints) ? config.workspaceEntrypoints : [];
-  return entrypoints.map((entrypoint) => workspaceSourceInputFromEntrypoint(entrypoint)).filter(Boolean);
+  return entrypoints.map((entrypoint) => workspaceSourceInputFromDeclaredEntrypoint(entrypoint)).filter(Boolean);
+}
+
+export function workspaceEntrypointApplies(entrypoint = {}) {
+  const value = entrypoint?.openOnApply;
+  if (typeof value === 'boolean') return value;
+  const text = String(value ?? '').trim().toLowerCase();
+  if (!text) return true;
+  if (['no', 'false', 'disabled', 'disable', 'off', '0'].includes(text)) return false;
+  if (['yes', 'true', 'enabled', 'enable', 'on', '1'].includes(text)) return true;
+  return true;
 }
 
 export function workspaceSourceInputFromEntrypoint(entrypoint = {}) {
+  if (!workspaceEntrypointApplies(entrypoint)) return null;
+  return workspaceSourceInputFromDeclaredEntrypoint(entrypoint);
+}
+
+export function workspaceSourceInputFromDeclaredEntrypoint(entrypoint = {}) {
   const repository = String(entrypoint?.repository || entrypoint?.repo || '').trim();
   if (!repository) return null;
   const issueUrls = entrypoint.issueUrl || entrypoint.issueUrls || '';
@@ -106,8 +125,8 @@ export function findConfiguredSource(workspace = {}, sourceInput = {}) {
 export function sourceSignature(source = {}) {
   const repo = String(source.repository || source.repo || source.config?.repo || '').trim().toLowerCase();
   if (!repo) return '';
-  const ref = String(source.ref || source.requestedRef || source.config?.ref || '').trim().toLowerCase();
-  const root = canonicalizeLocalPath(source.rootPath || source.config?.rootPath || '.topics').toLowerCase();
+  const ref = String(source.ref || source.requestedRef || source.config?.ref || '').trim();
+  const root = canonicalizeLocalPath(source.rootPath || source.config?.rootPath || '.topics');
   const repoDiscovery = Boolean(source.repoDiscovery);
   const issueDiscovery = Boolean(source.issueDiscovery);
   const issueUrls = normalizeIssueUrls(source.issueUrls || source.config?.issueUrls || '');
@@ -127,7 +146,7 @@ export function canonicalizeLocalPath(inputPath = '') {
 }
 
 function normalizeIssueUrls(value = '') {
-  return String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean).sort().join('\n');
+  return Array.from(new Set(String(value || '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean))).sort().join('\n');
 }
 
 function truthyWorkspaceConfigValue(value) {

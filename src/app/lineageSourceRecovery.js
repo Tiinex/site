@@ -276,6 +276,7 @@ function isSimpleRelative(value = '') {
   const raw = String(value || '').trim();
   return Boolean(raw && !raw.includes('/') && !/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw));
 }
+function basename(path = '') { return canonicalRepoPath(path).split('/').filter(Boolean).pop() || ''; }
 function dirname(path = '') {
   const parts = canonicalRepoPath(path).split('/').filter(Boolean);
   parts.pop();

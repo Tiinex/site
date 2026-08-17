@@ -1,4 +1,5 @@
 import { transitionDefinitionsForRecord } from './transition.definitions.js';
+import { legacyIconForIntent, legacyIntentDisplayLabel } from './transition.legacyShorthand.js';
 
 export const TRANSITION_ACTION_PRESENTATION_CONTRACT_ID = 'tiinex.transition.action.presentation.v1';
 export const RECORD_TRANSITION_ACTION_PREFIX = 'record.transition';
@@ -14,13 +15,13 @@ export function transitionActionsForRecord(record = {}, options = {}) {
 
 export function transitionActionForDefinition(definition = {}) {
   const presentation = definition.presentation || {};
-  const intentLabel = intentDisplayLabel(definition.intent);
+  const intentLabel = legacyIntentDisplayLabel(definition.intent);
   const label = presentation.tooltip || `${intentLabel} · ${definition.label || definition.shortLabel || definition.id}`;
   return Object.freeze({
     id: transitionActionId(definition.id),
     label,
     shortLabel: definition.shortLabel || definition.label || definition.id,
-    icon: presentation.icon || iconForIntent(definition.intent),
+    icon: presentation.icon || legacyIconForIntent(definition.intent),
     enabled: definition.status === 'active',
     contract: TRANSITION_ACTION_PRESENTATION_CONTRACT_ID,
     capabilityStatus: 'implemented',
@@ -39,18 +40,4 @@ export function isTransitionAction(action = {}) {
 
 export function transitionActionId(definitionId = '') {
   return `${RECORD_TRANSITION_ACTION_PREFIX}:${String(definitionId || '').trim()}`;
-}
-
-function intentDisplayLabel(intent = '') {
-  const value = String(intent || '').trim().toLowerCase();
-  if (value === 'continue') return 'Continue';
-  if (value === 'reference') return 'Reference';
-  return value ? value.charAt(0).toUpperCase() + value.slice(1) : 'Transition';
-}
-
-function iconForIntent(intent = '') {
-  const value = String(intent || '').trim().toLowerCase();
-  if (value === 'reference') return 'reference';
-  if (value === 'continue') return 'continue';
-  return 'more';
 }

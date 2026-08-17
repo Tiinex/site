@@ -60,7 +60,7 @@ export function applyGithubSourceMaterializationCommand(input = {}) {
     governanceBoundary: diagnostics.governanceBoundary || source.governanceBoundary || {},
     transportLabel: diagnostics.transportPlan?.label || input.transportLabel || source.transportLabel || '',
     transportRefreshTier: input.transportRefreshTier || source.transportRefreshTier || ''
-  }));
+  }), { sourceIdentityPolicy: 'refine-existing' });
   if (updated?.ok) nextState = updated.state;
 
   const finalWorkspace = workspaceFor(nextState, workspaceId, lifecycle);

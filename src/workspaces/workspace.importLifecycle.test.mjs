@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import '../sources/source.identity.js';
 import './workspace.route.js';
 import './workspace.persistenceRouteCache.js';
+import './workspace.persistenceClear.js';
 import './workspace.persistence.js';
 import './workspace.lifecycle.js';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';

@@ -1,4 +1,4 @@
-import { addConfiguredSourceToWorkspace, findConfiguredSource, findWorkspaceForIncomingSource, sourceMaterializationCompleteEnough } from './workspace.entrypoints.js';
+import { addConfiguredSourceToWorkspace, findConfiguredSource, findWorkspaceForIncomingSource, sourceMaterializationCompleteEnough, sourceSignature } from './workspace.entrypoints.js';
 import { replaceNonDraftWorkspaceSet } from './workspace.openSemantics.js';
 
 export function openWorkspaceEntrypointSet({
@@ -106,7 +106,9 @@ function normalizeSourceInputs(sourceInputs = []) {
   const output = [];
   for (const input of Array.isArray(sourceInputs) ? sourceInputs : []) {
     if (!input || !String(input.repository || input.repo || '').trim()) continue;
-    const key = [input.label || '', input.repository || input.repo || '', input.ref || '', input.rootPath || '.topics', input.issueUrls || ''].join('|').toLowerCase();
+    const label = String(input.label || '').trim().toLowerCase();
+    const plan = sourceSignature(input);
+    const key = `${label}|${plan}`;
     if (seen.has(key)) continue;
     seen.add(key);
     output.push(Object.assign({}, input));

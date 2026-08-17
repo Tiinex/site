@@ -33,6 +33,7 @@ function loadPersistence(options = {}) {
   vm.runInContext(readFileSync(new URL('./workspace.persistenceRecovery.js', import.meta.url), 'utf8'), sandbox);
   vm.runInContext(readFileSync(new URL('./workspace.persistenceRouteCache.js', import.meta.url), 'utf8'), sandbox);
   vm.runInContext(readFileSync(new URL('./workspace.persistencePresentation.js', import.meta.url), 'utf8'), sandbox);
+  vm.runInContext(readFileSync(new URL('./workspace.persistenceClear.js', import.meta.url), 'utf8'), sandbox);
   vm.runInContext(readFileSync(new URL('./workspace.persistence.js', import.meta.url), 'utf8'), sandbox);
   return { persistence: sandbox.window.TiinexWorkspacePersistence, routeCache: sandbox.window.TiinexWorkspacePersistenceRouteCache, env: sandbox.window, historyUrls, storageMap, failKeys, events };
 }
@@ -222,8 +223,26 @@ if (!localFailure.env.TiinexLocalStatePersistenceFailure?.localMaterialAtRisk ||
 if (!localFailure.env.TiinexLocalStatePersistenceFailure?.lastKnownGoodPreserved || !localFailure.env.TiinexLocalStatePersistenceFailure?.recoveryIndexPreserved) throw new Error('persistence failure receipt must disclose preserved last-known-good recovery');
 if (!localFailure.events.some((event) => event.type === 'tiinex:local-persistence-failure' && event.detail?.localMaterialAtRisk && event.detail?.lastKnownGoodPreserved)) throw new Error('local persistence risk must dispatch a user-surfaceable product event with preserved-recovery truth');
 
+const preservedClear = loadPersistence();
+preservedClear.persistence.writeState(state, { storage: preservedClear.env.localStorage, location: preservedClear.env.location, history: preservedClear.env.history });
+const preservedDelta = preservedClear.storageMap.get(preservedClear.persistence.LOCAL_DELTA_KEY);
+const preservedIndex = preservedClear.storageMap.get(preservedClear.persistence.LOCAL_RECOVERY_INDEX_KEY);
+preservedClear.env.location.hash = '#public-target-proof';
+preservedClear.persistence.clearState({
+  storage: preservedClear.env.localStorage,
+  location: preservedClear.env.location,
+  history: preservedClear.env.history,
+  mode: 'replace',
+  preserveUrl: true,
+  durableLocalPolicy: 'preserve-existing'
+});
+if (preservedClear.storageMap.has(preservedClear.persistence.STORAGE_KEY)) throw new Error('public-owned empty-state clear may remove current route/session cache');
+if (preservedClear.storageMap.get(preservedClear.persistence.LOCAL_DELTA_KEY) !== preservedDelta) throw new Error('public-owned empty-state clear must preserve durable local delta');
+if (preservedClear.storageMap.get(preservedClear.persistence.LOCAL_RECOVERY_INDEX_KEY) !== preservedIndex) throw new Error('public-owned empty-state clear must preserve local recovery index');
+if (preservedClear.env.location.hash !== '#public-target-proof') throw new Error('public-owned empty-state clear must preserve public route URL');
+
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
-if (storageMap.has(persistence.STORAGE_KEY) || storageMap.has(persistence.LOCAL_DELTA_KEY) || storageMap.has(persistence.LOCAL_RECOVERY_INDEX_KEY) || storageMap.has(persistence.LEGACY_STORAGE_KEY)) throw new Error('clear must remove all persistence domains');
-if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('closing last workspace should be push-history capable');
+if (storageMap.has(persistence.STORAGE_KEY) || storageMap.has(persistence.LOCAL_DELTA_KEY) || storageMap.has(persistence.LOCAL_RECOVERY_INDEX_KEY) || storageMap.has(persistence.LEGACY_STORAGE_KEY)) throw new Error('ordinary explicit clear must remove all persistence domains');
+if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('ordinary closing last workspace should remain push-history capable');
 
 console.log('✓ workspace persistence tests passed');

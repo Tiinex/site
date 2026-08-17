@@ -104,10 +104,12 @@ assert.equal(recoveredSchema.ok, true, 'explicit declared schema target can reco
 assert.equal(recoveredSchema.record.source.adapterId, 'github');
 assert.equal(recoveredSchema.record.source.repo, 'Tiinex/docs');
 assert.equal(recoveredSchema.record.schemaNavigation.source, 'declared-reading-contract-target');
-const targetedSchemaSource = lifecycle.activeWorkspace(recoveredSchema.state).sources.find((source) => source.sourceKind === 'github.file');
-assert(targetedSchemaSource, 'targeted schema recovery keeps truthful source provenance on the workspace boundary');
-assert.equal(targetedSchemaSource.loadable, false, 'targeted github.file schema provenance must not advertise broad Discover capability');
-assert.equal(targetedSchemaSource.count, 1, 'targeted schema provenance count reflects the one recovered reading contract');
+const targetedSchemaSource = lifecycle.activeWorkspace(recoveredSchema.state).sources.find((source) => source.adapterId === 'github' && source.repo === 'Tiinex/docs');
+assert(targetedSchemaSource, 'targeted schema recovery keeps truthful configured GitHub provenance on the workspace boundary');
+assert.equal(targetedSchemaSource.repoDiscovery, false, 'targeted schema recovery must not enable broad repo discovery');
+assert(targetedSchemaSource.explicitFileRefs.includes('.topics/.schemas/tiinex.decision.v1.schema.md'), 'targeted schema path is durable exact-source configuration');
+assert.equal(recoveredSchema.record.source.id, targetedSchemaSource.id, 'schema record points at the shared configured source owner');
+assert.match(recoveredSchema.record.sourceTarget?.browseUrl || '', /tiinex\.decision\.v1\.schema\.md$/, 'schema record retains exact Open source provenance');
 
 // C/F. Product routing and dialog hierarchy are guarded at the actual source files.
 const recordActionSource = readFileSync(new URL('../actions/record.actions.js', import.meta.url), 'utf8');

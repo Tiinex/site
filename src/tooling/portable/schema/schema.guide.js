@@ -7,22 +7,14 @@ import {
   conditionalContractGroups,
   conditionalCreationInputs,
   contractRules,
-  optionalSchemaFields,
-  optionalSchemaSections,
-  optionalCreationInputFields,
-  creationToolingConfigurationFields,
   parsePortableSchemaDocument,
-  readPortableSchemaSections,
-  requiredCreationContentInputs,
-  requiredCreationInputFields,
-  requiredCreationSections,
-  requiredSchemaFields,
-  requiredSchemaSections
+  readPortableSchemaSections
 } from './schema.contract.js';
 import { resolvePortableLlmCompanion } from './llm.companion.js';
+import { compilePortableSchemaContract } from './contract.compile.js';
 
 export const PORTABLE_SCHEMA_GUIDE_SCHEMA_ID = 'tiinex.llm.schema-guide.v1';
-export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '2';
+export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '3';
 
 export function buildPortableSchemaGuide(input = {}, options = {}) {
   const schemaId = String(input.schemaId || options.schemaId || '').trim();
@@ -33,30 +25,30 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
   const binding = module?.binding || {};
   const markdown = schemaMaterial?.markdown || '';
   const document = markdown ? parsePortableSchemaDocument(markdown) : null;
+  const compiledContract = document ? compilePortableSchemaContract(document) : null;
   const capabilityName = capabilityForTask(task);
   const resolution = resolveSchemaCapabilities({ schemaId }, { capability: capabilityName });
   const creationContract = task === 'create' || task === 'continue' ? buildArtifactCreationContract({ schemaId, transitionType: task === 'continue' ? 'continue' : 'create-artifact' }) : null;
   const companionResult = resolvePortableLlmCompanion({ schemaId, task, module, input, options });
   const companion = companionResult.companion;
   const creationRequested = task === 'create' || task === 'continue';
-  const requiredSections = document ? uniqueStrings([
-    ...requiredSchemaSections(document),
-    ...(creationRequested ? requiredCreationSections(document) : [])
+  const requiredSections = compiledContract ? uniqueStrings([
+    ...compiledContract.validation.requiredSections,
+    ...(creationRequested ? compiledContract.creation.requiredSections : [])
   ]) : [];
-  const requiredFields = document ? requiredSchemaFields(document) : [];
-  const optionalSections = detail === 'compact' ? [] : document ? optionalSchemaSections(document) : [];
-  const optionalFields = detail === 'full' ? (document ? optionalSchemaFields(document) : []) : [];
+  const requiredFields = compiledContract ? [...compiledContract.validation.requiredFields] : [];
+  const optionalSections = detail === 'compact' ? [] : compiledContract ? [...compiledContract.validation.optionalSections] : [];
+  const optionalFields = detail === 'full' ? (compiledContract ? [...compiledContract.validation.optionalFields] : []) : [];
   const conditionalRequirements = document ? buildConditionalRequirements(document) : [];
   const rules = document ? contractRules(document.validation) : [];
   const creationRules = document ? contractRules(document.creation) : [];
   const requiredInputs = creationRequested ? uniqueStrings([
     ...(creationContract?.inputs?.required || []),
-    ...(document ? requiredCreationInputFields(document) : []),
-    ...(document ? requiredCreationContentInputs(document) : []),
+    ...(compiledContract ? compiledContract.creation.requiredInputs : []),
     ...requiredFields
   ]) : [];
-  const optionalInputs = creationRequested && document ? optionalCreationInputFields(document) : [];
-  const toolingConfiguration = creationRequested && document ? creationToolingConfigurationFields(document) : [];
+  const optionalInputs = creationRequested && compiledContract ? [...compiledContract.creation.optionalInputs] : [];
+  const toolingConfiguration = creationRequested && compiledContract ? [...compiledContract.creation.toolingConfigurationFields] : [];
   const hardRules = prioritizeRules([...rules, ...creationRules], task, detail);
   const purpose = companion.purpose || document?.summary || module?.label || `Work with ${schemaId || 'an unknown Tiinex schema'}.`;
   const findings = [...companionResult.findings];
@@ -95,6 +87,13 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
     requiredInputs: Object.freeze(limitList(requiredInputs, detail === 'compact' ? 18 : 80)),
     requiredStructure: Object.freeze(limitList(requiredSections, detail === 'compact' ? 14 : 80)),
     requiredFields: Object.freeze(limitList(requiredFields, detail === 'compact' ? 24 : 120)),
+    declarationContracts: Object.freeze((compiledContract?.declarations || []).map((contract) => Object.freeze({
+      group: contract.group,
+      targetHeadings: contract.targetHeadings,
+      requiredFields: contract.requiredFields,
+      optionalFields: detail === 'compact' ? Object.freeze([]) : contract.optionalFields,
+      allowLiteralNone: contract.allowLiteralNone
+    }))),
     optionalInputs: Object.freeze(limitList(optionalInputs, detail === 'compact' ? 18 : 80)),
     toolingConfiguration: Object.freeze({
       fields: Object.freeze(limitList(toolingConfiguration, detail === 'compact' ? 18 : 80)),

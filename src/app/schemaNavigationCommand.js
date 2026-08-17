@@ -2,6 +2,8 @@ import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { schemaCatalogEntryForId, schemaFilenameForId, schemaMarkdownCatalog } from '../schemas/schemaMarkdownCatalog.js';
 import { recoverDeclaredSchemaEntry } from './schemaSourceRecovery.js';
+import { normalizeExplicitFileRefs } from '../sources/source.explicitTargets.js';
+import { stateWithActiveWorkspace, stateWithWorkspaceViewPatch } from './workspaceMulticolumn.js';
 
 const SCHEMA_SOURCE_ID = 'viewer-schema-registry';
 const SCHEMA_SOURCE_LABEL = 'Viewer schema registry';
@@ -32,13 +34,18 @@ export async function openSchemaForRecordCommand(input = {}) {
   const target = workspaceById(next, workspace.id);
   if (!target) return { ok: false, error: 'workspace.missing-after-clone', state, notice: 'No active workspace is available.' };
   const createdAt = input.clock ? input.clock() : new Date().toISOString();
+  if (entry?.source?.sourceBacked && String(entry.source.adapterId || '').toLowerCase() === 'github') {
+    const coalesced = coalesceRecoveredGithubSchemaSource(target.sources, entry.source, entry.path || recovered?.path || '');
+    target.sources = coalesced.sources;
+    entry = Object.assign({}, entry, { source: coalesced.source });
+  }
   const schemaRecord = makeSchemaRecord({ workspace: target, entry, schemaId, createdAt });
   const records = Array.isArray(target.records) ? target.records.slice() : [];
   const existingIndex = records.findIndex((item) => sameRecordIdentity(item, schemaRecord));
   if (existingIndex >= 0) records[existingIndex] = mergeSchemaNavigationMetadata(records[existingIndex], schemaRecord);
   else records.unshift(schemaRecord);
   target.records = records;
-  target.sources = schemaRecord.source?.sourceBacked ? upsertRecoveredSchemaSource(target.sources, schemaRecord.source) : upsertSchemaSource(target.sources, target.records);
+  target.sources = schemaRecord.source?.sourceBacked ? updateRecoveredSchemaSourceCounts(target.sources, schemaRecord.source, target.records) : upsertSchemaSource(target.sources, target.records);
   target.sourceOrder = Array.isArray(target.sources) ? target.sources.map((source) => source.id).filter(Boolean) : [];
   next.activeWorkspaceId = target.id;
   const selected = existingIndex >= 0 ? records[existingIndex] : schemaRecord;
@@ -94,6 +101,12 @@ function makeSchemaRecord({ workspace, entry, schemaId, createdAt }) {
     lifecycleStatus: base.lifecycleStatus || 'reading contract',
     status: base.status || 'schema ok',
     source: entry.source?.sourceBacked ? Object.assign({}, entry.source) : schemaSourceBase(recordsForSource(workspace.records).length + 1),
+    sourceTarget: entry.source?.sourceBacked ? {
+      sourceArtifactPath: path,
+      inputTarget: entry.declaredHref || entry.browseUrl || entry.fetchUrl || path,
+      browseUrl: entry.browseUrl || entry.source?.permalink || '',
+      rawUrl: entry.fetchUrl || ''
+    } : base.sourceTarget,
     schemaNavigation: {
       schema: 'tiinex.workspace.schemaNavigation.v1',
       schemaId,
@@ -106,17 +119,18 @@ function makeSchemaRecord({ workspace, entry, schemaId, createdAt }) {
 }
 
 function focusSchemaRecord({ state, workspaceId, record, schemaId, notice, existing = false, loaded = false }) {
-  const next = cloneState(state);
-  next.activeWorkspaceId = workspaceId || next.activeWorkspaceId;
-  next.view = Object.assign({}, next.view || {}, {
+  const id = String(workspaceId || state?.activeWorkspaceId || '').trim();
+  let next = stateWithActiveWorkspace(cloneState(state), id);
+  const currentView = next.workspaceViews?.[id] || next.view || {};
+  next = stateWithWorkspaceViewPatch(next, id, {
     workspaceVerse: 'lineage',
     selectedRecordId: record.id,
     lineageQuery: '',
     lineageAuditReport: null,
     lineageLoadReport: null,
-    expandedLineageRecordIds: unique([record.id].concat(next.view?.expandedLineageRecordIds || []))
+    expandedLineageRecordIds: unique([record.id].concat(currentView.expandedLineageRecordIds || []))
   });
-  return { ok: true, state: next, workspace: workspaceById(next, workspaceId), record, schemaId, existing, loaded, commitMode: 'push', notice };
+  return { ok: true, state: next, workspace: workspaceById(next, id), record, schemaId, existing, loaded, commitMode: 'push', notice };
 }
 
 function mergeSchemaNavigationMetadata(existing = {}, schemaRecord = {}) {
@@ -128,14 +142,83 @@ function mergeSchemaNavigationMetadata(existing = {}, schemaRecord = {}) {
 }
 
 
-function upsertRecoveredSchemaSource(sources = [], source = {}) {
+function coalesceRecoveredGithubSchemaSource(sources = [], recovered = {}, targetPath = '') {
   const list = Array.isArray(sources) ? sources.slice() : [];
-  const id = String(source.id || '').trim();
-  if (!id) return list;
-  const index = list.findIndex((item) => String(item?.id || '') === id);
-  if (index >= 0) list[index] = Object.assign({}, list[index], source);
-  else list.push(Object.assign({}, source, { discoveryState: source.discoveryState || 'loaded', closeable: true, loadable: source.loadable !== false, count: Math.max(1, Number(source.count || 0)), recordCount: Math.max(1, Number(source.recordCount || source.count || 0)) }));
+  const repo = String(recovered.repo || recovered.repository || recovered.config?.repo || '').trim();
+  const ref = String(recovered.ref || recovered.config?.ref || '').trim();
+  const path = normalizePath(targetPath || recovered.path || '');
+  const rootPath = schemaSourceRootPath(path, recovered.rootPath || recovered.config?.rootPath || '');
+  const compatibleIndex = list.findIndex((source) => compatibleGithubSchemaBoundary(source, { repo, ref, rootPath }));
+  const existing = compatibleIndex >= 0 ? list[compatibleIndex] : null;
+  const explicitFileRefs = normalizeExplicitFileRefs([...(existing?.explicitFileRefs || existing?.config?.explicitFileRefs || []), path]);
+  const id = existing?.id || `github-exact:${repo.toLowerCase()}:${ref || 'default'}:${rootPath}`;
+  const source = Object.assign({}, existing || {}, recovered, {
+    id,
+    label: existing?.label || recovered.label || repo,
+    kind: existing?.kind || 'github-tree',
+    adapterId: 'github',
+    sourceKind: 'github.repo',
+    repo,
+    repository: repo,
+    ref,
+    rootPath,
+    sourceBacked: true,
+    originReferenceSource: false,
+    recoveryOnly: false,
+    loadable: true,
+    closeable: existing?.closeable !== false,
+    repoDiscovery: Boolean(existing?.repoDiscovery),
+    issueDiscovery: Boolean(existing?.issueDiscovery),
+    issueUrls: existing?.issueUrls || existing?.config?.issueUrls || '',
+    explicitFileRefs,
+    config: Object.assign({}, existing?.config || {}, recovered.config || {}, { repo, ref, rootPath, issueUrls: existing?.issueUrls || existing?.config?.issueUrls || '', explicitFileRefs: explicitFileRefs.slice() }),
+    requestedSurfaces: Object.assign({}, existing?.requestedSurfaces || {}, {
+      explicitFiles: Object.assign({}, existing?.requestedSurfaces?.explicitFiles || {}, { requested: true, requestedCount: explicitFileRefs.length })
+    }),
+    boundary: existing?.boundary || 'configured exact-target GitHub source; broad discovery remains explicit'
+  });
+  delete source.path;
+  delete source.permalink;
+  if (compatibleIndex >= 0) list[compatibleIndex] = source;
+  else list.push(source);
+  return { source, sources: list };
+}
+
+function updateRecoveredSchemaSourceCounts(sources = [], source = {}, records = []) {
+  const list = Array.isArray(sources) ? sources.slice() : [];
+  const index = list.findIndex((item) => String(item?.id || '') === String(source.id || ''));
+  if (index < 0) return list.concat(source);
+  const current = list[index];
+  const sourceRecords = (Array.isArray(records) ? records : []).filter((record) => String(record?.source?.id || '') === String(source.id || ''));
+  const recoveredSchemaRecords = sourceRecords.filter((record) => record?.schemaNavigation?.reason === 'reading-contract-badge');
+  const explicitFileRefs = normalizeExplicitFileRefs(current.explicitFileRefs || current.config?.explicitFileRefs || []);
+  const explicitFiles = Object.assign({}, current.surfaces?.explicitFiles || {}, { requested: true, loaded: recoveredSchemaRecords.length, requestedCount: explicitFileRefs.length });
+  list[index] = Object.assign({}, current, {
+    count: Math.max(Number(current.count || 0), sourceRecords.length),
+    recordCount: Math.max(Number(current.recordCount || 0), sourceRecords.length),
+    explicitFileRefs,
+    config: Object.assign({}, current.config || {}, { explicitFileRefs: explicitFileRefs.slice() }),
+    surfaces: Object.assign({}, current.surfaces || {}, { explicitFiles })
+  });
   return list;
+}
+
+function compatibleGithubSchemaBoundary(source = {}, target = {}) {
+  if (String(source.adapterId || '').toLowerCase() !== 'github') return false;
+  if (source.originReferenceSource === true || source.recoveryOnly === true) return false;
+  const repo = String(source.repo || source.repository || source.config?.repo || '').trim().toLowerCase();
+  const ref = String(source.ref || source.config?.ref || '').trim();
+  const rootPath = schemaSourceRootPath('', source.rootPath || source.config?.rootPath || '');
+  return Boolean(repo && repo === String(target.repo || '').trim().toLowerCase() && ref === String(target.ref || '').trim() && rootPath === target.rootPath);
+}
+
+function schemaSourceRootPath(path = '', configuredRoot = '') {
+  const root = normalizePath(configuredRoot);
+  if (root && root !== '.') return root;
+  const clean = normalizePath(path);
+  if (clean === '.topics' || clean.startsWith('.topics/')) return '.topics';
+  const parts = clean.split('/').filter(Boolean);
+  return parts.length > 1 ? parts[0] : '.';
 }
 
 function upsertSchemaSource(sources = [], records = []) {

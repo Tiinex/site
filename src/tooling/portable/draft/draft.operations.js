@@ -4,7 +4,8 @@ import { createRecordFromMarkdown } from '../../../artifacts/artifact.record.js'
 import { portableFinding, normalizePortableFinding, summarizePortableFindings } from '../findings.js';
 import { findSchemaMaterial } from '../input/portable.input.js';
 import { buildPortableSchemaGuide } from '../schema/schema.guide.js';
-import { conditionalContractGroups, parsePortableSchemaDocument, requiredSchemaFields, requiredSchemaSections } from '../schema/schema.contract.js';
+import { compilePortableSchemaContract } from '../schema/contract.compile.js';
+import { validatePortableContractInstance } from '../schema/contract.validate.js';
 
 export function validatePortableDraft(input = {}, options = {}) {
   const markdown = String(input.markdown || input.draft?.markdown || '');
@@ -145,52 +146,22 @@ function detectSharedParserQuirks(markdown, parsed, audit, path) {
 }
 
 function validateContractStructure(draftMarkdown, schemaMarkdown, schemaId, path) {
-  const document = parsePortableSchemaDocument(schemaMarkdown);
-  const requiredSections = requiredSchemaSections(document);
-  const requiredFields = requiredSchemaFields(document);
-  const conditionalRequirements = conditionalContractGroups(document.validation);
-  const headings = markdownHeadings(draftMarkdown);
-  const fields = markdownFields(draftMarkdown);
-  const missingSections = requiredSections.filter((section) => !headings.has(normalizeKey(section)));
-  const missingFields = requiredFields.filter((field) => !fields.has(normalizeKey(field)));
-  const findings = [
-    ...missingSections.map((section) => portableFinding('error', 'portable.draft.section.required.missing', `Required section is missing: ${section}.`, { schemaId, section, ref: path })),
-    ...missingFields.map((field) => portableFinding('error', 'portable.draft.field.required.missing', `Required field is missing: ${field}.`, { schemaId, field, ref: path }))
-  ];
+  const compiled = compilePortableSchemaContract(schemaMarkdown);
+  const validation = validatePortableContractInstance({ markdown: draftMarkdown, compiledContract: compiled });
+  const missingSections = validation.findings.filter((finding) => finding.code === 'portable.contract.section.required.missing').map((finding) => finding.section);
+  const missingFields = validation.findings.filter((finding) => finding.code === 'portable.contract.field.required.missing' || finding.code === 'portable.contract.declaration.field.required.missing').map((finding) => finding.field);
   return Object.freeze({
-    schema: 'tiinex.portable.contract-structure-validation.v1',
+    schema: 'tiinex.portable.contract-structure-validation.v2',
     schemaId,
-    requiredSections: Object.freeze(requiredSections),
-    requiredFields: Object.freeze(requiredFields),
+    status: validation.status,
+    requiredSections: compiled.validation.requiredSections,
+    requiredFields: compiled.validation.requiredFields,
     missingSections: Object.freeze(missingSections),
     missingFields: Object.freeze(missingFields),
-    conditionalRequirements,
-    findings: Object.freeze(findings)
+    conditionalRequirements: compiled.validation.conditionalRequirements,
+    compiledContractSchema: compiled.schema,
+    findings: Object.freeze(validation.findings.map((finding) => normalizePortableFinding(finding, { ref: path })))
   });
-}
-
-function markdownHeadings(markdown = '') {
-  const values = new Set();
-  let fenced = false;
-  for (const line of String(markdown || '').split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) { fenced = !fenced; continue; }
-    if (fenced) continue;
-    const match = line.match(/^#{1,6}\s+(.+?)\s*$/);
-    if (match) values.add(normalizeKey(match[1]));
-  }
-  return values;
-}
-
-function markdownFields(markdown = '') {
-  const values = new Set();
-  let fenced = false;
-  for (const line of String(markdown || '').split(/\r?\n/)) {
-    if (/^\s*```/.test(line)) { fenced = !fenced; continue; }
-    if (fenced) continue;
-    const match = line.match(/^\s*-\s+([^:]+):/);
-    if (match) values.add(normalizeKey(match[1]));
-  }
-  return values;
 }
 
 function sanitizeAudit(audit = {}) {

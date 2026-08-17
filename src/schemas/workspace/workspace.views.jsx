@@ -36,7 +36,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -124,6 +124,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
           <span className="tx-stat-pill" title="Workspace artifacts"><Icon name="workspace" />{workspaceArtifactCount}</span>
           <span className="tx-stat-pill" title="Sources"><Icon name="source" />{sources.length}</span>
           <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} />
+          <Button icon="shareNodes" variant="ghost" shape="round" aria-label="Share workspace" title="Share workspace" onClick={onShareWorkspace} />
           <Button icon="edit" variant="ghost" shape="round" aria-label="Rename workspace" title="Rename workspace" onClick={onRenameWorkspace} />
           <Button icon="download" variant="ghost" shape="round" aria-label="Prepare workspace export" title="Prepare workspace export" onClick={onExportWorkspace} />
           <Button icon="collapse" variant="ghost" shape="round" aria-label="Collapse workspace" title="Collapse workspace" onClick={() => onLayoutMode?.('compact')} />
@@ -139,7 +140,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} workspaceRecords={allRecords} workspaceId={workspace.id} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length)
@@ -149,6 +150,8 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
                 stageScrollTop={stageScrollTop}
                 auditById={auditById}
                 actionStateKey={interactionRevision}
+                workspaceRecords={allRecords}
+                workspaceId={workspace.id}
                 onOpenRecord={onOpenRecord}
                 onFocusRecordLineage={onFocusRecordLineage}
                 onShareRecord={onShareRecord}

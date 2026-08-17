@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { makePastedTraceFile, runLocalMaterialImportCommand } from './localMaterialCommand.js';
 
-export function useLocalMaterialIntake({ getLifecycle, getState, workspaceId = '', setNotice, setDialog, commit, windowObj = null } = {}) {
+export function useLocalMaterialIntake({ getLifecycle, getState, getPersistenceOwnership = null, workspaceId = '', setNotice, setDialog, commit, windowObj = null } = {}) {
   const [pendingLocalImport, setPendingLocalImport] = useState(null);
 
   async function addLocalFiles(fileList, options = {}, preparedAdapterResult = null) {
@@ -14,7 +14,8 @@ export function useLocalMaterialIntake({ getLifecycle, getState, workspaceId = '
       workspaceId: targetWorkspaceId,
       fileList,
       adapterResult: preparedAdapterResult,
-      options: commandOptions
+      options: commandOptions,
+      persistenceOwnership: getPersistenceOwnership?.() || null
     });
     if (result.exception) console.error(result.exception);
     if (result.error === 'import.conflict.requires-resolution') {

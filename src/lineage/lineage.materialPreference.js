@@ -2,7 +2,8 @@ export function preferredLineageMaterialCandidates(nodes = [], method = '') {
   const unique = uniqueNodes(nodes || []);
   if (unique.length <= 1) return unique;
   const text = String(method || '');
-  if (!text.includes('provenance') && !text.includes('issue-local')) return unique;
+  const publicationIdentity = text.includes('provenance') || text.includes('issue-local') || text.includes('github-comment') || text.includes('github-issue');
+  if (!publicationIdentity) return unique;
   const embedded = unique.filter((node) => isEmbeddedRecoveredArtifact(node));
   return embedded.length ? embedded : unique;
 }

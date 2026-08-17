@@ -4,7 +4,7 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { isWorkspaceRecord, presentRecordActions, RecordActionKind } from '../../actions/record.actions.js';
-import { transitionActionsForRecord } from '../../transitions/transition.presentation.js';
+import { transitionProductActionsForRecord } from '../../transitions/transition.productPresentation.browser.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { appendTransitionActionsToStaticRow } from './workspace.cardActions.js';
@@ -31,10 +31,10 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
   );
 }, assetCardPropsEqual);
 
-export function RecordCard({ record, auditItem, actionStateKey = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded }) {
+export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
-  const transitionActions = transitionActionsForRecord(record, { surface: context, maxPrimary: 1 });
+  const transitionActions = transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId });
   const isWorkspaceArtifact = isWorkspaceRecord(record);
   const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
   const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
@@ -100,6 +100,8 @@ export function recordCardPropsEqual(previous = {}, next = {}) {
     && previous.context === next.context
     && previous.expanded === next.expanded
     && previous.actionStateKey === next.actionStateKey
+    && previous.workspaceRecords === next.workspaceRecords
+    && previous.workspaceId === next.workspaceId
     && Boolean(previous.onOpenRecord) === Boolean(next.onOpenRecord)
     && Boolean(previous.onFocusRecordLineage) === Boolean(next.onFocusRecordLineage)
     && Boolean(previous.onShareRecord) === Boolean(next.onShareRecord)

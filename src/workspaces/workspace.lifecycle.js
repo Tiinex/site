@@ -1,4 +1,5 @@
 import{canonicalizeSourceRecordPath}from'./workspace.sourceRecordPath.js';
+import{canDiscardLocalDraft}from'../artifacts/artifact.localDraft.js';
 import{clearLocalSourceBoundary,countLocalRecords,isLocalSessionMaterial,makeLocalSource,makeLocalSourceForWorkspace as localSourceFor}from'./workspace.localSourceLifecycle.js';
 import{reconcileLocalRecordWithSourceBackedWorkspace,restoreLocalShadowForRemovedSource,restoreLocalSnapshotsForRemovedSourceRecord}from'./workspace.materialReconciliation.js';
 import{addWorkspaceSourceRecordsWithReconciliation}from'./workspace.sourceRecords.js';
@@ -111,7 +112,6 @@ next.view = Object.assign({ universe: 'column', workspaceVerse: 'feed', reader: 
 return { ok: true, record, workspace, state: next };
 }
 
-function removableLocalSessionRecord(record){const source=record&&record.source||{};const sourceMode=String(record&&record.sourceMode||'').trim().toLowerCase();const status=String(record&&(record.status||record.lifecycleStatus||record.currentStatus)||'').trim().toLowerCase();const localSource=source.adapterId==='local'||source.kind===SESSION_SOURCE_KIND||source.kind==='local'||source.sourceKind==='local.session';const draftLike=sourceMode.startsWith('local-transition')||sourceMode.startsWith('local-reference')||sourceMode.startsWith('local-draft')||status==='draft'||status==='local'||status==='draft/local';return Boolean(localSource&&draftLike);}
 function removeWorkspaceRecord(state,workspaceId,recordId){
 const next=cloneState(state);
 const targetId=workspaceId||next.activeWorkspaceId;
@@ -122,7 +122,7 @@ if(!cleanId)return{ok:false,error:'record.id.required',state};
 const records=Array.isArray(workspace.records)?workspace.records:[];
 const record=records.find((item)=>String(item&&item.id||'')===cleanId)||null;
 if(!record)return{ok:false,error:'record.not.found',state};
-if(!removableLocalSessionRecord(record))return{ok:false,error:'record.remove.refused',state};
+if(!canDiscardLocalDraft(record))return{ok:false,error:'record.remove.refused',state};
 workspace.records=records.filter((item)=>String(item&&item.id||'')!==cleanId);
 workspace.sources=ensureWorkspaceSources(workspace);upsertSource(workspace,localSourceFor(workspace));
 if(String(next.view?.selectedRecordId||'')===cleanId)next.view=Object.assign({},next.view||{},{selectedRecordId:'',lineageAuditReport:null,lineageLoadReport:null});
@@ -256,8 +256,8 @@ const next = cloneState(state);
 const targetId = workspaceId || next.activeWorkspaceId;
 const workspace = next.workspaces.find((item) => item.id === targetId);
 if (!workspace) return { ok: false, error: 'workspace.not.found', state };
-const source = makeConfiguredSource(input, options);
 workspace.sources = ensureWorkspaceSources(workspace);
+const source = makeConfiguredSource(input, options, workspace.sources);
 upsertSource(workspace, source);
 workspace.discoveryProgress = input.progress ? sourceProgress(input.progress || {}, source) : null;
 next.activeWorkspaceId = workspace.id;
@@ -306,7 +306,7 @@ workspace.sourceOrder = sources.map((item) => item.id);
 return source;
 }
 function normalizeSourceDiscoveryState(value,fallback='deferred'){const candidate=String(value||'').trim();return SOURCE_STATES.has(candidate)?candidate:fallback;}
-function makeConfiguredSource(input={},options={}){return configuredSource(input,options,{configuredSourceKind:CONFIGURED_SOURCE_KIND,githubAdapterId:GITHUB_ADAPTER_ID,githubRepoSourceKind:GITHUB_REPO_SOURCE_KIND,normalizeSourceDiscoveryState});}
+function makeConfiguredSource(input={},options={},existingSources=[]){return configuredSource(input,options,{configuredSourceKind:CONFIGURED_SOURCE_KIND,githubAdapterId:GITHUB_ADAPTER_ID,githubRepoSourceKind:GITHUB_REPO_SOURCE_KIND,normalizeSourceDiscoveryState,existingSources});}
 function sourceProgress(progress={},source={}){const percent=Math.max(0,Math.min(100,Number(progress.percent??48)));return{sourceId:source.id||'',phase:progress.phase||'snapshot-processing',label:progress.label||`Preparing repository snapshot from ${source.transportLabel||'repository mirror'}`,percent,active:progress.active!==false};}
 function makeSessionSource(){return{kind:SESSION_SOURCE_KIND,adapterId:'local',sourceKind:'local.session',label:'local session workspace',boundary:'browser-local session state; no source files or GitHub provenance inferred',githubPolicy:'not guessed',sourceBacked:false,writeCapability:'session-local'};}
 global.TiinexWorkspaceLifecycle = {

@@ -1,11 +1,12 @@
 import { createLineageEdge, createLineageFinding, createLineageNode, LINEAGE_VIEW_MODEL_SCHEMA_ID, LineageEdgeKind, LineageResolutionStatus } from './lineage.model.js';
 import { issueLocalPathKeysForNode, issueLocalPathMatches } from './lineage.githubIssueLocal.js';
 import { filterGitHubIssueCommentCandidatesForTarget, githubIssueCommentIdFromValue, githubIssueCommentIdsForNode } from './lineage.githubIssueComment.js';
-import { lineageBasePathForNode } from './lineage.pathBasis.js';
-import { preferredLineageMaterialCandidates } from './lineage.materialPreference.js';
+import { filterExactGitHubIssueCandidatesForTarget } from './lineage.githubIssueTarget.js';
+import { isDotRelativeReference, isSimpleRelativeReference, isUrlLike, relativeCandidatePath, resolveCandidateNodes } from './lineage.candidateResolution.js';
 import { canonicalIntegrityValue, parentIntegrityValuesForTarget, selfIntegrityValuesForNode, verifiedIntegrityMatch, withParentIntegrityStatus } from './lineage.integrity.js';
 import { canonicalPath, canonicalToken, githubRepoRelativePathFromUrl, provenanceTargetKeysForValue, sourceKeyFromTarget } from './lineage.targetKeys.js';
 import { declaredParentBindingTargetValuesForNode, isSyntheticPublicationLineageNode } from './lineage.parentBinding.js';
+import { exactUnloadedParent } from './lineage.parentAuthority.js';
 import { exactPathMatches, findPathSuffixMatches, sourceConstraintFromNode, sourceConstraintFromTarget } from './lineage.sourceScope.js';
 export function resolveLineage(artifacts = [], options = {}) {
   const records = Array.isArray(artifacts) ? artifacts : [];
@@ -58,6 +59,24 @@ export function resolveLineage(artifacts = [], options = {}) {
         findings.push(createLineageFinding(originMatch.code || 'lineage.target.outOfBoundary', originMatch.message || 'Declared Origin is outside boundary; no edge was created.', 'warning', { nodeId: node.id, target: originTarget.value }));
       } else if (originTarget) {
         findings.push(createLineageFinding('lineage.origin.unresolved', 'Origin not present in loaded material.', 'info', { nodeId: node.id, target: originTarget.value }));
+      }
+      continue;
+    }
+    if (parentMatch?.unresolvedExact) {
+      const recoveryTarget = parentMatch.recoveryTarget || traceTarget?.value || '';
+      edges.push(createLineageEdge('', node.id, LineageEdgeKind.parent, {
+        status: LineageResolutionStatus.missing,
+        target: recoveryTarget,
+        method: parentMatch.method || 'declared-parent-unloaded',
+        label: 'declared parent known but not loaded'
+      }));
+      findings.push(createLineageFinding('lineage.parent.exactTargetNotLoaded', 'Declared parent identity is known but its artifact is not loaded yet.', 'warning', { nodeId: node.id, target: recoveryTarget }));
+      if (originMatch?.ambiguous) {
+        findings.push(createLineageFinding('lineage.target.ambiguous', 'Origin ambiguous; no edge created.', 'warning', { nodeId: node.id, target: originTarget.value, candidates: originMatch.candidates.map((candidate) => candidate.id).join(', ') }));
+      } else if (originMatch?.blocked) {
+        findings.push(createLineageFinding(originMatch.code || 'lineage.target.outOfBoundary', originMatch.message || 'Declared Origin is outside boundary; no edge was created.', 'warning', { nodeId: node.id, target: originTarget.value }));
+      } else if (originTarget && originMatch) {
+        edges.push(createLineageEdge(originMatch.id, node.id, LineageEdgeKind.origin, { target: originTarget.value, method: originMatch.method, label: 'origin recovery hint', status: LineageResolutionStatus.degraded }));
       }
       continue;
     }
@@ -257,12 +276,24 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
 
   const resolveDeclaredParentBinding = () => {
     if (options.targetKind !== LineageEdgeKind.parent) return null;
-    for (const binding of declaredParentBindingTargetValuesForNode(declaringNode, raw)) {
+    const bindings = declaredParentBindingTargetValuesForNode(declaringNode, raw);
+    let unresolvedExact = null;
+    for (const binding of bindings) {
       if (binding.isGitHubIssueTarget) {
-        for (const targetKey of provenanceTargetKeysForValue(binding.raw)) {
-          const resolved = resolveCandidateNodes(index.byProvenance.get(targetKey) || [], 'declared-parent-provenance', declaringNode);
-          if (resolved) return finalize(resolved);
+        const commentId = githubIssueCommentIdFromValue(binding.raw);
+        if (commentId) {
+          const exactCommentCandidates = filterGitHubIssueCommentCandidatesForTarget(index.byGitHubIssueCommentId?.get(commentId) || [], binding.raw, declaringNode);
+          const resolvedComment = resolveCandidateNodes(exactCommentCandidates, 'declared-parent-github-comment-id', declaringNode);
+          if (resolvedComment) return finalize(resolvedComment);
+          unresolvedExact ||= exactUnloadedParent(binding.raw, 'declared-parent-github-comment-unloaded');
+          continue;
         }
+        const issueCandidates = [];
+        for (const targetKey of provenanceTargetKeysForValue(binding.raw)) issueCandidates.push(...(index.byProvenance.get(targetKey) || []));
+        const exactIssueCandidates = filterExactGitHubIssueCandidatesForTarget(issueCandidates, binding.raw, declaringNode);
+        const resolvedIssue = resolveCandidateNodes(exactIssueCandidates, 'declared-parent-github-issue', declaringNode);
+        if (resolvedIssue) return finalize(resolvedIssue);
+        unresolvedExact ||= exactUnloadedParent(binding.raw, 'declared-parent-github-issue-unloaded');
         continue;
       }
       const sourceKey = sourceKeyFromTarget(binding.raw);
@@ -278,8 +309,9 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
         const resolvedSuffix = resolveCandidateNodes(suffix, 'declared-parent-path-suffix', declaringNode);
         if (resolvedSuffix) return finalize(resolvedSuffix);
       }
+      unresolvedExact ||= exactUnloadedParent(binding.raw || binding.filePath, 'declared-parent-path-unloaded');
     }
-    return null;
+    return unresolvedExact;
   };
 
   if (recordToken) return finalize(resolveDirectToken());
@@ -344,6 +376,7 @@ function resolveTarget(target, index, declaringNode = null, options = {}) {
   return null;
 }
 
+
 function resolveIntegrityTarget(expectedIntegrityValues = [], index = {}, declaringNode = null) {
   const nodes = [];
   for (const value of expectedIntegrityValues.map(canonicalIntegrityValue).filter(Boolean)) {
@@ -352,54 +385,4 @@ function resolveIntegrityTarget(expectedIntegrityValues = [], index = {}, declar
   const resolved = resolveCandidateNodes(nodes, 'integrity-self-hash', declaringNode);
   if (!resolved || resolved.ambiguous || resolved.selfReference || resolved.blocked) return resolved;
   return verifiedIntegrityMatch(resolved);
-}
-
-function resolveCandidateNodes(nodes = [], method = 'unknown', declaringNode = null) {
-  const unique = uniqueNodes(nodes || []);
-  if (!unique.length) return null;
-  const withoutSelf = unique.filter((candidate) => !sameLineageNode(candidate, declaringNode));
-  if (!withoutSelf.length) return { selfReference: true, method, candidates: unique };
-  const preferred = preferredLineageMaterialCandidates(withoutSelf, method);
-  if (preferred.length === 1) return Object.assign({ method }, preferred[0]);
-  if (withoutSelf.length === 1) return Object.assign({ method }, withoutSelf[0]);
-  return { ambiguous: true, method, candidates: preferred.length ? preferred : withoutSelf };
-}
-function sameLineageNode(candidate = {}, declaringNode = null) {
-  if (!candidate || !declaringNode) return false;
-  const candidateId = String(candidate.id || '').trim();
-  const declaringId = String(declaringNode.id || '').trim();
-  if (candidateId && declaringId) return candidateId === declaringId;
-  const candidatePath = canonicalPath(candidate.path || candidate.record?.path || '');
-  const declaringPath = canonicalPath(declaringNode.path || declaringNode.record?.path || '');
-  return Boolean(candidatePath && declaringPath && candidatePath === declaringPath);
-}
-
-function relativeCandidatePath(rawTarget, declaringNode = null) {
-  const raw = String(rawTarget || '').trim();
-  const declaringPath = canonicalPath(lineageBasePathForNode(declaringNode));
-  const targetPath = canonicalPath(raw);
-  if (!targetPath) return null;
-  const dir = dirname(declaringPath);
-  return { path: normalizeJoinedPath(dir, raw), method: dir ? 'relative-path' : 'relative-root-path' };
-}
-function isSimpleRelativeReference(value = '') {
-  const raw = String(value || '').trim();
-  const path = canonicalPath(raw);
-  return Boolean(raw && path && !path.includes('/') && !isUrlLike(raw) && !/^record:/i.test(raw));
-}
-function isDotRelativeReference(value = '') { return /^\.\.?(?:\/|$)/.test(String(value || '').replace(/\\/g, '/').trim()); }
-function isUrlLike(value = '') { return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(String(value || '').trim()); }
-function dirname(path = '') { const parts = canonicalPath(path).split('/').filter(Boolean); parts.pop(); return parts.join('/'); }
-function normalizeJoinedPath(base = '', target = '') { const text = String(target || '').replace(/\\/g, '/'); return canonicalPath(text.startsWith('/') ? text : [base, text].filter(Boolean).join('/')); }
-
-function uniqueNodes(nodes = []) {
-  const seen = new Set();
-  const out = [];
-  for (const node of Array.isArray(nodes) ? nodes : []) {
-    const key = node?.id || node?.path || JSON.stringify(node || {});
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(node);
-  }
-  return out;
 }

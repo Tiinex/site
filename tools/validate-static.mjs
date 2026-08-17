@@ -88,6 +88,7 @@ for (const required of [
   'src/workspaces/workspace.lifecycle.js',
   'src/workspaces/workspace.route.js',
   'src/workspaces/workspace.persistence.js',
+  'src/workspaces/workspace.persistenceClear.js',
   'src/schemas/registry.js',
   'src/schemas/README.md',
   'src/schemas/origins.js',
@@ -99,6 +100,7 @@ for (const required of [
 
 has('src/main.jsx', 'createRoot', 'React entry must mount with react-dom/client');
 has('src/main.jsx', './workspaces/workspace.config.js', 'React entry must load workspace config runtime');
+has('src/main.jsx', './workspaces/workspace.persistenceClear.js', 'React entry must load persistence clear owner before persistence facade');
 if (!reactAppAndWorkspace.includes('schemaRegistry')) failures.push('React app must stay schema-companion aware');
 has('src/app/TiinexApp.jsx', 'resolveInitialState', 'React app must resolve semantic hash ownership before rendering route state');
 if (!reactAppAndWorkspace.includes('clean-url-does-not-bootstrap-stale-local-storage')) failures.push('React runtime must retain clean URL source-boundary invariant');

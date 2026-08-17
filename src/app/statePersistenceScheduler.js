@@ -1,6 +1,7 @@
 import { canonicalProductState } from './productStateBoundary.js';
+import { persistenceWriteEnvForOwnership } from './persistenceOwnership.js';
 
-export function createStatePersistenceScheduler(win = globalThis) {
+export function createStatePersistenceScheduler(win = globalThis, options = {}) {
   const state = {
     timer: null,
     idle: null,
@@ -25,7 +26,7 @@ export function createStatePersistenceScheduler(win = globalThis) {
     if (!entry?.state?.workspaces?.length) return null;
     state.writes += 1;
     state.lastReason = reason;
-    entry.runtime?.().persistence?.writeState?.(entry.state, { mode: entry.mode || 'replace' });
+    entry.runtime?.().persistence?.writeState?.(entry.state, persistenceWriteEnvForOwnership(options.persistenceOwnership, { mode: entry.mode || 'replace' }));
     return entry.state;
   }
 
@@ -78,15 +79,17 @@ export function createStatePersistenceScheduler(win = globalThis) {
 }
 
 
-export function commitStateWithPersistence({ nextState, mode = 'push', options = {}, sourceState = {}, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler } = {}) {
+export function commitStateWithPersistence({ nextState, mode = 'push', options = {}, sourceState = {}, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler, persistenceOwnership } = {}) {
   const withScroll = preserveCapturedViewScroll?.(nextState, sourceState) || nextState;
   const persistence = runtime?.().persistence || {};
   const canonicalState = canonicalProductState(withScroll, persistence, 'commit');
   if (latestStateRef) latestStateRef.current = canonicalState;
   setState?.(canonicalState);
+  const persistenceEnv = persistenceWriteEnvForOwnership(persistenceOwnership, { mode, preserveUrl: Boolean(options.preserveUrl) });
   if (!canonicalState?.workspaces?.length) {
     scheduler?.cancel?.();
-    persistence.clearState?.({ mode });
+    if (options.allowEmptySemanticState) persistence.writeState?.(canonicalState, persistenceEnv);
+    else persistence.clearState?.(persistenceEnv);
     return canonicalState;
   }
   if (options.deferPersistence) {
@@ -98,6 +101,6 @@ export function commitStateWithPersistence({ nextState, mode = 'push', options =
     return canonicalState;
   }
   scheduler?.cancel?.();
-  persistence.writeState?.(canonicalState, { mode });
+  persistence.writeState?.(canonicalState, persistenceEnv);
   return canonicalState;
 }

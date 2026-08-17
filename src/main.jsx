@@ -11,6 +11,7 @@ import './workspaces/workspace.persistenceRecovery.js';
 import './workspaces/workspace.persistenceRouteCache.js';
 import './workspaces/workspace.persistencePresentation.js';
 import './workspaces/workspace.persistenceCache.js';
+import './workspaces/workspace.persistenceClear.js';
 import './workspaces/workspace.persistence.js';
 
 import './styles/tokens.css';

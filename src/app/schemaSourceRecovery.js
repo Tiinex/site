@@ -62,13 +62,19 @@ function githubSchemaTarget({ repo = '', ref = '', path = '', schemaId = '', dec
   return {
     ok: true, schemaId, declaredHref, repo, ref, path: cleanPath, fetchUrl, browseUrl,
     source: {
-      id: `github-schema:${repo.toLowerCase()}:${ref}:${cleanPath}`,
+      id: `github-exact:${repo.toLowerCase()}:${ref || 'default'}:${schemaRootPath(cleanPath)}`,
       label: repo,
-      kind: 'github-tree', adapterId: 'github', sourceKind: 'github.file', repo, ref, path: cleanPath,
-      permalink: browseUrl, boundary: 'explicit Current Schema target; targeted source-backed reading contract recovery', sourceBacked: true, loadable: false, count: 1, recordCount: 1
+      kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', repo, repository: repo, ref, rootPath: schemaRootPath(cleanPath),
+      boundary: 'configured exact-target GitHub source; broad discovery remains explicit', sourceBacked: true, loadable: true,
+      repoDiscovery: false, issueDiscovery: false, issueUrls: '', explicitFileRefs: [cleanPath],
+      config: { repo, ref, rootPath: schemaRootPath(cleanPath), issueUrls: '', explicitFileRefs: [cleanPath] },
+      requestedSurfaces: { repoFiles: { requested: false }, explicitFiles: { requested: true, requestedCount: 1 }, issueSnapshots: { requested: false } },
+      count: 1, recordCount: 1
     }
   };
 }
+
+function schemaRootPath(path = '') { const clean = normalizePath(path); return clean === '.topics' || clean.startsWith('.topics/') ? '.topics' : (clean.split('/').filter(Boolean)[0] || '.'); }
 
 function normalizePath(value = '') {
   const out = [];

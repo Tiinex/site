@@ -69,40 +69,47 @@
     const normalizedState = normalizeLegacyWorkspaceCandidateState(state);
     const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(normalizedState) || normalizedState;
     const sessionCache = createSessionCacheEnvelope(normalizedState, routeState);
-    const localDeltaEnvelope = createLocalDeltaEnvelope(normalizedState);
-    const localRecoveryIndex = createLocalRecoveryIndex(normalizedState, localDeltaEnvelope.state);
     const encoded = encodeState(routeState);
-    const localDeltaText = JSON.stringify(localDeltaEnvelope);
-    const localRecoveryIndexText = JSON.stringify(localRecoveryIndex);
-    const previousLocalDeltaText = safeStorageValue(storage, LOCAL_DELTA_KEY);
-    const previousLocalRecoveryIndexText = safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY);
     try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(sessionCache)); } catch (_) {}
-    try {
-      writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText);
-    } catch (error) {
-      try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
-      try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_) {}
+    if (env.durableLocalPolicy !== 'preserve-existing') {
+      const localDeltaEnvelope = createLocalDeltaEnvelope(normalizedState);
+      const localRecoveryIndex = createLocalRecoveryIndex(normalizedState, localDeltaEnvelope.state);
+      const localDeltaText = JSON.stringify(localDeltaEnvelope);
+      const localRecoveryIndexText = JSON.stringify(localRecoveryIndex);
+      const previousLocalDeltaText = safeStorageValue(storage, LOCAL_DELTA_KEY);
+      const previousLocalRecoveryIndexText = safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY);
       try {
         writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText);
-      } catch (retryError) {
-        restoreLastKnownGoodLocalSnapshot(storage, previousLocalDeltaText, previousLocalRecoveryIndexText);
-        const lastKnownGoodPreserved = Boolean(previousLocalDeltaText) && safeStorageValue(storage, LOCAL_DELTA_KEY) === previousLocalDeltaText;
-        const recoveryIndexPreserved = previousLocalRecoveryIndexText == null || safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY) === previousLocalRecoveryIndexText;
-        surfaceLocalPersistenceFailure({
-          schema: 'tiinex.local-state.persistence.failure.v1',
-          at: new Date().toISOString(),
-          message: String(retryError?.message || error?.message || 'localStorage write failed'),
-          localMaterialAtRisk: true,
-          newestChangesPersisted: false,
-          previousRecoveryAvailable: Boolean(previousLocalDeltaText),
-          lastKnownGoodPreserved,
-          recoveryIndexPreserved
-        });
+      } catch (error) {
+        try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
+        try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_) {}
+        try {
+          writeDurableLocalSnapshot(storage, localDeltaText, localRecoveryIndexText);
+        } catch (retryError) {
+          restoreLastKnownGoodLocalSnapshot(storage, previousLocalDeltaText, previousLocalRecoveryIndexText);
+          const lastKnownGoodPreserved = Boolean(previousLocalDeltaText) && safeStorageValue(storage, LOCAL_DELTA_KEY) === previousLocalDeltaText;
+          const recoveryIndexPreserved = previousLocalRecoveryIndexText == null || safeStorageValue(storage, LOCAL_RECOVERY_INDEX_KEY) === previousLocalRecoveryIndexText;
+          surfaceLocalPersistenceFailure({
+            schema: 'tiinex.local-state.persistence.failure.v1',
+            at: new Date().toISOString(),
+            message: String(retryError?.message || error?.message || 'localStorage write failed'),
+            localMaterialAtRisk: true,
+            newestChangesPersisted: false,
+            previousRecoveryAvailable: Boolean(previousLocalDeltaText),
+            lastKnownGoodPreserved,
+            recoveryIndexPreserved
+          });
+        }
       }
     }
     const nextHash = `${HASH_PREFIX}${encoded}`;
     const mode = env.mode === 'push' ? 'push' : 'replace';
-    writeUrlHash(nextHash, { mode, locationLike, historyLike, historyState: global.TiinexWorkspaceRoute?.routeHistoryState?.(routeState, env.historyIndex) || null });
+    if (!env.preserveUrl) writeUrlHash(nextHash, {
+      mode,
+      locationLike,
+      historyLike,
+      historyState: global.TiinexWorkspaceRoute?.routeHistoryState?.(routeState, env.historyIndex, historyLike?.state || null, env.historyStatePatch || null) || null
+    });
     return nextHash;
   }
 
@@ -161,7 +168,8 @@
     if (!validation.ok) return { requested: true, resolved: false, state: null, reason: validation.reason || 'route-shape-invalid' };
     const storage = env.storage || global.localStorage;
     const semanticRoute = global.TiinexWorkspaceRoute?.semanticRouteState?.(decoded) || decoded;
-    const state = hydrateHashStateFromSessionCache(semanticRoute, readStoredCacheEnvelope(storage), readLocalDeltaState(storage));
+    const localDeltaState = env.durableLocalPolicy === 'preserve-existing' ? null : readLocalDeltaState(storage);
+    const state = hydrateHashStateFromSessionCache(semanticRoute, readStoredCacheEnvelope(storage), localDeltaState);
     return { requested: true, resolved: true, state, reason: validation.reason || 'route-resolved' };
   }
 
@@ -171,22 +179,16 @@
   }
 
   function clearState(env = {}) {
-    const storage = env.storage || global.localStorage;
-    const locationLike = env.location || global.location;
-    const historyLike = env.history || global.history;
-    const mode = env.mode === 'push' ? 'push' : 'replace';
-    try { storage?.removeItem?.(STORAGE_KEY); } catch (_) {}
-    try { storage?.removeItem?.(LOCAL_DELTA_KEY); } catch (_) {}
-    try { storage?.removeItem?.(LOCAL_RECOVERY_INDEX_KEY); } catch (_) {}
-    try { storage?.removeItem?.(LEGACY_STORAGE_KEY); } catch (_) {}
-    try {
-      const pathname = locationLike?.pathname || '';
-      const search = locationLike?.search || '';
-      const url = `${pathname}${search}`;
-      if (mode === 'push' && historyLike?.pushState) historyLike.pushState({ v: 'empty', workspaces: 0 }, '', url);
-      else historyLike?.replaceState?.({ v: 'empty', workspaces: 0 }, '', url);
-      if (!historyLike?.replaceState && locationLike) locationLike.hash = '';
-    } catch (_) {}
+    const clearOwner = global.TiinexWorkspacePersistenceClear;
+    if (typeof clearOwner?.clearState !== 'function') throw new Error('workspace.persistence-clear-owner-unavailable');
+    return clearOwner.clearState(Object.assign({}, env, {
+      keys: {
+        storage: STORAGE_KEY,
+        localDelta: LOCAL_DELTA_KEY,
+        localRecoveryIndex: LOCAL_RECOVERY_INDEX_KEY,
+        legacyStorage: LEGACY_STORAGE_KEY
+      }
+    }));
   }
 
   function createSessionCacheEnvelope(state, routeState) {

@@ -25,6 +25,12 @@ import { TIINEX_RUNTIME_ID } from '../build.identity.js';
 import { installVisualDormancy, visualDormancySummary } from './visualDormancy.js';
 import { clearScheduledScrollPersistence, persistCapturedScroll, scheduleIdleScrollPersist } from './scrollPersistence.js';
 import { commitStateWithPersistence, createStatePersistenceScheduler } from './statePersistenceScheduler.js';
+import { createPersistenceOwnershipPolicy, DurableLocalAuthority } from './persistenceOwnership.js';
+import { durableLocalAuthorityForRoute, markCurrentHistoryDurableAuthority } from './historyAuthority.js';
+import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
+import { runLocalDraftDiscardCommand } from './localDraftMutationCommand.js';
+import { executeCanonicalTransitionLocalCreate } from './canonicalTransitionLocalCreateCommand.js';
+import { BUNDLED_CANONICAL_TRANSITION_DEFINITIONS, BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE } from '../transitions/canonicalTransition.productDefaults.js';
 import { RecordActionKind } from '../actions/record.actions.js';
 import { ensureUniqueTransitionPath } from '../transitions/record.transitions.js';
 import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
@@ -37,8 +43,13 @@ import { executeWorkspaceTreeExportCommand } from './workspaceExportCommand.js';
 import { openSchemaForRecordCommand } from './schemaNavigationCommand.js';
 import { loadViewerSchemaMarkdown } from './schemaNavigationRuntimeCatalog.js';
 import { abortGithubSourceOperation, clearGithubSourceCacheForSource, runGithubSourceOperation } from './githubSourceOperation.js';
+import { createSemanticOperationHistoryCommit } from './semanticOperationHistory.js';
+import { classifyRouteLocation } from './publicTarget.js';
+import { runPublicTargetRestoreCommand } from './publicTargetRestoreCommand.js';
 import { runExplicitUrlMaterialImportCommand } from './urlMaterialCommand.js';
 import { runWorkspaceSourceCloseCommand } from './workspaceSourceCloseCommand.js';
+import { projectShareTruth, ShareScope } from './shareProjection.js';
+import { executeShareProjectionAction } from './shareActionCommand.js';
 import { stateAfterWorkspaceClosePresentation, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById } from './workspaceScopedInteraction.js';
 import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWindow.js';
 export function TiinexApp() {
@@ -61,9 +72,11 @@ export function TiinexApp() {
   const githubOperationRef = useRef({ token: null, controller: null }); const lineageAutoLoadKeysRef = useRef(new Set());
   const scrollPersistTimerRef = useRef(null);
   const scrollPersistIdleRef = useRef(null);
+  const persistenceOwnershipRef = useRef(null);
+  if (!persistenceOwnershipRef.current) persistenceOwnershipRef.current = createPersistenceOwnershipPolicy(initialRuntimeRef.current.routeKind, { durableLocalAuthority: initialRuntimeRef.current.durableLocalAuthority });
   const statePersistenceSchedulerRef = useRef(null);
   const appConfigDiagnosticsRef = useRef({ last: null });
-  if (!statePersistenceSchedulerRef.current) statePersistenceSchedulerRef.current = createStatePersistenceScheduler(typeof window !== 'undefined' ? window : globalThis);
+  if (!statePersistenceSchedulerRef.current) statePersistenceSchedulerRef.current = createStatePersistenceScheduler(typeof window !== 'undefined' ? window : globalThis, { persistenceOwnership: persistenceOwnershipRef.current });
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const active = activeWorkspace(state);
   const activeWorkspaceConfig = active?.workspaceConfig || workspaceConfig;
@@ -79,7 +92,19 @@ export function TiinexApp() {
       startupOwnershipRef.current.invalidate();
       abortGithubSourceOperation(githubOperationRef);
       setGithubRequestPending(false);
-      const routeResolution = persistence?.resolveInitialState?.({ location: window.location, storage: window.localStorage });
+      const routeOwner = classifyRouteLocation(window.location);
+      const durableLocalAuthority = durableLocalAuthorityForRoute(routeOwner.kind, window.history?.state || null);
+      persistenceOwnershipRef.current?.restoreHistoryEntry?.({ routeKind: routeOwner.kind, durableLocalAuthority });
+      if (routeOwner.kind === 'public-target') {
+        markCurrentHistoryDurableAuthority(window.history, window.location, DurableLocalAuthority.isolatedPreexistingRecovery);
+        setStartupPhase('resolving'); window.setTimeout(() => restorePublicTargetFromOwnership(routeOwner.target), 0); return;
+      }
+      if (routeOwner.kind !== 'semantic-state') { setStartupPhase('resolving'); window.setTimeout(() => startWorkspaceFromOwnership('replace'), 0); return; }
+      const routeResolution = persistence?.resolveInitialState?.({
+        location: window.location,
+        storage: window.localStorage,
+        durableLocalPolicy: durableLocalAuthority === DurableLocalAuthority.isolatedPreexistingRecovery ? 'preserve-existing' : 'normal'
+      });
       if (!routeResolution?.resolved) { setStartupPhase('resolving'); window.setTimeout(() => startWorkspaceFromOwnership('replace'), 0); return; }
       const routeState = routeResolution.state;
       const routed = route?.normalizeRouteState?.(routeState, lifecycle) || routeState;
@@ -92,6 +117,16 @@ export function TiinexApp() {
   }, []);
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (initialRuntimeRef.current.routeKind === 'public-target') {
+      markCurrentHistoryDurableAuthority(window.history, window.location, DurableLocalAuthority.isolatedPreexistingRecovery);
+    }
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (initialRuntimeRef.current.routeKind === 'public-target' && initialRuntimeRef.current.publicTarget) {
+      window.setTimeout(() => restorePublicTargetFromOwnership(initialRuntimeRef.current.publicTarget), 0);
+      return;
+    }
     if (initialRuntimeRef.current.routeResolved || state.workspaces?.length) return;
     window.setTimeout(() => startWorkspaceFromOwnership('replace'), 0);
   }, []);
@@ -131,7 +166,33 @@ export function TiinexApp() {
   }, [notice]);
   useEffect(() => { const id = String(state.view?.selectedRecordId || '').trim(); if (state.view?.workspaceVerse !== 'lineage' || !active || !id) return; const decision = shouldAutoLoadLineage({ workspace: activeUi || active, selectedRecordId: id, existingLoadReport: lineageLoadReportForSelected(state), loadedKeys: lineageAutoLoadKeysRef.current }); if (decision.shouldLoad) { lineageAutoLoadKeysRef.current.add(decision.key); window.setTimeout(() => loadFullLineage(), 0); } }, [state]);
   function commit(nextState, mode = 'push', options = {}) {
-    commitStateWithPersistence({ nextState, mode, options, sourceState: latestStateRef.current || state, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler: statePersistenceSchedulerRef.current });
+    commitStateWithPersistence({ nextState, mode, options, sourceState: latestStateRef.current || state, preserveCapturedViewScroll, latestStateRef, setState, runtime, scheduler: statePersistenceSchedulerRef.current, persistenceOwnership: persistenceOwnershipRef.current });
+  }
+  function commitSemanticNavigation(nextState, mode = 'push', options = {}) {
+    const transition = persistenceOwnershipRef.current?.beginSemanticNavigation?.(mode) || { mode };
+    const isolated = persistenceOwnershipRef.current?.report?.().durableLocalAuthority === DurableLocalAuthority.isolatedPreexistingRecovery;
+    const navigationOptions = Object.assign({}, options, { allowEmptySemanticState: isolated && !(nextState?.workspaces?.length) });
+    if (transition.firstExitFromPublicTarget) {
+      navigationOptions.deferPersistence = false;
+      navigationOptions.persistenceReason = 'public-route-semantic-exit';
+    }
+    commit(nextState, transition.mode || mode, navigationOptions);
+    return transition;
+  }
+  function authorizeDurableLocalMutation(operation) {
+    return durableLocalMutationDecision(persistenceOwnershipRef.current, operation);
+  }
+  async function restorePublicTargetFromOwnership(target) {
+    if (typeof window === 'undefined') return null;
+    const token = startupOwnershipRef.current.claim();
+    const isCurrentOwner = () => startupOwnershipRef.current.isCurrent(token);
+    setStartupPhase('resolving');
+    const result = await runPublicTargetRestoreCommand({ target, runtimeApi: runtime(), fetchImpl: fetch, workspaceConfig, isCurrentOwner });
+    if (!isCurrentOwner()) return Object.assign({}, result, { stale: true });
+    if (!result?.ok) { setStartupPhase('failed'); setNotice(result?.message || 'Could not restore public target.'); return result; }
+    commit(result.state, 'replace');
+    setStartupPhase('resolved');
+    return result;
   }
   async function startWorkspaceFromOwnership(mode = 'replace') {
     if (typeof window === 'undefined') return null;
@@ -160,11 +221,11 @@ export function TiinexApp() {
   }
   function commitWorkspaceViewPatch(workspaceId = '', patch = {}, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithWorkspaceViewPatchAndFocus(sourceState, workspaceId || active?.id, patch, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-view-patch' });
+    commitSemanticNavigation(stateWithWorkspaceViewPatchAndFocus(sourceState, workspaceId || active?.id, patch, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-view-patch' });
   }
   function commitWorkspaceViewUpdate(workspaceId = '', updater = null, mode = 'replace') {
     const sourceState = latestStateRef.current || state;
-    commit(stateWithWorkspaceViewUpdateAndFocus(sourceState, workspaceId || active?.id, updater, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-view-update' });
+    commitSemanticNavigation(stateWithWorkspaceViewUpdateAndFocus(sourceState, workspaceId || active?.id, updater, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-view-update' });
   }
   function commitViewPatch(patch = {}, mode = 'replace') { commitWorkspaceViewPatch(active?.id, patch, mode); }
   function commitViewUpdate(updater = null, mode = 'replace') { commitWorkspaceViewUpdate(active?.id, updater, mode); }
@@ -173,7 +234,7 @@ export function TiinexApp() {
   }
   // UI guard: persistCapturedViewScroll('replace') remains the scroll replace-state path.
   function persistCapturedViewScroll(mode = 'replace', options = {}) {
-    return persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode, options: Object.assign({ setState }, options), doc: document });
+    return persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode, options: Object.assign({ setState }, options), doc: document, persistenceOwnership: persistenceOwnershipRef.current });
   }
   function persistWorkspaceScroll(workspaceId, key, top) {
     const currentState = latestStateRef.current || state;
@@ -207,6 +268,7 @@ export function TiinexApp() {
     setNotice,
     setDialog,
     commit,
+    getPersistenceOwnership: () => persistenceOwnershipRef.current,
     windowObj: typeof window !== 'undefined' ? window : null
   });
   const { handleGlobalWorkspaceDrop, resolveWorkspaceEntrypointChoice, pendingWorkspaceEntrypoint } = useWorkspaceEntrypointIntake({
@@ -216,6 +278,7 @@ export function TiinexApp() {
     setNotice,
     setDialog,
     commit,
+    getPersistenceOwnership: () => persistenceOwnershipRef.current,
     materializeSource: addGitHubSource,
     windowObj: typeof window !== 'undefined' ? window : null
   });
@@ -224,7 +287,7 @@ export function TiinexApp() {
     const sourceState = latestStateRef.current || state;
     if (!id || !workspaceById(sourceState, id)) return sourceState;
     const next = stateWithWorkspaceFocused(sourceState, id, viewportWidth);
-    if (next !== sourceState) commit(next, mode, { deferPersistence: true, persistenceReason: 'workspace-focus' });
+    if (next !== sourceState) commitSemanticNavigation(next, mode, { deferPersistence: true, persistenceReason: 'workspace-focus' });
     return next;
   }
   function openCreate() {
@@ -269,17 +332,18 @@ export function TiinexApp() {
     }
     setDialog(null);
     setNotice('');
-    commit(result.state, 'push');
+    commitSemanticNavigation(result.state, 'push');
     return true;
   }
-  function renameWorkspace(name) { const sourceState = latestStateRef.current || state, targetId = dialogWorkspaceId || sourceState.activeWorkspaceId; const result = runtime().lifecycle?.renameWorkspace?.(sourceState, targetId, name); if (!result?.ok) return false; dismissDialog(); setNotice('Workspace renamed.'); commit(stateWithWorkspaceFocused(result.state, targetId, viewportWidth), 'replace'); return true; }
+  function renameWorkspace(name) { const sourceState = latestStateRef.current || state, targetId = dialogWorkspaceId || sourceState.activeWorkspaceId; const result = runtime().lifecycle?.renameWorkspace?.(sourceState, targetId, name); if (!result?.ok) return false; dismissDialog(); setNotice('Workspace renamed.'); commitSemanticNavigation(stateWithWorkspaceFocused(result.state, targetId, viewportWidth), 'replace'); return true; }
   function closeWorkspace(workspaceId) {
     const sourceState = latestStateRef.current || state;
     const result = runtime().lifecycle?.closeWorkspace?.(sourceState, workspaceId || dialogWorkspaceId || sourceState.activeWorkspaceId);
     if (!result?.ok) return;
     dismissDialog();
-    setNotice(result.state.workspaces.length ? 'Workspace closed.' : 'Workspace closed. Clean start restored.');
-    commit(stateAfterWorkspaceClosePresentation(result.state, viewportWidth), 'push');
+    const isolated = persistenceOwnershipRef.current?.report?.().durableLocalAuthority === DurableLocalAuthority.isolatedPreexistingRecovery;
+    setNotice(result.state.workspaces.length ? 'Workspace closed.' : (isolated ? 'Workspace closed. This shared view is now empty.' : 'Workspace closed. Clean start restored.'));
+    commitSemanticNavigation(stateAfterWorkspaceClosePresentation(result.state, viewportWidth), 'push');
   }
   async function addExplicitUrls(urlText) {
     const result = await runExplicitUrlMaterialImportCommand({ lifecycle: runtime().lifecycle, state: latestStateRef.current || state, workspaceId: dialogWorkspaceId || active?.id, urlText, fetchImpl: fetch });
@@ -287,7 +351,7 @@ export function TiinexApp() {
     if (!result.ok) return setNotice(result.notice || 'Could not add URL material.');
     setDialog(null);
     setNotice(result.notice || 'URL material added.');
-    commit(result.state, 'push');
+    commitSemanticNavigation(result.state, 'push');
   }
 
   async function addGitHubSource(input = {}, options = {}) {
@@ -306,7 +370,11 @@ export function TiinexApp() {
       setNotice: guarded(setNotice),
       setDialog: guarded(setDialog),
       setGithubRequestPending: guarded(setGithubRequestPending),
-      commit: guarded(commit),
+      commit: guarded(options.semanticNavigation
+        ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation })
+        : options.semanticNavigationEstablished
+          ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation, navigationEstablished: true })
+          : commit),
       getLatestState: () => latestStateRef.current || state,
       fetchImpl: fetch,
       AbortControllerImpl: typeof AbortController !== 'undefined' ? AbortController : undefined
@@ -371,10 +439,10 @@ export function TiinexApp() {
     setDialog(null); setActiveRecordId(''); setActiveAssetId(''); setRecordAction(null);
     const preparedState = stateWithWorkspaceRecordOpenProgress(result.state, result.workspace?.id, result.sourceInputs || [], result.entry);
     setNotice(workspaceRecordOpenedNotice(result));
-    commit(preparedState, 'push');
+    commitSemanticNavigation(preparedState, 'push');
     let materialState = preparedState;
     for (const sourceInput of result.sourceInputs || []) {
-      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id });
+      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id, semanticNavigationEstablished: true });
       if (loaded?.state) materialState = loaded.state;
     }
   }
@@ -383,10 +451,10 @@ export function TiinexApp() {
     const result = mergeWorkspaceRecordAction({ lifecycle: runtime().lifecycle, parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig, state: currentState, workspaceId: originWorkspaceId || currentState.activeWorkspaceId || active?.id, record });
     if (!result?.ok) return setNotice(result?.message || 'Could not merge workspace artifact.');
     setNotice(workspaceRecordMergedNotice(result));
-    commit(result.state, 'push');
+    commitSemanticNavigation(result.state, 'push');
     let materialState = result.state;
     for (const sourceInput of result.sourceInputs || []) {
-      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id || active?.id });
+      const loaded = await addGitHubSource(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || result.workspace?.id || active?.id, semanticNavigationEstablished: true });
       if (loaded?.state) materialState = loaded.state;
     }
   }
@@ -399,25 +467,56 @@ export function TiinexApp() {
   }
   function dismissRecordAction() { setRecordAction(null); }
   function deleteLocalDraftRecord(record = {}, originWorkspaceId = '') {
-    const currentState = latestStateRef.current || state, workspaceId = originWorkspaceId || currentState.activeWorkspaceId || active?.id, result = runtime().lifecycle?.removeWorkspaceRecord?.(currentState, workspaceId, record?.id || '');
-    if (!result?.ok) return setNotice(result?.message || 'Could not remove local draft.');
-    setRecordAction(null); if (activeRecordId === record?.id) setActiveRecordId(''); setNotice(`Removed local draft ${record?.title || record?.path || 'artifact'} from this browser session.`); commit(stateWithWorkspaceFocused(result.state, workspaceId, viewportWidth), 'push');
+    const currentState = latestStateRef.current || state, workspaceId = originWorkspaceId || currentState.activeWorkspaceId || active?.id;
+    const result = runLocalDraftDiscardCommand({ lifecycle: runtime().lifecycle, state: currentState, workspaceId, recordId: record?.id || '', persistenceOwnership: persistenceOwnershipRef.current });
+    if (!result?.ok) return setNotice(result?.notice || 'Could not discard local draft.');
+    setRecordAction(null); if (activeRecordId === record?.id) setActiveRecordId(''); setNotice(result.notice); commitSemanticNavigation(stateWithWorkspaceFocused(result.state, workspaceId, viewportWidth), 'push');
+  }
+  function createCanonicalTransitionRecord(parentRecord, action, values) {
+    const sourceState = latestStateRef.current || state;
+    const workspaceId = sourceState.activeWorkspaceId || active?.id || '';
+    const result = executeCanonicalTransitionLocalCreate({
+      lifecycle: runtime().lifecycle,
+      state: sourceState,
+      workspaceId,
+      currentRecordId: parentRecord?.id || '',
+      definitionKey: action?.definitionKey || '',
+      values,
+      schemaCache: BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE,
+      bundledDefinitions: BUNDLED_CANONICAL_TRANSITION_DEFINITIONS,
+      persistenceOwnership: persistenceOwnershipRef.current
+    });
+    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical local Task.'); return result; }
+    setRecordAction(null); setActiveRecordId(''); setActiveAssetId(''); setNotice(result.notice);
+    commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || workspaceId, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
+    return result;
   }
   function createTransitionRecord(parentRecord, draft) {
     if (!draft?.title) return setNotice('Transition draft is missing a title.');
+    const authority = authorizeDurableLocalMutation(DurableLocalMutationOperation.localDraftCreate);
+    if (!authority.ok) return setNotice(authority.notice);
     const uniqueDraft = ensureUniqueTransitionPath(draft, active?.records || []), result = runtime().lifecycle?.addWorkspaceRecord?.(state, active?.id, uniqueDraft);
     if (!result?.ok) return setNotice('Could not create transition leaf.');
     setRecordAction(null);
     setActiveRecordId('');
     setActiveAssetId('');
     setNotice(`Created local ${uniqueDraft.kind || 'transition'} leaf from ${parentRecord?.title || 'artifact'}; focused new lineage.`);
-    commit(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || active?.id, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || uniqueDraft.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
+    commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || active?.id, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || uniqueDraft.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
   }
-  function shareRecord(record, workspaceId = active?.id || '') {
-    if (workspaceId) focusWorkspaceForInteraction(workspaceId);
-    const label = record?.title || 'artifact';
-    copyShareUrl();
-    setNotice(`Workspace/session share copied for ${label}; route-only viewers preserve boundary and may show material unavailable.`);
+  async function shareRecord(record, workspaceId = active?.id || '') {
+    const sourceState = latestStateRef.current || state;
+    const targetWorkspace = workspaceById(sourceState, workspaceId || sourceState.activeWorkspaceId) || active;
+    const projection = shareProjectionFor(ShareScope.artifact, { state: sourceState, workspace: targetWorkspace, record });
+    const result = await executeShareProjectionAction({ projection, clipboard: typeof navigator !== 'undefined' ? navigator.clipboard : null, label: record?.title || record?.path || 'artifact' });
+    setNotice(result.notice);
+  }
+  async function shareWorkspace(workspaceId = active?.id || '') {
+    const sourceState = latestStateRef.current || state;
+    const targetWorkspace = workspaceById(sourceState, workspaceId || sourceState.activeWorkspaceId);
+    if (!targetWorkspace) return setNotice('No workspace is available to share.');
+    const projection = shareProjectionFor(ShareScope.workspace, { state: sourceState, workspace: targetWorkspace });
+    const result = await executeShareProjectionAction({ projection, clipboard: typeof navigator !== 'undefined' ? navigator.clipboard : null, label: targetWorkspace.name || targetWorkspace.title || 'workspace' });
+    setNotice(result.notice);
   }
   function openWorkspaceExportDialog(workspaceId = active?.id || '') {
     const sourceState = latestStateRef.current || state;
@@ -439,20 +538,20 @@ export function TiinexApp() {
     const result = runWorkspaceSourceCloseCommand({ lifecycle: runtime().lifecycle, state: sourceState, workspaceId: targetId, sourceId });
     if (!result?.ok) return setNotice(result.notice || 'Source stays pinned.');
     setNotice(result.notice || 'Source closed.');
-    commit(stateWithWorkspaceFocused(result.state, targetId, viewportWidth), 'push');
+    commitSemanticNavigation(stateWithWorkspaceFocused(result.state, targetId, viewportWidth), 'push');
   }
   function pageWorkspaceWindow(direction) {
     const sourceState = latestStateRef.current || state;
     const nextState = stateWithWorkspaceWindowPage(sourceState, direction, viewportWidth);
     if (nextState === sourceState) return;
-    commit(nextState, 'replace', { deferPersistence: true, persistenceReason: 'workspace-window-page' });
+    commitSemanticNavigation(nextState, 'replace', { deferPersistence: true, persistenceReason: 'workspace-window-page' });
   }
   function activateWorkspace(workspaceId, mode = 'replace') {
     const id = String(workspaceId || '').trim();
     const sourceState = latestStateRef.current || state;
     if (!id || id === sourceState.activeWorkspaceId) return;
     if (!(Array.isArray(sourceState.workspaces) ? sourceState.workspaces : []).some((workspace) => workspace.id === id)) return;
-    commit(stateWithWorkspaceFocused(sourceState, id, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-activate' });
+    commitSemanticNavigation(stateWithWorkspaceFocused(sourceState, id, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-activate' });
   }
   function setWorkspaceLayoutMode(workspaceId, layoutMode) {
     const id = String(workspaceId || '').trim();
@@ -522,7 +621,7 @@ export function TiinexApp() {
     const result = await openSchemaForRecordCommand({ state: stateWithWorkspaceFocused(sourceState, targetId, viewportWidth), workspace: targetWorkspace, record, loadSchemaMarkdown: (schemaId) => loadViewerSchemaMarkdown(schemaId, fetch), fetchImpl: fetch, clock: () => new Date().toISOString() });
     if (!result?.ok) return setNotice(result?.notice || 'Schema reading contract is not available.');
     setNotice(result.notice);
-    commit(result.state, result.commitMode || 'push');
+    commitSemanticNavigation(result.state, result.commitMode || 'push');
   }
   function setDisplayOptions(options) {
     const targetId = dialogWorkspaceId || (latestStateRef.current || state).activeWorkspaceId;
@@ -539,13 +638,25 @@ export function TiinexApp() {
       return Object.assign({}, currentView, { expandedTreeFolders: Array.from(existing).sort() });
     }, 'replace');
   }
-  function copyShareUrl() {
-    statePersistenceSchedulerRef.current?.flush?.('share-url');
-    const url = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    setNotice('Copy this URL from the browser bar if clipboard access is blocked.');
-    navigator.clipboard?.writeText?.(new URL(url, window.location.href).href)
-      ?.then(() => setNotice('Workspace/session link copied.'))
-      ?.catch(() => {});
+  function shareProjectionFor(scope, { state: sourceState = latestStateRef.current || state, workspace = null, record = null } = {}) {
+    const configForScope = workspace?.workspaceConfig || activeWorkspaceConfig || workspaceConfig;
+    const { route, persistence } = runtime();
+    return projectShareTruth({
+      scope,
+      state: sourceState,
+      workspace,
+      record,
+      publicViewerUrl: configForScope?.viewerIdentity?.publicViewerUrl || workspaceConfig?.viewerIdentity?.publicViewerUrl || '',
+      exactStateBaseUrl: typeof window !== 'undefined' ? window.location.href : '',
+      routeCodec: route,
+      persistenceCodec: persistence
+    });
+  }
+  async function shareCurrent() {
+    const sourceState = latestStateRef.current || state;
+    const projection = shareProjectionFor(ShareScope.current, { state: sourceState, workspace: workspaceById(sourceState, sourceState.activeWorkspaceId) });
+    const result = await executeShareProjectionAction({ projection, clipboard: typeof navigator !== 'undefined' ? navigator.clipboard : null });
+    setNotice(result.notice);
   }
   const activeRecord = activeRecordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === activeRecordId)) : null;
   const activeAsset = activeAssetId && activeUi?.assets ? activeUi.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
@@ -580,7 +691,7 @@ export function TiinexApp() {
         onNextWorkspace={() => pageWorkspaceWindow('next')}
         onCreate={openCreate}
         homeHref={workspaceHomeHref(activeWorkspaceConfig, typeof window !== 'undefined' ? window.location : null)}
-        onShare={copyShareUrl}
+        onShare={shareCurrent}
         onHelp={() => setDialog('help')}
       />
       {active ? (
@@ -605,6 +716,7 @@ export function TiinexApp() {
                 onOpenDisplayOptions={() => openWorkspaceDialog('display-options', workspace.id)}
                 onOpenAddDialog={(sourceId = '') => openAddToWorkspace(sourceId, workspace.id)}
                 onExportWorkspace={() => openWorkspaceExportDialog(workspace.id)}
+                onShareWorkspace={() => shareWorkspace(workspace.id)}
                 onCloseSource={(sourceId) => closeSource(sourceId, workspace.id)}
                 onDropFiles={(fileList, options = {}) => addLocalFiles(fileList, Object.assign({}, options, { workspaceId: workspace.id }))}
                 onOpenRecord={(recordId) => openRecord(recordId, workspace.id)}
@@ -638,7 +750,7 @@ export function TiinexApp() {
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
-      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={active?.records || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} /> : null}
+      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={active?.records || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={createCanonicalTransitionRecord} /> : null}
       {dialog === 'display-options' && dialogWorkspace ? <DisplayOptionsDialog options={dialogWorkspaceView?.displayOptions} counts={buildDisplayOptionCounts(dialogWorkspaceUi || dialogWorkspace)} scope={dialogWorkspaceView?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
       {dialog === 'export-workspace' && dialogWorkspace ? <WorkspaceExportDialog workspace={dialogWorkspaceUi || dialogWorkspace} plan={buildWorkspaceExportPlan(dialogWorkspaceUi || dialogWorkspace)} onDismiss={dismissDialog} onExecute={executeWorkspaceTreeExport} /> : null}
       {dialog === 'add-to-workspace' && dialogWorkspace ? (
@@ -648,7 +760,7 @@ export function TiinexApp() {
           onDismiss={dismissDialog}
           onAddFiles={(fileList, options = {}) => addLocalFiles(fileList, Object.assign({}, options, { workspaceId: dialogWorkspace.id }))}
           onAddPastedTrace={addPastedTrace}
-          onAddGitHubSource={(input) => addGitHubSource(input, { state: latestStateRef.current || state, workspaceId: dialogWorkspace.id })}
+          onAddGitHubSource={(input) => addGitHubSource(input, { state: latestStateRef.current || state, workspaceId: dialogWorkspace.id, semanticNavigation: true })}
           onAddUrls={addExplicitUrls}
           githubBusy={githubRequestPending}
         />

@@ -9,6 +9,7 @@ export function useWorkspaceEntrypointIntake({
   setNotice,
   setDialog,
   commit,
+  getPersistenceOwnership = null,
   materializeSource,
   windowObj = null
 } = {}) {
@@ -20,7 +21,8 @@ export function useWorkspaceEntrypointIntake({
       state: getState?.(),
       parseWorkspaceConfig,
       fileList,
-      options: Object.assign({}, options, { passwordProvider: options.passwordProvider || passwordProviderForWindow(windowObj) })
+      options: Object.assign({}, options, { passwordProvider: options.passwordProvider || passwordProviderForWindow(windowObj) }),
+      persistenceOwnership: getPersistenceOwnership?.() || null
     });
     if (result.requiresChoice) {
       setPendingWorkspaceEntrypoint({ adapterResult: result.adapterResult, workspaceEntries: result.workspaceEntries || [], options });
@@ -48,7 +50,8 @@ export function useWorkspaceEntrypointIntake({
       parseWorkspaceConfig,
       adapterResult: pending.adapterResult,
       mode,
-      options: pending.options || {}
+      options: pending.options || {},
+      persistenceOwnership: getPersistenceOwnership?.() || null
     });
     return finalizeWorkspaceEntrypointResult(result);
   }

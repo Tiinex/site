@@ -1,7 +1,9 @@
+import { workspaceEntrypointApplies } from '../workspaces/workspace.entrypoints.js';
+
 export function tiinexAppConfigSourceToStartupPlan(result = {}) {
   const config = result.config || {};
   const entrypoints = (Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints : [])
-    .filter((entrypoint) => truthyConfigValue(entrypoint?.openOnApply ?? true))
+    .filter(workspaceEntrypointApplies)
     .map((entrypoint, index) => workspaceSourceToGithubInput(entrypoint, {
       result,
       config,
@@ -27,7 +29,8 @@ export function tiinexAppConfigSourceToStartupPlan(result = {}) {
 
 export function tiinexAppConfigSourceToGithubInput(result = {}) {
   const config = result.config || {};
-  const entrypoint = result.entrypoint || firstWorkspaceEntrypoint(config);
+  const explicitEntrypoint = result.entrypoint && workspaceEntrypointApplies(result.entrypoint) ? result.entrypoint : null;
+  const entrypoint = explicitEntrypoint || firstWorkspaceEntrypoint(config);
   const preferEntrypoint = shouldPreferWorkspaceEntrypoint(result);
   const discovery = preferEntrypoint ? null : firstWorkspaceDiscovery(config);
   const source = discovery || entrypoint;
@@ -78,7 +81,7 @@ function shouldPreferWorkspaceEntrypoint(result = {}) {
 }
 
 function firstWorkspaceEntrypoint(config = {}) {
-  return Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints[0] || null : null;
+  return Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints.find(workspaceEntrypointApplies) || null : null;
 }
 
 function firstWorkspaceDiscovery(config = {}) {

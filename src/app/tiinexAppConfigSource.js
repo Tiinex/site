@@ -1,5 +1,6 @@
 import { extractConfigLinks, extractEmbeddedWorkspaceMarkdowns, extractHostedViewerSourceDeclarations, extractRuntimeWorkspaceDeclarations, extractScriptUrls, isLikelyConfigUrl, looksLikeWorkspaceConfig, normalizeConfigTargetUrl, normalizeNewlines, normalizeWorkspaceBootstrapCandidate, parseGithubIssueSpec, sameOriginOrExplicit, scriptFileName, sourceDeclarationFromPublicBuildIdentity, toFetchableWorkspaceUrl, tryFetchText, workspaceUrlFromPointerMarkdown } from './tiinexHostedWorkspaceConventions.js';
 import { tiinexAppConfigSourceToGithubInput, tiinexAppConfigSourceToStartupPlan } from './tiinexAppConfigPlan.js';
+import { workspaceEntrypointApplies } from '../workspaces/workspace.entrypoints.js';
 export { tiinexAppConfigSourceToGithubInput, tiinexAppConfigSourceToStartupPlan } from './tiinexAppConfigPlan.js';
 
 const DEFAULT_CONFIG_PATHS = Object.freeze([
@@ -329,7 +330,7 @@ function workspacePointerMarkdownResult(markdown = '', baseUrl = '') {
 
 
 function firstWorkspaceEntrypoint(config = {}) {
-  return Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints[0] || null : null;
+  return Array.isArray(config.workspaceEntrypoints) ? config.workspaceEntrypoints.find(workspaceEntrypointApplies) || null : null;
 }
 
 function githubRepositoryFromUrl(value = '') {

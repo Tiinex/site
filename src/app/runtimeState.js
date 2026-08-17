@@ -1,4 +1,6 @@
 import { canonicalProductState } from './productStateBoundary.js';
+import { classifyRouteLocation } from './publicTarget.js';
+import { durableLocalAuthorityForRoute } from './historyAuthority.js';
 
 export const CLEAN_URL_BOUNDARY = 'clean-url-does-not-bootstrap-stale-local-storage';
 
@@ -23,8 +25,12 @@ export function defaultState() {
 
 export function initialRuntimeSnapshot() {
   const { lifecycle, route, persistence } = runtime();
-  const routeResolution = persistence?.resolveInitialState?.({ location: window.location, storage: window.localStorage })
-    || { requested: false, resolved: false, state: null, reason: 'route-resolution-unavailable' };
+  const routeOwner = classifyRouteLocation(window.location);
+  const durableLocalAuthority = durableLocalAuthorityForRoute(routeOwner.kind, window.history?.state || null);
+  const durableLocalPolicy = durableLocalAuthority === 'isolated-preexisting-recovery' ? 'preserve-existing' : 'normal';
+  const routeResolution = routeOwner.kind === 'semantic-state'
+    ? (persistence?.resolveInitialState?.({ location: window.location, storage: window.localStorage, durableLocalPolicy }) || { requested: true, resolved: false, state: null, reason: 'route-resolution-unavailable' })
+    : { requested: routeOwner.kind === 'public-target', resolved: false, state: null, reason: routeOwner.kind };
   const routeState = routeResolution?.resolved ? routeResolution.state : null;
   const resolved = routeState ? route?.normalizeRouteState?.(routeState, lifecycle) || routeState : defaultState();
   return {
@@ -32,7 +38,10 @@ export function initialRuntimeSnapshot() {
     routeResolved: Boolean(routeResolution?.resolved),
     routeRequested: Boolean(routeResolution?.requested),
     routeReason: routeResolution?.reason || '',
-    routeState: routeState || null
+    routeState: routeState || null,
+    routeKind: routeOwner.kind,
+    durableLocalAuthority,
+    publicTarget: routeOwner.target || null
   };
 }
 

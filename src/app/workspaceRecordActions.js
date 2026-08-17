@@ -1,8 +1,11 @@
-import { addConfiguredSourceToWorkspace, workspaceSourceInputsFromMarkdown } from '../workspaces/workspace.entrypoints.js';
+import { addConfiguredSourceToWorkspace, workspaceDeclaredSourceInputsFromMarkdown, workspaceSourceInputsFromMarkdown } from '../workspaces/workspace.entrypoints.js';
 import { replaceNonDraftWorkspaceSet } from '../workspaces/workspace.openSemantics.js';
 import { mergeWorkspaceEntrypointSet, openWorkspaceEntrypointSet } from '../workspaces/workspace.entrypointLifecycle.js';
-export function workspaceEntryFromRecord(record = {}) {
+import { appendWorkspaceMemberBinding, resolveWorkspaceMemberSourceInput, workspaceMemberBindingFromApply } from '../workspaces/workspace.memberIdentity.js';
+import { publicTargetFromRecord } from './publicTarget.js';
+export function workspaceEntryFromRecord(record = {}, descriptorTargetOverride = null) {
   const path = record.path || record.sourcePath || record.sourceTarget?.sourceArtifactPath || 'workspace.workspace.md';
+  const descriptorTarget = workspaceDescriptorTarget(descriptorTargetOverride) || publicTargetFromRecord(record);
   return {
     id: `workspace-record:${record.id || path}`,
     title: record.title || workspaceTitleFromMarkdown(record.markdown || '') || path,
@@ -11,21 +14,16 @@ export function workspaceEntryFromRecord(record = {}) {
     sourceMode: record.source?.adapterId === 'github' ? 'source-backed-workspace-file' : 'local-workspace-file',
     source: record.source ? Object.assign({}, record.source) : undefined,
     sourceRecordId: record.id || '',
-    sourceTarget: record.sourceTarget ? Object.assign({}, record.sourceTarget) : undefined
+    sourceTarget: record.sourceTarget ? Object.assign({}, record.sourceTarget) : undefined,
+    descriptorTarget
   };
 }
 
-export function openWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, record }) {
-  const entry = workspaceEntryFromRecord(record);
+export function openWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, record, descriptorTarget = null }) {
+  const entry = workspaceEntryFromRecord(record, descriptorTarget);
   if (!entry.markdown) return { ok: false, error: 'workspace.markdown.unavailable', message: 'Workspace artifact body is unavailable; reload the source first.', state, entry };
   const sourceInputs = workspaceSourceInputsFromMarkdown(entry.markdown, parseWorkspaceConfig);
-  if (sourceInputs.length) {
-    const opened = openWorkspaceEntrypointSet({ lifecycle, state, entry, sourceInputs, annotateWorkspace: annotateWorkspaceEntrypoint });
-    if (!opened?.ok) return opened;
-    const focusedState = stateWithFocusedWorkspace(opened.state, opened.workspace?.id, { previousWorkspaceId: state.activeWorkspaceId || '', previousView: state.view || {} });
-    const workspace = (focusedState.workspaces || []).find((item) => item.id === opened.workspace?.id) || opened.workspace;
-    return Object.assign({}, opened, { state: focusedState, workspace, openedWorkspaceSet: true });
-  }
+  if (sourceInputs.length) return openWorkspaceRecordEntrypointSet({ lifecycle, state, entry, sourceInputs });
 
   const opened = lifecycle?.openWorkspaceFromMarkdown?.(state, entry.markdown, entry);
   if (!opened?.ok) return { ok: false, error: opened?.error || 'workspace.open.failed', message: 'Could not open workspace artifact.', state, entry };
@@ -33,6 +31,21 @@ export function openWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, sta
   const focusedState = stateWithFocusedWorkspace(replaced.state, opened.workspace?.id, { previousWorkspaceId: state.activeWorkspaceId || '', previousView: state.view || {} });
   const workspace = (Array.isArray(focusedState?.workspaces) ? focusedState.workspaces : []).find((item) => item.id === opened.workspace?.id) || opened.workspace;
   return { ok: true, state: focusedState, workspace, entry, sourceInputs: [], openBoundary: replaced.report };
+}
+
+export function openWorkspaceRecordMemberAction({ lifecycle, parseWorkspaceConfig, state, record, memberIdentity, descriptorTarget = null }) {
+  const entry = workspaceEntryFromRecord(record, descriptorTarget);
+  if (!entry.markdown) return { ok: false, error: 'workspace.markdown.unavailable', message: 'Workspace artifact body is unavailable; reload the source first.', state, entry };
+  const declaredInputs = workspaceDeclaredSourceInputsFromMarkdown(entry.markdown, parseWorkspaceConfig);
+  const resolution = resolveWorkspaceMemberSourceInput(declaredInputs, memberIdentity);
+  if (!resolution.ok) {
+    const message = resolution.status === 'ambiguous'
+      ? 'Workspace member target matches more than one declared entrypoint.'
+      : 'Workspace member target no longer matches a declared entrypoint.';
+    return { ok: false, error: resolution.error, message, state, entry, memberResolution: resolution };
+  }
+  const opened = openWorkspaceRecordEntrypointSet({ lifecycle, state, entry, sourceInputs: [resolution.sourceInput] });
+  return opened?.ok ? Object.assign({}, opened, { memberIdentity: resolution.memberIdentity, memberResolution: resolution }) : opened;
 }
 
 export function mergeWorkspaceRecordAction({ lifecycle, parseWorkspaceConfig, state, workspaceId, record }) {
@@ -58,8 +71,19 @@ export function registerWorkspaceConfigSources(state, workspaceId, markdown = ''
   return next;
 }
 
-function annotateWorkspaceEntrypoint({ state, workspaceId, entry, mode }) {
+function openWorkspaceRecordEntrypointSet({ lifecycle, state, entry, sourceInputs }) {
+  const opened = openWorkspaceEntrypointSet({ lifecycle, state, entry, sourceInputs, annotateWorkspace: annotateWorkspaceEntrypoint });
+  if (!opened?.ok) return opened;
+  const focusedState = stateWithFocusedWorkspace(opened.state, opened.workspace?.id, { previousWorkspaceId: state.activeWorkspaceId || '', previousView: state.view || {} });
+  const workspace = (focusedState.workspaces || []).find((item) => item.id === opened.workspace?.id) || opened.workspace;
+  return Object.assign({}, opened, { state: focusedState, workspace, openedWorkspaceSet: true });
+}
+
+function annotateWorkspaceEntrypoint({ state, workspaceId, entry, sourceInput, mode }) {
   annotateWorkspaceImport(state, workspaceId, entry, mode);
+  const workspace = (Array.isArray(state?.workspaces) ? state.workspaces : []).find((item) => item.id === workspaceId);
+  const binding = workspaceMemberBindingFromApply({ descriptorTarget: entry?.descriptorTarget, sourceInput });
+  if (workspace && binding) appendWorkspaceMemberBinding(workspace, binding);
 }
 
 function annotateWorkspaceImport(state = {}, workspaceId = '', entry = {}, mode = 'open') {
@@ -123,4 +147,12 @@ function workspaceTitleFromMarkdown(markdown = '') {
 
 function stripMarkdown(value = '') {
   return String(value || '').replace(/^\[([^\]]+)\]\([^)]*\)$/u, '$1').trim();
+}
+
+function workspaceDescriptorTarget(target = null) {
+  if (!target || typeof target !== 'object' || !/^https?:\/\//i.test(String(target.externalTarget || ''))) return null;
+  if (!['workspace', 'workspace.member'].includes(String(target.targetKind || ''))) return null;
+  const out = Object.assign({}, target, { targetKind: 'workspace' });
+  delete out.memberIdentity;
+  return Object.freeze(out);
 }

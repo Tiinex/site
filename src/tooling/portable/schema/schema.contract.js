@@ -6,13 +6,14 @@ export function parsePortableSchemaDocument(markdown = '') {
   const text = String(markdown || '').replace(/\r\n?/g, '\n');
   const parsed = safeParseArtifact(text);
   const sections = parseHeadingSections(text);
-  const validation = parseContractGroups(findSection(sections, 'Schema Validation Contract'));
-  const creation = parseContractGroups(findSection(sections, 'Artifact Creation Contract'));
+  const validation = parseContractGroups(findMachineSection(sections, 'Schema Validation Contract'));
+  const creation = parseContractGroups(findMachineSection(sections, 'Artifact Creation Contract'));
   const summarySection = findSection(sections, 'Summary');
   return Object.freeze({
     schema: PORTABLE_SCHEMA_DOCUMENT_SCHEMA_ID,
     schemaId: String(parsed.envelope?.current?.schema?.id || '').trim(),
     parentSchemaId: String(parsed.envelope?.parent?.schema?.id || '').trim(),
+    envelopeSchemaId: String(parsed.envelope?.envelopeSchema?.id || '').trim(),
     title: parsed.body?.title || parsed.title || '',
     summary: firstParagraph(summarySection?.content || parsed.envelope?.current?.summary || ''),
     outline: Object.freeze(sections.map((section) => Object.freeze({
@@ -60,11 +61,11 @@ export function readPortableSchemaSections(markdown = '', selectors = [], option
 }
 
 export function contractCategoryItems(contract = {}, categoryNames = []) {
-  const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
+  const names = new Set(normalizeSelectors(categoryNames).map(exactMachineToken));
   const items = [];
   for (const group of contract.groups || []) {
     for (const category of group.categories || []) {
-      if (!names.has(normalizeKey(category.name))) continue;
+      if (!names.has(exactMachineToken(category.name))) continue;
       items.push(...category.items);
     }
   }
@@ -72,12 +73,12 @@ export function contractCategoryItems(contract = {}, categoryNames = []) {
 }
 
 export function unconditionalContractCategoryItems(contract = {}, categoryNames = []) {
-  const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
+  const names = new Set(normalizeSelectors(categoryNames).map(exactMachineToken));
   const items = [];
   for (const group of contract.groups || []) {
     if (groupRequiredWhen(group).length) continue;
     for (const category of group.categories || []) {
-      if (!names.has(normalizeKey(category.name))) continue;
+      if (!names.has(exactMachineToken(category.name))) continue;
       items.push(...category.items);
     }
   }
@@ -92,10 +93,11 @@ export function conditionalContractGroups(contract = {}) {
       name: group.name,
       requiredWhen: Object.freeze(requiredWhen),
       requiredSections: Object.freeze(uniqueStrings([
-        ...groupCategoryItems(group, ['Required Sections', 'Header Sections', 'Footer Sections']).map(cleanContractToken),
+        ...groupCategoryItems(group, ['Required Sections', 'Header Sections', 'Footer Sections', 'Required Heading']).map(cleanContractToken),
         ...groupCategoryItems(group, ['Required Shape']).flatMap(extractHeadingRequirements)
       ])),
-      requiredFields: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Fields', 'Required Entries']).map(cleanContractToken)))
+      requiredFields: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Fields']).map(cleanContractToken))),
+      requiredEntries: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Entries']).map(cleanContractToken)))
     })];
   }));
 }
@@ -105,9 +107,22 @@ export function contractRules(contract = {}) {
 }
 
 export function requiredSchemaSections(document = {}) {
-  const direct = unconditionalContractCategoryItems(document.validation, ['Required Sections', 'Header Sections', 'Footer Sections']);
+  const direct = unconditionalContractCategoryItems(document.validation, ['Required Sections', 'Header Sections', 'Footer Sections', 'Required Heading']);
   const shape = unconditionalContractCategoryItems(document.validation, ['Required Shape']).flatMap(extractHeadingRequirements);
   return uniqueStrings([...direct.map(cleanContractToken), ...shape]);
+}
+
+export function requiredSchemaHeadings(document = {}) {
+  const items = unconditionalContractCategoryItems(document.validation, ['Required Shape', 'Required Heading']);
+  const requirements = items.flatMap(extractHeadingRequirementObjects);
+  const seen = new Set();
+  return Object.freeze(requirements.filter((item) => {
+    if (!item.level || !item.title) return false;
+    const key = `${item.level}\u0000${item.title}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((item) => Object.freeze(item)));
 }
 
 export function optionalSchemaSections(document = {}) {
@@ -115,7 +130,26 @@ export function optionalSchemaSections(document = {}) {
 }
 
 export function requiredSchemaFields(document = {}) {
-  return uniqueStrings(unconditionalContractCategoryItems(document.validation, ['Required Fields', 'Required Entries']).map(cleanContractToken));
+  return uniqueStrings(unconditionalContractCategoryItems(document.validation, ['Required Fields']).map(cleanContractToken));
+}
+
+export function requiredSchemaEntries(document = {}) {
+  const entries = [];
+  for (const group of document.validation?.groups || []) {
+    if (groupRequiredWhen(group).length) continue;
+    const requiredEntries = groupCategoryItems(group, ['Required Entries']).map(cleanContractToken);
+    if (!requiredEntries.length) continue;
+    const targetHeadings = uniqueStrings([
+      ...groupCategoryItems(group, ['Required Heading', 'Required Sections', 'Header Sections', 'Footer Sections']).map(cleanContractToken),
+      ...groupCategoryItems(group, ['Required Shape']).flatMap(extractHeadingRequirements)
+    ]);
+    entries.push(Object.freeze({
+      group: group.name,
+      entries: Object.freeze(uniqueStrings(requiredEntries)),
+      targetHeadings: Object.freeze(targetHeadings)
+    }));
+  }
+  return Object.freeze(entries);
 }
 
 export function optionalSchemaFields(document = {}) {
@@ -235,15 +269,26 @@ function parseContractGroups(section = null) {
   let current = null;
   let category = null;
   let fenced = false;
+  const freezeCategoryNode = (node = {}) => Object.freeze({
+    value: String(node.value || ''),
+    rawValue: String(node.rawValue ?? node.value ?? ''),
+    line: Number(node.line || 0),
+    indent: Number(node.indent || 0),
+    children: Object.freeze((node.children || []).map(freezeCategoryNode))
+  });
   const flushCategory = () => {
     if (!current || !category) return;
-    current.categories.push(Object.freeze({ name: category.name, items: Object.freeze(category.items) }));
+    current.categories.push(Object.freeze({
+      name: category.name,
+      items: Object.freeze(category.items),
+      nodes: Object.freeze((category.nodes || []).map(freezeCategoryNode))
+    }));
     category = null;
   };
   const flushGroup = () => {
     flushCategory();
     if (!current) return;
-    groups.push(Object.freeze({ name: current.name, categories: Object.freeze(current.categories) }));
+    groups.push(Object.freeze({ name: current.name, categories: Object.freeze(current.categories), labelCandidates: Object.freeze(current.labelCandidates || []) }));
     current = null;
   };
   for (let index = 1; index < lines.length; index += 1) {
@@ -256,35 +301,48 @@ function parseContractGroups(section = null) {
     const groupMatch = line.match(/^###\s+(.+?)\s*$/);
     if (groupMatch) {
       flushGroup();
-      current = { name: groupMatch[1].trim(), categories: [] };
+      current = { name: groupMatch[1].trim(), categories: [], labelCandidates: [] };
       continue;
     }
     if (!current) continue;
     const trimmed = line.trim();
     if (!trimmed) continue;
-    if (/^-\s+/.test(trimmed)) {
-      if (!category) category = { name: 'Items', items: [] };
-      category.items.push(trimmed.replace(/^-\s+/, '').trim());
+    const bullet = line.match(/^(\s*)-\s+(.+)$/);
+    if (bullet) {
+      if (!category) category = { name: 'Items', items: [], nodes: [], nodeStack: [] };
+      if (!category.nodes) category.nodes = [];
+      if (!category.nodeStack) category.nodeStack = [];
+      const indent = bullet[1].replace(/\t/g, '    ').length;
+      const rawValue = bullet[2];
+      const value = rawValue.trim();
+      category.items.push(value);
+      const node = { value, rawValue, line: Number(section.line || 1) + index, indent, children: [] };
+      while (category.nodeStack.length && indent <= category.nodeStack.at(-1).indent) category.nodeStack.pop();
+      if (category.nodeStack.length) category.nodeStack.at(-1).children.push(node);
+      else category.nodes.push(node);
+      category.nodeStack.push(node);
       continue;
     }
     const nextNonEmpty = nextMeaningfulLine(lines, index + 1);
     if (nextNonEmpty && /^-\s+/.test(nextNonEmpty.trim())) {
       flushCategory();
-      category = { name: trimmed, items: [] };
+      category = { name: trimmed, items: [], nodes: [], nodeStack: [] };
+      continue;
     }
+    current.labelCandidates.push(trimmed);
   }
   flushGroup();
   return Object.freeze({ groups: Object.freeze(groups) });
 }
 
 function contractCategoryItemsExcludingToolingGroups(contract = {}, categoryNames = [], options = {}) {
-  const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
+  const names = new Set(normalizeSelectors(categoryNames).map(exactMachineToken));
   const items = [];
   for (const group of contract.groups || []) {
     if (isToolingConfigurationGroup(group)) continue;
     if (options.unconditionalOnly && groupRequiredWhen(group).length) continue;
     for (const category of group.categories || []) {
-      if (names.has(normalizeKey(category.name))) items.push(...category.items);
+      if (names.has(exactMachineToken(category.name))) items.push(...category.items);
     }
   }
   return uniqueStrings(items);
@@ -299,12 +357,17 @@ function isToolingConfigurationGroup(group = {}) {
 }
 
 function groupCategoryItems(group = {}, categoryNames = []) {
-  const names = new Set(normalizeSelectors(categoryNames).map(normalizeKey));
-  return uniqueStrings((group.categories || []).flatMap((category) => names.has(normalizeKey(category.name)) ? category.items : []));
+  const names = new Set(normalizeSelectors(categoryNames).map(exactMachineToken));
+  return uniqueStrings((group.categories || []).flatMap((category) => names.has(exactMachineToken(category.name)) ? category.items : []));
 }
 
 function groupRequiredWhen(group = {}) {
   return groupCategoryItems(group, ['Required When']).map(cleanContractToken);
+}
+
+function findMachineSection(sections = [], title = '') {
+  const wanted = exactMachineToken(title);
+  return sections.find((section) => exactMachineToken(section.title) === wanted) || null;
 }
 
 function findSection(sections = [], title = '') {
@@ -318,6 +381,18 @@ function extractHeadingRequirements(value = '') {
   if (matches.length) return matches;
   const plain = text.match(/^(#{1,6})\s+(.+)$/);
   return plain ? [plain[2].trim()] : [];
+}
+
+function extractHeadingRequirementObjects(value = '') {
+  const text = String(value || '');
+  const quoted = [...text.matchAll(/`(#{1,6})\s+([^`]+)`/g)].map((match) => ({
+    level: match[1].length,
+    title: match[2].trim(),
+    source: text
+  }));
+  if (quoted.length) return quoted;
+  const plain = text.match(/^(#{1,6})\s+(.+)$/);
+  return plain ? [{ level: plain[1].length, title: plain[2].trim(), source: text }] : [];
 }
 
 function isTemplatePlaceholderHeading(value = '') {
@@ -346,6 +421,10 @@ function sectionMatches(section = {}, selector = '') {
 function normalizeSelectors(value) {
   const list = Array.isArray(value) ? value : value ? [value] : [];
   return list.map((item) => String(item || '').trim()).filter(Boolean);
+}
+
+function exactMachineToken(value = '') {
+  return String(value || '').trim();
 }
 
 function normalizeKey(value = '') {

@@ -6,7 +6,9 @@ import { Modal } from '../../ui/primitives/Modal.jsx';
 import { createRecordActionResult, RecordActionKind } from '../../actions/record.actions.js';
 import { createReferenceDraft } from '../../transitions/record.transitions.js';
 import { isTransitionAction } from '../../transitions/transition.presentation.js';
+import { isCanonicalTransitionProductAction } from '../../transitions/transition.productPresentation.js';
 import { ContinuationDialog, TransitionValidationNotice } from './workspace.continuationDialog.views.jsx';
+import { CanonicalTaskCreateDialog } from './workspace.canonicalTaskDialog.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
 
@@ -44,7 +46,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
         {!record?.markdown ? <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown body is available for this record.'}</p> : null}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
-          <Button variant="primary" icon="shareNodes" onClick={onShare}>Share session</Button>
+          <Button variant="primary" icon="shareNodes" onClick={onShare}>Share artifact</Button>
         </div>
       </div>
     </Modal>
@@ -85,8 +87,11 @@ export function RecordMarkdownDialog({ record, onDismiss }) {
   );
 }
 
-export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], onDismiss, onShare, onCreateTransition }) {
+export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], onDismiss, onShare, onCreateTransition, onCreateCanonicalTransition }) {
   const actionId = action?.id || action;
+  if (isCanonicalTransitionProductAction(action)) {
+    return <CanonicalTaskCreateDialog record={record} action={action} onDismiss={onDismiss} onCreate={onCreateCanonicalTransition} />;
+  }
   if (isTransitionAction(action)) {
     return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} transitionDefinition={action.transitionDefinition} workspaceRecords={workspaceRecords} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
   }
@@ -112,7 +117,7 @@ export function RecordActionDialog({ record, action, schemaRegistry, workspaceRe
           <pre className="tx-record-markdown-preview">{draft.markdown}</pre>
           <div className="tx-dialog-actions">
             <Button variant="ghost" onClick={onDismiss}>Close</Button>
-            <Button variant="ghost" icon="shareNodes" onClick={() => onShare?.(record)}>Share parent session</Button>
+            <Button variant="ghost" icon="shareNodes" onClick={() => onShare?.(record)}>Share parent artifact</Button>
             <Button variant="primary" icon="reference" onClick={() => onCreateTransition?.(record, draft)}>Create evidence</Button>
           </div>
           {result ? <p className="tx-muted tx-action-caption">Evidence preservation capsule remains available for handoff copy: {result.intent}.</p> : null}
@@ -134,7 +139,7 @@ export function RecordActionDialog({ record, action, schemaRegistry, workspaceRe
         <pre className="tx-record-markdown-preview">{result.text}</pre>
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
-          <Button variant="primary" icon="shareNodes" onClick={() => onShare?.(record)}>Share session</Button>
+          <Button variant="primary" icon="shareNodes" onClick={() => onShare?.(record)}>Share artifact</Button>
         </div>
       </div>
     </Modal>

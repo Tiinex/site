@@ -1,3 +1,4 @@
+import { persistenceWriteEnvForOwnership } from './persistenceOwnership.js';
 export function clearScheduledScrollPersistence(refs = {}, win = globalThis) {
   if (refs.timerRef?.current && win.clearTimeout) win.clearTimeout(refs.timerRef.current);
   refs.timerRef && (refs.timerRef.current = null);
@@ -5,14 +6,14 @@ export function clearScheduledScrollPersistence(refs = {}, win = globalThis) {
   refs.idleRef && (refs.idleRef.current = null);
 }
 
-export function persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode = 'replace', options = {}, doc = globalThis.document } = {}) {
+export function persistCapturedScroll({ latestStateRef, state, preserveCapturedViewScroll, runtime, mode = 'replace', options = {}, doc = globalThis.document, persistenceOwnership } = {}) {
   if (!options.force && doc?.visibilityState && doc.visibilityState !== 'visible') return null;
   const base = latestStateRef?.current || state;
   const withScroll = preserveCapturedViewScroll?.(base, base) || base;
   if (withScroll === base) return null;
   if (latestStateRef) latestStateRef.current = withScroll;
   if (options.render === true) options.setState?.(withScroll);
-  if (withScroll?.workspaces?.length) runtime?.().persistence?.writeState?.(withScroll, { mode });
+  if (withScroll?.workspaces?.length) runtime?.().persistence?.writeState?.(withScroll, persistenceWriteEnvForOwnership(persistenceOwnership, { mode }));
   return withScroll;
 }
 

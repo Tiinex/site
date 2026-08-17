@@ -1,11 +1,14 @@
 import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from '../adapters/local/local.adapter.js';
 import { applyLocalAdapterResultToWorkspace } from '../workspaces/workspace.import.js';
 import { assertCanonicalWorkspaceRuntimeState } from '../workspaces/workspace.runtimeCanonical.js';
+import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
 
 export async function runLocalMaterialImportCommand(input = {}) {
   const lifecycle = input.lifecycle;
   const state = input.state;
   const options = input.options || {};
+  const authority = durableLocalMutationDecision(input.persistenceOwnership, DurableLocalMutationOperation.localMaterialIntake);
+  if (!authority.ok) return { ok: false, error: authority.error, state, notice: authority.notice, authority };
   if (!lifecycle) return { ok: false, error: 'lifecycle.missing', state, notice: 'Could not add selected material.' };
   const fileList = input.fileList || [];
   const collectFiles = input.collectFiles || collectLocalFilesFromDataTransfer;

@@ -150,7 +150,7 @@ export async function runGithubSourceOperation(context = {}) {
           workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
           transportRefreshTier,
           requestedSurfaces: requestedSurfacesForInput
-        }));
+        }), { sourceIdentityPolicy: 'refine-existing' });
         if (pinned?.ok) {
           finalState = pinned.state;
           materializationSourceId = pinned.source.id;

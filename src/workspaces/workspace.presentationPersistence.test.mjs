@@ -28,6 +28,7 @@ function loadPersistence() {
     './workspace.persistenceRecovery.js',
     './workspace.persistenceRouteCache.js',
     './workspace.persistencePresentation.js',
+    './workspace.persistenceClear.js',
     './workspace.persistence.js'
   ]) vm.runInContext(readFileSync(new URL(file, import.meta.url), 'utf8'), sandbox);
   return { persistence: sandbox.window.TiinexWorkspacePersistence, env: sandbox.window, storageMap };

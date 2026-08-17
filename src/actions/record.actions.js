@@ -1,5 +1,6 @@
 import { isWorkspaceEntrypointArtifact, workspaceEntrypointCapability } from '../workspaces/workspace.entrypointCapability.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
+import { canDiscardLocalDraft } from '../artifacts/artifact.localDraft.js';
 
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
@@ -74,7 +75,7 @@ export function presentRecordActions(record = {}, options = {}) {
       capabilityStatus: 'implemented'
     });
   }
-  if (isRemovableLocalDraftRecord(record)) {
+  if (canDiscardLocalDraft(record)) {
     actions.push({
       id: RecordActionKind.deleteLocal,
       label: 'Delete local draft',
@@ -87,7 +88,7 @@ export function presentRecordActions(record = {}, options = {}) {
   }
   actions.push({
     id: RecordActionKind.share,
-    label: 'Share session',
+    label: 'Share artifact',
     icon: 'shareNodes',
     enabled: true,
     contract: RECORD_ACTIONS_CONTRACT_ID,
@@ -144,14 +145,7 @@ function actionAvailability(capability = {}, { fallbackUsed = false, action = ''
   });
 }
 
-export function isRemovableLocalDraftRecord(record = {}) {
-  const source = record.source || {};
-  const sourceMode = String(record.sourceMode || '').trim().toLowerCase();
-  const status = String(record.status || record.lifecycleStatus || record.currentStatus || record.envelope?.current?.status || '').trim().toLowerCase();
-  const localSource = source.adapterId === 'local' || source.kind === 'local-session' || source.kind === 'local' || source.sourceKind === 'local.session';
-  const draftLike = sourceMode.startsWith('local-transition') || sourceMode.startsWith('local-reference') || sourceMode.startsWith('local-draft') || status === 'draft' || status === 'local' || status === 'draft/local';
-  return Boolean(localSource && draftLike && record.id);
-}
+export function isRemovableLocalDraftRecord(record = {}) { return canDiscardLocalDraft(record); }
 
 export function isWorkspaceRecord(record = {}) {
   return isWorkspaceEntrypointArtifact(record);

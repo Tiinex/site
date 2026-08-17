@@ -27,7 +27,8 @@ assert.equal(Object.prototype.hasOwnProperty.call(prepared.state.workspaces[0], 
 const multiConfig = globalThis.TiinexWorkspaceConfig.createDefaultWorkspaceConfig();
 multiConfig.workspaceEntrypoints = [
   { name: 'News', sourceKind: 'github-tree', repository: 'Tiinex/news', ref: 'main', rootPath: '.topics', openOnApply: 'on' },
-  { name: 'Documentation', sourceKind: 'github-tree', repository: 'Tiinex/docs', ref: 'master', rootPath: '.topics', openOnApply: 'on' }
+  { name: 'Disabled', sourceKind: 'github-tree', repository: 'Tiinex/disabled', ref: 'main', rootPath: '.topics', openOnApply: 'off' },
+  { name: 'Documentation', sourceKind: 'github-tree', repository: 'Tiinex/docs', ref: 'master', rootPath: '.topics' }
 ];
 const hydratedIds = [];
 const multiPersistence = {

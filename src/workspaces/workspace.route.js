@@ -47,9 +47,39 @@
       sourceOrder: Array.isArray(workspace.sourceOrder) ? workspace.sourceOrder.slice() : [],
       records: Array.isArray(workspace.records) ? workspace.records.map(compactRecord) : [],
       assets: Array.isArray(workspace.assets) ? workspace.assets.map(compactAsset) : [],
+      workspaceMemberBindings: compactWorkspaceMemberBindings(workspace.workspaceMemberBindings),
       importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, 10).map(compactImportLogEntry) : [],
       mode: workspace.mode || 'feed'
     };
+  }
+
+  function compactWorkspaceMemberBindings(value = []) {
+    return (Array.isArray(value) ? value : []).map((binding) => {
+      const descriptor = binding?.descriptorTarget || {};
+      const identity = binding?.memberIdentity || {};
+      if (!descriptor.externalTarget || !identity.key) return null;
+      return {
+        schema: binding.schema || 'tiinex.workspace.memberBinding.v1',
+        descriptorTarget: {
+          schema: descriptor.schema || 'tiinex.publicTarget.v1',
+          adapterId: descriptor.adapterId || '',
+          targetKind: 'workspace',
+          externalTarget: descriptor.externalTarget || '',
+          repository: descriptor.repository || '',
+          ref: descriptor.ref || '',
+          path: descriptor.path || ''
+        },
+        memberIdentity: {
+          schema: identity.schema || 'tiinex.workspace.memberIdentity.v1',
+          kind: identity.kind || 'semantic',
+          key: identity.key || '',
+          name: identity.name || '',
+          label: identity.label || '',
+          sourceKind: identity.sourceKind || '',
+          sourceSignature: identity.sourceSignature || ''
+        }
+      };
+    }).filter(Boolean);
   }
 
   function compactSurfaceMap(map = {}) {
@@ -308,6 +338,7 @@
       sources: Array.isArray(workspace.sources) ? workspace.sources.map(compactSource) : [],
       records: Array.isArray(workspace.records) ? workspace.records.map(normalizeRouteRecordShell) : [],
       assets: Array.isArray(workspace.assets) ? workspace.assets.map(normalizeRouteAssetShell) : [],
+      workspaceMemberBindings: compactWorkspaceMemberBindings(workspace.workspaceMemberBindings),
       ...(Array.isArray(workspace.workspaceMergeCandidates) && workspace.workspaceMergeCandidates.length ? { workspaceMergeCandidates: workspace.workspaceMergeCandidates.map(normalizeRouteWorkspaceCandidateShell) } : {})
     });
   }
@@ -354,9 +385,17 @@
     });
   }
 
-  function routeHistoryState(routeState, explicitIndex) {
+  function routeHistoryState(routeState, explicitIndex, existingState = null, statePatch = null) {
     const index = Number.isFinite(Number(explicitIndex)) ? Number(explicitIndex) : Date.now();
-    return Object.assign({}, routeSummary(routeState), { __tiinexRouteIndex: index });
+    const out = existingState && typeof existingState === 'object' && !Array.isArray(existingState) ? Object.assign({}, existingState) : {};
+    Object.assign(out, routeSummary(routeState), { __tiinexRouteIndex: index });
+    if (statePatch && typeof statePatch === 'object') {
+      for (const [key, value] of Object.entries(statePatch)) {
+        if (value == null) delete out[key];
+        else out[key] = value;
+      }
+    }
+    return out;
   }
 
   function routeSummary(routeState) {

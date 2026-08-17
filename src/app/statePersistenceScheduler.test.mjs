@@ -68,5 +68,19 @@ assert.equal(Object.prototype.hasOwnProperty.call(committed.workspaces[0], 'work
 assert.equal(Object.prototype.hasOwnProperty.call(rendered.workspaces[0], 'workspaceMergeCandidates'), false, 'candidate compatibility must not reach rendered product state');
 assert.equal(committed.workspaces[0].records[0].workspaceArtifactRole.schema, 'tiinex.workspace.artifact.role.v1', 'product commit produces canonical Workspace Artifact role');
 
+const clearCalls = [];
+const publicOwnership = { writePolicy: () => ({ routeKind: 'public-target', preserveUrl: true, durableLocalPolicy: 'preserve-existing' }) };
+const emptyCommitted = commitStateWithPersistence({
+  nextState: { version: 1, workspaces: [], activeWorkspaceId: '', view: { workspaceVerse: 'feed' } },
+  sourceState: state1,
+  setState: () => {},
+  runtime: () => ({ persistence: { clearState: (opts) => clearCalls.push(opts) } }),
+  scheduler: { cancel() {} },
+  persistenceOwnership: publicOwnership
+});
+assert.equal(emptyCommitted.workspaces.length, 0, 'empty product state should still commit canonically');
+assert.deepEqual(clearCalls, [{ mode: 'push', preserveUrl: true, routeKind: 'public-target', durableLocalPolicy: 'preserve-existing' }], 'zero-workspace clear must receive the same route persistence ownership policy as ordinary writes');
+
+
 
 console.log('✓ state persistence scheduler tests passed');
