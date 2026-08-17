@@ -25,8 +25,8 @@ function isMarkdownPath(path) {
   return MARKDOWN_EXTENSIONS.test(String(path || ''));
 }
 
-function workspaceMatchPatterns(source = {}, options = {}) {
-  return String(options.workspaceMatch || source.workspaceMatch || source.match || '')
+export function githubWorkspaceMatchPatterns(source = {}, input = {}) {
+  return String(input.workspaceMatch || source.workspaceMatch || source.match || '')
     .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter(Boolean);
@@ -88,16 +88,54 @@ export async function resolveGithubSourceRef(source, options = {}) {
   return { ref, resolvedBy: 'github.repo.default_branch' };
 }
 
+export function exactGithubCommit(value = '') { const commit = String(value || '').trim(); return /^[0-9a-f]{40}$/i.test(commit) ? commit : ''; }
+
+export function githubRefResolutionRequestCount(source = {}) {
+  if (exactGithubCommit(source?.materializedCommit)) return 0;
+  const ref = String(source?.ref || '').trim();
+  if (!ref) return 2;
+  return exactGithubCommit(ref) ? 0 : 1;
+}
+
+export function githubRepoDiscoveryRequestCount(source = {}) {
+  return githubRefResolutionRequestCount(source) + 1;
+}
+
+export async function resolveGithubMaterializedCommit(source, ref = '', options = {}) {
+  const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  if (!fetchImpl) throw new Error('fetchImpl not available');
+  const selectedRef = String(ref || source?.ref || '').trim();
+  const resolved = selectedRef ? { ref: selectedRef, resolvedBy: 'source.ref' } : await resolveGithubSourceRef(source, { fetchImpl });
+  if (exactGithubCommit(resolved.ref)) return { ...resolved, commit: resolved.ref, commitResolvedBy: 'source.ref.exact-commit' };
+  const { owner, name } = repoParts(source);
+  const data = await fetchJson(`https://api.github.com/repos/${owner}/${name}/commits/${encodeURIComponent(resolved.ref)}`, fetchImpl);
+  const commit = String(data.sha || '').trim();
+  if (!exactGithubCommit(commit)) throw new Error('resolved GitHub commit unavailable');
+  return { ...resolved, commit, commitResolvedBy: 'github.commit-resolution' };
+}
+
+
+export async function tryResolveGithubMaterializedCommit(source, ref = '', options = {}) {
+  try { return exactGithubCommit((await resolveGithubMaterializedCommit(source, ref, options)).commit); }
+  catch (_) { return ''; }
+}
+
 export async function discoverGithubMarkdownRefs(source, options = {}) {
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!fetchImpl) throw new Error('fetchImpl not available');
   const maxFiles = Math.max(1, Number(options.maxFiles || 500));
   const { owner, name } = repoParts(source);
-  const resolved = await resolveGithubSourceRef(source, { fetchImpl });
-  const treeUrl = `https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(resolved.ref)}?recursive=1`;
+  const prequalifiedCommit = exactGithubCommit(source?.materializedCommit);
+  const configuredRef = String(source?.ref || '').trim();
+  const resolved = prequalifiedCommit
+    ? { ref: configuredRef, resolvedBy: configuredRef ? 'source.ref' : 'source.materializedCommit.prequalified' }
+    : await resolveGithubSourceRef(source, { fetchImpl });
+  const materializedCommit = prequalifiedCommit || await tryResolveGithubMaterializedCommit(source, resolved.ref, { fetchImpl });
+  const treeRef = materializedCommit || resolved.ref;
+  const treeUrl = `https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(treeRef)}?recursive=1`;
   const tree = await fetchJson(treeUrl, fetchImpl);
   const roots = rootPaths(source);
-  const patterns = workspaceMatchPatterns(source, options);
+  const patterns = githubWorkspaceMatchPatterns(source, options);
   const refs = [];
   const warnings = [];
   const governanceRootFiles = [];
@@ -114,5 +152,5 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
   if (tree.truncated) warnings.push({ code: 'github.tree.truncated', message: 'GitHub tree response was truncated.' });
   const totalMarkdown = (Array.isArray(tree.tree) ? tree.tree : []).filter((item) => item.type === 'blob' && underRoots(String(item.path || ''), roots) && isMarkdownPath(item.path) && matchesGithubWorkspacePattern(String(item.path || ''), patterns)).length;
   if (totalMarkdown > refs.length) warnings.push({ code: 'github.discovery.bounded', message: `Loaded first ${refs.length} of ${totalMarkdown} markdown files.` });
-  return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, treeUrl, totalMarkdown, governanceBoundary: governanceBoundaryFromRootFiles(Object.assign({}, source, { ref: resolved.ref }), governanceRootFiles, { rootChecked: true, discoveredFrom: 'github-tree-root-manifest' }) };
+  return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, materializedCommit, treeUrl, totalMarkdown, governanceBoundary: governanceBoundaryFromRootFiles(Object.assign({}, source, { ref: materializedCommit || resolved.ref }), governanceRootFiles, { rootChecked: true, discoveredFrom: 'github-tree-root-manifest' }) };
 }

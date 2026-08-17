@@ -6,6 +6,8 @@ export function makeConfiguredSource(input = {}, options = {}, runtime = {}) {
   const label = String(input.label || repo || 'Source').trim();
   const rootPath = String(input.rootPath || input.config?.rootPath || '.topics').trim() || '.topics';
   const ref = String(input.ref || input.config?.ref || '').trim();
+  const requestedRef = Object.prototype.hasOwnProperty.call(input, 'requestedRef') ? String(input.requestedRef || '').trim() : String(input.config?.requestedRef ?? ref).trim();
+  const materializedCommit = exactCommit(input.materializedCommit || input.config?.materializedCommit);
   const issueUrls = input.issueUrls || input.config?.issueUrls || '';
   const explicitFileRefs = normalizeExplicitFileRefs(input.explicitFileRefs ?? input.fileRefs ?? input.config?.explicitFileRefs ?? input.config?.fileRefs ?? []);
   const requestedSurfaces = input.requestedSurfaces ? Object.assign({}, input.requestedSurfaces) : {
@@ -16,7 +18,7 @@ export function makeConfiguredSource(input = {}, options = {}, runtime = {}) {
   return {
     id: configuredSourceIdForWorkspace(Object.assign({}, input, { repo, ref, rootPath }), runtime.existingSources, options),
     kind: input.kind || runtime.configuredSourceKind || 'github-tree', adapterId: input.adapterId || runtime.githubAdapterId || 'github', sourceKind: input.sourceKind || runtime.githubRepoSourceKind || 'github.repo',
-    label, repo, ref, rootPath, config: { repo, ref, rootPath, issueUrls, explicitFileRefs: explicitFileRefs.slice() }, count: Number(input.count || 0),
+    label, repo, ref, requestedRef, materializedCommit, rootPath, config: { repo, ref, requestedRef, rootPath, issueUrls, explicitFileRefs: explicitFileRefs.slice() }, count: Number(input.count || 0),
     boundary: 'explicit source boundary; no material is trusted until loaded', transportLabel: input.transportLabel || options.transportLabel || 'Source Pages mirror', transportRefreshTier: input.transportRefreshTier || input.preferredTransportTier || '',
     transportPlan: input.transportPlan ? Object.assign({}, input.transportPlan) : undefined, transportOutcome: input.transportOutcome ? Object.assign({}, input.transportOutcome) : undefined,
     governanceBoundary: input.governanceBoundary ? Object.assign({}, input.governanceBoundary) : undefined, transportTiers: input.transportTiers ? Object.assign({}, input.transportTiers) : undefined,
@@ -26,6 +28,8 @@ export function makeConfiguredSource(input = {}, options = {}, runtime = {}) {
     closeable: input.closeable !== false, loadable: input.loadable !== false
   };
 }
+
+function exactCommit(value = '') { const commit = String(value || '').trim(); return /^[0-9a-f]{40}$/i.test(commit) ? commit : ''; }
 
 export function configuredSourceIdForWorkspace(input = {}, existingSources = [], options = {}) {
   const sources = Array.isArray(existingSources) ? existingSources : [];

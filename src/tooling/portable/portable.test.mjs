@@ -27,6 +27,8 @@ const tests = [
   './materialization/durable.materialize.test.mjs',
   './checkpoint/portable.checkpoint.test.mjs',
   './package/runtime.package.test.mjs',
+  './package/semantic.package.test.mjs',
+  './package/semantic.package.authority-closure.test.mjs',
   './conformance/checkpoint.qualification.test.mjs',
   './adapters/node/checkpoint.verify.test.mjs'
 ];

@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v424';
-export const TIINEX_SITE_VERSION = '0.2.243-v424';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v424';
-export const TIINEX_RUNTIME_ID = 'react-v424-canonical-transition-product-vertical-slice';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v424-canonical-transition-product-vertical-slice';
+export const TIINEX_SITE_CHECKPOINT = 'v426';
+export const TIINEX_SITE_VERSION = '0.2.245-v426';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v426';
+export const TIINEX_RUNTIME_ID = 'react-v426-semantic-package-locality-transition-registry-integration';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v426-semantic-package-locality-transition-registry-integration';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

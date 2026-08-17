@@ -114,6 +114,7 @@ function recordFromRepoProxyMarkdown(markdown = '', source = {}, path = '', rawU
       targetIndex: 0,
       rawUrl,
       sourceArtifactPath: path,
+      materializedCommit: /^[0-9a-f]{40}$/i.test(String(source.ref || '').trim()) ? String(source.ref || '').trim() : '',
       transportTier: 'proxy',
       loaded: true
     }

@@ -1,194 +1,249 @@
-# Tiinex Site v424 — Canonical Transition Product Vertical Slice
+# Tiinex Site v426 — Semantic-Package Locality + Compiled Transition Registry Integration
 
-v424 connects the frozen canonical Transition stack to one bounded real product workflow: a source-backed Topic can expose a canonical **Create task** action, collect the canonical Task creation inputs, recompute v422/v423 from current browser state, validate a rendered Root→Task Artifact, and create exactly one browser-local Task only after every preflight gate is qualified.
+v426 migrates the already source-gated canonical Topic → Task product definition from an application-local Transition directory into an explicit schema-local semantic-package neighborhood. Product semantics remain frozen from v424/v425; discovery/locality authority now comes from the frozen portable semantic-package compiler.
 
-## Frozen authority chain
+## Canonical locality
 
-```text
-Tiinex/docs d69b8ff                         PASS / FROZEN
-portable Tooling foundation                 PASS / FROZEN
-v421 canonical read integration             PASS / FROZEN
-v422 invocation/binding planner             PASS / FROZEN
-v423 output generation/materialization      PASS / FROZEN
-v424 canonical Topic→Task product slice     IMPLEMENTED / REVIEW CANDIDATE
-Q                                            WAITING FOR ARCHITECT SOURCE PASS
-```
-
-## v424 product truth
-
-- `src/transitions/definitions/topic-to-task-transition-definition.trace.md` is canonical product data. Legacy `topic.continue.task` remains quarantined compatibility presentation and is never promoted into canonical read truth.
-- The product bundles a source-qualified immutable cache of the exact Root, Transition Definition, and Task schema bytes from `Tiinex/docs@d69b8ff55a56b8cb9282b8684db6a938a4435b94`. Their Git blob identities are hard-gated as `7078e483...`, `548dac027...`, and `e4d545ad...`.
-- Canonical discovery uses the frozen participant index, Transition Definition registry/read seam, and availability planner. Product capability is derived from the canonical declaration/result shape and supported local mechanism capability, not from `Canonical Identifier` switches.
-- The canonical Task form asks for `Summary`, `Objective`, `Done Criteria`, `Scope`, and `Dependencies`. Task tooling-configuration fields remain separate and never become authoring values.
-- Final Create recomputes participant identity, canonical definition/read truth, availability, v422 invocation bindings, and v423 output intent from current state and submitted values. A stale UI plan cannot authorize mutation.
-- The local mechanism supports exactly one Input Role (the current/Parent Topic) and exactly one 1..1 Task Output Role. Its sole active lifecycle declaration must be `Target Binding = task`, `Effect = create-new`, `Logical Continuity = new-subject`, `Required Materialization Operation = create`, with no `Result Binding`; `Preserve Why: yes` and unsupported lifecycle/Parent mappings are not silently ignored. Absent or `single` mapping is the only supported bounded 1×1 mapping truth.
-- Parent recovery requires source-backed GitHub metadata with repository, commit-pinned 40-hex ref, and source Artifact path. Repo-relative path bytes are preserved as source truth; Markdown-link permalink projection separately RFC3986-encodes path segments, including internal/leading/trailing SPACE, `)`, and non-ASCII. If a safe recovery reference is unavailable, local create capability is unavailable; Parent is never dropped to force execution.
-- The generated Task uses canonical Root envelope shape and exact Task body sections. It is re-parsed and validated against the exact compiled Root→Task contract before `addWorkspaceRecord` may be called.
-- The created record has `path = ""`, browser-local source state, no inherited GitHub source object, and no repository path allocation. The source Topic remains unchanged.
-- `Canonical Identifier` is local semantic truth inside each defining Transition Definition, not global registry identity. Distinct registry definitions may reuse the same string and remain distinct through registry-specific execution keys. Presentation precedence is an explicit migration bridge only for the exact Site-bundled `src/transitions/definitions/topic-to-task-transition-definition.trace.md` definition when it is product-capable; unrelated workspace definitions reusing the string never suppress legacy `topic.continue.task` by same-string identity.
-
-## Final v424 source closure
-
-Architect's final product-shape/identity pressure is closed in the same checkpoint identity:
+The one bundled Topic → Task Transition Definition now lives at:
 
 ```text
-exact lifecycle shape                         enforced locally
-exact executable Input Role count            1
-exact executable Output Role count           1
-lifecycle Result Binding                     absent
-lifecycle/Parent Member Mapping              absent | single only
-Parent repo-relative path bytes              preserved before URL encoding
-Canonical Identifier                         local semantic key, never global identity
-command definition lookup                    exact registry execution key, exactly one match
-legacy compatibility suppression             exact bundled product provenance only
+src/schemas/core/task/.transitions/
+  topic-to-task-transition-definition.trace.md
 ```
 
-The final cross-sweep combines arity, lifecycle continuity/result binding/mappings, Parent mapping, unusual GitHub paths, and same-ID independent definitions. Unsupported shapes remain visible canonical truth but never become `productCapable`; every such command pressure yields zero lifecycle mutations.
+There is no second bundled representation under `src/transitions/definitions/`.
 
-## Product boundary
+Task and Topic expose explicit package neighborhoods:
 
-One successful v424 command may perform one browser-local Task create. It does **not** perform remote publication, repository/path allocation, generic Relation execution, Condition evaluation, producer recursion, File Naming prose interpretation, source Topic mutation, or generic Transition execution.
+```text
+src/schemas/core/task/
+  task-semantic-package.trace.md
+  tiinex.task.v1-transitions.trace.md
+  tiinex.task.v1.schema.md
+  .transitions/topic-to-task-transition-definition.trace.md
 
-The focused A–M product matrix plus the mandatory adjacent-state/product sweep proves zero workspace mutations for malformed/missing canonical authority, wrong current schema, ambiguous participant identity, missing Task input, missing destination, unrecoverable Parent, stale/missing schema cache, and malformed/absent canonical definition. The sole qualified success path creates exactly one local Task after fresh v423 qualification.
+src/schemas/core/topic/
+  topic-semantic-package.trace.md
+  tiinex.topic.v1-transitions.trace.md
+  tiinex.topic.v1.schema.md
+```
+
+The package graph uses explicit `site-local:` cross-package routes. Task owns the Transition representation. Topic reverse-discoverability is an explicit companion attachment through the declared Task package dependency; it does not duplicate the Transition.
+
+## Task schema authority normalization
+
+`src/schemas/core/task/tiinex.task.v1.schema.md` now contains the exact already-qualified canonical Task bytes:
+
+```text
+SHA256  ff26811ac5c4393bc6b69d652f0b9fcdb38c2bdc9688dccb0b42608cbef07a98
+Git blob e4d545ad45382a150351ead587339d8b43cc0fb2
+```
+
+Canonical source identity remains Tiinex/docs at the manifest-declared repository/commit/path/blob. The old duplicate physical Task copy under `src/transitions/canonical-schema-cache/d69b8ff.../` is removed. Root and Transition Definition cache entries remain where they were.
+
+## Compiled runtime discovery
+
+`canonicalTransition.semanticPackage.js` is a Site adapter over the frozen portable leaf compiler. It compiles:
+
+```text
+Semantic Package Manifest
++ Schema Transition Companion
++ exact schema material
++ one Task-local Transition Definition
+→ package graph
+→ schema resolutions
+→ attachment projection
+→ distributed Transition registry
+```
+
+The browser defaults consume the resulting compiled registry rather than importing a hard-coded `src/transitions/definitions` file. Site still adapts the compiled representation into the existing frozen Transition read/planner/product shapes.
+
+The compiled package is expected to prove:
+
+```text
+2 package nodes
+4/4 Topic/Task schema resolutions
+2 valid companions
+1 Topic → Task registry representation
+2 explicit attachment provenance records
+```
+
+The Topic↔Task package cycle is explicit, observable, and deterministically terminated by the portable compiler. Package path is locality/provenance, not Transition semantic identity.
+
+## Product behavior preserved
+
+v426 does not reopen the v424 product mechanism:
+
+```text
+source-backed Topic
+→ Create task
+→ canonical five-field form
+→ fresh v422
+→ fresh v423
+→ canonical Task Markdown
+→ source-backed Parent
+→ exactly one browser-local Task
+```
+
+No remote write, repository path allocation, source mutation, relation materialization, or generic Transition execution is introduced.
+
+The legacy `topic.continue.task` bridge remains compatibility-only and is suppressed only by the exact Site-bundled compiled Topic→Task representation provenance, not by Canonical Identifier or path equality.
+
+## Browser boundary
+
+v425 remains frozen:
+
+```text
+src/main.jsx browser graph
+→ 0 node:* import edges/importers
+→ 0 broad src/tooling/portable/index.js edges
+```
+
+v426 imports only exact portable leaf owners for semantic-package compilation and schema contracts.
 
 ## Environment boundary
 
-This replacement-ready source checkpoint still excludes installed React/Vite dependencies and built public output. Browser/runtime/public PASS is not claimed here. Full source validation is expected to pass all v424 pre-React gates and then reach the same historical missing-React restore-source boundary until dependencies are present.
+Restore-source validation may still stop when the later React-specific tranche reaches `useLocalMaterialIntake` without installed dependencies. That is an environment boundary, not a v426 product claim. Runtime/public build remain unclaimed unless a real Vite/React dependency tree is available.
 
 ## Supported local start
 
-After installing dependencies:
+With dependencies installed, use the repository's Vite development server:
 
 ```bash
-npm install
 npm run dev
 ```
 
----
-
-# Frozen v423 baseline — Canonical Output Generation/Materialization Intent Planner Foundation
-
-v423 adds one pure read-only planner above frozen v422 invocation/binding truth. It describes known output generation and materialization **intent** without creating Artifacts, rendering Markdown, allocating filesystem paths, mutating Parent/relations, or executing Transitions.
-
-## Frozen authority chain
+The supported local address is:
 
 ```text
-Tiinex/docs d69b8ff                         PASS / FROZEN
-portable Tooling foundation                 PASS / FROZEN
-v421 canonical read integration             PASS / FROZEN
-v422 invocation/binding planner             PASS / FROZEN
-v423 output generation/materialization      IMPLEMENTED / REVIEW CANDIDATE
+http://127.0.0.1:5173/
 ```
 
-The new owner is `src/transitions/transition.outputMaterializationPlanner.js`. It recomputes the frozen v422 invocation plan and result semantics internally from the canonical definition, participant context, and caller binding packet; callers cannot inject precomputed semantic truth.
+A source-only restore without installed dependencies does not claim runtime/browser readiness.
 
-## v423 truth boundaries
+## Final canonical-contract and integrity closure
 
-- v422 `blocked`, `invalid`, `unresolved`, and `incomplete` qualifications are monotonic and never upgraded downstream.
-- Output count is exact only when numeric Minimum Count equals numeric Maximum Count. Ranges, `unbounded`, and `unknown` remain unresolved; no output member IDs are invented.
-- `Generation Binding: target-schema` is resolved only by compiling caller-supplied raw target-schema contract material with the frozen portable compiler and verifying exact leaf schema identity plus complete lineage.
-- Compiled Artifact Creation Contract truth exposes required/optional creation inputs, required sections, tooling-configuration fields, and creation groups separately.
-- Generation input presence uses own `value` + `value !== undefined`; `0`, `false`, `null`, and `""` remain concrete opaque values. Duplicate exact `(Output Role, input name)` entries are invalid. Tooling configuration fields never satisfy Artifact authoring inputs.
-- Explicit Markdown Generation Binding references are preserved but unresolved because v423 opens no generic reference resolver.
-- Non-artifact outputs never become Tiinex Artifact drafts/materialization work merely because labels or schema-like text look artifact-shaped.
-- Lifecycle `Required Materialization Operation` is preserved as intent only. Absence never defaults to `create`; multiple simultaneously operation-bearing effects remain unresolved rather than first/last-wins.
-- `new-materialization` requires its declared Destination Binding to carry a concrete v422 destination value even when that destination was optional for invocation completeness.
-- `no-materialization` creates no physical placement work. `preserve-current` remains unresolved without exact subject/current-placement authority.
-- `Naming Authority: explicit-binding` may preserve the qualified v422 naming component, but `target-schema`, `external-authority`, and `unknown` remain unresolved without machine resolvers. File Naming prose/Allowed Shapes are never interpreted as code.
-- Relative placement is preserved as declaration truth and remains unresolved without a generic relative-placement resolver.
-- Frozen v422 Member Mapping truth is consumed, not reimplemented. Deterministic mappings may remain deferred; `custom`/`unknown` stay unresolved upstream; no positional associations or future output IDs are fabricated.
+The four v426 package/companion artifacts are now finalized as ordinary Tiinex descendants under the full canonical Root contract. Each carries a real `sha256-base64url-c14n-v2` self seal, and the final acceptance validates the artifacts against the exact full Root + descendant contract chains rather than lightweight Tooling pressure fixtures.
 
-Every plan remains:
+Production semantic-package compilation no longer imports `src/tooling/portable/package/fixtures/**` as contract authority. The Site-owned `canonicalTransition.packageContracts.js` seam carries exact source-qualified snapshots for:
 
 ```text
-readOnly = true
-mutation = false
-networkFetch = false
-artifactCreated = false
-draftRendered = false
-pathResolution = false
-materialization = false
-parentMutation = false
-relationMaterialization = false
-execution = false
-executable = false
+Root
+Tiinex/docs@d69b8ff55a56b8cb9282b8684db6a938a4435b94
+
+Transition Definition
+Tiinex/docs@d69b8ff55a56b8cb9282b8684db6a938a4435b94
+
+Semantic Package
+Tiinex/docs@053d46ce082d4ec261b82abc44ecca403d61e240
+SHA256 5a457d9a7a4f6b9281819d2c1e1bc80e7d4f3ea15069285399fce4f7a28c1502
+Git blob 5686051540603e05d483dc527af27b8e69ffee36
+
+Schema Transition Companion
+Tiinex/docs@053d46ce082d4ec261b82abc44ecca403d61e240
+SHA256 f78dbf800c3080d6f0ab5832a31e793278ba723796996aae57a6a82a4a5c8f4a
+Git blob 1b45d674c3f8b553b9a26f2e9983d2ccf4197cca
 ```
 
-## Internal adjacent-state sweep
+The package adapter supplies schema semantic resolvers derived from the exact Topic/Task schema materials that are already present in the selected package graph. A schema contributes resolver authority only when its full Root+schema lineage compiles `valid / complete`; generation authority comes from an actual Artifact Creation Contract and File Naming authority from the actual `File Naming` validation group. No schema assignability or second schema ontology is introduced.
 
-Before packaging, v423 runs a bounded authority-monotonicity sweep across upstream qualification, output target kind, generation authority, cardinality, placement/destination, naming authority, and mapping state. The sweep found one local v423 defect before handoff: duplicate unclaimed generation-input entries were not initially rejected. That seam is corrected in the same checkpoint; duplicate exact `(Output Role, input name)` entries are now invalid regardless of whether the input is declared or extra.
+The browser import-boundary gate additionally rejects any browser-reachable Tooling package pressure fixture, while retaining the v425 invariants of zero `node:*` edges/importers and zero broad portable-barrel edges.
 
-## Consolidated Architect correction batch
+## Q-fail canonical Topic→Task browser-path closure
 
-The Architect source gate found three local v423 seams after the initial package. They are corrected in the same `0.2.242-v423` replacement checkpoint without opening frozen owners:
+The first real v426 Q run showed the legacy continuation dialog instead of the canonical five-field Task dialog. The browser path was using ordinary GitHub default-ref material while the earlier product fixture already carried an exact 40-character commit.
 
-- exact `0..0` output cardinality now preserves generation/lifecycle/placement/mapping declarations while marking concrete downstream work `not-required`; global caller-packet audit still applies;
-- all active relevant Lifecycle Effects remain visible in `lifecycle.effects[]` even when no `Required Materialization Operation` is declared; requested operation is derived separately from the operation-bearing subset;
-- a target-schema authority entry with `materials: []`, empty strings, or no non-empty readable material is `unresolved / target-schema-authority-missing`, not a false schema mismatch.
-
-The correction sweep re-pressures output count `0 / 1 / range` against generation authority `missing / empty / correct / wrong / explicit reference / absent`, lifecycle operation `absent / one / multiple`, placement/naming states, and generation packet `none / concrete / undefined / duplicate / extra`. That Dev-side sweep was clean at packaging time; the subsequent Architect source-authority sweep found the additional bounded provenance/authority seams closed below.
-
-## Post-correction provenance + authority closure batch
-
-The Architect source gate then identified four local v423 seams. They are corrected together in the same `0.2.242-v423` replacement checkpoint:
-
-- non-artifact explicit Markdown `Generation Binding` now preserves the exact declared reference as `explicit-reference` and remains `unresolved` while no generic reference resolver exists; non-artifact output still never becomes an Artifact draft;
-- every placement plan preserves frozen `Explicit Override Allowed` truth without executing or inferring override behavior;
-- deferred mapping dependencies preserve exact `Mapping Key` and `Mapping Meaning` provenance from the matching frozen result-semantic declaration while remaining non-positional;
-- duplicate target-schema authority entries are audited structurally for the exact declared `target-schema` Output Role even when output cardinality is exactly zero, so zero concrete members cannot hide malformed packet multiplicity.
-
-The final closure sweep crosses artifact/non-artifact Target Kind, absent/target-schema/explicit-reference generation authority, zero/one/range output counts, new/no-materialization placement, override yes/no, and single/pairwise/by-key mapping. That sweep was clean for its targeted authority family; Architect's later placement-branch audit identified the final naming-component provenance seam closed below.
-
-## Naming-component provenance closure
-
-Placement qualification and naming-component evidence are now projected as independent axes. `planPlacement()` evaluates frozen v422 naming truth before any placement-intent early return. `no-materialization`, `preserve-current`, unsupported/unknown placement intent, and exact-zero output may mark concrete naming work `not-required`, but they preserve the exact naming authority plus any already-qualified explicit value or declared external reference. `new-materialization` evaluates naming normally even when its destination component is unresolved, so a resolved explicit naming component cannot upgrade the unresolved destination and an unresolved target/external naming resolver cannot erase its provenance. `concretePath` remains `null` in every branch.
-
-The final naming branch sweep crosses `no-materialization / preserve-current / new-materialization`, `explicit-binding / target-schema / external-authority`, resolved/unresolved destination where applicable, and output count `0 / 1`. No further local projection loss or missing authority was observed.
-
-The output-materialization owner remains below the existing source guard (`23,965` bytes); no guard was raised and no second v423 semantic owner was introduced.
-
-## Target-schema source-material trust boundary
-
-`targetSchemaAuthorities.materials` is still an internal authority-material seam expected to receive source-qualified schema material from a future canonical resolver. v423 compiles that material with frozen portable Tooling and verifies leaf schema identity plus lineage, but does **not** claim that the portable semantic compiler is a complete validator for arbitrary untrusted schema Markdown. Before arbitrary product/runtime input is allowed through this seam, schema-source qualification must be reopened at the appropriate generic owner rather than implemented as a Site-local validator.
-
-## Environment boundary
-
-This source checkpoint intentionally excludes installed React/Vite dependencies and built public output. Browser/runtime/public PASS is not claimed. Full source validation is expected to reach the same historical missing-React restore-source boundary after all v423 and pre-React gates pass.
-
-## Supported local start
-
-After installing dependencies:
-
-```bash
-npm install
-npm run dev
-```
-
-## Exact browser-local destination / placement declaration closure
-
-The first canonical browser-local Topic→Task product command now advertises `productCapable=true` only for the exact destination/placement declaration shape it actually understands.
-
-The sole Destination Binding must be:
+The source model now keeps two separate truths:
 
 ```text
-Required = yes
-Destination Kind = absent / empty
-Capability Requirement = absent / empty
+requested / configured ref
+→ blank, main, master, branch, tag, or exact commit
+→ configured-source boundary truth
+
+materialized representation
+→ exact Git commit when transport can resolve it
+→ immutable record/source provenance
 ```
 
-The sole Output Placement must be:
+Direct GitHub repo/file materialization resolves an exact commit when possible and loads repo-relative Markdown from that commit-pinned raw target. The resulting record carries `sourceTarget.materializedCommit`; configured sources retain `ref`/`requestedRef` separately and may carry the same materialization receipt without changing configured-source identity.
+
+Canonical Topic→Task Parent recovery accepts only immutable 40-character materialization authority. A moving branch without an exact resolved commit may still be readable source material, but it is not canonical Parent authority and remains product-unavailable.
+
+The exact Site-bundled Topic→Task definition also owns the compatibility migration boundary even when its local-create capability cannot qualify. Legacy `topic.continue.task` therefore no longer silently substitutes for a provenance failure while the canonical packaged definition is active.
+
+Focused acceptance now reproduces the ordinary browser ingress:
 
 ```text
-Output Binding = sole Task output
-Destination Binding = sole required destination
-Placement Intent = new-materialization
-Naming Authority = explicit-binding
-Explicit Override Allowed = no
-Relative To Binding = absent
-Relative Placement Meaning = absent / empty
-Naming Authority Reference = absent / empty
+blank Ref
+→ GitHub default branch main
+→ exact resolved commit
+→ commit-pinned raw Topic bytes
+→ canonical product action
+→ Task title / Objective / Done Criteria / Scope / Dependencies
+→ fresh v422
+→ fresh v423
+→ exactly one browser-local Task
+→ commit-pinned Parent
+→ source Topic unchanged
 ```
 
-Readable `Meaning` / `Notes` remain provenance only. Non-empty destination kind/capability, relative-placement declarations, naming references, alternate naming authorities/intents, or non-exact requiredness remain readable canonical truth but make this bounded local product capability unavailable. No destination vocabulary, resolver, remote-write behavior, path allocation, or placement evaluator is introduced.
+The synthetic exact-commit fixture remains as an independent regression; it is no longer the only actual-path proof.
 
-The focused v424 regression now includes a compact adjacent declaration sweep across Required × Destination Kind × Capability Requirement, Placement Intent × Naming Authority × Naming Authority Reference, and Relative To × Relative Meaning × Explicit Override Allowed. Unsupported combinations produce zero lifecycle mutations; the exact baseline still recomputes fresh v422/v423 and creates exactly one local Task.
+## Final GitHub discovery request-budget closure
+
+Immutable commit resolution adds transport work to direct repo discovery, so request-policy accounting now follows the selected ref shape before any covered discovery fetch begins:
+
+```text
+blank/default ref
+→ default-branch resolution + commit resolution + tree
+→ 3 requests
+
+named branch/tag
+→ commit resolution + tree
+→ 2 requests
+
+exact 40-char commit
+→ tree
+→ 1 request
+```
+
+A failed best-effort commit-resolution attempt still consumes its request. This changes only transport-budget accounting; requested/configured ref truth, `materializedCommit`, canonical Parent recovery, legacy masking, package/locality semantics and Task creation remain unchanged.
+
+## Final GitHub raw-file request-budget closure
+
+The sibling explicit/raw-file path now uses the same ref-resolution accounting authority as repo discovery. For `N` unique raw targets, transport policy authorizes the complete direct request shape before the first covered fetch:
+
+```text
+blank/default ref, no immutable materialized commit
+→ default-branch resolution + commit resolution + N raw files
+→ N + 2 requests
+
+named branch/tag, no immutable materialized commit
+→ commit resolution + N raw files
+→ N + 1 requests
+
+exact 40-char commit
+→ N raw files
+→ N requests
+
+already-qualified materializedCommit
+→ N raw files
+→ N requests
+```
+
+The helper is shared with repo-discovery accounting in `github.repoDiscovery.js`; a failed best-effort commit-resolution attempt still consumes the request it attempted. Policy blocks preserve degraded-warning semantics and occur before direct GitHub fetches. Requested/configured ref truth and immutable `materializedCommit` truth remain separate.
+
+
+## Prequalified materialized-commit repo-discovery consistency closure
+
+Repo discovery now consumes an already-qualified exact `materializedCommit` as the immutable representation authority instead of re-resolving the configured/default ref. This keeps request accounting and actual direct transport equivalent:
+
+```text
+prequalified materializedCommit
+→ no default-branch request
+→ no branch/tag commit-resolution request
+→ tree directly at materializedCommit
+→ raw Markdown from the same materializedCommit
+```
+
+Configured source truth remains separate: a named `ref` such as `main` remains `main`, and a blank configured ref remains blank rather than being rewritten to the commit. A normal source refresh does not inherit a historical materialization receipt as invocation authority; it resolves the current mutable ref again and stores the newly materialized exact commit.

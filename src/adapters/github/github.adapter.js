@@ -7,9 +7,9 @@ import { createGithubTransportFetch, normalizeGithubTransportTier } from '../../
 import { summarizeTransportOutcome, summarizeTransportTiers } from './github.transportDiagnostics.js';
 import { writeGithubRepoDiscoveryCache } from './github.repoMirror.js';
 import { preMaterializeGithubRepoFiles, requestedRepoTransportTier } from './github.repoSurface.js';
-import { discoverGithubMarkdownRefs, resolveGithubSourceRef, matchesGithubWorkspacePattern } from './github.repoDiscovery.js';
+import { discoverGithubMarkdownRefs, resolveGithubSourceRef, exactGithubCommit, tryResolveGithubMaterializedCommit, matchesGithubWorkspacePattern, githubWorkspaceMatchPatterns, githubRepoDiscoveryRequestCount, githubRefResolutionRequestCount } from './github.repoDiscovery.js';
 import { buildGovernanceBoundaryForSource, governanceFindingForBoundary } from '../../governance/governance.boundary.js';
-export { discoverGithubMarkdownRefs, resolveGithubSourceRef } from './github.repoDiscovery.js';
+export { discoverGithubMarkdownRefs, resolveGithubSourceRef, resolveGithubMaterializedCommit } from './github.repoDiscovery.js';
 
 export const GITHUB_ADAPTER_ID = 'github';
 export function createGithubAdapter() {
@@ -101,13 +101,6 @@ function cloneSourcePlan(plan = {}) {
   return JSON.parse(JSON.stringify(plan || {}));
 }
 
-function workspaceMatchPatternsFromInput(source = {}, input = {}) {
-  return String(input.workspaceMatch || source.workspaceMatch || source.match || '')
-    .split(/\r?\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function filterRepoRecordsByWorkspaceMatch(records = [], patterns = []) {
   if (!patterns.length) return records;
   return (records || []).filter((record) => matchesGithubWorkspacePattern(record?.sourceTarget?.sourceArtifactPath || record?.sourceTarget?.inputTarget || record?.path || '', patterns));
@@ -166,6 +159,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const explicitTargets = explicitRefs.map((ref, index) => fileTarget(ref, 'explicitFiles', index, 'explicit-markdown'));
   let fileTargets = explicitTargets.slice();
   let resolvedRef = String(source?.ref || '').trim();
+  let materializedCommit = exactGithubCommit(source?.materializedCommit || source?.ref);
   const transportRuntime = createGithubTransportFetch(source, options);
   const transportFetchImpl = transportRuntime.fetch;
   const sourcePlan = makeSourcePlan(source, input, explicitRefs);
@@ -183,7 +177,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   const errors = [];
   let preloadedRepoResult = { records: [], warnings: [], errors: [], counts: {}, diagnostics: { transportEvents: [] } };
   let repoDiscoveryHandledBySurfaceTransport = false;
-  const workspaceMatchPatterns = workspaceMatchPatternsFromInput(source, input);
+  const workspaceMatchPatterns = githubWorkspaceMatchPatterns(source, input);
 
   const policyInput = options.transportPolicy || (Number(options.maxRequestsPerOperation || options.maxRequestsPerSource || options.maxRequests || 0) > 0 || options.offline || options.cooldownUntil ? options : null);
 
@@ -191,7 +185,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
 
   if (input.repoDiscovery) {
     markSurface(sourcePlan, 'repoFiles', { attempted: true });
-    const discoveryAuthorization = policyInput ? authorizeSourceTransport({ kind: 'github.repo-discovery', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: 2 }, policyInput) : null;
+    const discoveryAuthorization = policyInput ? authorizeSourceTransport({ kind: 'github.repo-discovery', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: githubRepoDiscoveryRequestCount(source) }, policyInput) : null;
     if (discoveryAuthorization && !discoveryAuthorization.allowed) {
       diagnostics.transportPolicy = discoveryAuthorization;
       diagnostics.discoveryUnavailable = true;
@@ -218,6 +212,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
       if (preloadedRepoResult.records?.length) {
         repoDiscoveryHandledBySurfaceTransport = true;
         resolvedRef = preloadedRepoResult.ref || resolvedRef;
+        materializedCommit ||= exactGithubCommit(preloadedRepoResult.ref);
         diagnostics.discoveredFileRefs = Number(preloadedRepoResult.counts?.discovered || preloadedRepoResult.records.length || 0);
         if (preloadedRepoResult.governanceBoundary) diagnostics.governanceBoundary = preloadedRepoResult.governanceBoundary;
         markSurface(sourcePlan, 'repoFiles', { discovered: diagnostics.discoveredFileRefs, requestedCount: diagnostics.discoveredFileRefs, loaded: preloadedRepoResult.records.length, records: preloadedRepoResult.records.map((record) => record.id).filter(Boolean), transportTier: preloadedRepoResult.transportTier || '', transportTiers: [preloadedRepoResult.transportTier || ''].filter(Boolean) });
@@ -232,6 +227,7 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
         const discoveredTargets = discovered.refs.map((ref, index) => fileTarget(ref, 'repoFiles', index, 'repo-markdown'));
         fileTargets = fileTargets.concat(discoveredTargets);
         resolvedRef = discovered.ref || resolvedRef;
+        materializedCommit ||= discovered.materializedCommit;
         diagnostics.discoveredFileRefs = discovered.refs.length;
         markSurface(sourcePlan, 'repoFiles', { discovered: discovered.refs.length, requestedCount: discovered.refs.length });
         reportProgress(options, { phase: 'repo-discovery', percent: 34, total: discovered.refs.length, label: `Found ${discovered.refs.length} Markdown file${discovered.refs.length === 1 ? '' : 's'} under source roots` });
@@ -280,20 +276,23 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
   }
 
   const uniqueTargets = uniqueFileTargets(fileTargets);
-  if (uniqueTargets.length && !resolvedRef) {
-    try {
-      const resolved = await resolveGithubSourceRef(source, { fetchImpl: transportFetchImpl });
-      resolvedRef = String(resolved.ref || '').trim();
-      diagnostics.resolvedBy = resolved.resolvedBy || diagnostics.resolvedBy || 'github.repo.default_branch';
-    } catch (error) {
-      const warning = Object.assign({ surface: 'explicitFiles' }, githubDiscoveryWarning(error));
-      warnings.push(warning);
-      diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'ref-resolution' }, warning));
+  const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: uniqueTargets.length + githubRefResolutionRequestCount({ ...source, materializedCommit }) }, policyInput) : null;
+  if (uniqueTargets.length && (!authorization || authorization.allowed)) {
+    if (!resolvedRef && !materializedCommit) {
+      try {
+        const resolved = await resolveGithubSourceRef(source, { fetchImpl: transportFetchImpl });
+        resolvedRef = String(resolved.ref || '').trim();
+        diagnostics.resolvedBy = resolved.resolvedBy || diagnostics.resolvedBy || 'github.repo.default_branch';
+      } catch (error) {
+        const warning = Object.assign({ surface: 'explicitFiles' }, githubDiscoveryWarning(error));
+        warnings.push(warning);
+        diagnostics.transportEvents.push(Object.assign({ adapterId: GITHUB_ADAPTER_ID, sourceId: source?.id || '', resultKind: 'ref-resolution' }, warning));
+      }
     }
+    if (resolvedRef && !materializedCommit) materializedCommit = await tryResolveGithubMaterializedCommit(source, resolvedRef, { fetchImpl: transportFetchImpl });
   }
-  const sourceForLoad = Object.assign({}, source, { ref: resolvedRef });
+  const sourceForLoad = Object.assign({}, source, { ref: materializedCommit || resolvedRef });
   if (uniqueTargets.length) reportProgress(options, { phase: 'raw-file-load', percent: 38, loaded: 0, total: uniqueTargets.length, label: `Starting GitHub Markdown load 0/${uniqueTargets.length}` });
-  const authorization = policyInput ? authorizeSourceTransport({ kind: 'github.raw-file-load', sourceId: source?.id || '', adapterId: GITHUB_ADAPTER_ID, requestedRequests: uniqueTargets.length }, policyInput) : null;
   let result = { records: [], errors: [], okCount: 0, failCount: 0, diagnostics: { requests: 0, transportEvents: [] } };
   if (authorization && !authorization.allowed) {
     diagnostics.transportPolicy = authorization;
@@ -371,7 +370,8 @@ export async function materializeGithubSource(source, input = {}, options = {}) 
     failCount: errors.length + (result.failCount || 0),
     diagnostics: Object.assign(diagnostics, {
       fileRefs: uniqueTargets.length,
-      resolvedRef
+      resolvedRef,
+      materializedCommit
     })
   });
 }

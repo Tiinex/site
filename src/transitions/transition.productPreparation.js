@@ -1,6 +1,6 @@
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { buildLoadedArtifactParticipantIndex, resolveCurrentArtifactParticipant } from '../artifacts/artifact.participantIndex.js';
-import { compilePortableSchemaContractChain } from '../tooling/portable/index.js';
+import { compilePortableSchemaContractChain } from '../tooling/portable/schema/contract.compile.js';
 import { qualifyCanonicalTransitionSchemaCache } from './canonicalTransition.schemaCache.js';
 import { buildTransitionDefinitionRegistry } from './transition.definitionRegistry.js';
 import { buildCanonicalTransitionAvailabilityPlan } from './transition.availabilityPlanner.js';
@@ -49,10 +49,11 @@ export function recoverCanonicalParentReference(record = {}, participant = {}) {
   const sourceMode = token(participant.source?.sourceMode || record.sourceMode);
   const sourceKind = token(source.kind || source.sourceKind);
   const repository = token(source.repository || source.repo || source.config?.repo);
-  const ref = token(source.ref || source.requestedRef || source.config?.ref || participant.source?.ref);
+  const ref = exactCommit(target.materializedCommit) || exactCommit(source.materializedCommit) || exactCommit(participant.source?.materializedCommit)
+    || exactCommit(source.ref) || exactCommit(source.config?.ref) || exactCommit(participant.source?.ref);
   const path = String(target.sourceArtifactPath || record.path || participant.source?.sourceArtifactPath || '').replace(/^\/+/, '');
   const schemaId = token(participant.candidateSchemaId);
-  if (adapterId !== 'github' || /(^|[^a-z0-9])(local|session)([^a-z0-9]|$)/i.test(`${sourceMode} ${sourceKind}`) || !repository || !/^[0-9a-f]{40}$/i.test(ref) || !path) return unavailableParent();
+  if (adapterId !== 'github' || /(^|[^a-z0-9])(local|session)([^a-z0-9]|$)/i.test(`${sourceMode} ${sourceKind}`) || !repository || !ref || !path) return unavailableParent();
   const permalink = githubCommitPermalink(repository, ref, path);
   if (!permalink) return unavailableParent('source-topic-parent-link-target-unavailable');
   const label = markdownLabel(record.title || participant.artifact?.title || 'Topic');
@@ -208,6 +209,8 @@ function githubCommitPermalink(repository, ref, path) {
 function encodeGithubPath(value = '') {
   return String(value).split('/').map((part) => encodeURIComponent(part).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)).join('/');
 }
+function exactCommit(value = '') { const commit = token(value); return /^[0-9a-f]{40}$/i.test(commit) ? commit : ''; }
+
 function exactOne(values = []) { return values.length === 1 ? values[0] : null; }
 function markdownLabel(value) { return String(value || '').replace(/[\[\]\n\r]/g, ' ').trim() || 'Topic'; }
 function token(value = '') { return String(value || '').trim(); }

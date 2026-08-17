@@ -157,4 +157,21 @@ if (presentationRoute.workspaceViews || presentationRoute.workspaceWindow) throw
 if (presentationRoute.view.layoutMode || presentationRoute.view.scrollPositions) throw new Error('active layout/scroll presentation must remain outside route/share view projection');
 if (presentationRoute.view.workspaceVerse !== 'tree' || presentationRoute.view.query !== 'schema') throw new Error('route must retain semantic active lens/query while excluding browser presentation');
 
+
+const provenanceCommit = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const provenanceState = {
+  version: 1, activeWorkspaceId: 'provenance-w', view: { workspaceVerse: 'feed', query: '' },
+  workspaces: [{
+    id: 'provenance-w', name: 'Provenance route', sourceOrder: ['github:prov'], assets: [], importLog: [],
+    sources: [{ id: 'github:prov', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'main', requestedRef: '', materializedCommit: provenanceCommit, rootPath: '.topics', boundary: 'explicit source boundary' }],
+    records: [{ id: 'source:prov:topic', title: 'Provenance Topic', path: '.topics/provenance.trace.md', markdown: '# source body', sourceMode: 'source-backed', source: { id: 'github:prov', kind: 'github-tree', adapterId: 'github', sourceKind: 'github.repo', label: 'Tiinex/docs', repo: 'Tiinex/docs', ref: 'main', requestedRef: '', materializedCommit: provenanceCommit, rootPath: '.topics', boundary: 'explicit source boundary' }, sourceTarget: { schema: 'tiinex.source.material.target.v1', surface: 'repoFiles', sourceArtifactPath: '.topics/provenance.trace.md', inputTarget: '.topics/provenance.trace.md', materializedCommit: provenanceCommit, loaded: true } }]
+  }]
+};
+const provenanceRoute = route.makeRouteState(provenanceState);
+if (provenanceRoute.workspaces[0].sources[0].ref !== 'main' || provenanceRoute.workspaces[0].sources[0].requestedRef !== '') throw new Error('route must preserve selected/default ref separately from requested blank ref');
+if (provenanceRoute.workspaces[0].sources[0].materializedCommit !== provenanceCommit) throw new Error('route source shell must preserve immutable materialized commit receipt');
+if (provenanceRoute.workspaces[0].records[0].sourceTarget?.materializedCommit !== provenanceCommit) throw new Error('route record target must preserve immutable representation commit provenance');
+const normalizedProvenanceRoute = route.normalizeRouteState(provenanceRoute, lifecycle);
+if (normalizedProvenanceRoute.workspaces[0].records[0].sourceTarget?.materializedCommit !== provenanceCommit) throw new Error('route normalize must preserve record immutable commit provenance');
+
 console.log('✓ workspace route tests passed');

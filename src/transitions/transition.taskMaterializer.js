@@ -1,6 +1,7 @@
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
-import { compilePortableSchemaContractChain, projectPortableContractInstance } from '../tooling/portable/index.js';
+import { compilePortableSchemaContractChain } from '../tooling/portable/schema/contract.compile.js';
+import { projectPortableContractInstance } from '../tooling/portable/schema/contract.project.js';
 
 export const CANONICAL_TASK_LOCAL_MATERIALIZER_SCHEMA_ID = 'tiinex.site.canonical-task-local-materializer.v1';
 export const CANONICAL_TASK_SCHEMA_ID = 'tiinex.task.v1';

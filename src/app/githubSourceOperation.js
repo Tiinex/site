@@ -39,6 +39,7 @@ export async function runGithubSourceOperation(context = {}) {
   const operationIsCurrent = () => !operationController || operationRef.current?.token === operationToken;
   setGithubRequestPending(true);
   const { repository, existingSource, sourceId, rootPath, ref, label } = githubSourceFormState(input, targetWorkspace?.sources || [], normalizeRepository);
+  const requestedRef = Object.prototype.hasOwnProperty.call(input, 'ref') ? String(input.ref || '').trim() : String(existingSource?.requestedRef ?? ref).trim();
   if (!repository) {
     setNotice('Repo URL or owner/name is required.');
     setGithubRequestPending(false);
@@ -55,7 +56,7 @@ export async function runGithubSourceOperation(context = {}) {
   const requestedSurfacesForInput = selectedTransportSurfaces.length ? mergeGithubRequestedSurfaces(existingSource?.requestedSurfaces || {}, githubRequestedSurfaces(input, fileRefs), selectedTransportSurfaces) : githubRequestedSurfaces(input, fileRefs);
   const preservedSourceState = registerOnly && existingSource ? { count: Number(existingSource.count || 0), discoveryState: existingSource.discoveryState, surfaces: existingSource.surfaces, transportOutcome: existingSource.transportOutcome, transportPlan: existingSource.transportPlan, transportTiers: existingSource.transportTiers } : {};
   const result = lifecycle?.addWorkspaceSource?.(sourceState, targetWorkspaceId, Object.assign({
-    id: sourceId, kind: input.sourceKind || input.kind || 'github-tree', label, repository, ref, rootPath,
+    id: sourceId, kind: input.sourceKind || input.kind || 'github-tree', label, repository, ref, requestedRef, rootPath,
     repoDiscovery: Boolean(input.repoDiscovery), issueDiscovery: Boolean(input.issueDiscovery), issueUrls: input.issueUrls || '', explicitFileRefs,
     workspaceMatch: input.workspaceMatch || '', appConfigPlan: input.appConfigPlan || '', openBehavior: input.openBehavior || '', preferredDisplay: input.preferredDisplay || '',
     transportLabel, transportRefreshTier, requestedSurfaces: requestedSurfacesForInput
@@ -76,6 +77,7 @@ export async function runGithubSourceOperation(context = {}) {
   let finalState = sourceRegistrationState;
   let materializationSourceId = result.source.id;
   let materializationSourceLabel = result.source.label;
+  let materializationSource = result.source;
   let noticeMessage = `${result.source.label} source registered. No loading is running; choose Discover on the source to select repo files, explicit files, or issue snapshots.`;
   const progressCommit = { at: 0, phase: '', percent: -1, label: '' };
   const publishGithubProgress = (progress = {}) => {
@@ -134,14 +136,17 @@ export async function runGithubSourceOperation(context = {}) {
       }, { fetchImpl: fetchForOperation, abortSignal: operationController?.signal || null, maxFiles: 500, transportPolicy, workspaceConfig, onProgress: publishGithubProgress, preferredTransports: preferredTransports || undefined, transportOrderExact: Boolean(preferredTransports), allowCache: input.allowSourceCache === true, sourceCacheCleared, hostedRepoMirrorBaseUrls: input.hostedRepoMirrorBaseUrls || [], hostedIssueSnapshotBaseUrls: input.hostedIssueSnapshotBaseUrls || [] });
       if (!operationIsCurrent()) return { ok: false, error: 'github.operation.stale', state: finalState };
       const resolvedRef = String(out.diagnostics?.resolvedRef || '').trim();
-      if (resolvedRef && !String(result.source.ref || '').trim()) {
-        const pinned = lifecycle?.addWorkspaceSource?.(finalState, targetWorkspaceId, Object.assign({}, result.source, {
+      const materializedCommit = String(out.diagnostics?.materializedCommit || '').trim();
+      if ((resolvedRef && !String(result.source.ref || '').trim()) || materializedCommit) {
+        const refined = lifecycle?.addWorkspaceSource?.(finalState, targetWorkspaceId, Object.assign({}, materializationSource, {
           id: materializationSourceId,
-          repository: result.source.repo || repository,
-          repo: result.source.repo || repository,
-          ref: resolvedRef,
-          rootPath: result.source.rootPath || rootPath,
-          label: result.source.label || label,
+          repository: materializationSource.repo || repository,
+          repo: materializationSource.repo || repository,
+          ref: String(materializationSource.ref || '').trim() || resolvedRef,
+          requestedRef,
+          materializedCommit,
+          rootPath: materializationSource.rootPath || rootPath,
+          label: materializationSource.label || label,
           discoveryState: 'deferred',
           repoDiscovery: Boolean(input.repoDiscovery),
           issueDiscovery: Boolean(input.issueDiscovery),
@@ -151,10 +156,11 @@ export async function runGithubSourceOperation(context = {}) {
           transportRefreshTier,
           requestedSurfaces: requestedSurfacesForInput
         }), { sourceIdentityPolicy: 'refine-existing' });
-        if (pinned?.ok) {
-          finalState = pinned.state;
-          materializationSourceId = pinned.source.id;
-          materializationSourceLabel = pinned.source.label || materializationSourceLabel;
+        if (refined?.ok) {
+          finalState = refined.state;
+          materializationSource = refined.source;
+          materializationSourceId = refined.source.id;
+          materializationSourceLabel = refined.source.label || materializationSourceLabel;
         }
       }
       await yieldForVisibleSourceProgress();
@@ -162,12 +168,14 @@ export async function runGithubSourceOperation(context = {}) {
         lifecycle,
         state: finalState,
         workspaceId: targetWorkspaceId,
-        source: result.source,
+        source: materializationSource,
         sourceId: materializationSourceId,
         sourceLabel: materializationSourceLabel,
         adapterResult: out,
         repository,
-        ref: resolvedRef || ref,
+        ref: String(materializationSource.ref || '').trim() || resolvedRef || ref,
+        requestedRef,
+        materializedCommit,
         rootPath,
         repoDiscovery: Boolean(input.repoDiscovery),
         issueDiscovery: Boolean(input.issueDiscovery),

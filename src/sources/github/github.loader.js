@@ -97,6 +97,15 @@ export function normalizeGithubRefToRaw(source, ref) {
   return `https://raw.githubusercontent.com/${owner}/${repo}/${sourceRef}/${path}`;
 }
 
+
+function exactCommitFromRawUrl(url = '') {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    const ref = parts[2] || '';
+    return /^[0-9a-f]{40}$/i.test(ref) ? ref : '';
+  } catch (_) { return ''; }
+}
+
 export async function loadGithubFilesForSource(source, fileRefs = [], options = {}) {
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
   if (!fetchImpl) throw new Error('fetchImpl not available');
@@ -156,6 +165,7 @@ export async function loadGithubFilesForSource(source, fileRefs = [], options = 
       const sourceTarget = Object.assign({
         schema: 'tiinex.source.material.target.v1',
         rawUrl,
+        materializedCommit: exactCommitFromRawUrl(rawUrl),
         transportTier: res.transportTier || '',
         loaded: true
       }, targetAttribution(target));

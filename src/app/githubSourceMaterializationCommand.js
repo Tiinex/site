@@ -38,7 +38,9 @@ export function applyGithubSourceMaterializationCommand(input = {}) {
     label: input.sourceLabel || source.label || source.repo || source.repository || 'Source',
     repository: input.repository || source.repo || source.repository || '',
     repo: input.repository || source.repo || source.repository || '',
-    ref: resolvedRef || input.ref || source.ref || '',
+    ref: input.ref || resolvedRef || source.ref || '',
+    requestedRef: Object.prototype.hasOwnProperty.call(input, 'requestedRef') ? String(input.requestedRef || '').trim() : String(source.requestedRef ?? source.ref ?? '').trim(),
+    materializedCommit: exactCommit(input.materializedCommit || diagnostics.materializedCommit || source.materializedCommit),
     rootPath: input.rootPath || source.rootPath || '.topics',
     count: Number(sourceRecordCount || out.okCount || records.length || 0),
     discoveryState,
@@ -81,6 +83,8 @@ export function applyGithubSourceMaterializationCommand(input = {}) {
     summary
   };
 }
+
+function exactCommit(value = '') { const commit = String(value || '').trim(); return /^[0-9a-f]{40}$/i.test(commit) ? commit : ''; }
 
 function workspaceFor(state = {}, workspaceId = '', lifecycle = {}) {
   const targetId = String(workspaceId || state?.activeWorkspaceId || '').trim();

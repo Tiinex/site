@@ -29,3 +29,6 @@ const existing = [{ id: 'source:delimiter-a', ...delimiterA }];
 assert(configuredSourceIdForWorkspace(delimiterB, existing) !== 'source:delimiter-a', 'workspace configured-source matching must use collision-safe boundary equality rather than the legacy display signature');
 
 console.log('source.identity: ok');
+
+const branchBoundary = { repository: 'Tiinex/docs', ref: 'main', requestedRef: '', rootPath: '.topics' };
+assert(configuredSourceBoundaryKey({ ...branchBoundary, materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }) === configuredSourceBoundaryKey({ ...branchBoundary, materializedCommit: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }), 'immutable materialized commit must not redefine configured source boundary identity');

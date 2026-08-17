@@ -1,4 +1,4 @@
-import { compilePortableSchemaContractChain } from '../tooling/portable/index.js';
+import { compilePortableSchemaContractChain } from '../tooling/portable/schema/contract.compile.js';
 import { buildCanonicalTransitionInvocationBindingPlan } from './transition.invocationBindingPlanner.js';
 import { buildCanonicalTransitionResultPlan } from './transition.resultSemantics.js';
 import { hasConcreteInvocationValue, immutableInvocationValue } from './transition.invocationBindingPacket.js';

@@ -9,25 +9,27 @@ import {
 } from '../transitions/canonicalTransition.schemaCache.js';
 import { prepareCanonicalTransitionProductActions } from '../transitions/transition.productPreparation.js';
 import { transitionProductActionsForRecord } from '../transitions/transition.productPresentation.js';
+import { CANONICAL_TOPIC_TO_TASK_BUNDLED_SOURCE_ID } from '../transitions/canonicalTransition.semanticPackage.js';
 import '../workspaces/workspace.lifecycle.js';
 
 const lifecycle = globalThis.TiinexWorkspaceLifecycle;
 assert.ok(lifecycle?.addWorkspaceRecord, 'workspace lifecycle must be available');
 
 const cacheCommit = 'd69b8ff55a56b8cb9282b8684db6a938a4435b94';
-const cacheRoot = new URL(`../transitions/canonical-schema-cache/${cacheCommit}/`, import.meta.url);
-const cacheFileBySchema = Object.freeze({
-  'tiinex.root.v1': 'tiinex.root.v1.schema.md',
-  'tiinex.transition.definition.v1': 'tiinex.transition.definition.v1.schema.md',
-  'tiinex.task.v1': 'tiinex.task.v1.schema.md'
+const cacheUrlBySchema = Object.freeze({
+  'tiinex.root.v1': new URL(`../transitions/canonical-schema-cache/${cacheCommit}/tiinex.root.v1.schema.md`, import.meta.url),
+  'tiinex.transition.definition.v1': new URL(`../transitions/canonical-schema-cache/${cacheCommit}/tiinex.transition.definition.v1.schema.md`, import.meta.url),
+  'tiinex.task.v1': new URL('../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url)
 });
 const schemaCache = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => ({
   ...item,
-  markdown: fs.readFileSync(new URL(cacheFileBySchema[item.schemaId], cacheRoot), 'utf8'),
+  markdown: fs.readFileSync(cacheUrlBySchema[item.schemaId], 'utf8'),
   sourceQualification: 'source-qualified-cache'
 }));
-const canonicalDefinitionMarkdown = fs.readFileSync(new URL('../transitions/definitions/topic-to-task-transition-definition.trace.md', import.meta.url), 'utf8');
-const bundledDefinitions = Object.freeze([{ path: 'src/transitions/definitions/topic-to-task-transition-definition.trace.md', title: 'Topic to Task', markdown: canonicalDefinitionMarkdown, sourceQualification: 'bundled-canonical' }]);
+const canonicalDefinitionPath = 'src/schemas/core/task/.transitions/topic-to-task-transition-definition.trace.md';
+const canonicalDefinitionMarkdown = fs.readFileSync(new URL('../schemas/core/task/.transitions/topic-to-task-transition-definition.trace.md', import.meta.url), 'utf8');
+const bundledDefinitionSource = Object.freeze({ id: CANONICAL_TOPIC_TO_TASK_BUNDLED_SOURCE_ID, adapterId: 'static', kind: 'bundled-canonical' });
+const bundledDefinitions = Object.freeze([{ path: canonicalDefinitionPath, title: 'Topic to Task', markdown: canonicalDefinitionMarkdown, sourceQualification: 'compiled-semantic-package-qualified', sourceMode: 'bundled-canonical-transition-definition', source: bundledDefinitionSource }]);
 const fullValues = Object.freeze({
   Summary: 'Canonical task',
   Objective: 'Deliver the first canonical product vertical slice.',
@@ -40,11 +42,11 @@ const fixedRef = '1111111111111111111111111111111111111111';
 function participantMarkdown(schemaId = 'tiinex.topic.v1', title = 'Source Topic') {
   return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: ${schemaId}\n  - Created At: 2026-08-16 00:00:00\n  - Summary: ${title}\n\n---\n\n# ${title}\n\nReadable participant.\n\n# Continuity Integrity\n\n- product-fixture-v1\n  - Towards: self\n  - Value: ${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}\n`;
 }
-function sourceBackedRecord({ id = 'topic-1', title = 'Source Topic', schemaId = 'tiinex.topic.v1', path = '.topics/source-topic.trace.md', ref = fixedRef, repository = 'Tiinex/docs', workspaceId = 'workspace-1' } = {}) {
+function sourceBackedRecord({ id = 'topic-1', title = 'Source Topic', schemaId = 'tiinex.topic.v1', path = '.topics/source-topic.trace.md', ref = fixedRef, materializedCommit = '', repository = 'Tiinex/docs', workspaceId = 'workspace-1' } = {}) {
   return Object.assign(createRecordFromMarkdown(participantMarkdown(schemaId, title), { path, name: title, sourceMode: 'source-backed' }), {
     id, workspaceId, title, kind: schemaId, schemaId, path, sourceMode: 'source-backed',
     source: { id: `github:${repository}`, kind: 'github-tree', adapterId: 'github', repository, repo: repository, ref, rootPath: '' },
-    sourceTarget: { sourceArtifactPath: path, inputTarget: path }
+    sourceTarget: { sourceArtifactPath: path, inputTarget: path, ...(materializedCommit ? { materializedCommit } : {}) }
   });
 }
 function localRecord({ id = 'topic-local', title = 'Local Topic', schemaId = 'tiinex.topic.v1', workspaceId = 'workspace-1' } = {}) {
@@ -209,7 +211,7 @@ assert.notEqual(malformedAction?.definition?.canonicalReadQualified, true);
 assert.notEqual(malformedAction?.productCapable, true);
 const malformedPresented = legacyFallback(sourceTopic, [sourceTopic], { bundledDefinitions: malformedDefinitions });
 assert.equal(malformedPresented.some((item) => item.kind === 'canonical-transition-product'), false);
-assert.equal(malformedPresented.some((item) => item.definitionId === 'topic.continue.task'), true, 'legacy compatibility may remain only as legacy fallback');
+assert.equal(malformedPresented.some((item) => item.definitionId === 'topic.continue.task'), false, 'active bundled canonical authority must not be masked by legacy fallback even when product capability is unavailable');
 const noDefinitionPresented = legacyFallback(sourceTopic, [sourceTopic], { bundledDefinitions: [] });
 assert.equal(noDefinitionPresented.some((item) => item.definitionId === 'topic.continue.task'), true);
 const canonicalPresented = legacyFallback(sourceTopic, [sourceTopic]);
@@ -223,6 +225,12 @@ assert.equal(missingWorkspace.adds, 0);
 const nonPinnedTopic = sourceBackedRecord({ id: 'unpinned', title: 'Unpinned Topic', path: '.topics/unpinned.trace.md', ref: 'main' });
 const unpinnedPrepared = prep(nonPinnedTopic, [nonPinnedTopic]);
 assert.equal(capableAction(unpinnedPrepared)?.productCapable, false);
+assert.equal(legacyFallback(nonPinnedTopic, [nonPinnedTopic]).some((item) => item.definitionId === 'topic.continue.task'), false, 'legacy compatibility must not mask missing immutable canonical Parent provenance');
+const materializedBranchTopic = sourceBackedRecord({ id: 'materialized-main', title: 'Materialized main Topic', path: '.topics/materialized-main.trace.md', ref: 'main', materializedCommit: fixedRef });
+const materializedBranchAction = capableAction(prep(materializedBranchTopic, [materializedBranchTopic]));
+assert.equal(materializedBranchAction?.productCapable, true, 'branch source becomes canonical-capable only through immutable materialized commit authority');
+assert.equal(materializedBranchAction?.parentRecovery?.ref, fixedRef);
+assert.match(materializedBranchAction?.parentRecovery?.permalink || '', new RegExp(`/blob/${fixedRef}/\.topics/materialized-main\.trace\.md$`));
 
 // Static architecture/product guards: canonical product slice never invokes legacy materialization/path semantics.
 const commandSource = fs.readFileSync(new URL('../app/canonicalTransitionLocalCreateCommand.js', import.meta.url), 'utf8');
@@ -268,8 +276,8 @@ for (const [name, run, shouldSucceed] of sweep) {
 
 
 // Architect v424 product-capability + source-authority closure batch.
-function bundled(markdown, path = 'src/transitions/definitions/topic-to-task-transition-definition.trace.md', title = 'Topic to Task') {
-  return [{ path, title, markdown, sourceQualification: 'bundled-canonical' }];
+function bundled(markdown, path = canonicalDefinitionPath, title = 'Topic to Task') {
+  return [{ path, title, markdown, sourceQualification: 'compiled-semantic-package-qualified', sourceMode: 'bundled-canonical-transition-definition', source: bundledDefinitionSource }];
 }
 function actionById(preparation, id) { return (preparation.actions || []).find((candidate) => candidate.canonicalIdentifier === id); }
 function mutatedDefinition(id, edits = []) {
@@ -590,7 +598,7 @@ assert.equal(workspaceSameIdOnlyPresented.some((item) => item.definitionId === '
 
 const malformedBundledPlusWorkspacePresented = legacyFallback(sourceTopic, [sourceTopic, duplicateDefinition], { bundledDefinitions: malformedDefinitions });
 assert.equal(malformedBundledPlusWorkspacePresented.filter((item) => item.kind === 'canonical-transition-product').length, 1, 'workspace canonical product remains independently eligible');
-assert.equal(malformedBundledPlusWorkspacePresented.some((item) => item.definitionId === 'topic.continue.task'), true, 'unavailable bundled definition cannot be replaced by same-string workspace provenance');
+assert.equal(malformedBundledPlusWorkspacePresented.some((item) => item.definitionId === 'topic.continue.task'), false, 'active bundled definition provenance suppresses legacy fallback even when another workspace definition remains independently capable');
 
 const bundledPlusWorkspacePresented = legacyFallback(sourceTopic, [sourceTopic, duplicateDefinition]);
 assert.equal(bundledPlusWorkspacePresented.filter((item) => item.kind === 'canonical-transition-product').length, 2);
@@ -602,7 +610,8 @@ assert.equal(workspaceUniqueOnlyPresented.some((item) => item.definitionId === '
 
 assert.equal(preparationSource.includes('canonicalIdentifierConflicts'), false, 'Site must not promote local Canonical Identifier into global definition identity');
 assert.ok(presentationSource.includes('bundled-canonical-transition-definition'), 'legacy bridge must be scoped to bundled provenance');
-assert.ok(presentationSource.includes('src/transitions/definitions/topic-to-task-transition-definition.trace.md'), 'legacy bridge must name the exact bundled product definition source');
+assert.ok(presentationSource.includes('CANONICAL_TOPIC_TO_TASK_BUNDLED_SOURCE_ID'), 'legacy bridge must bind to exact compiled representation provenance');
+assert.equal(presentationSource.includes('src/transitions/definitions/topic-to-task-transition-definition.trace.md'), false, 'legacy bridge must not use the removed application-local definition path as semantic authority');
 
 // Mandatory final product-shape sweep: every unsupported axis stays pre-capability and zero-mutation.
 const finalShapeSweep = [

@@ -10,7 +10,7 @@ const canonicalCommit = '3c1987527c431660c4fc6eab4af24f503653034b';
 const rootContract = await readFile(new URL('./fixtures/tiinex.root.v1.contract-fixture.md', import.meta.url), 'utf8');
 const taskContract = await readFile(new URL('./fixtures/tiinex.task.v1.contract-fixture.md', import.meta.url), 'utf8');
 const transitionContract = await readFile(new URL('./fixtures/tiinex.transition.definition.v1.contract-fixture.md', import.meta.url), 'utf8');
-const staleTask = await readFile(new URL('../../../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url), 'utf8');
+const siteTask = await readFile(new URL('../../../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url), 'utf8');
 
 const taskDocument = parsePortableSchemaDocument(taskContract);
 assert.equal(taskDocument.envelopeSchemaId, 'tiinex.root.v1', 'Envelope Schema identity is exposed by the portable schema parser');
@@ -628,12 +628,14 @@ assert.equal(incomplete.status, 'incomplete');
 assert.equal(incomplete.findings.some((item) => item.code === 'portable.contract.declaration.field.required.missing'), true);
 
 const freshness = comparePortableSchemaSnapshots({
-  candidate: { markdown: staleTask, authority: { repository: 'Tiinex/site', commit: 'viewer-local-v313', path: 'src/schemas/core/task/tiinex.task.v1.schema.md' } },
+  candidate: { markdown: siteTask, authority: { repository: 'Tiinex/site', path: 'src/schemas/core/task/tiinex.task.v1.schema.md' } },
   reference: { markdown: taskContract, authority: { repository: 'Tiinex/docs', commit: canonicalCommit, path: '.topics/.schemas/core/task/tiinex.task.v1.schema.md' } },
   expectedReferenceAuthority: { repository: 'Tiinex/docs', commit: canonicalCommit, path: '.topics/.schemas/core/task/tiinex.task.v1.schema.md' }
 });
-assert.equal(freshness.status, 'materially-stale');
-assert.equal(freshness.differences.includes('creation contract differs'), true);
+assert.equal(freshness.status, 'equivalent-current', 'Site-local Task materialization must carry the exact canonical Task semantic snapshot');
+const siteTaskDocument = parsePortableSchemaDocument(siteTask);
+assert.equal(siteTaskDocument.validation.groups.length, 6);
+assert.equal(siteTaskDocument.creation.groups.length, 2);
 
 const equivalent = comparePortableSchemaSnapshots({
   candidate: { markdown: taskContract, authority: { repository: 'local-test' } },

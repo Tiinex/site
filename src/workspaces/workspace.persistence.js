@@ -355,6 +355,8 @@
       label: source.label || '',
       repo: source.repo || config.repo || '',
       ref: source.ref || config.ref || '',
+      requestedRef: source.requestedRef ?? config.requestedRef ?? '',
+      materializedCommit: source.materializedCommit || '',
       rootPath: source.rootPath || config.rootPath || '',
       boundary: source.boundary || ''
     };

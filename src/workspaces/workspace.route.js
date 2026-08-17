@@ -109,6 +109,8 @@
       label: source.label || '',
       repo: source.repo || config.repo || '',
       ref: source.ref || config.ref || '',
+      requestedRef: source.requestedRef ?? config.requestedRef ?? '',
+      materializedCommit: source.materializedCommit || '',
       rootPath: source.rootPath || config.rootPath || '',
       count: Number(source.count || 0),
       boundary: source.boundary || '',
@@ -164,6 +166,8 @@
       label: source.label || '',
       repo: source.repo || config.repo || '',
       ref: source.ref || config.ref || '',
+      requestedRef: source.requestedRef ?? config.requestedRef ?? '',
+      materializedCommit: source.materializedCommit || '',
       rootPath: source.rootPath || config.rootPath || '',
       boundary: source.boundary || ''
     };
@@ -264,7 +268,7 @@
   function compactSourceTarget(sourceTarget = null) {
     if (!sourceTarget || typeof sourceTarget !== 'object') return null;
     const out = {};
-    for (const key of ['schema', 'surface', 'targetKind', 'inputTarget', 'sourceArtifactPath', 'parentArtifactPath', 'parentRawUrl', 'parentSourceUrl', 'sourceUpdatedAt', 'sourceSortAt', 'gitCommittedAt', 'committedAt', 'transportTier']) {
+    for (const key of ['schema', 'surface', 'targetKind', 'inputTarget', 'sourceArtifactPath', 'materializedCommit', 'parentArtifactPath', 'parentRawUrl', 'parentSourceUrl', 'sourceUpdatedAt', 'sourceSortAt', 'gitCommittedAt', 'committedAt', 'transportTier']) {
       if (sourceTarget[key] != null && sourceTarget[key] !== '') out[key] = sourceTarget[key];
     }
     if (sourceTarget.loaded != null) out.loaded = Boolean(sourceTarget.loaded);

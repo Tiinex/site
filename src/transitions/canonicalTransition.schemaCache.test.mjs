@@ -7,14 +7,13 @@ import {
   qualifyCanonicalTransitionSchemaCache
 } from './canonicalTransition.schemaCache.js';
 
-const cacheRoot = new URL(`./canonical-schema-cache/${CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT}/`, import.meta.url);
 const fileBySchema = Object.freeze({
-  'tiinex.root.v1': 'tiinex.root.v1.schema.md',
-  'tiinex.transition.definition.v1': 'tiinex.transition.definition.v1.schema.md',
-  'tiinex.task.v1': 'tiinex.task.v1.schema.md'
+  'tiinex.root.v1': new URL(`./canonical-schema-cache/${CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT}/tiinex.root.v1.schema.md`, import.meta.url),
+  'tiinex.transition.definition.v1': new URL(`./canonical-schema-cache/${CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT}/tiinex.transition.definition.v1.schema.md`, import.meta.url),
+  'tiinex.task.v1': new URL('../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url)
 });
 const entries = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => {
-  const markdown = fs.readFileSync(new URL(fileBySchema[item.schemaId], cacheRoot), 'utf8');
+  const markdown = fs.readFileSync(fileBySchema[item.schemaId], 'utf8');
   assert.equal(gitBlobSha1(markdown), item.gitBlob, `${item.schemaId} cached bytes must retain exact Git blob identity`);
   return { ...item, markdown, sourceQualification: 'source-qualified-cache' };
 });

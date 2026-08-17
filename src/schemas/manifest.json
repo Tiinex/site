@@ -51,8 +51,8 @@
       "kind": "concrete",
       "role": "core-task-artifact",
       "path": "core/task/tiinex.task.v1.schema.json",
-      "checksum": "f10a2acac5859d308eb3afabc74da364984bdfcdd9543a6fd1921fdcb24b96f9",
-      "sourceBlobSha": "site-local-task-schema",
+      "checksum": "ff26811ac5c4393bc6b69d652f0b9fcdb38c2bdc9688dccb0b42608cbef07a98",
+      "sourceBlobSha": "e4d545ad45382a150351ead587339d8b43cc0fb2",
       "originId": "viewer-local",
       "originTrustRole": "viewer-extension"
     },

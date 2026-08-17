@@ -587,3 +587,257 @@ function crc32(buffer) {
   }
   return (crc ^ 0xffffffff) >>> 0;
 }
+
+// v426 Q-path closure: requested ref and immutable materialized commit are separate truths.
+const immutableCommit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const exactCommitApi = `https://api.github.com/repos/owner/repo/commits/main`;
+const exactTreeApi = `https://api.github.com/repos/owner/repo/git/trees/${immutableCommit}?recursive=1`;
+const exactRawTopic = `https://raw.githubusercontent.com/owner/repo/${immutableCommit}/.topics/a.md`;
+const immutableFetch = makeFetch({
+  [repoApi]: { json: { default_branch: 'main' } },
+  [exactCommitApi]: { json: { sha: immutableCommit } },
+  [exactTreeApi]: { json: { truncated: false, tree: [{ type: 'blob', path: '.topics/a.md' }] } },
+  [exactRawTopic]: { text: '# Immutable A' }
+});
+const immutableDefault = await materializeGithubSource(source, { repoDiscovery: true, fileRefs: [] }, { fetchImpl: immutableFetch, allowCache: false });
+assert.equal(immutableDefault.diagnostics.resolvedRef, 'main', 'default-branch selection remains ref truth');
+assert.equal(immutableDefault.diagnostics.materializedCommit, immutableCommit, 'default branch resolves immutable material commit');
+assert.equal(immutableDefault.records[0]?.sourceTarget?.materializedCommit, immutableCommit, 'loaded representation carries immutable commit provenance');
+assert.equal(immutableDefault.records[0]?.sourceTarget?.rawUrl, exactRawTopic, 'raw representation is loaded from exact commit, not moving branch');
+
+const namedCommit = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+const namedCommitApi = 'https://api.github.com/repos/owner/repo/commits/release';
+const namedRaw = `https://raw.githubusercontent.com/owner/repo/${namedCommit}/.topics/a.md`;
+const namedBranch = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch({ [namedCommitApi]: { json: { sha: namedCommit } }, [namedRaw]: { text: '# Named branch' } }), allowCache: false }
+);
+assert.equal(namedBranch.diagnostics.resolvedRef, 'release');
+assert.equal(namedBranch.diagnostics.materializedCommit, namedCommit);
+assert.equal(namedBranch.records[0]?.sourceTarget?.materializedCommit, namedCommit);
+
+const pinnedCommit = 'cccccccccccccccccccccccccccccccccccccccc';
+const pinnedRaw = `https://raw.githubusercontent.com/owner/repo/${pinnedCommit}/.topics/a.md`;
+const pinnedCalls = [];
+const pinned = await materializeGithubSource(
+  { ...source, ref: pinnedCommit },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch({ [pinnedRaw]: { text: '# Already pinned' } }, pinnedCalls), allowCache: false }
+);
+assert.equal(pinned.diagnostics.materializedCommit, pinnedCommit);
+assert.equal(pinned.records[0]?.sourceTarget?.materializedCommit, pinnedCommit);
+assert.equal(pinnedCalls.some((url) => String(url).includes('/commits/')), false, 'exact commit input must not require another commit-resolution request');
+
+const movingRaw = 'https://raw.githubusercontent.com/owner/repo/release/.topics/a.md';
+const branchWithoutCommit = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch({ [movingRaw]: { text: '# Moving branch only' } }), allowCache: false }
+);
+assert.equal(branchWithoutCommit.diagnostics.resolvedRef, 'release');
+assert.equal(branchWithoutCommit.diagnostics.materializedCommit, '', 'branch load without exact commit remains immutable-provenance unavailable');
+assert.equal(branchWithoutCommit.records[0]?.sourceTarget?.materializedCommit || '', '');
+
+console.log('github immutable material provenance closure: PASS');
+
+// v426 final request-budget closure: policy accounts for immutable-commit discovery before direct fetches.
+const budgetDefaultCommit = 'dddddddddddddddddddddddddddddddddddddddd';
+const budgetDefaultCommitApi = 'https://api.github.com/repos/owner/repo/commits/main';
+const budgetDefaultTreeApi = `https://api.github.com/repos/owner/repo/git/trees/${budgetDefaultCommit}?recursive=1`;
+const budgetDefaultRaw = `https://raw.githubusercontent.com/owner/repo/${budgetDefaultCommit}/.topics/a.md`;
+const budgetDefaultMap = {
+  [repoApi]: { json: { default_branch: 'main' } },
+  [budgetDefaultCommitApi]: { json: { sha: budgetDefaultCommit } },
+  [budgetDefaultTreeApi]: { json: { truncated: false, tree: [{ type: 'blob', path: '.topics/a.md' }] } },
+  [budgetDefaultRaw]: { text: '# Budget default' }
+};
+const budgetDefaultBlockedCalls = [];
+const budgetDefaultBlocked = await materializeGithubSource(
+  source,
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(budgetDefaultMap, budgetDefaultBlockedCalls), maxRequestsPerOperation: 2, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(budgetDefaultBlocked.diagnostics.discoveryBlockedByPolicy, true, 'blank/default discovery needs budget 3');
+assert.equal(budgetDefaultBlockedCalls.length, 0, 'blank/default budget block happens before direct GitHub discovery fetches');
+assert.equal(budgetDefaultBlocked.diagnostics.transportPolicy.operation.requestedRequests, 3);
+const budgetDefaultAllowedCalls = [];
+const budgetDefaultAllowed = await materializeGithubSource(
+  source,
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(budgetDefaultMap, budgetDefaultAllowedCalls), maxRequestsPerOperation: 3, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(budgetDefaultAllowed.records.length, 1, 'blank/default discovery is allowed at exact budget 3');
+assert.deepEqual(budgetDefaultAllowedCalls.slice(0, 3), [repoApi, budgetDefaultCommitApi, budgetDefaultTreeApi]);
+
+const budgetNamedCommit = 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const budgetNamedCommitApi = 'https://api.github.com/repos/owner/repo/commits/release';
+const budgetNamedTreeApi = `https://api.github.com/repos/owner/repo/git/trees/${budgetNamedCommit}?recursive=1`;
+const budgetNamedRaw = `https://raw.githubusercontent.com/owner/repo/${budgetNamedCommit}/.topics/a.md`;
+const budgetNamedMap = {
+  [budgetNamedCommitApi]: { json: { sha: budgetNamedCommit } },
+  [budgetNamedTreeApi]: { json: { truncated: false, tree: [{ type: 'blob', path: '.topics/a.md' }] } },
+  [budgetNamedRaw]: { text: '# Budget named' }
+};
+const budgetNamedBlockedCalls = [];
+const budgetNamedBlocked = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(budgetNamedMap, budgetNamedBlockedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(budgetNamedBlocked.diagnostics.discoveryBlockedByPolicy, true, 'named branch/tag discovery needs budget 2');
+assert.equal(budgetNamedBlockedCalls.length, 0, 'named ref budget block happens before direct GitHub discovery fetches');
+assert.equal(budgetNamedBlocked.diagnostics.transportPolicy.operation.requestedRequests, 2);
+const budgetNamedAllowed = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(budgetNamedMap), maxRequestsPerOperation: 2, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(budgetNamedAllowed.records.length, 1, 'named branch/tag discovery is allowed at exact budget 2');
+
+const budgetPinnedCommit = 'ffffffffffffffffffffffffffffffffffffffff';
+const budgetPinnedTreeApi = `https://api.github.com/repos/owner/repo/git/trees/${budgetPinnedCommit}?recursive=1`;
+const budgetPinnedRaw = `https://raw.githubusercontent.com/owner/repo/${budgetPinnedCommit}/.topics/a.md`;
+const budgetPinnedCalls = [];
+const budgetPinned = await materializeGithubSource(
+  { ...source, ref: budgetPinnedCommit },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch({
+    [budgetPinnedTreeApi]: { json: { truncated: false, tree: [{ type: 'blob', path: '.topics/a.md' }] } },
+    [budgetPinnedRaw]: { text: '# Budget pinned' }
+  }, budgetPinnedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(budgetPinned.records.length, 1, 'exact commit discovery is allowed at budget 1');
+assert.equal(budgetPinnedCalls[0], budgetPinnedTreeApi, 'exact commit discovery begins directly at tree fetch');
+assert.equal(budgetPinnedCalls.some((url) => String(url).includes('/commits/')), false, 'exact commit discovery does not spend commit-resolution request');
+
+// v426 prequalified materializedCommit consistency closure: discovery consumes the already-qualified immutable representation.
+const prequalifiedDiscoveryCommit = 'abababababababababababababababababababab';
+const prequalifiedDiscoveryTreeApi = `https://api.github.com/repos/owner/repo/git/trees/${prequalifiedDiscoveryCommit}?recursive=1`;
+const prequalifiedDiscoveryRaw = `https://raw.githubusercontent.com/owner/repo/${prequalifiedDiscoveryCommit}/.topics/a.md`;
+const prequalifiedDiscoveryMap = {
+  [prequalifiedDiscoveryTreeApi]: { json: { truncated: false, tree: [{ type: 'blob', path: '.topics/a.md' }] } },
+  [prequalifiedDiscoveryRaw]: { text: '# Prequalified discovery' }
+};
+const prequalifiedNamedCalls = [];
+const prequalifiedNamed = await materializeGithubSource(
+  { ...source, ref: 'main', materializedCommit: prequalifiedDiscoveryCommit },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(prequalifiedDiscoveryMap, prequalifiedNamedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(prequalifiedNamed.records.length, 1, 'prequalified named-ref discovery is allowed at tree-only budget 1');
+assert.deepEqual(prequalifiedNamedCalls, [prequalifiedDiscoveryTreeApi, prequalifiedDiscoveryRaw], 'prequalified named-ref discovery scans and loads one coherent immutable representation');
+assert.equal(prequalifiedNamedCalls.some((url) => String(url).includes('/commits/')), false, 'prequalified named-ref discovery spends no commit-resolution request');
+assert.equal(prequalifiedNamed.records[0]?.sourceTarget?.materializedCommit, prequalifiedDiscoveryCommit, 'prequalified named-ref raw record retains the same immutable representation');
+assert.equal(prequalifiedNamed.diagnostics.resolvedRef, 'main', 'configured named ref remains configured-source truth');
+
+const prequalifiedBlankCalls = [];
+const prequalifiedBlank = await materializeGithubSource(
+  { ...source, ref: '', materializedCommit: prequalifiedDiscoveryCommit },
+  { repoDiscovery: true, fileRefs: [] },
+  { fetchImpl: makeFetch(prequalifiedDiscoveryMap, prequalifiedBlankCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(prequalifiedBlank.records.length, 1, 'prequalified blank-ref discovery is allowed at tree-only budget 1');
+assert.deepEqual(prequalifiedBlankCalls, [prequalifiedDiscoveryTreeApi, prequalifiedDiscoveryRaw], 'prequalified blank-ref discovery performs no default-branch or commit-resolution fetch');
+assert.equal(prequalifiedBlank.diagnostics.resolvedRef, '', 'prequalified blank configured ref is not rewritten to pretend the commit was configured ref');
+assert.equal(prequalifiedBlank.records[0]?.sourceTarget?.materializedCommit, prequalifiedDiscoveryCommit, 'prequalified blank-ref raw record retains immutable representation');
+
+console.log('github discovery request-budget closure: PASS');
+console.log('github prequalified repo-discovery consistency closure: PASS');
+
+// v426 final raw-file request-budget closure: explicit loads account for ref/commit resolution before fetch.
+const rawBudgetDefaultCommit = '1212121212121212121212121212121212121212';
+const rawBudgetDefaultCommitApi = 'https://api.github.com/repos/owner/repo/commits/main';
+const rawBudgetDefaultUrl = `https://raw.githubusercontent.com/owner/repo/${rawBudgetDefaultCommit}/.topics/a.md`;
+const rawBudgetDefaultMap = {
+  [repoApi]: { json: { default_branch: 'main' } },
+  [rawBudgetDefaultCommitApi]: { json: { sha: rawBudgetDefaultCommit } },
+  [rawBudgetDefaultUrl]: { text: '# Raw budget default' }
+};
+const rawBudgetDefaultBlockedCalls = [];
+const rawBudgetDefaultBlocked = await materializeGithubSource(
+  source,
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch(rawBudgetDefaultMap, rawBudgetDefaultBlockedCalls), maxRequestsPerOperation: 2, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetDefaultBlocked.records.length, 0, 'blank/default raw load needs budget 3');
+assert.equal(rawBudgetDefaultBlockedCalls.length, 0, 'blank/default raw budget block happens before direct fetches');
+assert.equal(rawBudgetDefaultBlocked.diagnostics.transportPolicy.operation.requestedRequests, 3);
+const rawBudgetDefaultAllowedCalls = [];
+const rawBudgetDefaultAllowed = await materializeGithubSource(
+  source,
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch(rawBudgetDefaultMap, rawBudgetDefaultAllowedCalls), maxRequestsPerOperation: 3, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetDefaultAllowed.records.length, 1, 'blank/default raw load is allowed at exact budget 3');
+assert.deepEqual(rawBudgetDefaultAllowedCalls, [repoApi, rawBudgetDefaultCommitApi, rawBudgetDefaultUrl]);
+assert.equal(rawBudgetDefaultAllowed.records[0]?.sourceTarget?.materializedCommit, rawBudgetDefaultCommit);
+
+const rawBudgetNamedCommit = '3434343434343434343434343434343434343434';
+const rawBudgetNamedCommitApi = 'https://api.github.com/repos/owner/repo/commits/release';
+const rawBudgetNamedUrl = `https://raw.githubusercontent.com/owner/repo/${rawBudgetNamedCommit}/.topics/a.md`;
+const rawBudgetNamedMap = {
+  [rawBudgetNamedCommitApi]: { json: { sha: rawBudgetNamedCommit } },
+  [rawBudgetNamedUrl]: { text: '# Raw budget named' }
+};
+const rawBudgetNamedBlockedCalls = [];
+const rawBudgetNamedBlocked = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch(rawBudgetNamedMap, rawBudgetNamedBlockedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetNamedBlocked.records.length, 0, 'named raw load needs budget 2');
+assert.equal(rawBudgetNamedBlockedCalls.length, 0, 'named raw budget block happens before direct fetches');
+assert.equal(rawBudgetNamedBlocked.diagnostics.transportPolicy.operation.requestedRequests, 2);
+const rawBudgetNamedAllowedCalls = [];
+const rawBudgetNamedAllowed = await materializeGithubSource(
+  { ...source, ref: 'release' },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch(rawBudgetNamedMap, rawBudgetNamedAllowedCalls), maxRequestsPerOperation: 2, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetNamedAllowed.records.length, 1, 'named raw load is allowed at exact budget 2');
+assert.deepEqual(rawBudgetNamedAllowedCalls, [rawBudgetNamedCommitApi, rawBudgetNamedUrl]);
+
+const rawBudgetPinnedCommit = '5656565656565656565656565656565656565656';
+const rawBudgetPinnedUrl = `https://raw.githubusercontent.com/owner/repo/${rawBudgetPinnedCommit}/.topics/a.md`;
+const rawBudgetPinnedCalls = [];
+const rawBudgetPinned = await materializeGithubSource(
+  { ...source, ref: rawBudgetPinnedCommit },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch({ [rawBudgetPinnedUrl]: { text: '# Raw budget pinned' } }, rawBudgetPinnedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetPinned.records.length, 1, 'exact-commit raw load is allowed at budget 1');
+assert.deepEqual(rawBudgetPinnedCalls, [rawBudgetPinnedUrl]);
+
+const rawBudgetMultiSecond = `https://raw.githubusercontent.com/owner/repo/${rawBudgetDefaultCommit}/.topics/nested/b.trace.md`;
+const rawBudgetMultiMap = { ...rawBudgetDefaultMap, [rawBudgetMultiSecond]: { text: '# Raw budget second' } };
+const rawBudgetMultiBlockedCalls = [];
+const rawBudgetMultiBlocked = await materializeGithubSource(
+  source,
+  { repoDiscovery: false, fileRefs: ['.topics/a.md', '.topics/nested/b.trace.md'] },
+  { fetchImpl: makeFetch(rawBudgetMultiMap, rawBudgetMultiBlockedCalls), maxRequestsPerOperation: 3, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetMultiBlocked.records.length, 0, 'two raw targets plus default-ref overhead need budget 4');
+assert.equal(rawBudgetMultiBlockedCalls.length, 0, 'multi-target budget block happens before direct fetches');
+assert.equal(rawBudgetMultiBlocked.diagnostics.transportPolicy.operation.requestedRequests, 4);
+const rawBudgetMultiAllowedCalls = [];
+const rawBudgetMultiAllowed = await materializeGithubSource(
+  source,
+  { repoDiscovery: false, fileRefs: ['.topics/a.md', '.topics/nested/b.trace.md'] },
+  { fetchImpl: makeFetch(rawBudgetMultiMap, rawBudgetMultiAllowedCalls), maxRequestsPerOperation: 4, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetMultiAllowed.records.length, 2, 'two raw targets are allowed at overhead + N budget');
+assert.equal(rawBudgetMultiAllowedCalls.length, 4);
+
+const rawBudgetPrequalifiedCommit = '7878787878787878787878787878787878787878';
+const rawBudgetPrequalifiedUrl = `https://raw.githubusercontent.com/owner/repo/${rawBudgetPrequalifiedCommit}/.topics/a.md`;
+const rawBudgetPrequalifiedCalls = [];
+const rawBudgetPrequalified = await materializeGithubSource(
+  { ...source, ref: 'main', materializedCommit: rawBudgetPrequalifiedCommit },
+  { repoDiscovery: false, fileRefs: ['.topics/a.md'] },
+  { fetchImpl: makeFetch({ [rawBudgetPrequalifiedUrl]: { text: '# Raw budget prequalified' } }, rawBudgetPrequalifiedCalls), maxRequestsPerOperation: 1, allowCache: false, preferredTransports: ['direct'], transportOrderExact: true }
+);
+assert.equal(rawBudgetPrequalified.records.length, 1, 'prequalified materialized commit pays only raw target cost');
+assert.deepEqual(rawBudgetPrequalifiedCalls, [rawBudgetPrequalifiedUrl]);
+
+console.log('github raw-file request-budget closure: PASS');
