@@ -1,3 +1,4 @@
+import { externalWebArtifactUrl } from '../sources/source.explicitTargets.js';
 import { validateTransitionDraft } from './transition.validate.js';
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { buildArtifactCreationContract, createArtifactDraftMarkdown, validateArtifactCreationResult } from '../schemas/creation.contracts.js';
@@ -133,11 +134,11 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
 
 
 
-function allocateContinuationPath({ parentRecord = {}, targetId = '', targetLabel = '', title = '' } = {}, options = {}) {
+export function allocateContinuationPath({ parentRecord = {}, targetId = '', targetLabel = '', title = '' } = {}, options = {}) {
   const occupied = existingTransitionPaths(options);
   const explicitPath = canonicalLocalPath(options.path || options.draftPath || '');
   if (explicitPath) return { path: uniqueTransitionPath(explicitPath, occupied), policy: pathPolicyForExplicit(explicitPath) };
-  const parentPath = canonicalLocalPath(parentRecord.path || parentRecord.sourcePath || parentRecord.sourceTarget?.sourceArtifactPath || '');
+  const parentPath = externalWebArtifactUrl(parentRecord) ? '' : canonicalLocalPath(parentRecord.path || parentRecord.sourcePath || parentRecord.sourceTarget?.sourceArtifactPath || '');
   const parentDir = parentDirectory(parentPath) || '.topics';
   const parentPrefix = lineagePrefixFromPath(parentPath);
   const labelSlug = slugify(title || parentRecord.title || targetLabel || 'continuation');

@@ -18,7 +18,8 @@ export function declaredParentBindingTargetValuesForNode(node = {}, rawTarget = 
     const raw = String(value || '').trim();
     if (!raw || seen.has(raw)) continue;
     seen.add(raw);
-    const filePath = githubRepoRelativePathFromUrl(raw) || canonicalPath(raw);
+    const githubFilePath = githubRepoRelativePathFromUrl(raw);
+    const filePath = githubFilePath || (isExternalUrl(raw) ? '' : canonicalPath(raw));
     if (!filePath && !isGitHubIssueTarget(raw)) continue;
     if (!declaredParentBindingMatchesTarget(raw, rawTarget)) continue;
     if (!isStrongDeclaredParentBinding(raw, filePath)) continue;
@@ -82,6 +83,8 @@ function isStrongDeclaredParentBinding(raw = '', path = '') {
   if (/^\.topics(?:\/|$)/.test(clean)) return true;
   return clean.includes('/');
 }
+
+function isExternalUrl(value = '') { try { const url = new URL(String(value || '').trim()); return /^https?:$/i.test(url.protocol); } catch (_) { return false; } }
 
 function isGitHubIssueTarget(value = '') {
   try {

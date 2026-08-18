@@ -50,4 +50,4 @@
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: PYvnlHGXumYIq4MjMuN6jGn-scMH99WGKBd7XvxdsqY
+  - Value: Ba4sghoxq8OjlFLJvc168getEQESikdcvctB4FLP0vo

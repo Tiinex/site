@@ -1,6 +1,7 @@
 import { buildCanonicalTransitionInvocationBindingPlan } from '../transitions/transition.invocationBindingPlanner.js';
 import { buildCanonicalTransitionOutputMaterializationPlan } from '../transitions/transition.outputMaterializationPlanner.js';
-import { prepareCanonicalTransitionProductActions } from '../transitions/transition.productPreparation.js';
+import { finalizeCanonicalParentReference, prepareCanonicalTransitionProductActions } from '../transitions/transition.productPreparation.js';
+import { allocateContinuationPath } from '../transitions/record.transitions.js';
 import { qualifyCanonicalTaskLocalArtifact, renderCanonicalTaskLocalArtifact } from '../transitions/transition.taskMaterializer.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
 
@@ -41,15 +42,20 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
 
   const capability = executionCapability({ action, v423, workspace });
   if (!capability.ok) return refusal(capability.error, state, capability.notice, { bindingPlan, v423, capability });
-  const rendered = renderCanonicalTaskLocalArtifact({ values: input.values, parent: action.parentRecovery, now: input.now });
+  const allocation = allocateContinuationPath({ parentRecord: currentRecord, targetId: 'tiinex.task.v1', targetLabel: 'Task', title: input.values?.Summary }, { workspaceRecords: workspace.records || [] });
+  const concretePath = allocation.path || '';
+  if (!concretePath) return refusal('canonical-local-path-allocation-unavailable', state, 'Task cannot be created because its browser-local continuation path could not be allocated.', { bindingPlan, v423 });
+  const parent = finalizeCanonicalParentReference(action.parentRecovery, concretePath);
+  if (parent.state !== 'qualified' || parent.finalized !== true) return refusal(parent.reason || 'canonical-parent-finalization-unavailable', state, 'Task cannot be created because its Parent reference could not be finalized truthfully.', { bindingPlan, v423 });
+  const rendered = renderCanonicalTaskLocalArtifact({ values: input.values, parent, now: input.now });
   if (rendered.state !== 'rendered') return refusal(rendered.reason, state, 'Task could not be rendered from the qualified canonical creation values.', { bindingPlan, v423 });
-  const taskQualification = qualifyCanonicalTaskLocalArtifact({ markdown: rendered.markdown, schemaMaterials: targetSchemaAuthorities[0].materials, values: input.values, parent: action.parentRecovery });
+  const taskQualification = qualifyCanonicalTaskLocalArtifact({ markdown: rendered.markdown, schemaMaterials: targetSchemaAuthorities[0].materials, values: input.values, parent, path: concretePath });
   if (taskQualification.state !== 'qualified') return refusal(taskQualification.reason, state, 'Task could not be created because the rendered Artifact did not satisfy the canonical Task contract.', { bindingPlan, v423, taskQualification });
 
   const authority = durableLocalMutationDecision(input.persistenceOwnership, DurableLocalMutationOperation.localDraftCreate);
   if (!authority.ok) return refusal(authority.error || 'local-mutation-not-authorized', state, authority.notice || 'Local Task creation is not available in this session.', { bindingPlan, v423, taskQualification, authority });
   if (!input.lifecycle?.addWorkspaceRecord) return refusal('workspace-lifecycle-unavailable', state, 'Task cannot be created because the local workspace lifecycle is unavailable.');
-  const candidate = Object.assign({}, taskQualification.record, { sourceMode: 'local-transition-canonical', path: '', transitionMaterialization: { schema: CANONICAL_TRANSITION_LOCAL_CREATE_COMMAND_SCHEMA_ID, canonicalIdentifier: action.canonicalIdentifier, remoteWrite: false, sourceMutation: false, concretePath: null, relationMaterialization: false } });
+  const candidate = Object.assign({}, taskQualification.record, { sourceMode: 'local-transition-canonical', path: concretePath, transitionMaterialization: { schema: CANONICAL_TRANSITION_LOCAL_CREATE_COMMAND_SCHEMA_ID, canonicalIdentifier: action.canonicalIdentifier, remoteWrite: false, sourceMutation: false, concretePath, relationMaterialization: false } });
   delete candidate.source;
   const committed = input.lifecycle.addWorkspaceRecord(state, workspace.id, candidate, { clock: input.clock });
   if (!committed?.ok) return refusal(committed?.error || 'workspace-mutation-failed', state, 'Task could not be added to the browser-local workspace.', { bindingPlan, v423, taskQualification });
@@ -58,7 +64,7 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
   if (stableJson(afterSource) !== beforeSource || createdSource.adapterId === 'github' || createdSource.repository || createdSource.repo || createdSource.ref) {
     return refusal('post-mutation-source-boundary-violation', state, 'Task creation was refused because the source Topic boundary did not remain isolated.', { bindingPlan, v423, taskQualification });
   }
-  return Object.freeze({ ok: true, schema: CANONICAL_TRANSITION_LOCAL_CREATE_COMMAND_SCHEMA_ID, state: committed.state, workspace: committed.workspace, record: committed.record, bindingPlan, v423, taskQualification, remoteWrite: false, sourceMutation: false, concretePath: null, relationMaterialization: false, notice: `Created local Task from ${currentRecord.title || 'Topic'}.` });
+  return Object.freeze({ ok: true, schema: CANONICAL_TRANSITION_LOCAL_CREATE_COMMAND_SCHEMA_ID, state: committed.state, workspace: committed.workspace, record: committed.record, bindingPlan, v423, taskQualification, remoteWrite: false, sourceMutation: false, concretePath, relationMaterialization: false, notice: `Created local Task from ${currentRecord.title || 'Topic'}.` });
 }
 
 function executionCapability({ action, v423, workspace }) {

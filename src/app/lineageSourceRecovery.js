@@ -250,8 +250,9 @@ function isSyntheticPublicationRecord(record = {}) {
   );
 }
 function isGithubSource(source = {}) {
-  const adapter = String(source.adapterId || source.sourceKind || source.kind || '').toLowerCase();
-  return adapter.includes(GITHUB_ADAPTER_ID) || Boolean(source.repo || source.repository || source.config?.repo);
+  const candidate = source || {};
+  const adapter = String(candidate.adapterId || candidate.sourceKind || candidate.kind || '').toLowerCase();
+  return adapter.includes(GITHUB_ADAPTER_ID) || Boolean(candidate.repo || candidate.repository || candidate.config?.repo);
 }
 function firstNonEmpty(...items) { return items.map((item) => String(item || '').trim()).find(Boolean) || ''; }
 function isUrlLike(value = '') { return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(String(value || '').trim()); }

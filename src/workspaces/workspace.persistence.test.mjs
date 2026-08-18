@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { runExplicitUrlMaterialImportCommand } from '../app/urlMaterialCommand.js';
+await import('./workspace.lifecycle.js');
 
 function loadPersistence(options = {}) {
   const storageMap = new Map();
@@ -246,3 +248,24 @@ if (storageMap.has(persistence.STORAGE_KEY) || storageMap.has(persistence.LOCAL_
 if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('ordinary closing last workspace should remain push-history capable');
 
 console.log('✓ workspace persistence tests passed');
+
+
+// v426 external-web multi-target persistence: exact target-qualified identities survive local/session reopen.
+const externalLifecycle = globalThis.TiinexWorkspaceLifecycle;
+const externalCreated = externalLifecycle.createWorkspace(externalLifecycle.makeEmptyAppState(), { name: 'External multi persistence' }, { clock: () => '2026-08-18T11:20:00.000Z' });
+const externalUrlA = 'https://a.example.test/folder/001.trace.md';
+const externalUrlB = 'https://b.example.test/other/001.trace.md';
+const externalImported = await runExplicitUrlMaterialImportCommand({
+  lifecycle: externalLifecycle, state: externalCreated.state, workspaceId: externalCreated.workspace.id, urls: [externalUrlA, externalUrlB],
+  fetchImpl: async (url) => ({ ok: true, status: 200, statusText: 'OK', text: async () => `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.topic.v1\n  - Created At: 2026-08-18 11:20:00\n  - Summary: ${url.includes('a.example') ? 'A' : 'B'}\n\n---\n\n# External ${url}\n`, json: async () => ({}) })
+});
+if (!externalImported.ok || externalImported.records.length !== 2) throw new Error('external multi-target fixture must materialize two records');
+const externalBefore = externalImported.state.workspaces[0].records.map((record) => ({ id: record.id, inputTarget: record.sourceTarget?.inputTarget })).sort((a, b) => a.inputTarget.localeCompare(b.inputTarget));
+if (new Set(externalBefore.map((item) => item.id)).size !== 2) throw new Error('external multi-target fixture must have distinct target-qualified ids before persistence');
+const externalEnv = loadPersistence();
+externalEnv.persistence.writeState(externalImported.state, { storage: externalEnv.env.localStorage, location: externalEnv.env.location, history: externalEnv.env.history });
+const externalRestored = externalEnv.persistence.readInitialState({ storage: externalEnv.env.localStorage, location: externalEnv.env.location });
+const externalAfter = externalRestored.workspaces[0].records.map((record) => ({ id: record.id, inputTarget: record.sourceTarget?.inputTarget })).sort((a, b) => a.inputTarget.localeCompare(b.inputTarget));
+if (externalAfter.length !== 2) throw new Error('external multi-target reopen must preserve both records');
+if (JSON.stringify(externalAfter) !== JSON.stringify(externalBefore)) throw new Error('external multi-target reopen must preserve exact target-qualified identities');
+console.log('workspace persistence external multi-target identity roundtrip: ok');

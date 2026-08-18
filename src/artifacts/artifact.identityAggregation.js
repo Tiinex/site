@@ -45,12 +45,16 @@ export function artifactRegistryIdentityForRecord(record = {}, workspaceIds = []
     });
   }
   if (inputTarget) {
+    const artifactScoped = Boolean(sourceArtifactPath && embeddedIssueArtifact(record));
+    const kind = artifactScoped ? 'input-target-artifact' : 'input-target';
+    const identityParts = artifactScoped ? [inputTarget, sourceArtifactPath] : [inputTarget];
     return Object.freeze({
       global: true,
-      kind: 'input-target',
-      key: ['target', inputTarget].join('\u0000'),
-      id: registryIdentityId(identityPrefix, 'input-target', [inputTarget]),
-      inputTarget
+      kind,
+      key: ['target', ...identityParts].join('\u0000'),
+      id: registryIdentityId(identityPrefix, kind, identityParts),
+      inputTarget,
+      sourceArtifactPath: artifactScoped ? sourceArtifactPath : ''
     });
   }
   const membershipScope = (Array.isArray(workspaceIds) ? workspaceIds : []).join(',');
@@ -201,5 +205,14 @@ function representationAggregateState(variants = [], reconciliationStatuses = []
 }
 
 function normalizedRepresentation(markdown = '') { return String(markdown || '').replace(/\r\n?/g, '\n'); }
+
+function embeddedIssueArtifact(record = {}) {
+  const mode = String(record.sourceMode || '').trim();
+  const targetKind = String(record.sourceTarget?.targetKind || '').trim();
+  return mode === 'github-issue-embedded-artifact'
+    || mode === 'github-comment-embedded-artifact'
+    || targetKind === 'github-issue-embedded-artifact'
+    || targetKind === 'github-comment-embedded-artifact';
+}
 function canonicalSourceArtifactPath(record = {}) { return String(record.sourceTarget?.sourceArtifactPath || record.path || '').trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/{2,}/g, '/'); }
 function registryIdentityId(prefix, kind, parts = []) { return `${prefix}:${kind}:${parts.map((value) => encodeURIComponent(String(value || ''))).join(':')}`; }

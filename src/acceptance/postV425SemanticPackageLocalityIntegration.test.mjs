@@ -12,6 +12,7 @@ import { executeCanonicalTransitionLocalCreate } from '../app/canonicalTransitio
 import { runGithubSourceOperation } from '../app/githubSourceOperation.js';
 import { transitionProductActionsForRecord } from '../transitions/transition.productPresentation.js';
 import { createPersistenceOwnershipPolicy, PersistenceRouteOwner } from '../app/persistenceOwnership.js';
+import { canonicalC14nV2SelfState } from '../integrity/integrity.c14nV2.js';
 import '../workspaces/workspace.lifecycle.js';
 
 const read = (path) => fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8');
@@ -168,7 +169,8 @@ assert.equal(mutations, 1, 'compiled package registry product path materializes 
 assert.equal(created.bindingPlan?.qualification, 'qualified');
 assert.equal(created.v423?.qualification, 'qualified');
 assert.equal(created.record?.schemaId, 'tiinex.task.v1');
-assert.equal(created.record?.path, '');
+assert.equal(created.record?.path, '.topics/compiled-registry-task--task.trace.md');
+assert.equal(created.concretePath, created.record.path);
 assert.equal(created.state.workspaces[0].records.find((record) => record.id === topicRecord.id)?.markdown, topicRecord.markdown, 'source Topic remains unchanged');
 
 // Q-fail closure: ordinary blank/default GitHub ref must preserve exact materialized commit authority and select the canonical browser product path.
@@ -261,32 +263,6 @@ function withoutIntegrity(markdown) {
   const marker = String(markdown || '').search(/^# Continuity Integrity\s*$/m);
   return marker < 0 ? String(markdown || '') : String(markdown || '').slice(0, marker).trimEnd();
 }
-function c14nV2SelfSealValid(markdown) {
-  const normalized = String(markdown || '').replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').trimEnd();
-  const lines = normalized.split('\n');
-  const heading = lines.findIndex((line) => line.trim() === '# Continuity Integrity');
-  if (heading < 0) return false;
-  let entry = -1, selfEntry = -1, expected = '', inSelf = false;
-  for (let i = heading + 1; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (/^-\s+[^\n]+?\s*$/.test(line)) { entry += 1; inSelf = /sha256-base64url-c14n-v2/.test(line); if (inSelf) selfEntry = entry; continue; }
-    if (inSelf && /^\s+-\s+Towards:\s*self\s*$/.test(line)) continue;
-    if (inSelf) { const m = line.match(/^\s+-\s+Value:\s*(\S+)\s*$/); if (m) { expected = m[1]; break; } }
-  }
-  if (selfEntry < 0 || !expected) return false;
-  let currentEntry = -1, active = false, neutralized = false;
-  const canonical = lines.map((line, index) => {
-    if (index <= heading) return line;
-    if (/^#\s+/.test(line.trim())) { active = false; return line; }
-    if (/^-\s+[^\n]+?\s*$/.test(line)) { currentEntry += 1; active = currentEntry === selfEntry; neutralized = false; return line; }
-    if (active && !neutralized) {
-      const match = line.match(/^(\s+-\s+Value:\s*).*/);
-      if (match) { neutralized = true; return match[1].trimEnd(); }
-    }
-    return line;
-  }).join('\n');
-  const actual = createHash('sha256').update(canonical, 'utf8').digest('base64url');
-  return actual === expected;
-}
+function c14nV2SelfSealValid(markdown) { return canonicalC14nV2SelfState(markdown).state === 'verified'; }
 
 console.log('post-v425 semantic-package locality + compiled Transition registry integration: PASS');

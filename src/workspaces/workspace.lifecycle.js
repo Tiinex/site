@@ -1,5 +1,6 @@
 import{canonicalizeSourceRecordPath}from'./workspace.sourceRecordPath.js';
 import{canDiscardLocalDraft}from'../artifacts/artifact.localDraft.js';
+import{artifactRegistryIdentityForRecord}from'../artifacts/artifact.identityAggregation.js';
 import{clearLocalSourceBoundary,countLocalRecords,isLocalSessionMaterial,makeLocalSource,makeLocalSourceForWorkspace as localSourceFor}from'./workspace.localSourceLifecycle.js';
 import{reconcileLocalRecordWithSourceBackedWorkspace,restoreLocalShadowForRemovedSource,restoreLocalSnapshotsForRemovedSourceRecord}from'./workspace.materialReconciliation.js';
 import{addWorkspaceSourceRecordsWithReconciliation}from'./workspace.sourceRecords.js';
@@ -38,6 +39,11 @@ const canonicalPath = canonicalizeLocalPath(path);
 if (!canonicalPath) return '';
 return `local:${workspaceId || 'workspace'}:${canonicalPath}`;
 }
+function targetQualifiedMaterialIdentity(record={},workspaceId=''){
+if(!String(record?.sourceTarget?.inputTarget||'').trim())return null;
+const identity=artifactRegistryIdentityForRecord(record,[workspaceId],()=>'',()=>'', 'tiinex.workspace.material');
+return identity?.global&&String(identity.kind||'').startsWith('input-target')?identity:null;
+}
 function makeRecordId(workspaceId,title,createdAt){
 const slug = normalizeRecordTitle(title)
 .toLowerCase()
@@ -75,7 +81,8 @@ const workspace = next.workspaces.find((item) => item.id === targetId);
 if (!workspace) return { ok: false, error: 'workspace.not.found', state };
 const createdAt = nowIso(options.clock);
 const canonicalPath = canonicalizeLocalPath(input.path || '');
-const deterministicLocalId = input.id || makeLocalRecordId(workspace.id, canonicalPath);
+const targetIdentity = targetQualifiedMaterialIdentity(input, workspace.id);
+const deterministicLocalId = input.id || targetIdentity?.id || makeLocalRecordId(workspace.id, canonicalPath);
 const record = Object.assign({}, input, {
 id: deterministicLocalId || makeRecordId(workspace.id, title, createdAt),
 title,
@@ -91,7 +98,7 @@ hasIntegrity: Boolean(input.hasIntegrity),
 source: makeSessionSource()
 });
 const existingIndex = Array.isArray(workspace.records)
-? workspace.records.findIndex((item) => item.id === record.id || (canonicalPath && item.source?.kind === SESSION_SOURCE_KIND && canonicalizeLocalPath(item.path || '') === canonicalPath))
+? workspace.records.findIndex((item) => item.id === record.id || (!targetIdentity && canonicalPath && !targetQualifiedMaterialIdentity(item, workspace.id) && item.source?.kind === SESSION_SOURCE_KIND && canonicalizeLocalPath(item.path || '') === canonicalPath))
 : -1;
 if (existingIndex >= 0) {
 workspace.records = workspace.records.slice();

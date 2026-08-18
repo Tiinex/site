@@ -15,7 +15,10 @@
   "root.fallback.used": "Schema module is unavailable; root/envelope semantics only.",
   "integrity.validation.skipped": "Continuity Integrity footer is missing; integrity engine did not run byte/canonicalization validation.",
   "integrity.method.unspecified": "Continuity Integrity exists but no machine-verifiable integrity method is declared.",
-  "integrity.c14n-v2.detected": "c14n-v2 integrity method is declared; byte verification is delegated to the integrity engine when canonical bytes are available.",
+  "integrity.c14n-v2.detected": "c14n-v2 integrity method is declared; the integrity engine evaluates self entries when canonical artifact bytes are available.",
   "integrity.local-draft.declared": "Draft/local integrity marker is present; it is a recoverability marker, not a published byte-verification proof.",
-  "integrity.method.declared": "Integrity method declared."
+  "integrity.method.declared": "Integrity method declared.",
+  "integrity.c14n-v2.verified": "c14n-v2 self-integrity is verified against the current canonical artifact bytes.",
+  "integrity.c14n-v2.mismatch": "c14n-v2 self-integrity does not match the current canonical artifact bytes.",
+  "integrity.c14n-v2.ambiguous": "c14n-v2 self-integrity could not be verified unambiguously."
 }

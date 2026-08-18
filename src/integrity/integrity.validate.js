@@ -1,3 +1,5 @@
+import { C14N_V2_METHOD_ID, canonicalC14nV2SelfState } from './integrity.c14nV2.js';
+
 export const INTEGRITY_VALIDATION_ENGINE_ID = 'tiinex.integrity.validation.v1';
 
 export function validateIntegrity(artifact = {}, options = {}) {
@@ -15,11 +17,19 @@ export function validateIntegrity(artifact = {}, options = {}) {
     return findings;
   }
 
-  for (const method of methods) {
-    if (/c14n-v2/i.test(method)) {
-      findings.push(info('integrity.c14n-v2.detected', 'c14n-v2 integrity method is declared; byte verification is delegated to the integrity engine when canonical bytes are available.'));
-      continue;
+  if (methods.includes(C14N_V2_METHOD_ID)) {
+    findings.push(info('integrity.c14n-v2.detected', 'c14n-v2 integrity method is declared; the integrity engine evaluates self entries when canonical artifact bytes are available.'));
+    const selfEntries = (artifact?.integrity?.entries || []).filter((entry) => entry?.method === C14N_V2_METHOD_ID && entry?.towards === 'self');
+    if (selfEntries.length) {
+      const result = canonicalC14nV2SelfState(artifact.markdown || '');
+      if (result.state === 'verified') findings.push(info('integrity.c14n-v2.verified', 'c14n-v2 self-integrity is verified against the current canonical artifact bytes.'));
+      else if (result.state === 'mismatch') findings.push(warning('integrity.c14n-v2.mismatch', 'c14n-v2 self-integrity does not match the current canonical artifact bytes.'));
+      else findings.push(warning('integrity.c14n-v2.ambiguous', `c14n-v2 self-integrity could not be verified: ${result.reason || result.state}.`));
     }
+  }
+
+  for (const method of methods) {
+    if (method === C14N_V2_METHOD_ID) continue;
     if (/browser-local-draft|draft local integrity/i.test(method)) {
       findings.push(info('integrity.local-draft.declared', 'Draft/local integrity marker is present; it is a recoverability marker, not a published byte-verification proof.'));
       continue;
@@ -31,7 +41,7 @@ export function validateIntegrity(artifact = {}, options = {}) {
 
 function normalizeMethods(methods = []) {
   if (!Array.isArray(methods)) return [];
-  return methods.map((method) => String(method || '').trim()).filter(Boolean);
+  return [...new Set(methods.map((method) => String(method || '').trim()).filter(Boolean))];
 }
 
 function warning(code, message) { return { severity: 'warning', code, message, source: INTEGRITY_VALIDATION_ENGINE_ID }; }

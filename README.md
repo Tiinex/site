@@ -247,3 +247,128 @@ prequalified materializedCommit
 ```
 
 Configured source truth remains separate: a named `ref` such as `main` remains `main`, and a blank configured ref remains blank rather than being rewritten to the commit. A normal source refresh does not inherit a historical materialization receipt as invocation authority; it resolves the current mutable ref again and stores the newly materialized exact commit.
+
+## Q acceptance discovery-consolidated canonical placement + source-neutral Parent closure
+
+The second real v426 Q acceptance showed three Site-integration defects after the package/request gates were already source-qualified: canonical Tasks still committed pathless at workspace root, canonical multiline fields used browser-default textarea presentation, and canonical Topic→Task Parent recovery was effectively limited to exact GitHub repo-file provenance.
+
+This closure keeps v422/v423 planning semantics frozen (`concretePath = null`) and moves concrete local placement into the bounded Site execution boundary:
+
+```text
+qualified canonical v422/v423 intent
+→ established record.transitions continuation allocator
+→ concrete browser-local child path
+→ representation-aware Parent finalization
+→ canonical Task render + exact Root→Task projection
+→ local workspace mutation
+```
+
+The established allocator remains the only continuation naming authority. Numeric lineage behavior therefore remains unchanged, including `001.trace.md → 001-1-<slug>.trace.md`, `12-01-*.trace.md → 12-01-01-<slug>.trace.md`, and recovered `comment-001-* → 001-1-<slug>.trace.md`. Occupied paths from both source-backed and local workspace records participate in collision avoidance. The committed Task record, transition materialization receipt, and command receipt expose the same concrete local path.
+
+Canonical Parent recovery is now representation-aware:
+
+```text
+exact GitHub repo file
+→ Trace  = exact commit-pinned blob permalink
+→ Origin = exact commit-pinned browse + git permalink
+
+GitHub issue/comment embedded Topic
+→ Trace  = exact embedded/recovered artifact path, finalized relative to the child when appropriate
+→ Origin = explicit issue/comment source-item URL
+
+local/session Topic with concrete path
+→ Trace  = recoverable local parent path, finalized relative to the child
+→ Origin = truthful local parent path
+
+pathless/unrecoverable Topic
+→ canonical capability unavailable
+→ legacy compatibility does not mask the unavailable canonical authority
+```
+
+The issue/comment source URL remains source-container/recovery truth, not exact embedded artifact identity. Registry identity therefore scopes a path-bearing input target by both `inputTarget` and `sourceArtifactPath`, preventing multiple embedded artifacts from one issue/comment from collapsing into one participant. Existing lineage resolution binds loaded children to the exact parent via Trace; when an issue parent is absent, Origin recovery reopens the issue/comment surface and uses the Trace path to select the artifact.
+
+The canonical Task materializer validates Parent Schema, Trace, and Origin independently against the full exact Root+Task contract. No Git commit/blob authority is fabricated for issue/local material.
+
+The canonical dialog now uses the existing `tx-textarea-field` presentation hook through the shared `TextareaField` primitive; no second light/dark palette was introduced.
+
+## Final Task companion + canonical self-integrity closure
+
+The v426 Q-acceptance source gate exposed two adjacent runtime-truth seams and both are now closed without changing the canonical Task schema or Transition/product topology.
+
+The exact `tiinex.task.v1` browser companion now reads and validates the current canonical Task body:
+
+```text
+Objective
+Done Criteria
+Scope
+Dependencies
+```
+
+Legacy browser-draft headings (`Task Draft`, `Next Step`, `Source Boundary`, `Source Excerpt`) remain readable as Markdown but no longer grant exact current Task-shape authority merely because `Current Schema` says `tiinex.task.v1`.
+
+Canonical local Topic→Task materialization now uses the maintained `sha256-base64url-c14n-v2` method with `Towards: self`. Site's browser-safe integrity engine implements the maintained v2 canonicalization semantics and ordinary runtime validation distinguishes a declared method from a verified or mismatching self digest.
+
+The same engine reproduces the source-qualified canonical Task/Topic schema self seals. Its canonical-method pressure also exposed that the four earlier v426 semantic-package/companion seals had been computed by an incomplete test helper that removed the `Value:` separator space during neutralization. Those four seal values were recomputed only; package topology, registry/locality semantics, and Tooling remain unchanged.
+
+Historical M4 `local-transition` Task drafts keep a separate explicit compatibility edit boundary: the old four browser-draft sections may remain readable/editable when intact, but that path is reported as `legacy-compatibility`, not exact current Task authority. New `local-transition-canonical` Tasks use exact current Task validation; after a legitimate body edit the command owner recomputes the c14n-v2 self value and verifies it before commit. Caller-supplied continuity/integrity footer changes remain prohibited by the lossless edit-shell guard.
+
+## Final external-web / explicit-URL source-neutrality closure
+
+Canonical Topic→Task now treats an exact external Markdown URL as artifact-source truth independently of browser-local durability ownership.
+
+Explicit URL intake preserves:
+
+```text
+sourceMode = explicit-url
+sourceTarget.targetKind = web.markdown
+sourceTarget.inputTarget = exact user/source URL
+sourceTarget.rawUrl = actual materialized fetch target
+```
+
+The lifecycle may continue to classify the locally held copy as local/session material for persistence, but that classification no longer replaces artifact provenance. URL material is stored with a non-URL local display/path label, so an external URL cannot become a fabricated `https:/...` local hierarchy.
+
+Canonical Parent recovery recognizes the exact external web representation before local/session fallback:
+
+```text
+representationKind = web-markdown
+Trace  = Markdown Link to exact external artifact URL
+Origin = Markdown Link to the same exact external artifact representation
+repository / Git ref = absent
+```
+
+Since an external-only parent has no legitimate local parent-directory authority, canonical Task placement uses the already-established allocator fallback namespace under `.topics/` with normal collision handling rather than deriving directories from URL path segments.
+
+The same semantics are pressure-tested through:
+
+```text
+ordinary runExplicitUrlMaterialImportCommand(...)
+public web.markdown restore
+already source-qualified web.markdown record
+```
+
+Loaded lineage resolves the exact URL Parent through the existing generic provenance-target index (`sourceTarget.inputTarget`). Invalid/non-HTTP(S) external representations fail closed and cannot fall back to legacy continuation or invented local/Git provenance.
+
+Automatic missing-parent recovery remains GitHub-specific in v426. Exact web Trace/Origin is preserved for future or explicit recovery, but web missing-parent auto-recovery is intentionally reported as a next-milestone precondition rather than falsely claimed here.
+
+## External-web multi-target material identity closure
+
+Browser-local durability no longer uses a presentation basename as material identity when an artifact carries an exact external `sourceTarget.inputTarget`. The workspace lifecycle reuses the loaded-artifact registry identity authority: exact target identity wins for external material, while ordinary local records without target authority retain established path identity.
+
+Consequences:
+
+```text
+distinct normalized URLs + same basename
+→ distinct deterministic record identities
+→ both survive Tree, persistence and reopen
+
+same normalized URL twice
+→ one semantic artifact
+→ one fetch / one returned record / truthful Added 1 notice
+
+same basename + distinct query target
+→ distinct identities
+```
+
+The URL pathname remains presentation-only and cannot replace another external artifact merely because its basename matches. Same-title Tasks from different external parents continue through the established fallback allocator and retain exact URL Parent/Origin lineage.
+
+`sourceTarget.rawUrl` remains the normalized fetch URL Tiinex requested from transport (including GitHub blob→raw normalization). It is intentionally not rewritten to an HTTP client's post-redirect `response.url`; redirect-chain authority is outside this bounded source contract.

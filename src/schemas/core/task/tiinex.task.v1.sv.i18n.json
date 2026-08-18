@@ -1,9 +1,15 @@
 {
   "label": "Task",
-  "summary": "Browser-local task draft created as a continuation.",
+  "summary": "Canonical Task artifact with bounded work and completion criteria.",
   "task.schema.mismatch": "Task validator was invoked for a non-task current schema.",
   "task.title.missing": "Task artifact should begin with a human-readable title.",
-  "task.body.thin": "Task body is thin; the next action may be unclear.",
-  "task.nextStep.missing": "Task body does not include a Next Step section yet.",
-  "task.body.readable": "Task body is readable at scaffold validation depth."
+  "task.objective.missing": "Task body is missing the required Objective section.",
+  "task.doneCriteria.missing": "Task body is missing the required Done Criteria section.",
+  "task.scope.missing": "Task body is missing the required Scope section.",
+  "task.dependencies.missing": "Task body is missing the required Dependencies section.",
+  "task.legacyShape.observed": "Task body uses legacy browser-draft sections and is not the exact current canonical Task shape.",
+  "task.body.thin": "Task body is thin; the bounded work request may be unclear.",
+  "task.body.canonical": "Task body exposes the current canonical Objective, Done Criteria, Scope, and Dependencies sections.",
+  "task.legacyShape.incomplete": "Legacy browser-draft compatibility is incomplete; required historical sections are missing.",
+  "task.legacyShape.readable": "Historical browser-local Task draft remains readable and editable through the explicit compatibility boundary."
 }

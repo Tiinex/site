@@ -9,3 +9,13 @@ export function TextField({ id, label, value, onChange, error = '', ...props }) 
     </label>
   );
 }
+
+export function TextareaField({ id, label, value, onChange, error = '', ...props }) {
+  return (
+    <label className="tx-textarea-field" htmlFor={id}>
+      <span>{label}</span>
+      <textarea id={id} value={value} onChange={(event) => onChange(event.target.value)} aria-invalid={Boolean(error)} {...props} />
+      {error ? <small role="alert">{error}</small> : null}
+    </label>
+  );
+}

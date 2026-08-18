@@ -284,3 +284,195 @@ exact commit ref without separate materializedCommit
 ```
 
 An actual `runGithubSourceOperation` refresh regression seeds `ref=main` with historical `OLD materializedCommit`, performs a fresh direct refresh, resolves the branch to `NEW`, uses `NEW` for both tree and raw bytes, preserves configured `ref=main`, and persists `NEW` as the new immutable materialization receipt. This prevents prequalified optimization from freezing ordinary mutable-branch refresh semantics.
+
+## Q acceptance discovery-consolidated closure
+
+The new focused acceptance is:
+
+```text
+src/acceptance/postV426QAcceptanceDiscoveryConsolidatedClosure.test.mjs
+```
+
+It pressure-tests the actual Site integration rather than only planner truth:
+
+```text
+local/session Topic with concrete path
+→ canonical five-field action visible
+→ first child 001-1-dark-mode.trace.md
+→ second sibling 001-2-dark-mode.trace.md
+→ deterministic local record id from concrete path
+→ tree projection uses concrete hierarchy
+→ loaded lineage resolves parent
+→ no fabricated Git provenance
+
+GitHub issue-body embedded Topic via issueSnapshot adapter
+→ canonical action visible
+→ concrete continuation path
+→ Trace identifies exact embedded parent path
+→ Origin preserves exact issue URL
+→ exact Root+Task projection valid
+→ loaded lineage resolves parent
+
+GitHub issue-comment embedded Topic via issueSnapshot adapter
+→ same guarantees
+→ Origin preserves exact comment URL
+
+multiple embedded Topics sharing one issue container
+→ same source-container URL retained
+→ distinct sourceArtifactPath-backed registry identities
+→ distinct canonical parent identities
+
+issue child with parent absent
+→ lineage recovery plan uses issue Origin URL
+→ Trace remains the exact artifact selector
+
+pathless local Topic
+→ canonical action unavailable
+→ legacy topic.continue.task remains suppressed while bundled canonical authority is active
+```
+
+Naming regressions preserve the established continuation allocator for `001`, `12-01`, recovered `comment-001`, and occupied source-backed sibling paths. v422/v423 remain path-agnostic; only Site execution allocates the final local path.
+
+UI-shape pressure proves `CanonicalTaskCreateDialog` consumes the shared `TextareaField` / `tx-textarea-field` styling hook and contains no raw textarea element of its own.
+
+The strict canonical Root+Task projection accepts the truthful issue/local Trace and Origin representations used here, so no Schemer/docs exception or validation weakening was required.
+
+## Final Task companion + canonical integrity closure
+
+Architect's final pre-Q audit found two runtime-truth blockers:
+
+```text
+fresh canonical Task
+→ exact Task companion
+→ stale task.nextStep.missing warning
+
+local-transition-canonical-v1
+→ Towards: self
+→ value depended only on Parent + timestamp
+→ body mutation did not invalidate it
+```
+
+The correction keeps the same v426 identity and introduces no schema redesign.
+
+Focused acceptance proves:
+
+```text
+canonical Task
+→ Objective / Done Criteria / Scope / Dependencies recognized
+→ no task.nextStep.missing
+→ exact companion coverage
+
+missing Objective
+→ Task error
+
+missing Done Criteria
+→ Task error
+
+legacy pre-canonical Task body
+→ explicit legacy-shape warning
+→ canonical section errors
+→ not presented as current exact Task shape
+
+canonical Task A vs B
+same Parent + timestamp
+materially different body
+→ different sha256-base64url-c14n-v2 self values
+
+body mutation with old footer
+→ integrity.c14n-v2.mismatch
+→ no integrity.c14n-v2.verified
+→ canonical materializer qualification fails
+```
+
+The browser-safe c14n-v2 engine is anchored against the existing source-qualified canonical Task schema self seal and implements the maintained validator semantics: LF normalization, line trailing-space removal, document trailing-whitespace removal, preserved integrity footer, active self `Value` content neutralization, SHA-256 UTF-8 digest, and unpadded base64url output.
+
+Adjacent integrity sweep:
+
+```text
+production self-v2 artifacts under src/schemas + canonical schema cache
+15 / 15 verified
+0 mismatch
+```
+
+That sweep exposed four earlier v426 package/companion seals produced by the old v425 test helper's incorrect `Value:` neutralization. Only those four integrity values and the regression oracle were corrected; semantic-package topology and compiled-registry behavior remain unchanged.
+
+Full-validate exposed the expected historical M4 compatibility consequence after the Task companion became truthful. The bounded compatibility correction preserves old `local-transition` draft editing through an explicit legacy-shape validator while keeping exact current Task authority closed. Canonical `local-transition-canonical` Edit reseals c14n-v2 internally after the protected shell has been checked; direct caller mutation of the integrity footer remains refused.
+
+## Final external-web / explicit-URL source-neutrality closure
+
+Architect's final source-neutrality sweep found that the same supported `web.markdown` surface had two incompatible runtime truths: explicit URL intake lost its URL and became fake local hierarchy, while a truthfully source-backed web record was unavailable to canonical Topic→Task.
+
+The correction is Site-owned and limited to external-web provenance/placement:
+
+```text
+explicit URL input
+→ exact sourceTarget.inputTarget retained
+→ normalized/materialized fetch target retained separately as sourceTarget.rawUrl
+→ local/session persistence classification may remain
+→ URL itself is not a local path
+
+web Parent
+→ representationKind web-markdown
+→ Trace exact URL
+→ Origin exact URL
+→ no repository/ref
+→ no browse + git label
+
+placement
+→ no URL-derived local parent directory
+→ existing .topics fallback allocation
+```
+
+Required actual-path pressure now proves:
+
+```text
+runExplicitUrlMaterialImportCommand
+→ canonical five-field action
+→ exact URL Parent
+→ fallback local Task path
+→ exact Task validation
+→ c14n-v2 verified
+→ loaded lineage Parent edge
+→ source Topic unchanged
+
+publicTargetFromExternalUrl(..., web.markdown)
+→ runPublicTargetRestoreCommand
+→ same canonical action/provenance/placement semantics
+
+source-backed web.markdown
+→ same canonical Parent representation
+
+invalid external target
+→ canonical unavailable
+→ no legacy masking
+```
+
+A GitHub blob URL passed through generic explicit-URL intake keeps the blob URL as `inputTarget` while the raw URL used to fetch bytes is retained separately as `rawUrl`; source identity is not silently replaced by fetch normalization.
+
+Missing-parent web recovery was pressure-tested separately. The current bounded recovery owner remains GitHub-specific, so no automatic web recovery claim is made. Exact external Origin remains preserved and the missing-parent web auto-recovery capability is returned as a next-milestone precondition.
+
+## External-web multi-target identity / collision closure
+
+Focused v426 pressure uses the real `runExplicitUrlMaterialImportCommand(...)` path and proves:
+
+```text
+A = https://a.example.test/folder/001.trace.md
+B = https://b.example.test/other/001.trace.md
+
+adapter records          2
+workspace records        2
+distinct ids             PASS
+exact inputTargets       PASS
+same presentation path   allowed / non-authoritative
+Tree records             2
+```
+
+The lifecycle reuses `artifactRegistryIdentityForRecord(...)` input-target authority for target-qualified local/session material. Path replacement is only available when both incoming and existing records are genuinely path-identified.
+
+Two same-title canonical Tasks created from A and B both survive with collision-safe fallback paths, exact Parent Trace/Origin per URL, verified c14n-v2 integrity and loaded lineage edges to the correct parent.
+
+Exact duplicate normalized URLs are deduped before fetch and report truthful counts. Query-distinct normalized targets do not collapse. Existing persistence `writeState/readInitialState` round-trip preserves both deterministic target-qualified IDs and both exact inputTargets.
+
+Generic external HTTP(S) Parent URLs are no longer degraded into pathname/suffix matching by the lineage declared-parent binding owner; they fall through to the existing exact provenance-target index. GitHub repo-file and issue/comment exact owners remain unchanged.
+
+Redirect boundary: `rawUrl` means Tiinex's normalized requested fetch target, not a post-redirect `response.url` supplied by the HTTP implementation.

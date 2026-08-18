@@ -2,6 +2,8 @@ import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { canDiscardLocalDraft, canEditLocalDraft, artifactSchemaId } from '../artifacts/artifact.localDraft.js';
 import { resolveSchemaModule } from '../schemas/resolver.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
+import { validateLegacyTaskDraftCompatibility } from '../schemas/core/task/tiinex.task.v1.validate.js';
+import { canonicalC14nV2SelfState, sealC14nV2Self } from '../integrity/integrity.c14nV2.js';
 
 export const LOCAL_DRAFT_MUTATION_COMMAND_SCHEMA_ID = 'tiinex.local-draft.mutation-command.v1';
 
@@ -24,17 +26,30 @@ export function runLocalDraftUpdateCommand({ lifecycle, state = {}, workspaceId 
   if (invariantError) return refusal(invariantError.code, state, invariantError.notice);
   if (!String(after.envelope?.current?.summary || '').trim()) return refusal('record.edit.summary.required', state, 'Task Summary cannot be empty during local draft edit.');
   const schemaId = artifactSchemaId(original);
+  const legacyTask = schemaId === 'tiinex.task.v1' && String(original.sourceMode || '') === 'local-transition';
+  const canonicalTask = schemaId === 'tiinex.task.v1' && String(original.sourceMode || '') === 'local-transition-canonical';
   const resolution = resolveSchemaModule({ schemaId });
-  if (resolution.fallbackUsed || typeof resolution.module?.validate !== 'function') return refusal('record.edit.validator.unavailable', state, `No exact validator is available for ${schemaId || 'this draft'}.`);
-  const findings = resolution.module.validate(after) || [];
+  if (!legacyTask && (resolution.fallbackUsed || typeof resolution.module?.validate !== 'function')) return refusal('record.edit.validator.unavailable', state, `No exact validator is available for ${schemaId || 'this draft'}.`);
+  const findings = legacyTask ? validateLegacyTaskDraftCompatibility(after) : (resolution.module.validate(after) || []);
   const errors = findings.filter((finding) => finding?.severity === 'error');
-  if (errors.length) return { ok: false, error: 'record.edit.validation.failed', state, notice: 'Edited draft does not satisfy its schema.', findings };
+  if (errors.length) return { ok: false, error: 'record.edit.validation.failed', state, notice: legacyTask ? 'Edited legacy Task draft no longer satisfies its compatibility shape.' : 'Edited draft does not satisfy its schema.', findings, validationQualification: legacyTask ? 'legacy-compatibility' : 'exact-current-schema' };
 
-  const sanitized = buildEditedLocalDraftRecord(original, after, markdown, schemaId);
+  let committedMarkdown = markdown;
+  let integrity = null;
+  if (canonicalTask) {
+    const sealed = sealC14nV2Self(markdown);
+    if (sealed.state !== 'sealed') return refusal('record.edit.integrity.seal-unavailable', state, 'Edited canonical Task could not refresh its self-integrity proof.');
+    committedMarkdown = sealed.markdown;
+    integrity = canonicalC14nV2SelfState(committedMarkdown);
+    if (integrity.state !== 'verified') return refusal('record.edit.integrity.not-verified', state, 'Edited canonical Task self-integrity could not be verified.');
+    after = parseArtifactMarkdown(committedMarkdown);
+  }
+
+  const sanitized = buildEditedLocalDraftRecord(original, after, committedMarkdown, schemaId);
   const result = lifecycle.addWorkspaceRecord(state, context.workspace.id, sanitized);
   if (!result?.ok) return refusal(result?.error || 'record.edit.commit.failed', state, 'Could not update local draft.');
   if (String(result.record?.id || '') !== String(original.id || '') || String(result.record?.path || '') !== String(original.path || '')) return refusal('record.edit.identity.commit-drift', state, 'Local draft identity changed during update.');
-  return { ok: true, schema: LOCAL_DRAFT_MUTATION_COMMAND_SCHEMA_ID, state: result.state, workspace: result.workspace, record: result.record, findings, notice: `Updated local draft ${result.record?.title || original.title || 'artifact'}.` };
+  return { ok: true, schema: LOCAL_DRAFT_MUTATION_COMMAND_SCHEMA_ID, state: result.state, workspace: result.workspace, record: result.record, findings, validationQualification: legacyTask ? 'legacy-compatibility' : 'exact-current-schema', integrity, notice: `Updated local draft ${result.record?.title || original.title || 'artifact'}.` };
 }
 
 export function runLocalDraftDiscardCommand({ lifecycle, state = {}, workspaceId = '', recordId = '', persistenceOwnership = null } = {}) {

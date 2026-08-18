@@ -140,13 +140,13 @@ assert.equal(success.result.record?.kind, 'tiinex.task.v1');
 assert.equal(success.result.record?.schemaId, 'tiinex.task.v1');
 assert.equal(success.result.record?.sourceMode, 'local-transition-canonical');
 assert.equal(success.result.record?.status, 'local');
-assert.equal(success.result.record?.path, '');
+assert.equal(success.result.record?.path, '.topics/canonical-task--task.trace.md');
 assert.equal(success.result.record?.source?.adapterId, 'local');
 assert.equal(success.result.record?.source?.repository, undefined);
 assert.equal(success.result.record?.source?.ref, undefined);
 assert.equal(success.result.remoteWrite, false);
 assert.equal(success.result.sourceMutation, false);
-assert.equal(success.result.concretePath, null);
+assert.equal(success.result.concretePath, '.topics/canonical-task--task.trace.md');
 assert.equal(success.result.relationMaterialization, false);
 assert.equal((success.result.workspace?.records || []).filter((record) => record.schemaId === 'tiinex.task.v1' || record.kind === 'tiinex.task.v1').length, 1);
 assert.equal(JSON.stringify(success.result.workspace.records.find((record) => record.id === sourceTopic.id)), beforeSource);
@@ -182,16 +182,23 @@ const ambiguous = execute({ state: appState([sourceTopic, conflictObservation]),
 assert.equal(ambiguous.result.ok, false);
 assert.equal(ambiguous.adds, 0);
 
-// G. Parent recovery is mandatory; a local Topic does not silently lose Parent to become executable.
+// G. A local/session Topic with a concrete path is canonically representable without fabricated remote provenance.
 const localTopic = localRecord();
 const localPrepared = prep(localTopic, [localTopic]);
 const localAction = capableAction(localPrepared);
-assert.equal(localAction?.parentRecovery?.state, 'unavailable');
-assert.equal(localAction?.productCapable, false);
-const noParent = execute({ state: appState([localTopic]), currentRecordId: localTopic.id, definitionKey: localAction?.definitionKey || action.definitionKey });
-assert.equal(noParent.result.ok, false);
-assert.equal(noParent.adds, 0);
-assert.match(noParent.result.notice, /cannot be referenced safely/i);
+assert.equal(localAction?.parentRecovery?.state, 'qualified');
+assert.equal(localAction?.parentRecovery?.representationKind, 'local-path');
+assert.equal(localAction?.parentRecovery?.repository, '');
+assert.equal(localAction?.productCapable, true);
+const localCreated = execute({ state: appState([localTopic]), currentRecordId: localTopic.id, definitionKey: localAction?.definitionKey || action.definitionKey });
+assert.equal(localCreated.result.ok, true);
+assert.equal(localCreated.adds, 1);
+assert.equal(localCreated.result.record.path, '.topics/canonical-task--task.trace.md');
+assert.equal(localCreated.result.record.origin, localTopic.path);
+const pathlessLocal = Object.assign({}, localTopic, { id: 'topic-pathless', path: '', sourceTarget: {} });
+const pathlessLocalAction = capableAction(prep(pathlessLocal, [pathlessLocal]));
+assert.equal(pathlessLocalAction?.parentRecovery?.state, 'unavailable');
+assert.equal(pathlessLocalAction?.productCapable, false);
 
 // J. Cache identity is a hard product gate: stale or missing bytes never become canonical authority.
 const staleCache = schemaCache.map((item) => item.schemaId === 'tiinex.task.v1' ? { ...item, markdown: `${item.markdown}\n` } : item);
@@ -238,7 +245,8 @@ const preparationSource = fs.readFileSync(new URL('../transitions/transition.pro
 const presentationSource = fs.readFileSync(new URL('../transitions/transition.productPresentation.js', import.meta.url), 'utf8');
 const materializerSource = fs.readFileSync(new URL('../transitions/transition.taskMaterializer.js', import.meta.url), 'utf8');
 const dialogSource = fs.readFileSync(new URL('../schemas/workspace/workspace.canonicalTaskDialog.views.jsx', import.meta.url), 'utf8');
-for (const forbidden of ['allocateContinuationPath', 'ensureUniqueTransitionPath', 'createContinuationDraft']) assert.equal(commandSource.includes(forbidden), false, `canonical command must not call ${forbidden}`);
+for (const forbidden of ['ensureUniqueTransitionPath', 'createContinuationDraft']) assert.equal(commandSource.includes(forbidden), false, `canonical command must not call ${forbidden}`);
+assert.ok(commandSource.includes('allocateContinuationPath'), 'canonical command must reuse the established continuation path allocator');
 assert.ok(commandSource.includes('buildCanonicalTransitionInvocationBindingPlan'));
 assert.ok(commandSource.includes('buildCanonicalTransitionOutputMaterializationPlan'));
 assert.ok(commandSource.includes('prepareCanonicalTransitionProductActions'));
@@ -253,7 +261,7 @@ assert.equal(canonicalDefinitionMarkdown.includes('tiinex.site.transition.legacy
 // Adjacent-state/product sweep: each fail-closed axis yields zero mutations; successful mutation always used fresh v423 truth.
 const sweep = [
   ['source-backed/exact/complete/workspace/parent/cache/canonical', () => execute({ state: successState, currentRecordId: sourceTopic.id, definitionKey: action.definitionKey }), true],
-  ['local-topic', () => execute({ state: appState([localTopic]), currentRecordId: localTopic.id, definitionKey: localAction?.definitionKey || action.definitionKey }), false],
+  ['local-topic', () => execute({ state: appState([localTopic]), currentRecordId: localTopic.id, definitionKey: localAction?.definitionKey || action.definitionKey }), true],
   ['wrong-schema', () => execute({ state: appState([wrongCurrent]), currentRecordId: wrongCurrent.id, definitionKey: action.definitionKey }), false],
   ['missing-generation-input', () => execute({ state: successState, currentRecordId: sourceTopic.id, definitionKey: action.definitionKey, values: incompleteValues }), false],
   ['missing-destination', () => execute({ state: successState, currentRecordId: sourceTopic.id, definitionKey: action.definitionKey, workspaceId: '' }), false],
@@ -269,7 +277,8 @@ for (const [name, run, shouldSucceed] of sweep) {
   assert.equal(outcome.adds, shouldSucceed ? 1 : 0, `${name} mutation count`);
   if (shouldSucceed) {
     assert.equal(outcome.result.v423?.qualification, 'qualified');
-    assert.equal(outcome.result.record?.path, '');
+    assert.ok(outcome.result.record?.path, `${name} concrete local path`);
+    assert.equal(outcome.result.concretePath, outcome.result.record?.path, `${name} receipt path`);
   }
 }
 
@@ -365,16 +374,22 @@ assert.equal(relationAction?.productCapable, false);
 assert.ok(relationAction?.capability?.reasons?.includes('relation-effects-not-supported'));
 assertNoMutation(execute({ state: appState([sourceTopic]), currentRecordId: sourceTopic.id, definitionKey: relationAction.definitionKey, definitions: bundled(relationDefinition) }), 'relation effect unsupported');
 
-// B. GitHub Parent authority must come from an explicit GitHub-backed source, not repo-shaped fields.
+// B. Repo-shaped fields on local/session material must never manufacture GitHub provenance.
 const repoShapedLocal = Object.assign({}, localRecord({ id: 'repo-shaped-local' }), {
   source: { id: 'local', adapterId: 'local', kind: 'local-session', repository: 'Tiinex/docs', repo: 'Tiinex/docs', ref: fixedRef },
   sourceTarget: { sourceArtifactPath: '.topics/fake.trace.md', inputTarget: '.topics/fake.trace.md' }
 });
 const repoShapedLocalPrepared = prep(repoShapedLocal, [repoShapedLocal]);
 const repoShapedLocalAction = capableAction(repoShapedLocalPrepared);
-assert.equal(repoShapedLocalAction?.parentRecovery?.state, 'unavailable');
-assert.equal(repoShapedLocalAction?.productCapable, false);
-assertNoMutation(execute({ state: appState([repoShapedLocal]), currentRecordId: repoShapedLocal.id, definitionKey: repoShapedLocalAction?.definitionKey || action.definitionKey }), 'repo-shaped local source');
+assert.equal(repoShapedLocalAction?.parentRecovery?.state, 'qualified');
+assert.equal(repoShapedLocalAction?.parentRecovery?.representationKind, 'local-path');
+assert.equal(repoShapedLocalAction?.parentRecovery?.repository, '');
+assert.equal(repoShapedLocalAction?.productCapable, true);
+const repoShapedLocalCreated = execute({ state: appState([repoShapedLocal]), currentRecordId: repoShapedLocal.id, definitionKey: repoShapedLocalAction?.definitionKey || action.definitionKey });
+assert.equal(repoShapedLocalCreated.result.ok, true);
+assert.equal(repoShapedLocalCreated.adds, 1);
+assert.equal(repoShapedLocalCreated.result.record.source?.adapterId, 'local');
+assert.equal(repoShapedLocalCreated.result.record.markdown.includes('github.com/Tiinex/docs/blob/'), false);
 
 const staticShaped = Object.assign({}, sourceBackedRecord({ id: 'static-shaped', path: '.topics/static.trace.md' }), {
   sourceMode: 'static-bootstrap',
@@ -460,7 +475,7 @@ const closureSweep = [
   ['topic-github-ordinary', sourceTopic, bundledDefinitions, action.definitionKey, true],
   ['signal-github', signalRecord, bundled(signalDefinitionMarkdown), signalAction.definitionKey, false],
   ['task-github', wrongCurrent, bundledDefinitions, action.definitionKey, false],
-  ['topic-local-shaped', repoShapedLocal, bundledDefinitions, repoShapedLocalAction?.definitionKey || action.definitionKey, false],
+  ['topic-local-shaped', repoShapedLocal, bundledDefinitions, repoShapedLocalAction?.definitionKey || action.definitionKey, true],
   ['topic-static-shaped', staticShaped, bundledDefinitions, capableAction(staticPrepared)?.definitionKey || action.definitionKey, false],
   ['topic-github-local-mode', githubLocalMode, bundledDefinitions, capableAction(githubLocalPrepared)?.definitionKey || action.definitionKey, false],
   ['duplicate-definition', sourceTopic, bundledDefinitions, duplicateActions[0].definitionKey, true, [duplicateDefinition]],
