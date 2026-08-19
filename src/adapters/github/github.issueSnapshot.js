@@ -1,5 +1,7 @@
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { createGithubEmbeddedArtifactRecord, extractEmbeddedTiinexMarkdownBlocks, githubIssueSyntheticFolder, sourceArtifactPathFromPublicationBody } from './github.issueEmbedded.js';
+import { parseExactGithubIssueTarget } from '../../sources/github/github.issueTarget.js';
+import { fetchGithubJson } from './github.readTransport.js';
 
 export const GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID = 'tiinex.github.issueSnapshot.v1';
 export const DEFAULT_ISSUE_SNAPSHOT_MAX_COMMENTS = 24;
@@ -30,7 +32,8 @@ export function parseGithubIssueSnapshotTarget(value = '') {
   if (!match) return { ok: false, input: raw, error: 'unsupported-github-issue-target' };
   const [, owner, repo, kind, number] = match;
   const normalizedKind = kind === 'pull' ? 'pull' : kind === 'discussions' ? 'discussion' : 'issue';
-  const commentId = githubIssueCommentIdFromTarget(raw);
+  const sharedIssue = normalizedKind === 'issue' ? parseExactGithubIssueTarget(raw) : null;
+  const commentId = normalizedKind === 'issue' && sharedIssue?.ok ? sharedIssue.commentId : githubIssueCommentIdFromTarget(raw);
   return {
     ok: true,
     schema: GITHUB_ISSUE_SNAPSHOT_SCHEMA_ID,
@@ -41,8 +44,8 @@ export function parseGithubIssueSnapshotTarget(value = '') {
     kind: normalizedKind,
     number: Number(number),
     commentId,
-    canonicalUrl: `https://github.com/${owner}/${repo}/${kind}/${number}${commentId ? `#issuecomment-${commentId}` : ''}`,
-    issueCanonicalUrl: `https://github.com/${owner}/${repo}/${kind}/${number}`,
+    canonicalUrl: normalizedKind === 'issue' && sharedIssue?.ok ? sharedIssue.inputTarget : `https://github.com/${owner}/${repo}/${kind}/${number}${commentId ? `#issuecomment-${commentId}` : ''}`,
+    issueCanonicalUrl: normalizedKind === 'issue' && sharedIssue?.ok ? sharedIssue.issueTarget : `https://github.com/${owner}/${repo}/${kind}/${number}`,
     apiUrl: apiUrlFor({ owner, repo, kind: normalizedKind, number })
   };
 }
@@ -85,7 +88,7 @@ export async function discoverGithubIssueSnapshotTargets(source = {}, options = 
   }
   const url = `https://api.github.com/repos/${owner}/${repo}/issues?state=all&sort=updated&direction=desc&per_page=${encodeURIComponent(String(maxIssues))}`;
   try {
-    const rows = await fetchJson(url, fetchImpl);
+    const rows = await fetchGithubJson(url, fetchImpl);
     const seen = new Set();
     const targets = [];
     for (const row of Array.isArray(rows) ? rows : []) {
@@ -145,7 +148,7 @@ export async function materializeGithubIssueSnapshots(issueUrlsOrTargets = '', o
       continue;
     }
     try {
-      const issue = target.issue || await fetchJson(normalized.apiUrl, fetchImpl);
+      const issue = target.issue || await fetchGithubJson(normalized.apiUrl, fetchImpl);
       const commentResult = normalized.commentId
         ? await fetchSingleCommentForIssue(normalized, fetchImpl)
         : maxComments && Number(issue.comments || 0) > 0
@@ -403,7 +406,7 @@ async function fetchSingleCommentForIssue(target = {}, fetchImpl) {
   const commentId = String(target.commentId || '').trim();
   const commentUrl = `https://api.github.com/repos/${target.owner}/${target.repo}/issues/comments/${encodeURIComponent(commentId)}`;
   try {
-    const comment = await fetchJson(commentUrl, fetchImpl);
+    const comment = await fetchGithubJson(commentUrl, fetchImpl);
     return { comments: comment && typeof comment === 'object' ? [comment] : [], warnings: [] };
   } catch (error) {
     return {
@@ -416,7 +419,7 @@ async function fetchSingleCommentForIssue(target = {}, fetchImpl) {
 async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {
   const commentsUrl = `https://api.github.com/repos/${target.owner}/${target.repo}/issues/${target.number}/comments?per_page=${encodeURIComponent(String(maxComments))}`;
   try {
-    const comments = await fetchJson(commentsUrl, fetchImpl);
+    const comments = await fetchGithubJson(commentsUrl, fetchImpl);
     return { comments: Array.isArray(comments) ? comments.slice(0, maxComments) : [], warnings: [] };
   } catch (error) {
     return {
@@ -426,26 +429,6 @@ async function fetchCommentsForIssue(target = {}, fetchImpl, maxComments = 20) {
   }
 }
 
-async function fetchJson(url, fetchImpl) {
-  const res = await fetchImpl(url, { headers: { Accept: 'application/vnd.github+json' } });
-  if (!res || !res.ok) {
-    const status = res?.status || 0;
-    const statusText = res?.statusText || '';
-    let bodyMessage = '';
-    try {
-      const body = await res.json();
-      bodyMessage = body?.message ? String(body.message) : '';
-    } catch (_) {}
-    const err = new Error([status ? `GitHub API ${status}` : 'GitHub API', statusText, bodyMessage].filter(Boolean).join(' ').trim() || 'GitHub API request failed');
-    err.status = status;
-    err.statusText = statusText;
-    err.url = url;
-    throw err;
-  }
-  const body = await res.json();
-  if (body && typeof body === 'object' && !Array.isArray(body)) body.transportTier = res.transportTier || '';
-  return body;
-}
 
 export function githubIssueFetchWarning(error, code = 'github.issue.fetch-failed', message = '', extra = {}) {
   return finding('warning', code, message || 'GitHub issue reader could not fetch the requested issue material.', Object.assign({ surface: 'issueSnapshots', status: error?.status || 0, url: error?.url || '' }, extra));

@@ -1,5 +1,7 @@
 import { hydrateUiWorkspace } from './recordUi.js';
 import { workspaceColumnCapacity, workspaceWindowFor } from './workspaceWindow.js';
+import { qualifiedSchemaFilterValue } from '../workspaces/workspace.displayFilters.js';
+import { normalizeTimePortalView } from '../workspaces/workspace.timePortal.js';
 
 const DEFAULT_WORKSPACE_VIEW = Object.freeze({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', layoutMode: 'expanded' });
 
@@ -53,10 +55,17 @@ export function stateWithActiveWorkspace(state = {}, workspaceId = '') {
 }
 
 export function stateWithWorkspacePresentationPruned(state = {}) {
-  const allowed = new Set((Array.isArray(state.workspaces) ? state.workspaces : []).map((workspace) => String(workspace.id || '')));
-  const views = Object.fromEntries(Object.entries(state.workspaceViews || {}).filter(([id]) => allowed.has(String(id))));
-  const activeId = allowed.has(String(state.activeWorkspaceId || '')) ? state.activeWorkspaceId : (state.workspaces?.[0]?.id || '');
-  const view = activeId ? normalizeWorkspaceView(views[activeId] || (activeId === state.activeWorkspaceId ? state.view : DEFAULT_WORKSPACE_VIEW)) : normalizeWorkspaceView(state.view || DEFAULT_WORKSPACE_VIEW);
+  const workspaces = Array.isArray(state.workspaces) ? state.workspaces : [];
+  const workspaceById = new Map(workspaces.map((workspace) => [String(workspace.id || ''), workspace]));
+  const allowed = new Set(workspaceById.keys());
+  const views = Object.fromEntries(Object.entries(state.workspaceViews || {})
+    .filter(([id]) => allowed.has(String(id)))
+    .map(([id, view]) => [id, normalizeWorkspaceViewForWorkspace(view, workspaceById.get(String(id)))]));
+  const activeId = allowed.has(String(state.activeWorkspaceId || '')) ? state.activeWorkspaceId : (workspaces[0]?.id || '');
+  const activeWorkspace = workspaceById.get(String(activeId || '')) || null;
+  const view = activeId
+    ? normalizeWorkspaceViewForWorkspace(views[activeId] || (activeId === state.activeWorkspaceId ? state.view : DEFAULT_WORKSPACE_VIEW), activeWorkspace)
+    : normalizeWorkspaceView(state.view || DEFAULT_WORKSPACE_VIEW);
   if (activeId) views[activeId] = view;
   return Object.assign({}, state, { activeWorkspaceId: activeId, view, workspaceViews: views });
 }
@@ -84,9 +93,20 @@ function stateWithWorkspaceView(state = {}, workspaceId = '', view = {}) {
   });
 }
 
+function normalizeWorkspaceViewForWorkspace(view = {}, workspace = null) {
+  const next = normalizeWorkspaceView(view);
+  if (!next.displayOptions || typeof next.displayOptions !== 'object' || Array.isArray(next.displayOptions)) return next;
+  const schemaFilter = qualifiedSchemaFilterValue(next.displayOptions.schemaFilter, workspace?.records || []);
+  if (schemaFilter === next.displayOptions.schemaFilter) return next;
+  return Object.assign({}, next, { displayOptions: Object.assign({}, next.displayOptions, { schemaFilter }) });
+}
+
 function normalizeWorkspaceView(view = {}) {
   const next = Object.assign({}, DEFAULT_WORKSPACE_VIEW, view || {});
   if (!['feed', 'tree', 'lineage', 'audit'].includes(String(next.workspaceVerse || ''))) next.workspaceVerse = 'feed';
   next.layoutMode = next.layoutMode === 'compact' ? 'compact' : 'expanded';
+  const timePortal = normalizeTimePortalView(next.timePortal);
+  if (timePortal) next.timePortal = timePortal;
+  else delete next.timePortal;
   return next;
 }

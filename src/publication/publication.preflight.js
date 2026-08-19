@@ -1,5 +1,6 @@
 import { runAudit } from '../audit/audit.run.js';
 import { buildSourceBoundaryReport, isSourceBacked } from '../diagnostics/sourceBoundary.report.js';
+import { projectPackageSourceReference } from '../export/package.sourceReference.js';
 
 export const PUBLICATION_PREFLIGHT_SCHEMA_ID = 'tiinex.publication.preflight.v1';
 
@@ -115,24 +116,24 @@ function assessAssetForPublication(asset = {}, findings = []) {
 }
 
 function sourceReferenceForRecord(record = {}, findings = []) {
-  const source = record.source || {};
-  const ref = String(source.ref || source.config?.ref || source.resolvedRef || source.commit || '').trim();
-  const repo = String(source.repo || source.config?.repo || '').trim();
-  const path = String(record.path || '').trim();
-  const id = record.id || path || record.title || 'record';
-  if (source.adapterId === 'github') {
-    if (!repo) findings.push(finding('error', 'publication.source-reference.repo-missing', 'GitHub source reference is missing repo.', { recordId: id, path }));
-    if (!ref) findings.push(finding('warning', 'publication.source-reference.ref-unpinned', 'GitHub source reference has no pinned ref; re-ingest can degrade or drift.', { recordId: id, path, repo }));
-    if (!path) findings.push(finding('error', 'publication.source-reference.path-missing', 'GitHub source reference is missing path.', { recordId: id, repo }));
+  const target = projectPackageSourceReference(record);
+  const id = record.id || record.path || record.title || 'record';
+  if (target.adapterId === 'github') {
+    if (!target.repo) findings.push(finding('error', 'publication.source-reference.repo-missing', 'GitHub source reference is missing repo.', { recordId: id, path: target.path || '' }));
+    if (!target.materializedCommit) findings.push(finding('warning', 'publication.source-reference.ref-unpinned', 'GitHub source reference has no immutable materialized commit; re-ingest must preserve it as degraded even when a branch/tag ref exists.', { recordId: id, path: target.path || '', repo: target.repo || '', ref: target.configuredRef || '' }));
+    if (!target.path && !target.inputTarget) findings.push(finding('error', 'publication.source-reference.path-missing', 'GitHub source reference is missing exact repo-file or issue/comment target identity.', { recordId: id, repo: target.repo || '' }));
+  } else if (!target.inputTarget) {
+    findings.push(finding('warning', 'publication.source-reference.target-degraded', 'External source reference has no exact input target and remains degraded.', { recordId: id, path: target.path || '' }));
   }
   return Object.freeze({
     id,
     title: record.title || 'Source-backed artifact',
-    path,
-    adapterId: source.adapterId || '',
-    repo,
-    ref,
-    status: repo && path && ref ? 'pinned-reference' : 'degraded-reference',
+    path: target.path || String(record.path || ''),
+    adapterId: target.adapterId,
+    repo: target.repo,
+    ref: target.ref,
+    status: target.status,
+    target,
     writePolicy: 'reference-only; do not publish over source-backed input without explicit derived local draft'
   });
 }

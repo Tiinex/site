@@ -1,6 +1,98 @@
-# Tiinex Site v426 — Semantic-Package Locality + Compiled Transition Registry Integration
+# Tiinex Site v449 — M0-F Exact Mutation Target Attestation Closure
 
-v426 migrates the already source-gated canonical Topic → Task product definition from an application-local Transition directory into an explicit schema-local semantic-package neighborhood. Product semantics remain frozen from v424/v425; discovery/locality authority now comes from the frozen portable semantic-package compiler.
+v449 binds Site-owned human GitHub mutation evidence to both the exact current `planSha256` and the exact qualified issue/comment target. Matching remote body bytes remain necessary but cannot qualify a different target, and changing the final target invalidates the current attestation before remote read.
+
+Copy and Open remain navigation/clipboard progress only. A matching pre-existing GitHub target without the plan-bound human mutation attestation fails closed before remote verification and cannot create `sourceBinding` or a `remoteWritePerformed=true` receipt. Plan identity changes invalidate the attestation. Qualified success persists the bounded Site-local human mutation confirmation beside the shared receipt/source binding while leaving the local input artifact unchanged and without claiming that Tiinex performed a hidden/API write.
+
+The v446 shared publication plan/result/target contract remains the success authority and Tooling portable is unchanged. Tree, Handoff, package/re-ingest, exact social-target qualification, and M0-A–E behavior remain regression-gated. Browser/public runtime is not claimed.
+
+# v447 predecessor
+
+# Tiinex Site v447 — M0-F GitHub Social Publication Product Integration
+
+v447 consumes the Architect/Tooling-approved v446 exact GitHub social target contract in the existing workspace Export product. One owned-local artifact can now enter a guided no-auth GitHub issue/comment routine: qualify the exact shared publication plan, copy the exact local-Markdown payload, open the appropriate GitHub web surface, supply or reuse the exact final target, read the remote issue/comment body, and accept success only through the shared publication result contract.
+
+Create-new issue, create-comment, update-known issue, and update-known comment are supported only when the shared contract qualifies their repository/target requirements. Source-backed records remain ineligible. Clipboard/open success never means publication success, and Site performs no GitHub mutation API call. Exact read-after-write body verification is required before `sourceBinding` exists. Qualified receipts are persisted as browser-local workspace publication facts without mutating, deleting, or re-identifying the local draft.
+
+The GitHub issue snapshot surface remains a separate historical/read-source concern; v447 publication target qualification never uses its permissive parser. The exact publication read path receives an already-qualified v446 target and shares the same read-only GitHub JSON transport owner used by issue snapshots. Handoff/Tree/package semantics remain unchanged. Browser/public runtime is not claimed.
+
+# v446 predecessor
+
+# Tiinex Site v446 — M0-F Exact GitHub Social Target Representation Closure
+
+v446 closes the shared exact GitHub social-target representation seam left open by v445. GitHub issue/comment target observations now enter exact qualification without caller-side trimming or structural rewriting, so surrounding whitespace and other unsupported raw differences remain unsupported evidence instead of being silently upgraded before the parser sees them.
+
+Issue-number identity is also bounded to exact JavaScript safe-integer representation. The parser preserves the accepted decimal lexeme as authoritative `issueNumber` identity while retaining the historical numeric `number` convenience field; canonical targets are built from the exact accepted lexeme. Values beyond `Number.MAX_SAFE_INTEGER` fail closed instead of rounding or exponent-formatting into a different issue identity.
+
+The normalization allowlist remains unchanged from v445: exact web issue, one trailing slash, exact issue-comment, one trailing slash before the exact comment fragment, exact API issue-body, and its one trailing-slash variant. Shared publication plan/result qualification consumes the same raw owner and preserves unsupported observations exactly in failure evidence. No React/UI, host write, credentials, package/re-ingest, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. Browser/public runtime is not claimed.
+
+## v445 predecessor
+
+v445 hardens the shared GitHub issue/comment target owner at the raw lexical boundary. Exact publication authority is now qualified by explicit positive web/API grammars before any URL parser can rewrite path structure. Dot segments, encoded dot-segments, backslashes, duplicate separators, encoded structural delimiters, queries, unsupported suffix/prefix forms, host/scheme case variants, and surrounding whitespace fail closed instead of being canonicalized into another supported issue/comment target.
+
+Intentional normalization remains bounded and explicit: one trailing slash on the exact supported web issue path, plus the already-declared API issue-body to canonical web issue projection (with its one trailing-slash variant). Publication still consumes the same shared target owner, so hostile raw observations produce failure, `sourceBinding = null`, the exact invalid-target finding, and preserved supplied observation evidence.
+
+No React/UI, GitHub host write, credentials, Handoff package/export/re-ingest, workspace lifecycle, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. Browser/public runtime is not claimed.
+
+## v444 predecessor
+
+# Tiinex Site v444 — M0-F Exact GitHub Social Target Hardening
+
+v444 hardens the shared GitHub issue/comment target owner so publication verification qualifies only exact supported observations. GitHub web identity accepts the exact `github.com` issue path with either no fragment or the exact `#issuecomment-<digits>` comment fragment; query text, unsupported path suffixes, arbitrary subdomains, malformed anchors, and GitHub-looking tokens elsewhere in a URL fail closed instead of being promoted into a canonical permalink.
+
+A single trailing slash is the only web-path normalization retained. Exact `api.github.com/repos/<owner>/<repo>/issues/<number>` issue-body input remains a separately explicit read/normalization surface. The v443 separation between repo-file, issue-body, and issue-comment publication remains unchanged, as do payload verification, mutable social binding, immutable repo-file binding, package/Handoff semantics, and the thin portable facade.
+
+No React/UI, credentials, GitHub write execution, workspace lifecycle, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. M0-F GitHub publication remains a Site product-integration HOLD pending Architect acceptance. Browser/public runtime is not claimed.
+
+## v443 predecessor
+
+v443 corrects the shared/platform-neutral publication target contract so GitHub provider identity no longer implies repo-file representation. The shared contract now distinguishes repo-file, issue-body, and issue-comment target surfaces, separates pre-execution destination intent from the exact materialized remote result target, and preserves mutable social-source binding without inventing Git commit/path authority.
+
+Repo-file publication keeps its exact repository/path/materialized-commit qualification. GitHub issue creation can be planned before a final issue URL exists; create-comment can be planned from an exact parent issue target before the new comment permalink exists. Qualified social publication success still requires explicit host execution success, exact payload SHA-256 verification, and an exact resulting issue/comment target. No network fetch, credentials, GitHub write API, Site publication UI, local-source mutation, Parent implication, Semantic Package change, or canonical docs/schema mutation is introduced.
+
+M0-F GitHub publication remains a Site product-integration HOLD pending Architect acceptance of this shared contract. Browser/public runtime is not claimed by this source/static candidate.
+
+## v442 predecessor
+
+v442 corrects two active-path defects in the accepted v441 Handoff integration: package build/inspection now belongs exclusively to explicit execution against the latest workspace truth, and a single selected ZIP is decoded once before being projected either into Handoff qualification or ordinary archive materialization. v441 Handoff round-trip semantics and publication Case C remain otherwise unchanged.
+
+The correction does not change shared package/file-map/control authority, byte-safe asset transport, source-reference projection, workspace context, publication contracts, Semantic Package separation, remote writes, credentials, or Q-visible product scope. Tooling portable semantics remain frozen.
+
+M0-F remains open pending Architect acceptance of this Site correction and the already-held publication-target reconciliation. Browser/public runtime is not claimed by this source/static candidate.
+
+## v439 predecessor
+
+v439 establishes the shared/platform-neutral M0-F foundation above exact v438: durable serialized handoff-package file-map integrity, exact source-reference projection, byte-safe owned asset transport, canonical workspace-context round-trip, fail-closed serialized re-ingest, and publication plan/result contracts. It performs no remote write, no credentials/API UX, no Reference/Site product integration, and does not reinterpret `tiinex.semantic.package.v1`.
+
+M0-E is recommended machine/source-qualified after this bounded correction, with final integrated Q proof deferred. Browser/public runtime is not claimed by this source/static candidate.
+
+## v437 predecessor
+
+v437 closes the deterministic M0-E Time Portal product gap from the exact v436 source. Time Portal is a workspace-scoped semantic view intent with explicit snapshot resolution: Begin/End remain temporal intent only, while an exact commit or explicitly resolved GitHub ref owns immutable historical source identity. Historical material is loaded into a separate read-only snapshot model and never promoted into the configured live source, current source records, or local draft authority.
+
+Resolved historical route/share state preserves the exact immutable commit. Cold route restore remains network-silent and selected-but-not-loaded until the user explicitly loads the snapshot. Historical Feed/Tree/detail surfaces are visibly read-only and provide an explicit Return to latest path. No date-to-commit inference, git-history browser, source mutation, Time Portal artifact schema, or M0-F publication work is introduced.
+
+M0-E is recommended machine/source-qualified after source/static qualification, with final integrated viewport/product proof deferred to Q. Browser/public runtime is not claimed by this source/static candidate.
+
+## v436 predecessor
+
+v436 opened M0-E/F discovery and source-qualified assets/mobile structure while identifying Time Portal as the one deterministic M0-E product gap. Its surface-registry and source-backed asset presentation corrections remain preserved.
+
+## v435 predecessor
+
+
+v434 closes the final bounded M0-D machine/source gap with one canonical Topic → Task Reference capability. Reference is represented as a separate browser-local `tiinex.relation.v1` artifact: it preserves an exact typed non-parent relation, keeps both participant artifacts unchanged, carries no invented Parent or source provenance, and persists the defining predicate/subject/object/directionality/Transition/generation authority in readable artifact bytes.
+
+v435 corrects the exact-authority durability boundary for the bounded Topic → Task Reference slice. The Relation now preserves the resolvable Site-local Transition/Generation references **and** each defining authority representation's verified Root-qualified `sha256-base64url-c14n-v2` method/value. Same path with different bytes therefore cannot qualify as the same exact authority. Reference semantics, participant identity rules, Parent boundary, target qualification, Tooling's v433 seam, and product UX remain otherwise unchanged.
+
+
+The product path consumes the accepted v433 portable `qualifyPortableExplicitGenerationBinding(...)` seam before Site planning. The Tooling seam remains read-only authority qualification; Site still owns Transition applicability, exact participant/value binding, lifecycle, Relation bytes, local placement, integrity, persistence, and UI. The existing `target-schema` Topic→Task/Use-as/root-Create paths remain separate and regression-qualified.
+
+Reference is intentionally bounded rather than universal. Same-workspace browser-local targets qualify only with unique local path identity. Source-backed targets may qualify across loaded workspaces when their source target is durable. Cross-workspace browser-local targets fail closed because workspace placement is not promoted into semantic target identity.
+
+The Reference UI is capability-driven: qualified Topic cards expose Reference, users search/select a distinct qualified Task, review the non-Parent consequence, and create one local Relation. Preserve Evidence, Use-as, Parent continuity, and Reference remain distinct concepts. Relation Edit is not invented; local Relation discard remains available through the existing local-draft lifecycle.
+
+M0-D is recommended machine/source-qualified by Dev after v434 qualification, with final product proof deferred to Architect/Q. Browser/public runtime is not claimed by source/static qualification.
 
 ## Canonical locality
 

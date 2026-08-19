@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../../ui/primitives/Button.jsx';
 import { Icon } from '../../ui/primitives/Icon.jsx';
 import { workspaceEmptyStateCopy } from '../../workspaces/workspace.emptyStateCopy.js';
-import { displayOptionsHiddenCount } from '../../workspaces/workspace.displayOptions.js';
+import { displayOptionsActiveConstraintCount } from '../../workspaces/workspace.displayOptions.js';
 import { recordSourceClass } from '../../workspaces/workspace.displayFilters.js';
 import { shouldShowWorkspaceSummary } from '../../workspaces/workspace.summary.js';
 import { isLocalSessionMaterial } from '../../workspaces/workspace.localSourceLifecycle.js';
@@ -29,7 +29,7 @@ export function WorkspaceBoundaryKicker({ workspace = {} }) {
   return <span className={`tx-window-kicker tx-boundary-workspace-kicker tx-${label}`} title={title}><Icon name={sourceCount ? 'source' : 'workspace'} /><span>{label}</span></span>;
 }
 
-export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSourceTransportRefresh, onOpenGovernance }) {
+export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialog, onSourceTransportRefresh, onOpenGovernance, readOnly = false }) {
   const sources = (Array.isArray(workspace.sources) ? workspace.sources : []);
   if (!sources.length) return null;
   return (
@@ -69,8 +69,8 @@ export function SourceStrip({ workspace, boundary, onCloseSource, onOpenAddDialo
                 ))}
               </span> : null}
               <SourceGovernanceBadge source={source} onOpenGovernance={onOpenGovernance} />
-              {canLoadFromSource ? <button type="button" className="tx-source-load" aria-label={`${addLabel} material for ${sourceLabel}`} title={addTitle} onClick={() => onOpenAddDialog?.(isLocal ? '' : source.id)}><Icon name="add" /><span>{addLabel}</span></button> : null}
-              {closeable ? <button type="button" className="tx-source-close" aria-label={closeAria} title={closeTitle} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
+              {canLoadFromSource && !readOnly ? <button type="button" className="tx-source-load" aria-label={`${addLabel} material for ${sourceLabel}`} title={addTitle} onClick={() => onOpenAddDialog?.(isLocal ? '' : source.id)}><Icon name="add" /><span>{addLabel}</span></button> : null}
+              {closeable && !readOnly ? <button type="button" className="tx-source-close" aria-label={closeAria} title={closeTitle} onClick={() => onCloseSource?.(source.id)}><Icon name="close" /></button> : null}
             </span>
           );
         })}
@@ -225,8 +225,9 @@ export function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-export function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage }) {
-  const verse = state.view?.workspaceVerse || 'feed';
+export function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage, readOnly = false }) {
+  const requestedVerse = state.view?.workspaceVerse || 'feed';
+  const verse = readOnly && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const discoveryVerse = verse === 'feed' || verse === 'tree';
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
@@ -236,9 +237,10 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
   const lineageComplete = Boolean(lineageAttempted && (lineageReady || (selectedLineageReport && selectedLineageReport.state === 'complete' && !selectedLineageReport.hasMissing)));
   const needsLineageLoad = Boolean(lineageVerse && selectedRecord && (!selectedLineageReport || selectedLineageReport.state !== 'complete' || selectedLineageReport.hasMissing));
   const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
-  const hiddenPresentationCount = displayOptionsHiddenCount(displayOptions, lineageVerse ? 'lineage' : 'discovery');
-  const returnVerse = auditVerse && selectedRecord ? 'lineage' : 'feed';
-  const canDisplayOptions = discoveryVerse || lineageAttempted;
+  const activeDisplayConstraintCount = displayOptionsActiveConstraintCount(displayOptions, lineageVerse ? 'lineage' : 'discovery');
+  const lineageReturnVerse = state.view?.lineageReturnVerse === 'tree' ? 'tree' : 'feed';
+  const returnVerse = auditVerse && selectedRecord ? 'lineage' : lineageVerse ? lineageReturnVerse : 'feed';
+  const canDisplayOptions = readOnly || discoveryVerse || lineageAttempted;
   const canSearch = !lineageVerse || lineageAttempted;
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
@@ -251,26 +253,26 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
       ) : (
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
       )}
-      {needsLineageLoad ? (
+      {!readOnly && needsLineageLoad ? (
         <button type="button" className="tx-mode-load-lineage-button" onClick={onLoadFullLineage} title="Load or retry the full lineage index from available source/direct transport before Audit" aria-label="Load full lineage">
           <Icon name="lineage" /><span>Load full lineage</span>
         </button>
       ) : null}
-      {lineageComplete ? (
+      {!readOnly && lineageComplete ? (
         <button type="button" className="tx-mode-action-button tx-mode-audit-button tx-mode-audit-run-button" onClick={onRunLineageAudit} title="Audit lineage" aria-label="Audit lineage">
           <Icon name="audit" /><span>Audit</span>
         </button>
       ) : null}
       {canDisplayOptions ? (
-        <button type="button" className="tx-mode-action-button tx-display-options-icon-trigger" onClick={onOpenDisplayOptions} title={`Display options${hiddenPresentationCount ? ` · ${hiddenPresentationCount} hidden` : ''}`} aria-label={`Display options${hiddenPresentationCount ? `, ${hiddenPresentationCount} hidden` : ''}`}>
+        <button type="button" className="tx-mode-action-button tx-display-options-icon-trigger" onClick={onOpenDisplayOptions} title={`Display options${activeDisplayConstraintCount ? ` · ${activeDisplayConstraintCount} active` : ''}`} aria-label={`Display options${activeDisplayConstraintCount ? `, ${activeDisplayConstraintCount} active` : ''}`}>
           <Icon name="filters" />
-          {hiddenPresentationCount ? <span className="tx-mode-action-count">{hiddenPresentationCount}</span> : null}
+          {activeDisplayConstraintCount ? <span className="tx-mode-action-count">{activeDisplayConstraintCount}</span> : null}
         </button>
       ) : null}
       {canSearch ? (
         <label className="tx-search-field tx-search-field-icon">
           <Icon name="search" />
-          <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search loaded lineage…' : 'Search title/body/schema…'} />
+          <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search loaded lineage…' : 'Search title/body/schema/path…'} />
         </label>
       ) : null}
     </div>

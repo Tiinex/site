@@ -30,6 +30,8 @@ assert.equal(recordSchemaBadge({ schemaId: 'tiinex.topic.v1' }), 'topic', 'schem
 assert.equal(recordSchemaCanOpen({ schemaId: 'tiinex.topic.v1' }), true, 'declared schemas are openable reading contracts');
 assert.equal(recordSchemaCanOpen({ kind: 'markdown' }), false, 'plain markdown badges are not clickable schema navigation');
 
+const editClass = actionClassName({ id: RecordActionKind.editLocal });
+assert(editClass.includes('tx-labeled-action'), 'local draft edit remains a discoverable labeled capability');
 const deleteClass = actionClassName({ id: RecordActionKind.deleteLocal });
 assert(deleteClass.includes('tx-danger'), 'local draft delete uses danger styling');
 assert(deleteClass.includes('tx-delete-local-action'), 'local draft delete has a stable diagnostic class');

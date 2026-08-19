@@ -33,6 +33,7 @@ import { summarizePortableFindings } from './findings.js';
 import { createPortableCheckpoint, restorePortableCheckpoint } from './checkpoint/portable.checkpoint.js';
 import { materializePortableDurableFindings, planPortableDurableMaterialization } from './materialization/durable.materialize.js';
 import { buildPortableRuntimePackage, inspectPortableRuntimePackage, rehydratePortableRuntimePackage, roundTripPortableRuntimePackage } from './package/runtime.package.js';
+import { acceptPortablePublicationResult, planPortablePublication } from './publication/runtime.publication.js';
 import { acceptPortableHostActionReceipt, planPortableHostAction } from './host/tool.bindings.js';
 import { describePortableCheckpointGate, qualifyPortableCheckpoint } from './conformance/checkpoint.qualification.js';
 
@@ -337,6 +338,20 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only-or-local-package-result',
     inputSchema: 'tiinex.portable.runtime-package.roundtrip.request.v1',
     handler: (input = {}, options = {}) => wrapPortableResult('roundtrip-runtime-package', roundTripPortableRuntimePackage(input, options))
+  }),
+  'plan-publication': operation({
+    name: 'plan-publication',
+    description: 'Build an exact shared publication plan for one qualified owned-local artifact without performing a host write.',
+    safety: 'planning-only',
+    inputSchema: 'tiinex.portable.publication.plan.request.v1',
+    handler: (input = {}) => wrapPortableResult('plan-publication', planPortablePublication(input))
+  }),
+  'accept-publication-result': operation({
+    name: 'accept-publication-result',
+    description: 'Qualify explicit host publication execution/verification evidence and derive an exact source binding only when target-surface-specific verification succeeds.',
+    safety: 'read-only-normalization',
+    inputSchema: 'tiinex.portable.publication.result.request.v1',
+    handler: (input = {}) => wrapPortableResult('accept-publication-result', acceptPortablePublicationResult(input))
   }),
   'serialize-session': operation({
     name: 'serialize-session',

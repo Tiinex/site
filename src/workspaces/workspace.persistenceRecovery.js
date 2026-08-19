@@ -72,7 +72,8 @@
       assets: merge((workspace.assets || []).filter((asset) => !isLocal(asset)), local.assets || []),
       workspaceMarkdown: local.workspaceMarkdown || workspace.workspaceMarkdown || '',
       workspaceImport: Object.assign({}, workspace.workspaceImport || {}, local.workspaceImport || {}),
-      importLog: Array.isArray(local.importLog) ? local.importLog : (workspace.importLog || [])
+      importLog: Array.isArray(local.importLog) ? local.importLog : (workspace.importLog || []),
+      publicationReceipts: Array.isArray(local.publicationReceipts) ? local.publicationReceipts : (workspace.publicationReceipts || [])
     });
   }
 

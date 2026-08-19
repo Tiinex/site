@@ -10,7 +10,13 @@ export function recordSourceClass(record = {}) {
 }
 
 export function recordSchemaValue(record = {}) {
-  return String(record.schemaId || record.kind || record.schema || 'artifact').trim() || 'artifact';
+  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').trim();
+}
+
+export function qualifiedSchemaFilterValue(value = 'all', records = []) {
+  const normalized = normalizeDisplayFilterValue(value);
+  if (normalized === 'all') return 'all';
+  return (Array.isArray(records) ? records : []).some((record) => recordSchemaValue(record) === normalized) ? normalized : 'all';
 }
 
 export function recordArtifactClass(record = {}) {
@@ -39,7 +45,15 @@ export function displayRecordIncluded(record = {}, options = {}, auditById = new
 export function recordMatchesQuery(record = {}, query = '') {
   const q = String(query || '').trim().toLowerCase();
   if (!q) return true;
-  return [record.title, record.summary, record.kind, record.status, record.path].some((value) => String(value || '').toLowerCase().includes(q));
+  return [
+    record.title,
+    record.summary,
+    record.kind,
+    record.status,
+    record.path,
+    recordSchemaValue(record),
+    record.markdown
+  ].some((value) => String(value || '').toLowerCase().includes(q));
 }
 
 export function assetMatchesQuery(asset = {}, query = '') {

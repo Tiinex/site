@@ -2,6 +2,8 @@ import { compilePortableSchemaContractChain } from '../tooling/portable/schema/c
 import { buildCanonicalTransitionInvocationBindingPlan } from './transition.invocationBindingPlanner.js';
 import { buildCanonicalTransitionResultPlan } from './transition.resultSemantics.js';
 import { hasConcreteInvocationValue, immutableInvocationValue } from './transition.invocationBindingPacket.js';
+import { planExplicitGeneration } from './transition.explicitGenerationPlanner.js';
+import { planGenerationInputs } from './transition.generationInputPlanner.js';
 export const TRANSITION_OUTPUT_MATERIALIZATION_PLAN_SCHEMA_ID = 'tiinex.site.transition-output-materialization-intent-plan.v1';
 const freeze = Object.freeze;
 const NONE = freeze([]);
@@ -18,19 +20,21 @@ export function buildCanonicalTransitionOutputMaterializationPlan(input = {}) {
   const result = buildCanonicalTransitionResultPlan({ definition });
   const generationInputs = normalizeGenerationInputs(input.generationInputs);
   const authorities = normalizeTargetAuthorities(input.targetSchemaAuthorities);
+  const explicitAuthorities = normalizeExplicitGenerationAuthorities(input.explicitGenerationAuthorities);
   if (bindingPlan.qualification !== 'qualified') {
-    return upstreamPlan(bindingPlan, result, generationInputs, authorities);
+    return upstreamPlan(bindingPlan, result, generationInputs, authorities, explicitAuthorities);
   }
   const outputs = result.outputRoles || [];
   const outputNames = new Set(outputs.map((role) => role.name));
   const targetSchemas = new Set(outputs.filter((role) => role.generationBinding === 'target-schema').map((role) => role.name));
-  const generationAudit = auditGenerationNamespaces(generationInputs, authorities, outputNames, targetSchemas);
+  const generationAudit = auditGenerationNamespaces(generationInputs, authorities, explicitAuthorities, outputNames, targetSchemas);
   const outputRolePlans = (result.outputRoles || []).map((role) => planOutputRole({
     role,
     result,
     bindingPlan,
     generationInputs: generationInputs.filter((entry) => entry.outputRole === role.name),
-    authorities: authorities.filter((entry) => entry.outputRole === role.name)
+    authorities: authorities.filter((entry) => entry.outputRole === role.name),
+    explicitAuthorities: explicitAuthorities.filter((entry) => entry.outputRole === role.name)
   }));
   const localReasons = collectLocalReasons(generationAudit, outputRolePlans);
   const qualification = dominantLocalQualification(localReasons);
@@ -47,7 +51,7 @@ export function buildCanonicalTransitionOutputMaterializationPlan(input = {}) {
     ...PLAN_BOUNDARY
   });
 }
-function planOutputRole({ role, result, bindingPlan, generationInputs, authorities }) {
+function planOutputRole({ role, result, bindingPlan, generationInputs, authorities, explicitAuthorities }) {
   const count = outputCount(role);
   const zero = count.state === 'resolved' && count.exactCount === 0;
   const targetKind = role.effectiveParticipantKind || '';
@@ -55,7 +59,7 @@ function planOutputRole({ role, result, bindingPlan, generationInputs, authoriti
   const generation = zero
     ? generationPlan(declaredGeneration, 'not-required', 'exact-zero-output-no-generation-obligation', declaredGeneration === 'target-schema'
       ? { authority: 'target-schema' } : declaredGeneration ? { authority: 'explicit-reference', reference: declaredGeneration } : { authority: 'not-prescribed' })
-    : planGeneration({ role, targetKind, generationInputs, authorities });
+    : planGeneration({ role, targetKind, generationInputs, authorities, explicitAuthorities });
   const lifecycleBase = planLifecycle(role, result);
   const lifecycle = zero ? freeze({ ...lifecycleBase, state: 'not-required', reason: 'exact-zero-output-no-materialization-obligation', requestedOperation: '', command: null }) : lifecycleBase;
   const placements = (result.outputPlacements || []).filter((placement) => placement.outputBinding?.resolvedName === role.name).map((placement) => zero
@@ -98,17 +102,17 @@ function outputCount(role) {
   }
   return freeze({ state: 'unresolved', exactCount: null, minimum, maximum, memberIdentitiesInvented: false });
 }
-function planGeneration({ role, targetKind, generationInputs, authorities }) {
+function planGeneration({ role, targetKind, generationInputs, authorities, explicitAuthorities = [] }) {
   const declared = role.generationBinding || '';
   if (!targetKind) return generationPlan(declared, 'unresolved', 'participant-kind-unresolved');
   if (targetKind === 'non-artifact') {
     if (!declared) return generationPlan('', 'not-prescribed', 'generation-not-prescribed');
-    if (declared !== 'target-schema') return generationPlan(declared, 'unresolved', 'generation-reference-resolver-unavailable', { authority: 'explicit-reference', reference: declared });
+    if (declared !== 'target-schema') return planExplicitGeneration({ role, declared, generationInputs, explicitAuthorities });
     return generationPlan(declared, 'deferred', 'non-artifact-generation-runtime-not-owned', { authority: 'target-schema' });
   }
   if (targetKind !== 'artifact') return generationPlan(declared, 'unresolved', 'participant-kind-unresolved');
   if (!declared) return generationPlan('', 'not-prescribed', 'generation-not-prescribed');
-  if (declared !== 'target-schema') return generationPlan(declared, 'unresolved', 'generation-reference-resolver-unavailable', { authority: 'explicit-reference', reference: declared });
+  if (declared !== 'target-schema') return planExplicitGeneration({ role, declared, generationInputs, explicitAuthorities });
   if (!role.schemaConstraint || role.schemaConstraintQualification !== 'resolved') {
     return generationPlan(declared, 'unresolved', 'target-schema-constraint-unresolved', { authority: 'target-schema' });
   }
@@ -129,7 +133,7 @@ function planGeneration({ role, targetKind, generationInputs, authorities }) {
   const creation = compiled.creation || {};
   const usable = Boolean((creation.groups || []).length || (creation.requiredInputs || []).length || (creation.optionalInputs || []).length || (creation.requiredSections || []).length);
   if (!usable) return generationPlan(declared, 'unresolved', 'target-schema-creation-authority-unavailable', { authority: 'target-schema', compiledSchemaId: compiled.schemaId });
-  const inputs = planCreationInputs(role.name, creation, generationInputs);
+  const inputs = planGenerationInputs(role.name, creation, generationInputs);
   return freeze({
     declared,
     authority: 'target-schema',
@@ -148,36 +152,6 @@ function planGeneration({ role, targetKind, generationInputs, authorities }) {
     draftRendered: false,
     executable: false
   });
-}
-
-function planCreationInputs(outputRole, creation, entries) {
-  const required = new Set(creation.requiredInputs || []);
-  const optional = new Set(creation.optionalInputs || []);
-  const tooling = new Set(creation.toolingConfigurationFields || []);
-  const declared = new Set([...required, ...optional]);
-  const plans = [];
-  let state = 'resolved';
-  let reasonCode = '';
-  for (const name of declared) {
-    const matches = entries.filter((entry) => entry.name === name);
-    let inputState = 'resolved';
-    let reason = '';
-    if (matches.length > 1) { inputState = 'invalid'; reason = 'duplicate-generation-input'; }
-    else if (!matches.length || !matches[0].hasValue) {
-      inputState = required.has(name) ? 'incomplete' : 'optional-unbound';
-      reason = required.has(name) ? 'required-generation-input-missing' : 'optional-generation-input-unbound';
-    }
-    state = strongerLocalState(state, inputState);
-    if (!reasonCode && ['invalid', 'unresolved', 'incomplete'].includes(inputState)) reasonCode = reason;
-    plans.push(freeze({ name, required: required.has(name), state: inputState, reason, value: matches[0]?.hasValue ? immutableInvocationValue(matches[0].value) : undefined }));
-  }
-  const unclaimed = entries.filter((entry) => !declared.has(entry.name)).map((entry) => freeze({
-    name: entry.name,
-    hasValue: entry.hasValue,
-    value: entry.hasValue ? immutableInvocationValue(entry.value) : undefined,
-    category: tooling.has(entry.name) ? 'tooling-configuration' : 'unclaimed-extra'
-  }));
-  return freeze({ state, reason: reasonCode, plans: freeze(plans), unclaimed: freeze(unclaimed), outputRole });
 }
 
 function generationPlan(declared, state, reasonCode, extra = {}) {
@@ -286,7 +260,14 @@ function normalizeTargetAuthorities(entries) {
     materials: freeze((Array.isArray(entry?.materials) ? entry.materials : []).map((item) => String(item || '')))
   })));
 }
-function auditGenerationNamespaces(inputs, authorities, outputNames, targetSchemas) {
+function normalizeExplicitGenerationAuthorities(entries) {
+  return freeze((Array.isArray(entries) ? entries : []).map((entry) => freeze({
+    outputRole: token(entry?.outputRole),
+    qualification: entry?.qualification || entry?.projection || null
+  })));
+}
+
+function auditGenerationNamespaces(inputs, authorities, explicitAuthorities, outputNames, targetSchemas) {
   const findings = [], keys = new Map();
   for (const entry of inputs) {
     if (!outputNames.has(entry.outputRole)) findings.push(freeze({ state: 'invalid', code: 'unknown-generation-output-role', subject: entry.outputRole }));
@@ -297,8 +278,13 @@ function auditGenerationNamespaces(inputs, authorities, outputNames, targetSchem
   for (const entry of authorities) {
     if (!outputNames.has(entry.outputRole)) findings.push(freeze({ state: 'invalid', code: 'unknown-target-authority-output-role', subject: entry.outputRole }));
   }
+  for (const entry of explicitAuthorities) {
+    if (!outputNames.has(entry.outputRole)) findings.push(freeze({ state: 'invalid', code: 'unknown-explicit-generation-output-role', subject: entry.outputRole }));
+  }
+  const explicitNames = new Set(explicitAuthorities.map((entry) => entry.outputRole));
+  for (const name of explicitNames) if (explicitAuthorities.filter((entry) => entry.outputRole === name).length > 1) findings.push(freeze({ state: 'invalid', code: 'duplicate-explicit-generation-authority-entry', subject: name }));
   for (const name of targetSchemas) if (authorities.filter((entry) => entry.outputRole === name).length > 1) findings.push(freeze({ state: 'invalid', code: 'duplicate-target-schema-authority-entry', subject: name }));
-  return freeze({ findings: freeze(findings), generationInputEntries: inputs.length, targetAuthorityEntries: authorities.length });
+  return freeze({ findings: freeze(findings), generationInputEntries: inputs.length, targetAuthorityEntries: authorities.length, explicitAuthorityEntries: explicitAuthorities.length });
 }
 function collectLocalReasons(audit, outputPlans) {
   const buckets = { invalid: [], unresolved: [], incomplete: [] };
@@ -328,7 +314,7 @@ function strongerLocalState(left, right) {
   const order = ['invalid', 'unresolved', 'incomplete', 'qualified'];
   return order.indexOf(a) <= order.indexOf(b) ? (a === 'qualified' ? 'resolved' : a) : (b === 'qualified' ? 'resolved' : b);
 }
-function upstreamPlan(bindingPlan, result, generationInputs, authorities) {
+function upstreamPlan(bindingPlan, result, generationInputs, authorities, explicitAuthorities = []) {
   return freeze({
     schema: TRANSITION_OUTPUT_MATERIALIZATION_PLAN_SCHEMA_ID,
     definition: freeze({ ...(bindingPlan.definition || {}) }),
@@ -337,7 +323,7 @@ function upstreamPlan(bindingPlan, result, generationInputs, authorities) {
     reasonsByState: freeze({ upstream: freeze([...(bindingPlan.reasons || [])]) }),
     bindingPlan: bindingSummary(bindingPlan),
     resultSemantics: resultSummary(result),
-    generationAudit: freeze({ findings: NONE, generationInputEntries: generationInputs.length, targetAuthorityEntries: authorities.length }),
+    generationAudit: freeze({ findings: NONE, generationInputEntries: generationInputs.length, targetAuthorityEntries: authorities.length, explicitAuthorityEntries: explicitAuthorities.length }),
     outputRolePlans: NONE,
     ...PLAN_BOUNDARY
   });
@@ -345,5 +331,6 @@ function upstreamPlan(bindingPlan, result, generationInputs, authorities) {
 function bindingSummary(plan) { return freeze({ qualification: plan.qualification, reasons: freeze([...(plan.reasons || [])]), executable: false }); }
 function resultSummary(plan) { return freeze({ qualification: plan.qualification, reasons: freeze([...(plan.reasons || [])]), executable: false }); }
 function flattenReasonBuckets(buckets) { return LOCAL_ORDER.filter((state) => state !== 'qualified').flatMap((state) => (buckets[state] || []).map((item) => `${state}:${item}`)); }
+function stableJson(value) { return JSON.stringify(value ?? null); }
 function token(value = '') { return String(value || '').trim(); }
 function unique(values) { return [...new Set(values.filter(Boolean))]; }

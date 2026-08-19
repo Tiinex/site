@@ -1,125 +1,224 @@
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { buildLoadedArtifactParticipantIndex, resolveCurrentArtifactParticipant } from '../artifacts/artifact.participantIndex.js';
 import { compilePortableSchemaContractChain } from '../tooling/portable/schema/contract.compile.js';
-import { qualifyCanonicalTransitionSchemaCache } from './canonicalTransition.schemaCache.js';
+import { CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST, qualifyCanonicalTransitionSchemaCacheSubset } from './canonicalTransition.schemaCache.js';
 import { buildTransitionDefinitionRegistry } from './transition.definitionRegistry.js';
 import { buildCanonicalTransitionAvailabilityPlan } from './transition.availabilityPlanner.js';
 import { buildCanonicalTransitionResultPlan } from './transition.resultSemantics.js';
-import { externalWebArtifactUrl } from '../sources/source.explicitTargets.js';
+import { localArtifactMaterializerAuthoringFixedInputs, localArtifactMaterializerForSchema } from './transition.localArtifactMaterializers.js';
+import { localCreateCapability } from './transition.localCreateCapability.js';
+import { referenceCreateCapability } from './transition.referenceCreateCapability.js';
+import { qualifyPortableExplicitGenerationBinding } from '../tooling/portable/package/generation.binding.js';
+import { recoverCanonicalParentReference, unavailableCanonicalParentReference } from './transition.parentReference.js';
+import { qualifyExactAuthorityRepresentation } from './transition.authorityRepresentation.js';
+export { recoverCanonicalParentReference, finalizeCanonicalParentReference } from './transition.parentReference.js';
 
 export const CANONICAL_TRANSITION_PRODUCT_PREPARATION_SCHEMA_ID = 'tiinex.site.canonical-transition-product-preparation.v1';
 export const CANONICAL_LOCAL_CREATE_CAPABILITY_SCHEMA_ID = 'tiinex.site.canonical-transition-local-create-capability.v1';
-const TOPIC_SCHEMA_ID = 'tiinex.topic.v1';
+export const CANONICAL_TRANSITION_PRODUCT_CONTEXT_SCHEMA_ID = 'tiinex.site.canonical-transition-product-context.v1';
 const TASK_SCHEMA_ID = 'tiinex.task.v1';
 const ROOT_SCHEMA_ID = 'tiinex.root.v1';
 const TRANSITION_SCHEMA_ID = 'tiinex.transition.definition.v1';
+const SCHEMA_CONTRACT_SCHEMA_ID = 'tiinex.schema.contract.v1';
+const SCHEMA_GENERATION_SCHEMA_ID = 'tiinex.schema.generation.v1';
 const freeze = Object.freeze;
+
+export function prepareCanonicalTransitionProductContext(input = {}) {
+  const workspaceRecords = Array.isArray(input.workspaceRecords) ? input.workspaceRecords : [];
+  const referenceRecords = Array.isArray(input.referenceRecords) ? input.referenceRecords : workspaceRecords;
+  const schemaCache = Array.isArray(input.schemaCache) ? input.schemaCache : [];
+  const bundledDefinitions = Array.isArray(input.bundledDefinitions) ? input.bundledDefinitions : [];
+  const cacheQualification = qualifyProductSchemaCache(schemaCache);
+  const participantIndex = buildLoadedArtifactParticipantIndex({ records: workspaceRecords });
+  const referenceParticipantIndex = referenceRecords === workspaceRecords ? participantIndex : buildLoadedArtifactParticipantIndex({ records: referenceRecords });
+  if (!cacheQualification.sourceQualified) return productContext({ workspaceRecords, referenceRecords, schemaCache, bundledDefinitions, participantIndex, referenceParticipantIndex, cacheQualification, state: 'schema-cache-unqualified' });
+
+  const cache = Object.fromEntries(cacheQualification.entries.map((item) => [item.schemaId, item]));
+  const creationAuthorities = buildCreationAuthorities(cacheQualification.entries);
+  const definitionMaterials = [cache[ROOT_SCHEMA_ID]?.markdown || '', cache[TRANSITION_SCHEMA_ID]?.markdown || ''];
+  const resolvers = buildProductSchemaResolvers(participantIndex, cacheQualification.entries, creationAuthorities);
+  const records = workspaceRecords.concat(bundledDefinitionRecords(bundledDefinitions));
+  const registry = buildTransitionDefinitionRegistry({ records, schemaMaterials: definitionMaterials, resolvers });
+  const explicitGenerationAuthorities = buildExplicitGenerationAuthorities({ cache, registry, bundledDefinitions });
+  return productContext({ workspaceRecords, referenceRecords, schemaCache, bundledDefinitions, participantIndex, referenceParticipantIndex, cacheQualification, cache, creationAuthorities, explicitGenerationAuthorities, registry, state: 'prepared' });
+}
 
 export function prepareCanonicalTransitionProductActions(input = {}) {
   const workspaceRecords = Array.isArray(input.workspaceRecords) ? input.workspaceRecords : [];
-  const cacheQualification = qualifyCanonicalTransitionSchemaCache(input.schemaCache || []);
-  const participantIndex = buildLoadedArtifactParticipantIndex({ records: workspaceRecords });
+  const referenceRecords = Array.isArray(input.referenceRecords) ? input.referenceRecords : workspaceRecords;
+  const schemaCache = Array.isArray(input.schemaCache) ? input.schemaCache : [];
+  const bundledDefinitions = Array.isArray(input.bundledDefinitions) ? input.bundledDefinitions : [];
+  const context = productContextMatches(input.productContext, workspaceRecords, referenceRecords, schemaCache, bundledDefinitions)
+    ? input.productContext
+    : prepareCanonicalTransitionProductContext({ workspaceRecords, referenceRecords, schemaCache, bundledDefinitions });
+  const participantIndex = context.participantIndex;
   const currentParticipant = resolveCurrentArtifactParticipant(input.currentRecord, participantIndex);
-  if (!cacheQualification.sourceQualified) return preparation([], participantIndex, currentParticipant, cacheQualification, 'schema-cache-unqualified');
+  if (!context.cacheQualification?.sourceQualified) return preparation([], participantIndex, currentParticipant, context.cacheQualification, 'schema-cache-unqualified');
 
-  const cache = Object.fromEntries(cacheQualification.entries.map((item) => [item.schemaId, item]));
-  const definitionMaterials = [cache[ROOT_SCHEMA_ID]?.markdown || '', cache[TRANSITION_SCHEMA_ID]?.markdown || ''];
-  const resolvers = buildProductSchemaResolvers(participantIndex, cacheQualification.entries);
-  const records = workspaceRecords.concat(bundledDefinitionRecords(input.bundledDefinitions));
-  const registry = buildTransitionDefinitionRegistry({ records, schemaMaterials: definitionMaterials, resolvers });
-  const availabilityPlan = buildCanonicalTransitionAvailabilityPlan({ definitions: registry.definitions, participantIndex, currentArtifact: currentParticipant || input.currentRecord });
+  const definitions = context.registry?.definitions || [];
+  const availabilityPlan = buildCanonicalTransitionAvailabilityPlan({ definitions, participantIndex, currentArtifact: currentParticipant || input.currentRecord });
+  const referenceParticipantIndex = context.referenceParticipantIndex || participantIndex;
+  const referenceCurrentParticipant = referenceParticipantIndex === participantIndex
+    ? currentParticipant
+    : resolveCurrentArtifactParticipant(input.currentRecord, referenceParticipantIndex);
+  const referenceAvailabilityPlan = referenceParticipantIndex === participantIndex
+    ? availabilityPlan
+    : buildCanonicalTransitionAvailabilityPlan({ definitions, participantIndex: referenceParticipantIndex, currentArtifact: referenceCurrentParticipant || input.currentRecord });
+  const referenceAvailabilityByDefinition = new Map(referenceAvailabilityPlan.transitions.map((item) => [availabilityDefinitionKey(item), item]));
+  const actions = availabilityPlan.transitions.map((localAvailability) => {
+    const definition = definitionForAvailability(definitions, localAvailability);
+    const result = definition ? buildCanonicalTransitionResultPlan({ definition }) : null;
+    const reference = Boolean((result?.relationEffects || []).length);
+    const availability = reference ? (referenceAvailabilityByDefinition.get(availabilityDefinitionKey(localAvailability)) || localAvailability) : localAvailability;
+    return buildProductAction({
+      definition,
+      availability,
+      participantIndex: reference ? referenceParticipantIndex : participantIndex,
+      currentParticipant: reference ? referenceCurrentParticipant : currentParticipant,
+      currentRecord: input.currentRecord,
+      workspaceId: input.workspaceId,
+      cache: context.cache,
+      creationAuthorities: context.creationAuthorities,
+      explicitGenerationAuthorities: context.explicitGenerationAuthorities,
+      productScope: 'record'
+    });
+  }).filter((action) => action?.capability?.scope === 'record');
+  return preparation(actions, participantIndex, currentParticipant, context.cacheQualification, 'prepared', context.registry);
+}
+
+
+export function prepareCanonicalTransitionWorkspaceActions(input = {}) {
+  const schemaCache = Array.isArray(input.schemaCache) ? input.schemaCache : [];
+  const bundledDefinitions = Array.isArray(input.bundledDefinitions) ? input.bundledDefinitions : [];
+  // Workspace-level standalone Create is intentionally derived from exact bundled
+  // zero-input definitions. It does not rebuild a participant index from every card.
+  const context = prepareCanonicalTransitionProductContext({ workspaceRecords: [], schemaCache, bundledDefinitions });
+  const participantIndex = context.participantIndex;
+  if (!context.cacheQualification?.sourceQualified) return preparation([], participantIndex, null, context.cacheQualification, 'schema-cache-unqualified', context.registry);
+
+  const availabilityPlan = buildCanonicalTransitionAvailabilityPlan({
+    definitions: context.registry?.definitions || [],
+    participantIndex,
+    currentArtifact: null
+  });
   const actions = availabilityPlan.transitions.map((availability) => {
-    const definition = definitionForAvailability(registry.definitions, availability);
+    const definition = definitionForAvailability(context.registry?.definitions || [], availability);
     return buildProductAction({
       definition,
       availability,
       participantIndex,
-      currentParticipant,
-      currentRecord: input.currentRecord,
+      currentParticipant: null,
+      currentRecord: null,
       workspaceId: input.workspaceId,
-      cache
+      cache: context.cache,
+      creationAuthorities: context.creationAuthorities,
+      explicitGenerationAuthorities: context.explicitGenerationAuthorities,
+      productScope: 'workspace'
     });
-  }).filter(Boolean);
-  return preparation(actions, participantIndex, currentParticipant, cacheQualification, 'prepared', registry);
+  }).filter((action) => action?.capability?.scope === 'workspace');
+  return preparation(actions, participantIndex, null, context.cacheQualification, 'prepared', context.registry);
 }
 
-export function recoverCanonicalParentReference(record = {}, participant = {}) {
-  const source = record.source || {};
-  const target = record.sourceTarget || {};
-  const snapshot = record.snapshot || {};
-  const adapterId = token(participant.source?.adapterId || source.adapterId);
-  const sourceMode = token(participant.source?.sourceMode || record.sourceMode);
-  const sourceKind = token(source.kind || source.sourceKind);
-  const targetKind = token(target.targetKind || snapshot.sourceKind);
-  const path = String(target.sourceArtifactPath || record.path || participant.source?.sourceArtifactPath || '').replace(/^\/+/, '');
-  const schemaId = token(participant.candidateSchemaId);
-  const localBoundary = adapterId === 'local' || /(^|[^a-z0-9])(local|session)([^a-z0-9]|$)/i.test(`${sourceMode} ${sourceKind}`);
-  const issueBoundary = /github-(issue|comment)-embedded/i.test(`${sourceMode} ${targetKind}`);
-
-  if (issueBoundary) {
-    const sourceUrl = token(target.inputTarget || snapshot.sourceUrl || record.recoveredFromUrl);
-    if (!path || !sourceUrl) return unavailableParent('source-topic-social-parent-reference-unavailable');
-    const comment = /comment/i.test(`${sourceMode} ${targetKind}`) || /#issuecomment-/i.test(sourceUrl);
-    return freeze({ state: 'qualified', representationKind: comment ? 'github-comment-embedded' : 'github-issue-embedded', recoveryKind: comment ? 'github-comment-embedded' : 'github-issue-embedded', trace: path, traceTarget: path, origin: `[github ${comment ? 'comment' : 'issue'}](${sourceUrl})`, originTarget: sourceUrl, permalink: '', repository: '', ref: '', path, sourceUrl, schemaId, finalized: false });
-  }
-
-  const webUrl = externalWebArtifactUrl(record);
-  if (webUrl) {
-    const label = markdownLabel(record.title || participant.artifact?.title || 'Topic');
-    return freeze({ state: 'qualified', representationKind: 'web-markdown', recoveryKind: 'web-markdown', trace: `[${label}](${webUrl})`, traceTarget: webUrl, origin: `[web artifact](${webUrl})`, originTarget: webUrl, permalink: webUrl, repository: '', ref: '', path: '', sourceUrl: webUrl, schemaId, finalized: true });
-  }
-  const webDeclared = sourceMode === 'explicit-url' || targetKind === 'web.markdown' || sourceKind === 'web.markdown' || adapterId === 'web';
-  if (webDeclared) return unavailableParent('source-topic-web-parent-reference-unavailable');
-
-  if (localBoundary && adapterId !== 'github') {
-    const localPath = String(record.path || '').replace(/^\/+/, '');
-    if (!localPath) return unavailableParent('source-topic-local-parent-path-unavailable');
-    return freeze({ state: 'qualified', representationKind: 'local-path', recoveryKind: 'local-path', trace: localPath, traceTarget: localPath, origin: localPath, originTarget: localPath, permalink: '', repository: '', ref: '', path: localPath, sourceUrl: '', schemaId, finalized: false });
-  }
-
-  const repository = token(source.repository || source.repo || source.config?.repo);
-  const ref = exactCommit(target.materializedCommit) || exactCommit(source.materializedCommit) || exactCommit(participant.source?.materializedCommit)
-    || exactCommit(source.ref) || exactCommit(source.config?.ref) || exactCommit(participant.source?.ref);
-  if (adapterId !== 'github' || localBoundary || !repository || !ref || !path) return unavailableParent();
-  const permalink = githubCommitPermalink(repository, ref, path);
-  if (!permalink) return unavailableParent('source-topic-parent-link-target-unavailable');
-  const label = markdownLabel(record.title || participant.artifact?.title || 'Topic');
-  return freeze({ state: 'qualified', representationKind: 'github-repo-file', recoveryKind: 'github-repo-file', trace: `[${label}](${permalink})`, traceTarget: permalink, origin: `[browse + git](${permalink})`, originTarget: permalink, permalink, repository, ref, path, sourceUrl: permalink, schemaId, finalized: true });
+function productContext(input = {}) {
+  return freeze({
+    schema: CANONICAL_TRANSITION_PRODUCT_CONTEXT_SCHEMA_ID,
+    state: input.state || 'prepared',
+    workspaceRecords: input.workspaceRecords || [],
+    referenceRecords: input.referenceRecords || input.workspaceRecords || [],
+    schemaCache: input.schemaCache || [],
+    bundledDefinitions: input.bundledDefinitions || [],
+    participantIndex: input.participantIndex || buildLoadedArtifactParticipantIndex({ records: [] }),
+    referenceParticipantIndex: input.referenceParticipantIndex || input.participantIndex || buildLoadedArtifactParticipantIndex({ records: [] }),
+    cacheQualification: input.cacheQualification || null,
+    cache: freeze({ ...(input.cache || {}) }),
+    creationAuthorities: freeze({ ...(input.creationAuthorities || {}) }),
+    explicitGenerationAuthorities: freeze({ ...(input.explicitGenerationAuthorities || {}) }),
+    registry: input.registry || null,
+    readOnly: true,
+    mutation: false,
+    networkFetch: false
+  });
 }
 
-export function finalizeCanonicalParentReference(parent = {}, childPath = '') {
-  if (parent.state !== 'qualified') return parent;
-  if (parent.representationKind === 'github-repo-file' || parent.representationKind === 'web-markdown') return parent.finalized ? parent : freeze({ ...parent, finalized: true });
-  const parentPath = String(parent.path || '').replace(/^\/+/, '');
-  const concreteChildPath = String(childPath || '').replace(/^\/+/, '');
-  if (!parentPath || !concreteChildPath) return unavailableParent('canonical-parent-finalization-path-unavailable');
-  const traceTarget = relativeArtifactPath(concreteChildPath, parentPath) || parentPath;
-  const originTarget = parent.representationKind === 'local-path' ? parentPath : token(parent.sourceUrl || parent.originTarget);
-  if (!originTarget) return unavailableParent('canonical-parent-origin-unavailable');
-  const origin = parent.representationKind === 'local-path' ? originTarget : `[github ${parent.representationKind === 'github-comment-embedded' ? 'comment' : 'issue'}](${originTarget})`;
-  return freeze({ ...parent, trace: traceTarget, traceTarget, origin, originTarget, finalized: true });
+function productContextMatches(context, workspaceRecords, referenceRecords, schemaCache, bundledDefinitions) {
+  return context?.schema === CANONICAL_TRANSITION_PRODUCT_CONTEXT_SCHEMA_ID
+    && context.workspaceRecords === workspaceRecords
+    && context.referenceRecords === referenceRecords
+    && context.schemaCache === schemaCache
+    && context.bundledDefinitions === bundledDefinitions;
+}
+
+function qualifyProductSchemaCache(entries = []) {
+  const foundation = qualifyCanonicalTransitionSchemaCacheSubset(entries, [ROOT_SCHEMA_ID, TRANSITION_SCHEMA_ID]);
+  if (!foundation.sourceQualified) return foundation;
+  const qualifiedById = new Map(foundation.entries.map((item) => [item.schemaId, item]));
+  const findings = [...foundation.findings];
+  for (const expected of CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST) {
+    if (expected.schemaId === ROOT_SCHEMA_ID || expected.schemaId === TRANSITION_SCHEMA_ID) continue;
+    const matches = (Array.isArray(entries) ? entries : []).filter((item) => String(item?.schemaId || '') === expected.schemaId);
+    if (!matches.length) continue;
+    const result = qualifyCanonicalTransitionSchemaCacheSubset(entries, [expected.schemaId]);
+    if (result.sourceQualified) qualifiedById.set(expected.schemaId, result.entries[0]);
+    else findings.push(...result.findings);
+  }
+  return freeze({
+    status: 'qualified',
+    sourceQualified: true,
+    entries: freeze([...qualifiedById.values()]),
+    findings: freeze(findings),
+    foundationQualified: true
+  });
+}
+
+export function creationAuthorityForSchemaFromCache(cacheEntries = [], schemaId = '') {
+  const targetSchemaId = token(schemaId);
+  const cacheQualification = qualifyCanonicalTransitionSchemaCacheSubset(cacheEntries, [ROOT_SCHEMA_ID, targetSchemaId]);
+  if (!targetSchemaId || !cacheQualification.sourceQualified) return unresolvedCreationAuthority(targetSchemaId);
+  const bySchema = Object.fromEntries(cacheQualification.entries.map((item) => [item.schemaId, item]));
+  if (!bySchema[ROOT_SCHEMA_ID]?.markdown || !bySchema[targetSchemaId]?.markdown) return unresolvedCreationAuthority(targetSchemaId);
+  try {
+    const compiled = compilePortableSchemaContractChain([bySchema[ROOT_SCHEMA_ID].markdown, bySchema[targetSchemaId].markdown]);
+    const creation = compiled.creation || {};
+    const usable = compiled.schemaId === targetSchemaId
+      && compiled.lineageQualification?.state === 'valid'
+      && compiled.lineageQualification?.complete === true
+      && (creation.requiredInputs || []).length > 0;
+    return freeze({
+      state: usable ? 'qualified' : 'unresolved',
+      schemaId: targetSchemaId,
+      requiredInputs: freeze([...(creation.requiredInputs || [])]),
+      optionalInputs: freeze([...(creation.optionalInputs || [])]),
+      requiredSections: freeze([...(creation.requiredSections || [])]),
+      toolingConfigurationFields: freeze([...(creation.toolingConfigurationFields || [])]),
+      compiled: usable ? compiled : null
+    });
+  } catch (_) { return unresolvedCreationAuthority(targetSchemaId); }
 }
 
 export function taskCreationAuthorityFromCache(cacheEntries = []) {
-  const cacheQualification = qualifyCanonicalTransitionSchemaCache(cacheEntries);
-  if (!cacheQualification.sourceQualified) return freeze({ state: 'unresolved', requiredInputs: freeze([]), requiredSections: freeze([]), toolingConfigurationFields: freeze([]), compiled: null });
-  const bySchema = Object.fromEntries(cacheQualification.entries.map((item) => [item.schemaId, item]));
-  try {
-    const compiled = compilePortableSchemaContractChain([bySchema[ROOT_SCHEMA_ID].markdown, bySchema[TASK_SCHEMA_ID].markdown]);
-    const creation = compiled.creation || {};
-    const usable = compiled.schemaId === TASK_SCHEMA_ID && compiled.lineageQualification?.state === 'valid' && compiled.lineageQualification?.complete === true && (creation.requiredInputs || []).length > 0;
-    return freeze({ state: usable ? 'qualified' : 'unresolved', requiredInputs: freeze([...(creation.requiredInputs || [])]), optionalInputs: freeze([...(creation.optionalInputs || [])]), requiredSections: freeze([...(creation.requiredSections || [])]), toolingConfigurationFields: freeze([...(creation.toolingConfigurationFields || [])]), compiled: usable ? compiled : null });
-  } catch (_) { return freeze({ state: 'unresolved', requiredInputs: freeze([]), optionalInputs: freeze([]), requiredSections: freeze([]), toolingConfigurationFields: freeze([]), compiled: null }); }
+  return creationAuthorityForSchemaFromCache(cacheEntries, TASK_SCHEMA_ID);
 }
 
-function buildProductAction({ definition, availability, participantIndex, currentParticipant, currentRecord, workspaceId, cache }) {
+function unresolvedCreationAuthority(schemaId = '') {
+  return freeze({ state: 'unresolved', schemaId: token(schemaId), requiredInputs: freeze([]), optionalInputs: freeze([]), requiredSections: freeze([]), toolingConfigurationFields: freeze([]), compiled: null });
+}
+
+function buildProductAction({ definition, availability, participantIndex, currentParticipant, currentRecord, workspaceId, cache, creationAuthorities, explicitGenerationAuthorities, productScope = 'record' }) {
   if (!definition) return null;
   const result = buildCanonicalTransitionResultPlan({ definition });
-  const creation = taskCreationAuthorityFromCache(Object.values(cache));
-  const parent = currentParticipant ? recoverCanonicalParentReference(currentRecord || {}, currentParticipant) : unavailableParent('current-topic-not-resolved');
-  const support = localCreateCapability({ result, availability, creation, currentParticipant, workspaceId, parent });
+  const output = result.outputRoles?.[0];
+  const outputSchemaId = token(output?.schemaConstraint);
+  const creation = creationAuthorities?.[outputSchemaId] || unresolvedCreationAuthority(outputSchemaId);
+  const parent = productScope === 'workspace' ? null : (currentParticipant ? recoverCanonicalParentReference(currentRecord || {}, currentParticipant) : unavailableCanonicalParentReference('current-artifact-not-resolved'));
+  const materializer = localArtifactMaterializerForSchema(outputSchemaId);
+  const fixedInputs = materializer ? localArtifactMaterializerAuthoringFixedInputs(outputSchemaId, { parent, currentRecord, currentParticipant, definition, result }) : freeze({});
   const identity = definition.transitionIdentity || {};
   const executionKey = definitionExecutionKey(definition);
+  const explicitGeneration = explicitGenerationAuthorities?.[`${executionKey}\u0000${output?.name || ''}`] || null;
+  const referenceSupport = productScope === 'record' && (result.relationEffects || []).length
+    ? referenceCreateCapability({ result, availability, currentParticipant, workspaceId, generationQualification: explicitGeneration, materializer })
+    : null;
+  const support = referenceSupport || localCreateCapability({ result, availability, creation, currentParticipant, workspaceId, parent, materializer, productScope });
   return freeze({
     schema: CANONICAL_LOCAL_CREATE_CAPABILITY_SCHEMA_ID,
     id: `canonical-transition:${executionKey}`,
@@ -127,6 +226,9 @@ function buildProductAction({ definition, availability, participantIndex, curren
     label: String(identity['Human Label'] || identity.Name || 'Transition'),
     icon: 'create',
     kind: 'canonical-transition-product',
+    productScope,
+    description: String(definition.purposeAndScope?.Purpose || definition.purposeAndScope?.purpose || ''),
+    continuityMode: support.continuityMode || 'parent',
     definitionKey: executionKey,
     identityConflict: null,
     definition,
@@ -134,97 +236,113 @@ function buildProductAction({ definition, availability, participantIndex, curren
     resultSemantics: result,
     currentParticipant,
     parentRecovery: parent,
-    authoring: freeze({ schemaId: TASK_SCHEMA_ID, requiredInputs: creation.requiredInputs, requiredSections: creation.requiredSections, toolingConfigurationFields: creation.toolingConfigurationFields }),
+    authoring: freeze({
+      schemaId: outputSchemaId,
+      schemaLabel: materializer?.label || outputSchemaId || 'Artifact',
+      requiredInputs: creation.requiredInputs,
+      optionalInputs: creation.optionalInputs,
+      requiredSections: creation.requiredSections,
+      toolingConfigurationFields: creation.toolingConfigurationFields,
+      fixedInputs
+    }),
+    explicitGenerationQualification: explicitGeneration,
+    referenceCapability: referenceSupport,
     productCapable: support.state === 'qualified',
     capability: support,
     enabled: support.state === 'qualified'
   });
 }
 
-function localCreateCapability({ result, availability, creation, currentParticipant, workspaceId, parent }) {
-  const reasons = [];
-  const outputs = result.outputRoles || [];
-  const output = outputs[0];
-  const lifecycle = result.lifecycleEffects || [];
-  const parents = result.parentEffects || [];
-  const relations = result.relationEffects || [];
-  const placements = result.outputPlacements || [];
-  const destinations = result.destinationBindings || [];
-  const parentEffect = parents[0];
-  const parentRoleName = token(parentEffect?.parentBinding?.resolvedName);
-  const currentRoleIds = availability.context?.candidateRoleIds || [];
-  const parentRole = (availability.inputRoles || []).find((role) => role.name === parentRoleName);
 
-  if (availability.availability !== 'available') reasons.push('canonical-transition-not-available');
-  if (result.qualification !== 'qualified') reasons.push('canonical-result-semantics-not-qualified');
-  if (availability.context?.assignment !== 'unique' || !currentParticipant) reasons.push('current-artifact-role-not-unique');
-  if ((availability.inputRoles || []).length !== 1) reasons.push('unsupported-input-role-arity');
-  if (outputs.length !== 1) reasons.push('unsupported-output-role-arity');
-  if (currentRoleIds.length !== 1 || !parentRoleName || parentRoleName !== currentRoleIds[0]) reasons.push('parent-role-not-current-artifact-role');
-  if (!supportedTopicParentRole(parentRole)) reasons.push('unsupported-parent-role-capability');
-  if (currentParticipant?.cleanCandidate !== true || currentParticipant?.candidateSchemaId !== TOPIC_SCHEMA_ID) reasons.push('current-topic-schema-unqualified');
-  if (!supportedTaskOutput(output)) reasons.push('unsupported-output-capability');
-  if (lifecycle.length !== 1 || !supportedLifecycle(lifecycle[0], output)) reasons.push('unsupported-lifecycle-capability');
-  if (parents.length !== 1 || !supportedParentEffect(parentEffect, output, parentRoleName)) reasons.push('unsupported-parent-capability');
-  if (relations.length) reasons.push('relation-effects-not-supported');
-  if (!supportedLocalPlacement(placements, destinations, output)) reasons.push('unsupported-placement-capability');
-  if (creation.state !== 'qualified') reasons.push('task-creation-authority-unavailable');
-  if (!String(workspaceId || '').trim()) reasons.push('workspace-destination-unavailable');
-  if (parent.state !== 'qualified' || parent.schemaId !== TOPIC_SCHEMA_ID) reasons.push(parent.reason || 'parent-recovery-unavailable');
-  const uniqueReasons = unique(reasons);
-  return freeze({ state: uniqueReasons.length ? 'unavailable' : 'qualified', reasons: freeze(uniqueReasons), remoteWrite: false, sourceMutation: false, relationMaterialization: false, concretePath: null, executablePattern: uniqueReasons.length === 0 });
+function buildExplicitGenerationAuthorities({ cache = {}, registry = null, bundledDefinitions = [] } = {}) {
+  const out = {};
+  const root = cache[ROOT_SCHEMA_ID]?.markdown || '';
+  const transitionSchema = cache[TRANSITION_SCHEMA_ID]?.markdown || '';
+  const schemaContract = cache[SCHEMA_CONTRACT_SCHEMA_ID]?.markdown || '';
+  const generationSchema = cache[SCHEMA_GENERATION_SCHEMA_ID]?.markdown || '';
+  if (!root || !transitionSchema || !schemaContract || !generationSchema) return freeze(out);
+  let transitionContract, generationContract;
+  try {
+    transitionContract = compilePortableSchemaContractChain([root, transitionSchema]);
+    generationContract = compilePortableSchemaContractChain([root, schemaContract, generationSchema]);
+  } catch (_) { return freeze(out); }
+  if (transitionContract.lineageQualification?.state !== 'valid' || transitionContract.lineageQualification?.complete !== true) return freeze(out);
+  if (generationContract.lineageQualification?.state !== 'valid' || generationContract.lineageQualification?.complete !== true) return freeze(out);
+
+  for (const supplied of Array.isArray(bundledDefinitions) ? bundledDefinitions : []) {
+    const generationMaterials = Array.isArray(supplied?.generationMaterials) ? supplied.generationMaterials : [];
+    if (!generationMaterials.length) continue;
+    const definition = exactOne((registry?.definitions || []).filter((candidate) => token(candidate?.artifact?.path) === token(supplied.path)));
+    if (!definition) continue;
+    const result = buildCanonicalTransitionResultPlan({ definition });
+    for (const output of result.outputRoles || []) {
+      const declared = token(output.generationBinding);
+      if (!declared || declared === 'target-schema') continue;
+      const transitionMaterial = freeze({
+        id: supplied.id || `bundled-transition:${definitionExecutionKey(definition)}`,
+        path: supplied.path || '',
+        markdown: supplied.markdown || '',
+        source: freeze({ ...(supplied.source || {}) })
+      });
+      const qualification = qualifyPortableExplicitGenerationBinding({
+        transitionMaterial,
+        outputRoleName: output.name,
+        expectedTargetSchema: token(output.schemaConstraint),
+        materials: [transitionMaterial, ...generationMaterials],
+        transitionContract,
+        generationContract
+      });
+      const selectedPath = token(qualification.authority?.selectedRepresentation?.path);
+      const generationMaterial = exactOne(generationMaterials.filter((item) => token(item?.path) === selectedPath));
+      const exactAuthorityRepresentations = freeze({
+        transition: qualifyExactAuthorityRepresentation({
+          reference: transitionMaterial.path ? `site-local:${transitionMaterial.path}` : '',
+          path: transitionMaterial.path,
+          markdown: transitionMaterial.markdown
+        }),
+        generation: qualifyExactAuthorityRepresentation({
+          reference: token(qualification.resolution?.target),
+          path: generationMaterial?.path || '',
+          markdown: generationMaterial?.markdown || ''
+        })
+      });
+      out[`${definitionExecutionKey(definition)}\u0000${output.name}`] = freeze({ ...qualification, exactAuthorityRepresentations });
+    }
+  }
+  return freeze(out);
 }
 
-function supportedLifecycle(effect = {}, output = {}) {
-  const mapping = token(effect.memberMapping?.declared);
-  return effect.participation?.state === 'active' && effect.targetBinding?.resolvedName === output?.name
-    && effect.effect === 'create-new' && effect.logicalContinuity === 'new-subject' && effect.requiredMaterializationOperation === 'create'
-    && effect.resultBinding?.qualification === 'absent' && !token(effect.resultBinding?.declared)
-    && ['', 'no'].includes(token(effect.preserveWhy)) && ['', 'single'].includes(mapping);
-}
-function supportedParentEffect(effect = {}, output = {}, parentRoleName = '') {
-  return effect.participation?.state === 'active' && effect.effect === 'set' && effect.outputBinding?.resolvedName === output?.name
-    && Boolean(parentRoleName) && ['', 'single'].includes(token(effect.memberMapping?.declared));
-}
-function supportedTopicParentRole(role = {}) {
-  return role.targetKind === 'artifact' && role.effectiveParticipantKind === 'artifact' && role.schemaConstraint === TOPIC_SCHEMA_ID
-    && exactNumericCardinality(role.cardinality?.minimum, 1) && exactNumericCardinality(role.cardinality?.maximum, 1)
-    && role.acquisitionPolicy === 'existing-only';
-}
-function supportedTaskOutput(role = {}) {
-  return role.targetKind === 'artifact' && role.effectiveParticipantKind === 'artifact' && role.schemaConstraint === TASK_SCHEMA_ID
-    && exactNumericCardinality(role.minimumCount, 1) && exactNumericCardinality(role.maximumCount, 1)
-    && role.generationBinding === 'target-schema';
-}
-function supportedLocalPlacement(placements = [], destinations = [], output = {}) {
-  const placement = placements[0];
-  const destination = destinations[0];
-  const destinationFields = destination?.fields || {};
-  return placements.length === 1 && destinations.length === 1
-    && placement?.outputBinding?.resolvedName === output?.name
-    && placement?.destinationBinding?.resolvedName === destination?.name
-    && !token(placement?.relativeToBinding?.declared) && !placement?.relativeToBinding?.resolvedName
-    && !token(placement?.relativePlacementMeaning) && !token(placement?.namingAuthorityReference)
-    && placement?.placementIntent === 'new-materialization'
-    && placement?.namingAuthority === 'explicit-binding'
-    && placement?.explicitOverrideAllowed === 'no'
-    && destination?.requiredQualification?.state === 'required'
-    && !token(destinationFields['Destination Kind']) && !token(destinationFields['Capability Requirement']);
-}
-function exactNumericCardinality(value = {}, expected = 1) { return value.kind === 'numeric' && value.value === expected; }
 
-function buildProductSchemaResolvers(participantIndex, cacheEntries) {
+function buildCreationAuthorities(cacheEntries = []) {
+  const out = {};
+  for (const entry of cacheEntries || []) {
+    const schemaId = token(entry?.schemaId);
+    if (!schemaId || schemaId === ROOT_SCHEMA_ID || schemaId === TRANSITION_SCHEMA_ID) continue;
+    out[schemaId] = creationAuthorityForSchemaFromCache(cacheEntries, schemaId);
+  }
+  return freeze(out);
+}
+
+function buildProductSchemaResolvers(participantIndex, cacheEntries, creationAuthorities = {}) {
   const schemaAuthorities = {};
   for (const participant of participantIndex.participants || []) if (participant.cleanCandidate && participant.candidateSchemaId) schemaAuthorities[participant.candidateSchemaId] = freeze({ targetKind: 'artifact' });
-  const creation = taskCreationAuthorityFromCache(cacheEntries);
-  if (creation.state === 'qualified') schemaAuthorities[TASK_SCHEMA_ID] = freeze({ targetKind: 'artifact', generation: true });
+  for (const entry of cacheEntries || []) {
+    const schemaId = token(entry?.schemaId);
+    if (!schemaId || schemaId === ROOT_SCHEMA_ID || schemaId === TRANSITION_SCHEMA_ID) continue;
+    const creation = creationAuthorities[schemaId] || unresolvedCreationAuthority(schemaId);
+    schemaAuthorities[schemaId] = freeze({ ...(schemaAuthorities[schemaId] || {}), targetKind: 'artifact', generation: creation.state === 'qualified' });
+  }
   return freeze({ schemaAuthorities: freeze(schemaAuthorities) });
 }
+
 function bundledDefinitionRecords(definitions = []) {
   return (Array.isArray(definitions) ? definitions : []).map((item) => Object.assign(createRecordFromMarkdown(String(item.markdown || ''), { path: item.path || '', name: item.title || '', sourceMode: item.sourceMode || 'bundled-canonical-transition-definition' }), item));
 }
 function preparation(actions, participantIndex, currentParticipant, cacheQualification, state, registry = null, identityConflicts = []) {
   return freeze({ schema: CANONICAL_TRANSITION_PRODUCT_PREPARATION_SCHEMA_ID, state, actions: freeze(actions), participantIndex, currentParticipant, cacheQualification, registry, identityConflicts: freeze(identityConflicts), readOnly: true, mutation: false, networkFetch: false });
+}
+function availabilityDefinitionKey(availability = {}) {
+  return token(availability.definition?.artifactRegistryIdentity || availability.definition?.artifactId || availability.definition?.canonicalIdentifier);
 }
 function definitionForAvailability(definitions = [], availability = {}) {
   const registryIdentity = token(availability.definition?.artifactRegistryIdentity);
@@ -235,34 +353,6 @@ function definitionForAvailability(definitions = [], availability = {}) {
 function definitionExecutionKey(definition = {}) {
   return JSON.stringify([token(definition.transitionIdentity?.['Canonical Identifier']), token(definition.artifact?.registryIdentity || definition.artifact?.id)]);
 }
-function unavailableParent(reason = 'source-topic-portable-parent-reference-unavailable') {
-  return freeze({ state: 'unavailable', trace: '', traceTarget: '', origin: '', originTarget: '', permalink: '', repository: '', ref: '', path: '', sourceUrl: '', schemaId: '', representationKind: '', recoveryKind: '', finalized: false, reason });
-}
-function githubCommitPermalink(repository, ref, path) {
-  try {
-    const repo = encodeGithubPath(repository);
-    const encodedPath = encodeGithubPath(path);
-    const target = repo && encodedPath ? `https://github.com/${repo}/blob/${ref}/${encodedPath}` : '';
-    return target && !/[)\s]/.test(target) ? target : '';
-  } catch (_) { return ''; }
-}
-function encodeGithubPath(value = '') {
-  return String(value).split('/').map((part) => encodeURIComponent(part).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)).join('/');
-}
-function exactCommit(value = '') { const commit = token(value); return /^[0-9a-f]{40}$/i.test(commit) ? commit : ''; }
-
-function relativeArtifactPath(fromPath = '', toPath = '') {
-  const from = normalizePathParts(fromPath); const to = normalizePathParts(toPath);
-  if (!from.length || !to.length) return '';
-  from.pop();
-  let shared = 0; while (shared < from.length && shared < to.length && from[shared] === to[shared]) shared += 1;
-  const parts = [...Array(from.length - shared).fill('..'), ...to.slice(shared)];
-  return parts.join('/') || to[to.length - 1] || '';
-}
-function normalizePathParts(value = '') {
-  const out = []; for (const part of String(value || '').replace(/\\/g, '/').split('/')) { if (!part || part === '.') continue; if (part === '..') out.pop(); else out.push(part); } return out;
-}
 function exactOne(values = []) { return values.length === 1 ? values[0] : null; }
 function markdownLabel(value) { return String(value || '').replace(/[\[\]\n\r]/g, ' ').trim() || 'Topic'; }
 function token(value = '') { return String(value || '').trim(); }
-function unique(values = []) { return [...new Set(values.filter(Boolean))]; }

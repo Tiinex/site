@@ -129,7 +129,9 @@ const cacheCommit = 'd69b8ff55a56b8cb9282b8684db6a938a4435b94';
 const cacheMarkdown = Object.freeze({
   'tiinex.root.v1': read(`src/transitions/canonical-schema-cache/${cacheCommit}/tiinex.root.v1.schema.md`),
   'tiinex.transition.definition.v1': read(`src/transitions/canonical-schema-cache/${cacheCommit}/tiinex.transition.definition.v1.schema.md`),
-  'tiinex.task.v1': taskMarkdown
+  'tiinex.task.v1': taskMarkdown,
+  'tiinex.topic.v1': read('src/transitions/canonical-schema-cache/52ecdea0a75893882ce282214d155f70e1309c2a/tiinex.topic.v1.schema.md'),
+  'tiinex.interpretation.v1': read('src/schemas/core/interpretation/tiinex.interpretation.v1.schema.md')
 });
 const schemaCache = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => ({ ...item, markdown: cacheMarkdown[item.schemaId], sourceQualification: 'source-qualified-cache' }));
 const topicMarkdown = `# Continuity Context

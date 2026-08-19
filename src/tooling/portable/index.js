@@ -37,8 +37,10 @@ export * from './orchestration/task.prepare.js';
 export * from './checkpoint/portable.checkpoint.js';
 export * from './materialization/durable.materialize.js';
 export * from './package/runtime.package.js';
+export * from './publication/runtime.publication.js';
 export * from './package/schema.transition.companion.js';
 export * from './package/semantic.package.js';
+export * from './package/generation.binding.js';
 export * from './conformance/checkpoint.qualification.js';
 
 export * from './transfer/transfer.plan.js';

@@ -1,6 +1,7 @@
 import { schemaCatalogEntryForId } from '../schemas/schemaMarkdownCatalog.js';
 
 const schemaAssetUrls = Object.freeze({
+  "tiinex.interpretation.v1": new URL("../schemas/core/interpretation/tiinex.interpretation.v1.schema.md", import.meta.url).href,
   "tiinex.evidence.v1": new URL("../schemas/core/evidence/tiinex.evidence.v1.schema.md", import.meta.url).href,
   "tiinex.preservation.v1": new URL("../schemas/core/preservation/tiinex.preservation.v1.schema.md", import.meta.url).href,
   "tiinex.task.v1": new URL("../schemas/core/task/tiinex.task.v1.schema.md", import.meta.url).href,

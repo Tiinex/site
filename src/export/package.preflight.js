@@ -2,6 +2,9 @@ import { buildPublicationPreflight } from '../publication/publication.preflight.
 import { buildReingestPlan } from '../reingest/reingest.plan.js';
 import { buildWorkspaceGovernanceSummary, governanceFindingForBoundary } from '../governance/governance.boundary.js';
 import { buildSourceBoundaryReport, isSourceBacked } from '../diagnostics/sourceBoundary.report.js';
+import { packageAssetBytes } from './package.bytes.js';
+import { projectPackageSourceReference } from './package.sourceReference.js';
+import { buildExportWorkspaceContext } from './package.workspaceContext.js';
 
 export const EXPORT_PACKAGE_PREFLIGHT_SCHEMA_ID = 'tiinex.export.package.preflight.v1';
 
@@ -38,15 +41,16 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
   const sourceReferenceEntries = (publicationPreflight.sourceReferences || []).map((reference) => sourceReferenceEntry(reference, findings));
   const assetEntries = assets.map((asset) => assetEntry(asset, findings));
   const workspaceCandidateEntries = workspaceCandidates.map((candidate) => workspaceCandidateEntry(candidate, findings));
+  const workspaceContext = buildExportWorkspaceContext(workspace, { records, assets });
 
-  if (!localDraftEntries.length && !sourceReferenceEntries.length && !assetEntries.length && !workspaceCandidateEntries.length) {
+  if (!localDraftEntries.length && !sourceReferenceEntries.length && !assetEntries.length && !workspaceCandidateEntries.length && !workspaceContext.id && !workspaceContext.workspaceMarkdown?.available) {
     findings.push(finding('warning', 'export.package.empty', 'No loaded material is available for export/package preflight.', { workspaceId: workspace.id || '' }));
   }
 
   const dedupedFindings = prioritizeFindings(dedupeFindings(findings));
   const counts = {
     records: records.length,
-    packageEntries: localDraftEntries.length + sourceReferenceEntries.length + assetEntries.length + workspaceCandidateEntries.length,
+    packageEntries: localDraftEntries.length + sourceReferenceEntries.length + assetEntries.length + workspaceCandidateEntries.length + 1,
     localDraftEntries: localDraftEntries.length,
     blockedLocalEntries: blockedLocalEntries.length,
     sourceReferenceEntries: sourceReferenceEntries.length,
@@ -55,6 +59,7 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
     assetEntries: assetEntries.length,
     metadataOnlyAssets: assetEntries.filter((entry) => entry.status === 'metadata-only').length,
     workspaceCandidateEntries: workspaceCandidateEntries.length,
+    workspaceContextEntries: 1,
     errors: dedupedFindings.filter((item) => item.severity === 'error').length,
     warnings: dedupedFindings.filter((item) => item.severity === 'warning').length,
     info: dedupedFindings.filter((item) => item.severity === 'info').length,
@@ -76,6 +81,7 @@ export function buildExportPackagePreflight(workspace = {}, input = {}) {
     sourceReferenceEntries: Object.freeze(sourceReferenceEntries),
     assetEntries: Object.freeze(assetEntries),
     workspaceCandidateEntries: Object.freeze(workspaceCandidateEntries),
+    workspaceContext,
     findings: Object.freeze(dedupedFindings)
   });
 }
@@ -107,38 +113,48 @@ function blockedLocalEntry(record = {}, findings = []) {
 }
 
 function sourceReferenceEntry(reference = {}, findings = []) {
-  if (reference.status !== 'pinned-reference') {
-    findings.push(finding('warning', 'export.package.source-reference.degraded', 'Source-backed material can be packaged only as a degraded source reference until repo/ref/path are explicit.', { recordId: reference.id || '', path: reference.path || '', repo: reference.repo || '' }));
+  const target = reference.target || projectPackageSourceReference(reference, reference);
+  if (reference.status !== 'pinned-reference' && reference.status !== 'exact-target-reference') {
+    findings.push(finding('warning', 'export.package.source-reference.degraded', 'Source-backed material can be packaged only as a degraded source reference until exact source target authority is explicit.', { recordId: reference.id || '', path: target.path || reference.path || '', repo: target.repo || reference.repo || '' }));
   }
   return Object.freeze({
     id: reference.id || reference.path || reference.title || '',
     title: reference.title || 'Source reference',
-    path: reference.path || '',
+    path: target.path || reference.path || '',
     kind: 'source-reference',
-    adapterId: reference.adapterId || '',
-    repo: reference.repo || '',
-    ref: reference.ref || '',
-    status: reference.status || 'degraded-reference',
+    adapterId: target.adapterId || reference.adapterId || '',
+    repo: target.repo || reference.repo || '',
+    ref: target.ref || reference.ref || '',
+    status: reference.status || target.status || 'degraded-reference',
     mode: 'preserve-source-reference',
-    boundary: 'Package stores a reference to source-backed input; it does not republish or embed it as a new local draft.'
+    target,
+    boundary: 'Package stores exact available source-target authority as a reference; it does not republish or embed it as a new local draft.'
   });
 }
 
 function assetEntry(asset = {}, findings = []) {
   const id = asset.id || asset.path || asset.name || '';
-  const hasContent = Boolean(asset.content || asset.dataUrl || asset.text || asset.bytes);
-  const metadataOnly = asset.previewState === 'omitted-large' || asset.cacheState === 'preview-truncated-for-session-cache' || !hasContent;
-  if (metadataOnly) {
-    findings.push(finding('warning', 'export.package.asset.metadata-only', 'Asset has no full content in the loaded session; package must mark it metadata-only or require reselection.', { assetId: id, path: asset.path || '' }));
+  const sourceBacked = isSourceBacked(asset.source || {});
+  const byteProjection = packageAssetBytes(asset);
+  const hasOwnedBytes = !sourceBacked && byteProjection.bytes.byteLength > 0 && asset.previewState !== 'omitted-large' && asset.cacheState !== 'preview-truncated-for-session-cache';
+  const metadataOnly = !sourceBacked && !hasOwnedBytes;
+  const sourceReference = sourceBacked ? projectPackageSourceReference(asset) : null;
+  if (sourceBacked) {
+    findings.push(finding('info', 'export.package.asset.source-reference', 'Source-backed asset remains an exact/degraded source reference; loaded preview/content bytes are not automatically embedded as owned local bytes.', { assetId: id, path: asset.path || '' }));
+    if (!sourceReference || sourceReference.status === 'degraded-reference') findings.push(finding('warning', 'export.package.asset.source-reference.degraded', 'Source-backed asset lacks exact source-target authority and remains a degraded reference; loaded bytes are still not promoted to owned local content.', { assetId: id, path: asset.path || '' }));
+  } else if (metadataOnly) {
+    findings.push(finding('warning', 'export.package.asset.metadata-only', 'Local asset has no full owned bytes in the loaded session; package must mark it metadata-only or require reselection.', { assetId: id, path: asset.path || '' }));
   }
   return Object.freeze({
     id,
     title: asset.name || asset.path || 'Asset',
     path: asset.path || '',
     kind: 'asset',
-    mediaType: asset.type || asset.mimeType || '',
-    status: metadataOnly ? 'metadata-only' : 'content-available',
-    mode: metadataOnly ? 'asset-metadata-entry' : 'asset-content-entry',
+    mediaType: asset.type || asset.mimeType || byteProjection.mediaType || '',
+    byteSize: Number(asset.size || byteProjection.bytes.byteLength || 0),
+    status: sourceBacked ? 'source-reference' : (metadataOnly ? 'metadata-only' : 'content-available'),
+    mode: sourceBacked ? 'asset-source-reference' : (metadataOnly ? 'asset-metadata-entry' : 'asset-content-entry'),
+    sourceReference,
     boundary: asset.source?.boundary || 'Asset boundary follows its intake source; assets are not fake leaves.'
   });
 }

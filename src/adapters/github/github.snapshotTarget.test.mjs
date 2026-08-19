@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { qualifyGithubSnapshotInput, resolveGithubSnapshotInput } from './github.repoDiscovery.js';
+const source = { repo: 'Tiinex/docs', ref: 'master', rootPath: '.topics' };
+const exact = 'A'.repeat(40);
+assert.equal(qualifyGithubSnapshotInput(source, exact).requestedRef, exact);
+assert.equal(qualifyGithubSnapshotInput(source, `https://github.com/Tiinex/docs/commit/${exact}`).ok, true);
+assert.equal(qualifyGithubSnapshotInput(source, 'https://github.com/Tiinex/docs/tree/main').requestedRef, 'main');
+assert.equal(qualifyGithubSnapshotInput(source, 'https://github.com/Tiinex/docs/tree/main/.topics').code, 'github.snapshot.tree-ref.ambiguous');
+assert.equal(qualifyGithubSnapshotInput(source, `https://github.com/other/repo/commit/${exact}`).code, 'github.snapshot.repository.mismatch');
+assert.equal(qualifyGithubSnapshotInput(source, '2026-05-31').requestedRef, '2026-05-31', 'input qualification treats a string only as an explicit ref; it never maps dates to commits');
+const direct = await resolveGithubSnapshotInput(source, exact, { fetchImpl: async () => { throw new Error('network must not run for exact commit'); } });
+assert.equal(direct.materializedCommit, exact.toLowerCase());
+let calls = 0;
+const named = await resolveGithubSnapshotInput(source, 'release-v1', { fetchImpl: async (url) => {
+  calls += 1;
+  assert.match(url, /\/commits\/release-v1$/);
+  return { ok: true, json: async () => ({ sha: 'b'.repeat(40) }) };
+} });
+assert.equal(named.materializedCommit, 'b'.repeat(40));
+assert.equal(calls, 1, 'named ref resolves exactly once');
+const failed = await resolveGithubSnapshotInput(source, 'missing', { fetchImpl: async () => ({ ok: false, status: 404, statusText: 'Not Found', json: async () => ({ message: 'missing' }) }) });
+assert.equal(failed.ok, false);
+assert.equal(failed.code, 'github.snapshot.resolution.failed');
+console.log('github.snapshotTarget: ok');

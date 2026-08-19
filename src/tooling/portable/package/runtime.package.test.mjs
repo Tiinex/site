@@ -30,7 +30,7 @@ The portable runtime package is being tested.
 const input = {
   title: 'Portable runtime package test',
   stagedArtifacts: [{ id: 'draft-1', path: 'drafts/runtime.md', schemaId: 'tiinex.topic.v1', markdown, sourceMode: 'local-portable-staged', lifecycleStatus: 'draft' }],
-  records: [{ id: 'source-1', title: 'Canonical source reference', path: 'topics/source.md', markdown, sourceMode: 'github', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef', path: 'topics/source.md' } }],
+  records: [{ id: 'source-1', title: 'Canonical source reference', path: 'topics/source.md', markdown, sourceMode: 'github', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'main', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', path: 'topics/source.md' }, sourceTarget: { surface: 'repoFiles', targetKind: 'github-repo-file', sourceArtifactPath: 'topics/source.md', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }],
   assets: [{ id: 'asset-1', path: 'assets/example.txt', name: 'Example', type: 'text/plain', content: 'asset-content', source: { adapterId: 'local' } }]
 };
 const built = buildPortableRuntimePackage(input, { clock: () => '2026-07-23T02:00:00.000Z' });

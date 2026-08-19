@@ -26,7 +26,7 @@ const readyWorkspace = {
   title: 'Ready package',
   records: [
     { id: 'draft-ready', title: 'Draft', path: 'drafts/draft.md', markdown: validDraftMarkdown, source: { adapterId: 'local' }, sourceMode: 'local-transition' },
-    { id: 'source-ready', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef' } }
+    { id: 'source-ready', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'main', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }, sourceTarget: { surface: 'repoFiles', targetKind: 'github-repo-file', sourceArtifactPath: 'topics/source.md', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }
   ],
   assets: [{ id: 'asset-ready', name: 'Image', path: 'assets/image.png', content: 'bytes', type: 'image/png', source: { adapterId: 'local' } }]
 };
@@ -44,7 +44,7 @@ assert.equal(manifest.material.localDrafts[0].content.available, true);
 assert.ok(manifest.material.localDrafts[0].content.fingerprint.startsWith('tixfp1-'));
 assert.equal(manifest.material.sourceReferences[0].kind, 'source-reference');
 assert.equal(manifest.material.sourceReferences[0].target.repo, 'Tiinex/docs');
-assert.equal(manifest.material.sourceReferences[0].target.ref, 'abcdef');
+assert.equal(manifest.material.sourceReferences[0].target.ref, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 assert.equal(manifest.material.assets[0].kind, 'asset');
 assert.equal(manifest.material.assets[0].content.available, true);
 assert.equal(manifest.material.blocked.length, 0);

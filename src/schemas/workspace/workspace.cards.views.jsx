@@ -8,7 +8,7 @@ import { transitionProductActionsForRecord } from '../../transitions/transition.
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { appendTransitionActionsToStaticRow } from './workspace.cardActions.js';
-import { compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordMaterialBadge, recordSchemaBadge, recordSchemaCanOpen, recordSourceBadge } from './workspace.viewFormatting.js';
+import { assetPreviewSummary, assetSourceBadge, assetSourceBoundary, compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordMaterialBadge, recordSchemaBadge, recordSchemaCanOpen, recordSourceBadge } from './workspace.viewFormatting.js';
 import { workspaceArtifactActionModel, workspaceArtifactBoundaryBadge } from '../../workspaces/workspace.artifactActions.js';
 import { RecordActionButton } from './workspace.recordActionButton.views.jsx';
 
@@ -17,13 +17,13 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
   return (
     <article className="tx-artifact-card tx-asset-card">
       <div className="tx-card-badges">
-        <Badge>local/session</Badge>
+        <Badge>{assetSourceBadge(asset)}</Badge>
         <Badge>{asset.type || 'asset'}</Badge>
         <Badge>{asset.previewState || 'metadata-only'}</Badge>
       </div>
       <h3>{asset.name || asset.path || 'Local asset'}</h3>
       {asset.path ? <div className="tx-card-pathline" title={asset.path}><Icon name="folderOpen" />{compactPath(asset.path)}</div> : null}
-      <p>{asset.size ? `${asset.size} bytes preserved as local asset.` : 'Preserved as a local asset, not a fake leaf.'}</p>
+      <p>{assetPreviewSummary(asset)}</p>
       <footer className="tx-artifact-actions">
         <Button icon="open" variant="ghost" onClick={() => onOpenAsset?.(asset.id || asset.path)}>Open</Button>
       </footer>
@@ -31,14 +31,14 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
   );
 }, assetCardPropsEqual);
 
-export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded }) {
+export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded, readOnly = false }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
-  const transitionActions = transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId });
+  const transitionActions = readOnly ? [] : transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId, productContext: transitionProductContext });
   const isWorkspaceArtifact = isWorkspaceRecord(record);
   const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
-  const baseActions = presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
-  const contextualActions = lineageContext
+  const baseActions = readOnly ? [{ id: RecordActionKind.open, label: 'Open', icon: 'open', enabled: true }] : presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
+  const contextualActions = readOnly ? baseActions : lineageContext
     ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
     : baseActions.filter((action) => action.id !== RecordActionKind.lineage);
   const actions = appendTransitionActionsToStaticRow(contextualActions, transitionActions);
@@ -47,6 +47,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
   const schemaOpenable = recordSchemaCanOpen(record);
   const sourceBadge = recordSourceBadge(record);
   const primaryClick = () => {
+    if (readOnly) return onOpenRecord?.(record.id);
     if (lineageContext) return onToggleExpanded?.(record.id);
     return onFocusRecordLineage?.(record.id);
   };
@@ -61,7 +62,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
         {isWorkspaceArtifact ? <Badge>{workspaceArtifactBoundaryBadge(record)}</Badge> : null}
         <AuditStatusBadge record={record} item={auditItem} />
         {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
-        {schemaOpenable ? <button type="button" className="tx-badge tx-badge-default tx-schema-nav-badge" title={`Open reading contract schema lineage for ${schemaBadge}`} aria-label={`Open reading contract schema lineage for ${schemaBadge}`} onClick={(event) => { event.stopPropagation(); onOpenSchema?.(record); }}>{schemaBadge}</button> : <Badge>{schemaBadge}</Badge>}
+        {!readOnly && schemaOpenable ? <button type="button" className="tx-badge tx-badge-default tx-schema-nav-badge" title={`Open reading contract schema lineage for ${schemaBadge}`} aria-label={`Open reading contract schema lineage for ${schemaBadge}`} onClick={(event) => { event.stopPropagation(); onOpenSchema?.(record); }}>{schemaBadge}</button> : <Badge>{schemaBadge}</Badge>}
         {dateBadge ? <Badge>{dateBadge}</Badge> : null}
         <Badge>{sourceBadge}</Badge>
         {recordMaterialBadge(record) ? <Badge title={record.materialReconciliation?.message || 'Material reconciliation'}>{recordMaterialBadge(record)}</Badge> : null}
@@ -102,6 +103,8 @@ export function recordCardPropsEqual(previous = {}, next = {}) {
     && previous.actionStateKey === next.actionStateKey
     && previous.workspaceRecords === next.workspaceRecords
     && previous.workspaceId === next.workspaceId
+    && previous.transitionProductContext === next.transitionProductContext
+    && previous.readOnly === next.readOnly
     && Boolean(previous.onOpenRecord) === Boolean(next.onOpenRecord)
     && Boolean(previous.onFocusRecordLineage) === Boolean(next.onFocusRecordLineage)
     && Boolean(previous.onShareRecord) === Boolean(next.onShareRecord)
@@ -114,18 +117,18 @@ export function AssetDetailDialog({ asset, onDismiss }) {
     <Modal title={asset?.name || asset?.path || 'Local asset'} onDismiss={onDismiss}>
       <div className="tx-record-detail tx-asset-detail">
         <div className="tx-card-badges">
-          <Badge>local/session</Badge>
+          <Badge>{assetSourceBadge(asset)}</Badge>
           <Badge>{asset?.type || 'asset'}</Badge>
           <Badge>{asset?.previewState || 'metadata-only'}</Badge>
         </div>
         <dl className="tx-record-meta">
           {asset?.path ? <div><dt>Path</dt><dd>{asset.path}</dd></div> : null}
           {asset?.size != null ? <div><dt>Size</dt><dd>{asset.size} bytes</dd></div> : null}
-          <div><dt>Boundary</dt><dd>{asset?.source?.boundary || 'Browser-local asset; no GitHub provenance inferred.'}</dd></div>
+          <div><dt>Boundary</dt><dd>{assetSourceBoundary(asset)}</dd></div>
         </dl>
         {asset?.content ? <pre className="tx-record-markdown-preview">{String(asset.content).slice(0, 2400)}</pre> : null}
         {asset?.dataUrl ? <img className="tx-local-asset-preview" src={asset.dataUrl} alt="" /> : null}
-        {!asset?.content && !asset?.dataUrl ? <p className="tx-muted">Preview is {asset?.previewState || 'metadata-only'}; metadata and local boundary are preserved.</p> : null}
+        {!asset?.content && !asset?.dataUrl ? <p className="tx-muted">Preview is {asset?.previewState || 'metadata-only'}; metadata and source boundary are preserved.</p> : null}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
         </div>

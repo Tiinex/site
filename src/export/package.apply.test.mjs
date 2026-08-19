@@ -27,7 +27,7 @@ const readyWorkspace = {
   title: 'Ready package',
   records: [
     { id: 'draft-ready', title: 'Draft', path: 'drafts/draft.md', markdown: validDraftMarkdown, source: { adapterId: 'local' }, sourceMode: 'local-transition' },
-    { id: 'source-ready', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef' } }
+    { id: 'source-ready', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'main', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }, sourceTarget: { surface: 'repoFiles', targetKind: 'github-repo-file', sourceArtifactPath: 'topics/source.md', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }
   ],
   assets: [{ id: 'asset-ready', name: 'Image', path: 'assets/image.png', content: 'image-bytes', type: 'image/png', source: { adapterId: 'local' } }]
 };
@@ -45,7 +45,7 @@ assert.equal(plan.records[0].source.sourceBacked, false);
 assert.equal(plan.records[0].source.githubPolicy, 'not guessed');
 assert.equal(plan.records[0].path, 'drafts/draft.md');
 assert.equal(plan.sourceReferences[0].target.repo, 'Tiinex/docs');
-assert.equal(plan.sourceReferences[0].target.ref, 'abcdef');
+assert.equal(plan.sourceReferences[0].target.ref, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 assert.equal(plan.sourceReferences[0].target.path, 'topics/source.md');
 assert.equal(plan.assets[0].source.adapterId, 'export-package');
 assert.equal(plan.assets[0].source.sourceBacked, false);

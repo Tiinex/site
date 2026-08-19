@@ -40,7 +40,7 @@ export function lineageDisplayOptions(input = {}) {
   });
 }
 
-export function displayOptionsHiddenCount(options = {}, scope = 'discovery') {
+export function displayOptionsActiveConstraintCount(options = {}, scope = 'discovery') {
   const normalized = normalizeWorkspaceDisplayOptions(options);
   const lineageScope = String(scope || 'discovery') === 'lineage';
   const common = (normalized.mismatchesOnly ? 1 : 0)
@@ -54,3 +54,5 @@ export function displayOptionsHiddenCount(options = {}, scope = 'discovery') {
     + (normalized.showSupportingMarkdown === false ? 1 : 0)
     + (normalized.leavesOnly ? 1 : 0);
 }
+
+export const displayOptionsHiddenCount = displayOptionsActiveConstraintCount;

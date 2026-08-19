@@ -5,6 +5,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyStage, GlobalDock, HelpDialog } from './appShell.views.jsx';
 import { activeWorkspace, CLEAN_URL_BOUNDARY, defaultState, initialRuntimeSnapshot, runtime } from './runtimeState.js';
 import { initialStartupRenderPhase, shouldRenderProductStage } from './startupRenderPhase.js';
+import { startupPresentationFor } from './startupPresentation.js';
+import { StartupStage } from './startupPresentation.views.jsx';
 import { createStartupOwnershipGate, runOwnedWorkspaceStartupTransition } from './startupOwnership.js';
 import { shouldPageWorkspaces, useViewportWidth } from './viewport.js';
 import { buildDisplayOptionCounts } from './workspaceDisplayCounts.js';
@@ -12,12 +14,12 @@ import { hydrateUiRecord, hydrateUiWorkspace } from './recordUi.js';
 import { activeWorkspaceViewFor, stateWithWorkspaceLayoutMode, stateWithWorkspaceViewPatch, visibleWorkspaceItemsFor } from './workspaceMulticolumn.js';
 import { sourceTransportPendingUpdateInputForSource, sourceTransportRefreshInputForSource } from './sourceTransportRefresh.js';
 import { sourceGovernanceDialogData } from './governanceDialogData.js';
-import { buildWorkspaceExportPlan } from '../export/export.plan.js';
-import { AssetDetailDialog, CloseWorkspaceDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, RecordActionDialog, RecordDetailDialog, GovernanceBoundaryDialog, WorkspaceColumnSurface } from '../schemas/workspace/workspace.views.jsx';
+import { AssetDetailDialog, CloseWorkspaceDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, RecordActionDialog, RecordDetailDialog, GovernanceBoundaryDialog, WorkspaceCanonicalCreateDialog, WorkspaceColumnSurface } from '../schemas/workspace/workspace.views.jsx';
 import { normalizeWorkspaceDisplayOptions } from '../workspaces/workspace.displayOptions.js';
 import { AddToWorkspaceDialog, ImportConflictDialog } from '../schemas/workspace/workspace.add.views.jsx';
 import { DisplayOptionsDialog } from '../schemas/workspace/workspace.displayOptions.views.jsx';
-import { WorkspaceExportDialog } from '../schemas/workspace/workspace.exportDialog.views.jsx';
+import { WorkspaceExportDialogController } from '../schemas/workspace/workspace.exportDialog.controller.jsx';
+import { stateWithWorkspacePublicationReceipt } from '../workspaces/workspace.publicationReceipts.js';
 import { WorkspaceEntrypointChoiceDialog } from '../schemas/workspace/workspace.entrypointChoice.views.jsx';
 import { schemaRegistry } from '../schemas/registry.js';
 import { workspaceViewScrollKeyFor, stateWithCapturedViewScroll } from './viewState.js';
@@ -28,9 +30,12 @@ import { commitStateWithPersistence, createStatePersistenceScheduler } from './s
 import { createPersistenceOwnershipPolicy, DurableLocalAuthority } from './persistenceOwnership.js';
 import { durableLocalAuthorityForRoute, markCurrentHistoryDurableAuthority } from './historyAuthority.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
-import { runLocalDraftDiscardCommand } from './localDraftMutationCommand.js';
+import { runLocalDraftDiscardCommand, runLocalDraftUpdateCommand } from './localDraftMutationCommand.js';
 import { executeCanonicalTransitionLocalCreate } from './canonicalTransitionLocalCreateCommand.js';
+import { executeCanonicalReferenceLocalCreate } from './canonicalReferenceLocalCreateCommand.js';
+import { canonicalReferenceTargetOptions } from './canonicalReferenceTargets.js';
 import { BUNDLED_CANONICAL_TRANSITION_DEFINITIONS, BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE } from '../transitions/canonicalTransition.productDefaults.js';
+import { transitionProductActionsForWorkspace } from '../transitions/transition.productPresentation.browser.js';
 import { RecordActionKind } from '../actions/record.actions.js';
 import { ensureUniqueTransitionPath } from '../transitions/record.transitions.js';
 import { mergeWorkspaceRecordAction, openWorkspaceRecordAction } from './workspaceRecordActions.js';
@@ -39,7 +44,7 @@ import { workspaceRecordMergedNotice, workspaceRecordOpenedNotice } from './work
 import { lineageLoadReportForSelectedView, loadFullLineageCommand, runLineageAuditCommand, shouldAutoLoadLineage } from './lineageCommand.js';
 import { useLocalMaterialIntake } from './useLocalMaterialIntake.js';
 import { useWorkspaceEntrypointIntake } from './useWorkspaceEntrypointIntake.js';
-import { executeWorkspaceTreeExportCommand } from './workspaceExportCommand.js';
+import { executeWorkspaceExportCommand } from './workspaceExportExecutionCommand.js';
 import { openSchemaForRecordCommand } from './schemaNavigationCommand.js';
 import { loadViewerSchemaMarkdown } from './schemaNavigationRuntimeCatalog.js';
 import { abortGithubSourceOperation, clearGithubSourceCacheForSource, runGithubSourceOperation } from './githubSourceOperation.js';
@@ -48,9 +53,14 @@ import { classifyRouteLocation } from './publicTarget.js';
 import { runPublicTargetRestoreCommand } from './publicTargetRestoreCommand.js';
 import { runExplicitUrlMaterialImportCommand } from './urlMaterialCommand.js';
 import { runWorkspaceSourceCloseCommand } from './workspaceSourceCloseCommand.js';
+import { timePortalGithubSources } from './timePortalSnapshotResolution.js';
+import { historicalWorkspaceForReadModel } from './timePortalHistoricalRead.js';
+import { timePortalReferencesSource, timePortalViewFor, timePortalWithoutIntent } from '../workspaces/workspace.timePortal.js';
+import { useTimePortalProductController } from './useTimePortalProductController.jsx';
+import { TimePortalResolveDialog } from '../schemas/workspace/workspace.timePortal.views.jsx';
 import { projectShareTruth, ShareScope } from './shareProjection.js';
 import { executeShareProjectionAction } from './shareActionCommand.js';
-import { stateAfterWorkspaceClosePresentation, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById } from './workspaceScopedInteraction.js';
+import { stateAfterWorkspaceClosePresentation, stateWithRecordLineageFocused, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById } from './workspaceScopedInteraction.js';
 import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWindow.js';
 export function TiinexApp() {
   const initialRuntimeRef = useRef(null);
@@ -78,7 +88,9 @@ export function TiinexApp() {
   const appConfigDiagnosticsRef = useRef({ last: null });
   if (!statePersistenceSchedulerRef.current) statePersistenceSchedulerRef.current = createStatePersistenceScheduler(typeof window !== 'undefined' ? window : globalThis, { persistenceOwnership: persistenceOwnershipRef.current });
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
+  const startupPresentation = useMemo(() => startupPresentationFor({ startupPhase, state }), [startupPhase, state]);
   const active = activeWorkspace(state);
+  const referenceParticipantRecords = useMemo(() => (state.workspaces || []).flatMap((workspace) => (workspace.records || []).map((record) => ({ ...record, workspaceIds: [...new Set([...(record.workspaceIds || []), workspace.id].filter(Boolean))] }))), [state.workspaces]);
   const activeWorkspaceConfig = active?.workspaceConfig || workspaceConfig;
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
@@ -227,6 +239,8 @@ export function TiinexApp() {
     const sourceState = latestStateRef.current || state;
     commitSemanticNavigation(stateWithWorkspaceViewUpdateAndFocus(sourceState, workspaceId || active?.id, updater, viewportWidth), mode, { deferPersistence: true, persistenceReason: 'workspace-view-update' });
   }
+  const timePortalController = useTimePortalProductController({ state, latestStateRef, activeWorkspaceId: active?.id || '', dialogWorkspaceId, dialog, commitWorkspaceViewUpdate, setNotice, setDialog, setDialogWorkspaceId, setActiveRecordId, setActiveAssetId, dismissDialog, fetchImpl: typeof fetch !== 'undefined' ? fetch : null });
+  const { readFor: timePortalReadFor, clearHistoricalRead, openResolver: openTimePortalResolver, loadSnapshot: loadHistoricalSnapshot, resolveFromDialog: resolveTimePortalFromDialog, returnToLatest: returnTimePortalToLatest, busy: timePortalBusy, error: timePortalError } = timePortalController;
   function commitViewPatch(patch = {}, mode = 'replace') { commitWorkspaceViewPatch(active?.id, patch, mode); }
   function commitViewUpdate(updater = null, mode = 'replace') { commitWorkspaceViewUpdate(active?.id, updater, mode); }
   function preserveCapturedViewScroll(nextState = state, sourceState = state) {
@@ -411,14 +425,8 @@ export function TiinexApp() {
     setActiveAssetId('');
     setActiveRecordId('');
     if (!id) return;
-    commitWorkspaceViewPatch(workspaceId, {
-      workspaceVerse: 'lineage',
-      selectedRecordId: id,
-      lineageQuery: '',
-      expandedLineageRecordIds: [],
-      lineageAuditReport: null,
-      lineageLoadReport: null
-    }, 'push');
+    const sourceState = latestStateRef.current || state;
+    commitSemanticNavigation(stateWithRecordLineageFocused(sourceState, workspaceId || active?.id, id, viewportWidth), 'push', { deferPersistence: true, persistenceReason: 'workspace-lineage-focus' });
   }
   function dismissRecord() {
     setActiveRecordId('');
@@ -463,7 +471,7 @@ export function TiinexApp() {
     if (action?.id === RecordActionKind.workspaceMerge) return mergeWorkspaceRecord(record, originWorkspaceId);
     if (action?.id === RecordActionKind.deleteLocal) return deleteLocalDraftRecord(record, originWorkspaceId);
     if (originWorkspaceId) focusWorkspaceForInteraction(originWorkspaceId);
-    setActiveRecordId(''); setActiveAssetId(''); setRecordAction({ recordId: record?.id || '', action });
+    setActiveRecordId(''); setActiveAssetId(''); setRecordAction({ recordId: record?.id || '', workspaceId: originWorkspaceId || state.activeWorkspaceId || active?.id || '', action });
   }
   function dismissRecordAction() { setRecordAction(null); }
   function deleteLocalDraftRecord(record = {}, originWorkspaceId = '') {
@@ -471,6 +479,13 @@ export function TiinexApp() {
     const result = runLocalDraftDiscardCommand({ lifecycle: runtime().lifecycle, state: currentState, workspaceId, recordId: record?.id || '', persistenceOwnership: persistenceOwnershipRef.current });
     if (!result?.ok) return setNotice(result?.notice || 'Could not discard local draft.');
     setRecordAction(null); if (activeRecordId === record?.id) setActiveRecordId(''); setNotice(result.notice); commitSemanticNavigation(stateWithWorkspaceFocused(result.state, workspaceId, viewportWidth), 'push');
+  }
+  function updateLocalDraftRecord(record = {}, markdown = '', originWorkspaceId = '') {
+    const currentState = latestStateRef.current || state, workspaceId = originWorkspaceId || currentState.activeWorkspaceId || active?.id;
+    const result = runLocalDraftUpdateCommand({ lifecycle: runtime().lifecycle, state: currentState, workspaceId, recordId: record?.id || '', candidate: { markdown }, persistenceOwnership: persistenceOwnershipRef.current });
+    if (!result?.ok) { setNotice(result?.notice || 'Could not update local draft.'); return result; }
+    setRecordAction(null); setNotice(result.notice); commit(result.state, 'replace', { persistenceReason: 'local-draft-edit' });
+    return result;
   }
   function createCanonicalTransitionRecord(parentRecord, action, values) {
     const sourceState = latestStateRef.current || state;
@@ -486,11 +501,33 @@ export function TiinexApp() {
       bundledDefinitions: BUNDLED_CANONICAL_TRANSITION_DEFINITIONS,
       persistenceOwnership: persistenceOwnershipRef.current
     });
-    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical local Task.'); return result; }
+    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical local artifact.'); return result; }
     setRecordAction(null); setActiveRecordId(''); setActiveAssetId(''); setNotice(result.notice);
     commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || workspaceId, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
     return result;
   }
+
+  function createCanonicalReferenceRecord(subjectRecord, action, targetOption) {
+    const sourceState = latestStateRef.current || state;
+    const workspaceId = recordAction?.workspaceId || sourceState.activeWorkspaceId || active?.id || '';
+    const result = executeCanonicalReferenceLocalCreate({
+      lifecycle: runtime().lifecycle,
+      state: sourceState,
+      workspaceId,
+      currentRecordId: subjectRecord?.id || '',
+      targetWorkspaceId: targetOption?.workspaceId || '',
+      targetRecordId: targetOption?.id || '',
+      definitionKey: action?.definitionKey || '',
+      schemaCache: BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE,
+      bundledDefinitions: BUNDLED_CANONICAL_TRANSITION_DEFINITIONS,
+      persistenceOwnership: persistenceOwnershipRef.current
+    });
+    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical Reference Relation.'); return result; }
+    setRecordAction(null); setActiveRecordId(''); setActiveAssetId(''); setNotice(result.notice);
+    commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || workspaceId, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
+    return result;
+  }
+
   function createTransitionRecord(parentRecord, draft) {
     if (!draft?.title) return setNotice('Transition draft is missing a title.');
     const authority = authorizeDurableLocalMutation(DurableLocalMutationOperation.localDraftCreate);
@@ -524,18 +561,29 @@ export function TiinexApp() {
     if (!target) return setNotice('No workspace to export.');
     openWorkspaceDialog('export-workspace', target.id);
   }
-  function executeWorkspaceTreeExport(exportPlan = null) {
+  function persistWorkspacePublicationResult(result = null, plan = null, executionAttestation = null) {
+    const sourceState = latestStateRef.current || state;
+    const targetId = dialogWorkspaceId || sourceState.activeWorkspaceId;
+    const applied = stateWithWorkspacePublicationReceipt(sourceState, targetId, result || {}, { executionAttestation });
+    if (!applied.ok) { setNotice('Verified publication could not be recorded locally.'); return applied; }
+    commit(applied.state, 'replace', { persistenceReason: 'publication-receipt' });
+    setNotice('GitHub publication verified and receipt recorded locally.');
+    return applied;
+  }
+  function executeWorkspaceExport(exportPlan = null) {
     const sourceState = latestStateRef.current || state;
     const target = workspaceById(sourceState, dialogWorkspaceId || sourceState.activeWorkspaceId) || active;
-    const result = executeWorkspaceTreeExportCommand({ workspace: hydrateUiWorkspace(target) || target, exportPlan, document, window });
+    const result = executeWorkspaceExportCommand({ workspace: hydrateUiWorkspace(target) || target, exportPlan, document, window });
     if (result.exception) console.error(result.exception);
-    setNotice(result.notice || (result.ok ? 'Export completed.' : 'Could not build tree export.'));
+    setNotice(result.notice || (result.ok ? 'Export completed.' : 'Could not execute export.'));
     if (result.ok) setDialog(null);
   }
   function closeSource(sourceId, workspaceId = active?.id || '') {
     const sourceState = latestStateRef.current || state;
     const targetId = String(workspaceId || sourceState.activeWorkspaceId || '').trim();
-    const result = runWorkspaceSourceCloseCommand({ lifecycle: runtime().lifecycle, state: sourceState, workspaceId: targetId, sourceId });
+    const sourceForClose = timePortalReferencesSource(activeWorkspaceViewFor(sourceState, targetId), sourceId) ? stateWithWorkspaceViewUpdateAndFocus(sourceState, targetId, (view) => timePortalWithoutIntent(view), viewportWidth) : sourceState;
+    if (sourceForClose !== sourceState) clearHistoricalRead(targetId);
+    const result = runWorkspaceSourceCloseCommand({ lifecycle: runtime().lifecycle, state: sourceForClose, workspaceId: targetId, sourceId });
     if (!result?.ok) return setNotice(result.notice || 'Source stays pinned.');
     setNotice(result.notice || 'Source closed.');
     commitSemanticNavigation(stateWithWorkspaceFocused(result.state, targetId, viewportWidth), 'push');
@@ -590,6 +638,7 @@ export function TiinexApp() {
     commitWorkspaceViewPatch(workspaceId, Object.assign({
       workspaceVerse: normalizedVerse
     }, resetLineage ? {
+      lineageReturnVerse: '',
       selectedRecordId: '',
       expandedLineageRecordIds: [],
       lineageAuditReport: null,
@@ -658,17 +707,30 @@ export function TiinexApp() {
     const result = await executeShareProjectionAction({ projection, clipboard: typeof navigator !== 'undefined' ? navigator.clipboard : null });
     setNotice(result.notice);
   }
-  const activeRecord = activeRecordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === activeRecordId)) : null;
+  const activeTemporal = active ? timePortalViewFor(activeWorkspaceViewFor(state, active.id)) : null;
+  const activeHistoricalRead = active ? timePortalReadFor(active, activeWorkspaceViewFor(state, active.id)) : null;
+  const activeHistoricalWorkspace = activeHistoricalRead ? historicalWorkspaceForReadModel(active, activeHistoricalRead) : null;
+  const activeRecord = activeRecordId
+    ? hydrateUiRecord((activeHistoricalWorkspace?.records || activeUi?.records || []).find((record) => record.id === activeRecordId))
+    : null;
   const activeAsset = activeAssetId && activeUi?.assets ? activeUi.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
-  const actionRecord = recordAction?.recordId && activeUi?.records ? hydrateUiRecord(activeUi.records.find((record) => record.id === recordAction.recordId)) : null;
+  const actionWorkspace = recordAction?.workspaceId ? workspaceById(state, recordAction.workspaceId) : active;
+  const actionWorkspaceUi = hydrateUiWorkspace(actionWorkspace);
+  const actionRecord = recordAction?.recordId && actionWorkspaceUi?.records ? hydrateUiRecord(actionWorkspaceUi.records.find((record) => record.id === recordAction.recordId)) : null;
+  const referenceTargetSet = useMemo(() => (actionRecord && recordAction?.action?.referenceCapability?.state === 'qualified'
+    ? canonicalReferenceTargetOptions({ state, subjectWorkspaceId: actionWorkspace?.id || '', subjectRecord: actionRecord, targetSchemaId: recordAction.action.referenceCapability.targetSchemaId })
+    : null), [state, actionRecord, actionWorkspace, recordAction]);
   const dialogWorkspace = workspaceById(state, dialogWorkspaceId || state.activeWorkspaceId) || active;
   const dialogWorkspaceUi = hydrateUiWorkspace(dialogWorkspace);
   const dialogWorkspaceView = activeWorkspaceViewFor(state, dialogWorkspace?.id || '');
+  const workspaceCreateActions = useMemo(() => dialog === 'create-artifact' && dialogWorkspace?.id
+    ? transitionProductActionsForWorkspace({ workspaceId: dialogWorkspace.id })
+    : Object.freeze([]), [dialog, dialogWorkspace?.id]);
   const governanceDialogSource = dialog === 'source-governance' && dialogWorkspaceUi?.sources
     ? dialogWorkspaceUi.sources.find((source) => source.id === sourceContinuationId) || null
     : null;
   const governanceDialogData = governanceDialogSource ? sourceGovernanceDialogData(governanceDialogSource, dialogWorkspaceUi) : null;
-  if (!shouldRenderProductStage(startupPhase)) return null;
+  if (!shouldRenderProductStage(startupPhase)) return <StartupStage presentation={startupPresentation} runtimeId={TIINEX_RUNTIME_ID} sourceBoundary={CLEAN_URL_BOUNDARY} />;
   const shellClasses = [
     'tx-react-runtime',
     'tx-uc001-shell',
@@ -680,7 +742,7 @@ export function TiinexApp() {
     active ? 'tx-workspace-mode' : 'tx-empty-stage-mode'
   ].join(' ');
   return (
-    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
@@ -689,7 +751,7 @@ export function TiinexApp() {
         nextWorkspaceEnabled={workspaceWindow.nextEnabled}
         onPreviousWorkspace={() => pageWorkspaceWindow('previous')}
         onNextWorkspace={() => pageWorkspaceWindow('next')}
-        onCreate={openCreate}
+        onCreate={activeTemporal?.mode === 'historical' ? () => setNotice('Return to latest before creating or importing material.') : openCreate}
         homeHref={workspaceHomeHref(activeWorkspaceConfig, typeof window !== 'undefined' ? window.location : null)}
         onShare={shareCurrent}
         onHelp={() => setDialog('help')}
@@ -702,11 +764,19 @@ export function TiinexApp() {
           data-window-to={workspaceWindow.to}
           style={{ '--tx-visible-workspace-columns': visibleWorkspaceItems.length, '--tx-workspace-columns': workspaceGridColumns }}
         >
-          {visibleWorkspaceItems.map(({ workspace, ui, active: itemActive, surfaceState, layoutMode }) => (
+          {visibleWorkspaceItems.map(({ workspace, ui, active: itemActive, surfaceState, layoutMode }) => {
+            const itemView = (surfaceState || state).view || {};
+            const itemTemporal = timePortalViewFor(itemView);
+            const itemReadModel = timePortalReadFor(workspace, itemView);
+            const historicalResolved = itemTemporal?.mode === 'historical';
+            const historicalWorkspace = historicalResolved && itemReadModel ? historicalWorkspaceForReadModel(workspace, itemReadModel) : null;
+            const presentedWorkspace = historicalResolved ? (historicalWorkspace || Object.assign({}, ui || workspace, { records: [], assets: [], sources: [], sourceOrder: [], historicalReview: true, historicalSnapshot: itemTemporal.snapshot })) : (ui || workspace);
+            return (
             <div key={workspace.id} className={`tx-workspace-frame ${itemActive ? 'tx-workspace-frame-active' : 'tx-workspace-frame-inactive'} ${layoutMode === 'compact' ? 'tx-workspace-frame-compact' : 'tx-workspace-frame-expanded'}`} onMouseDownCapture={() => { if (!itemActive) activateWorkspace(workspace.id); }}>
               <WorkspaceColumnSurface
-                workspace={ui || workspace}
+                workspace={presentedWorkspace}
                 state={surfaceState || state}
+                referenceRecords={referenceParticipantRecords}
                 layoutMode={layoutMode}
                 onLayoutMode={(mode) => setWorkspaceLayoutMode(workspace.id, mode)}
                 onClose={() => openWorkspaceDialog('close-workspace', workspace.id)}
@@ -715,10 +785,11 @@ export function TiinexApp() {
                 onQuery={(query) => setQuery(query, workspace.id)}
                 onOpenDisplayOptions={() => openWorkspaceDialog('display-options', workspace.id)}
                 onOpenAddDialog={(sourceId = '') => openAddToWorkspace(sourceId, workspace.id)}
+                onOpenCreateArtifact={() => openWorkspaceDialog('create-artifact', workspace.id)}
                 onExportWorkspace={() => openWorkspaceExportDialog(workspace.id)}
-                onShareWorkspace={() => shareWorkspace(workspace.id)}
+                onShareWorkspace={() => historicalResolved ? shareCurrent() : shareWorkspace(workspace.id)}
                 onCloseSource={(sourceId) => closeSource(sourceId, workspace.id)}
-                onDropFiles={(fileList, options = {}) => addLocalFiles(fileList, Object.assign({}, options, { workspaceId: workspace.id }))}
+                onDropFiles={historicalResolved ? undefined : (fileList, options = {}) => addLocalFiles(fileList, Object.assign({}, options, { workspaceId: workspace.id }))}
                 onOpenRecord={(recordId) => openRecord(recordId, workspace.id)}
                 onFocusRecordLineage={(recordId) => focusRecordLineage(recordId, workspace.id)}
                 onOpenAsset={(assetId) => openAsset(assetId, workspace.id)}
@@ -736,9 +807,15 @@ export function TiinexApp() {
                 onToggleLineageCard={(recordId) => toggleLineageCard(recordId, workspace.id)}
                 onRunLineageAudit={() => runLineageAudit(workspace.id)}
                 onLoadFullLineage={() => loadFullLineage(workspace.id)}
+                timePortal={itemTemporal}
+                historicalReadModel={itemReadModel}
+                readOnlyHistorical={historicalResolved}
+                onLoadHistoricalSnapshot={() => loadHistoricalSnapshot(workspace.id)}
+                onReturnToLatest={() => returnTimePortalToLatest(workspace.id)}
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <EmptyStage workspaceConfig={activeWorkspaceConfig} />
@@ -746,13 +823,15 @@ export function TiinexApp() {
       {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
+      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} onDismiss={dismissDialog} onCreate={createCanonicalTransitionRecord} /> : null}
       {dialog === 'rename-workspace' && dialogWorkspace ? <RenameWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
-      {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={() => shareRecord(activeRecord)} /> : null}
+      {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
-      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={active?.records || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord)} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={createCanonicalTransitionRecord} /> : null}
-      {dialog === 'display-options' && dialogWorkspace ? <DisplayOptionsDialog options={dialogWorkspaceView?.displayOptions} counts={buildDisplayOptionCounts(dialogWorkspaceUi || dialogWorkspace)} scope={dialogWorkspaceView?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
-      {dialog === 'export-workspace' && dialogWorkspace ? <WorkspaceExportDialog workspace={dialogWorkspaceUi || dialogWorkspace} plan={buildWorkspaceExportPlan(dialogWorkspaceUi || dialogWorkspace)} onDismiss={dismissDialog} onExecute={executeWorkspaceTreeExport} /> : null}
+      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={actionWorkspace?.records || []} referenceTargets={referenceTargetSet?.options || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord, actionWorkspace?.id || '')} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={createCanonicalTransitionRecord} onCreateCanonicalReference={createCanonicalReferenceRecord} onUpdateLocalDraft={updateLocalDraftRecord} /> : null}
+      {dialog === 'display-options' && dialogWorkspace ? <DisplayOptionsDialog options={dialogWorkspaceView?.displayOptions} counts={buildDisplayOptionCounts(dialogWorkspaceUi || dialogWorkspace)} scope={dialogWorkspaceView?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} timePortal={timePortalViewFor(dialogWorkspaceView)} onResolveTimePortal={(intent) => openTimePortalResolver(intent, dialogWorkspace.id)} onReturnLatest={() => returnTimePortalToLatest(dialogWorkspace.id)} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
+      {dialog === 'time-portal-resolve' && dialogWorkspace ? <TimePortalResolveDialog timePortal={timePortalViewFor(dialogWorkspaceView)} sources={timePortalGithubSources(dialogWorkspace)} busy={timePortalBusy} error={timePortalError} onResolve={resolveTimePortalFromDialog} onDismiss={dismissDialog} /> : null}
+      {dialog === 'export-workspace' && dialogWorkspace ? <WorkspaceExportDialogController workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onExecute={executeWorkspaceExport} onPublicationResult={persistWorkspacePublicationResult} /> : null}
       {dialog === 'add-to-workspace' && dialogWorkspace ? (
         <AddToWorkspaceDialog
           workspace={dialogWorkspaceUi || dialogWorkspace}

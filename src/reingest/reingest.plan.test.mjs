@@ -24,8 +24,8 @@ const validDraftMarkdown = `# Continuity Context
 const readySource = buildReingestPlan({
   id: 'w-source',
   title: 'Source workspace',
-  sources: [{ id: 'github:tiinex/docs', adapterId: 'github', repo: 'Tiinex/docs', ref: 'abc123' }],
-  records: [{ id: 'source-1', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abc123' } }],
+  sources: [{ id: 'github:tiinex/docs', adapterId: 'github', repo: 'Tiinex/docs', ref: 'main' }],
+  records: [{ id: 'source-1', title: 'Source', path: 'topics/source.md', markdown: validDraftMarkdown, source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'main', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }, sourceTarget: { surface: 'repoFiles', targetKind: 'github-repo-file', sourceArtifactPath: 'topics/source.md', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }],
   assets: []
 });
 assert.equal(readySource.schema, 'tiinex.reingest.plan.v1');

@@ -21,8 +21,9 @@ export const ExportScope = Object.freeze({
 });
 
 export function buildWorkspaceExportPlan(workspace = {}, options = {}) {
-  const selectedAdapterId = normalizeExportAdapterId(options.adapterId || ExportAdapterId.download);
   const selectedExportType = normalizeExportType(options.exportType || ExportType.tree);
+  const impliedAdapter = selectedExportType === ExportType.handoffPackage ? ExportAdapterId.handoffPackage : selectedExportType === ExportType.githubPublish ? ExportAdapterId.github : ExportAdapterId.download;
+  const selectedAdapterId = normalizeExportAdapterId(options.adapterId || impliedAdapter);
   const selectedScope = normalizeExportScope(options.scope || ExportScope.all);
   const treeBundle = selectedAdapterId === ExportAdapterId.download && selectedExportType === ExportType.tree
     ? buildWorkspaceTreeExportBundle(workspace, { clock: options.clock })
@@ -45,14 +46,9 @@ export function buildWorkspaceExportPlan(workspace = {}, options = {}) {
     scopes: buildScopePlans(selectedScope, counts),
     exportTypes: buildExportTypePlans(selectedExportType, treeBundle),
     counts,
-    execution: Object.freeze({
-      available: selectedAdapter?.status === 'ready' && selectedExportType === ExportType.tree && selectedAdapterId === ExportAdapterId.download,
-      action: 'download-tree-zip',
-      label: 'Execute tree export',
-      boundary: 'Executes a TL0 local browser download. It does not publish, write to a source, create a handoff package, or include credential material.'
-    }),
+    execution: executionPlan({ selectedAdapter, selectedAdapterId, selectedExportType }),
     boundary: 'Export Plan is a read-model for adapter/scope/transport selection. It does not mutate source material or infer provenance from presentation paths.',
-    packageEnvelope: false,
+    packageEnvelope: selectedExportType === ExportType.handoffPackage,
     treeBundle
   });
 }
@@ -99,12 +95,12 @@ function buildAdapterPlans({ selectedAdapterId, selectedExportType, selectedScop
       id: ExportAdapterId.github,
       label: 'GitHub',
       icon: 'github',
-      status: 'future',
+      status: 'available',
       selected: selectedAdapterId === ExportAdapterId.github,
-      operation: 'write',
+      operation: 'guided-browser-publication',
       transportLevel: TransportLevel.TL0,
-      capability: 'Manual issue/comment publish later',
-      description: 'Future TL0 manual wizard: copy → open GitHub → publish → verify. Disabled until ported deliberately from the PoC.',
+      capability: 'Exact issue / issue-comment · Copy · Open · Verify',
+      description: 'Guided no-auth GitHub publication uses the accepted shared exact social target contract. Tiinex copies the exact payload, opens GitHub, then requires read-after-write verification before creating a local receipt/source binding.',
       files: counts.records,
       boundary: 'Visible as a future adapter only; this dialog never fakes GitHub write.'
     }),
@@ -112,14 +108,14 @@ function buildAdapterPlans({ selectedAdapterId, selectedExportType, selectedScop
       id: ExportAdapterId.handoffPackage,
       label: 'Handoff package',
       icon: 'archive',
-      status: 'future',
+      status: 'available',
       selected: selectedAdapterId === ExportAdapterId.handoffPackage,
       operation: 'local-download',
       transportLevel: TransportLevel.TL0,
-      capability: 'Recoverability envelope later',
-      description: 'Future explicit package export. Package envelopes are allowed here, but not in ordinary Tree export.',
-      files: counts.records,
-      boundary: 'Kept separate so ordinary download does not silently become a handoff package.'
+      capability: 'Recoverability envelope · local material + source references + workspace context',
+      description: 'Explicit execution builds and qualifies the operational package from the latest workspace through shared package authority. No package snapshot is built or cached in this read-model.',
+      files: 0,
+      boundary: 'Explicit non-default package envelope. Ordinary Tree export stays envelope-free.'
     })
   ]);
 }
@@ -135,9 +131,29 @@ function buildScopePlans(selectedScope, counts) {
 function buildExportTypePlans(selectedExportType, treeBundle) {
   return Object.freeze([
     Object.freeze({ id: ExportType.tree, label: 'Tree export', selected: selectedExportType === ExportType.tree, status: 'ready', description: 'Ordinary zip mirroring the visible logical tree 1:1.', packageEnvelope: false, files: treeBundle?.counts?.files || 0 }),
-    Object.freeze({ id: ExportType.handoffPackage, label: 'Handoff package', selected: selectedExportType === ExportType.handoffPackage, status: 'future', description: 'Recoverability package with explicit envelope and manifest. Not default.', packageEnvelope: true }),
-    Object.freeze({ id: ExportType.githubPublish, label: 'GitHub publish', selected: selectedExportType === ExportType.githubPublish, status: 'future', description: 'Manual TL0 publish wizard later. Not implemented in this slice.', packageEnvelope: false })
+    Object.freeze({ id: ExportType.handoffPackage, label: 'Handoff package', selected: selectedExportType === ExportType.handoffPackage, status: 'available', description: 'Explicit Execute builds and qualifies the recoverability package from the latest workspace. No package bytes or exact inspection are prepared during render/read-model construction.', packageEnvelope: true, files: 0 }),
+    Object.freeze({ id: ExportType.githubPublish, label: 'GitHub publish', selected: selectedExportType === ExportType.githubPublish, status: 'available', description: 'Guided issue / issue-comment publication. Exact local Markdown remains the shared outbound payload; GitHub mutation stays human-performed.', packageEnvelope: false })
   ]);
+}
+
+function executionPlan({ selectedAdapter, selectedAdapterId, selectedExportType }) {
+  if (selectedExportType === ExportType.handoffPackage && selectedAdapterId === ExportAdapterId.handoffPackage) {
+    return Object.freeze({
+      available: true,
+      action: 'download-handoff-package',
+      label: 'Download Handoff package',
+      boundary: 'Explicit execution resolves the latest workspace, builds and inspects that exact operational package once, then performs one TL0 browser download. No serialized Handoff snapshot is cached in the render/read-model plan.'
+    });
+  }
+  if (selectedExportType === ExportType.githubPublish || selectedAdapterId === ExportAdapterId.github) {
+    return Object.freeze({ available: true, action: 'guided-github-publication', label: 'Guided GitHub publication', boundary: 'Guided browser routine only: exact shared plan → Copy → Open GitHub → exact read-after-write Verify. No GitHub API mutation occurs in Site.' });
+  }
+  return Object.freeze({
+    available: selectedAdapter?.status === 'ready' && selectedExportType === ExportType.tree && selectedAdapterId === ExportAdapterId.download,
+    action: 'download-tree-zip',
+    label: 'Execute tree export',
+    boundary: 'Executes a TL0 local browser download. It does not publish, write to a source, create a handoff package, or include credential material.'
+  });
 }
 
 function exportCounts(workspace = {}, treeBundle = null) {

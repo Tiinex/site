@@ -90,7 +90,7 @@ export function zipBufferHasEncryptedEntries(buffer) {
   return encrypted;
 }
 
-export async function zipBufferToImportEntries(zipBuffer, options = {}) {
+export async function decodeZipBufferEntries(zipBuffer, options = {}) {
   const bytes = bytesFrom(zipBuffer);
   const entries = [];
   const warnings = [];
@@ -146,7 +146,24 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
     }
   }
 
-  const filtered = await filterArchiveTransportEntries(entries, { ...options, stripPortableControl: false });
+  return {
+    entries,
+    errors,
+    warnings,
+    diagnostics: {
+      requestedCount: centralEntries.length,
+      encryptedCount: encrypted.length,
+      unsupportedCount: unsupported.length,
+      unsafeCount: unsafe.length,
+      archiveDecodePassCount: 1
+    }
+  };
+}
+
+export async function qualifyDecodedArchiveEntries(decoded = {}, options = {}) {
+  const warnings = [...(decoded.warnings || [])];
+  const errors = [...(decoded.errors || [])];
+  const filtered = await filterArchiveTransportEntries(decoded.entries || [], { ...options, stripPortableControl: false });
   if (filtered.mergePreflight.status === 'blocked' && options.enforceMergePreflight !== false) {
     for (const conflict of filtered.mergePreflight.conflicts || []) errors.push({ code: conflict.code, ref: conflict.path, message: 'Archive merge preflight detected missing or changed known lineage material.' });
   }
@@ -167,10 +184,7 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
     errors,
     warnings,
     diagnostics: {
-      requestedCount: centralEntries.length,
-      encryptedCount: encrypted.length,
-      unsupportedCount: unsupported.length,
-      unsafeCount: unsafe.length,
+      ...(decoded.diagnostics || {}),
       ...filtered.diagnostics,
       portableControlStrippedCount,
       portableChangesetCount: qualified.detected ? 1 : 0,
@@ -179,18 +193,33 @@ export async function zipBufferToImportEntries(zipBuffer, options = {}) {
   };
 }
 
+export async function zipBufferToImportEntries(zipBuffer, options = {}) {
+  const decoded = await decodeZipBufferEntries(zipBuffer, options);
+  return qualifyDecodedArchiveEntries(decoded, options);
+}
+
+export async function fileToArchiveDecodedEntries(file, options = {}) {
+  const relativePath = safeArchivePath(fileRelativePath(file) || file?.name || 'upload');
+  if (!relativePath) {
+    return { entries: [], errors: [{ code: 'archive.unsafe-path', ref: file?.name || 'upload', message: 'Unsafe local path skipped.' }], warnings: [], diagnostics: { unsafeCount: 1, archiveDecodePassCount: 0 } };
+  }
+  if (!/\.zip$/i.test(relativePath || file?.name || '')) throw new Error('archive.decoded-entries.zip-required');
+  const buffer = await file.arrayBuffer();
+  let password = options.password || '';
+  if (zipBufferHasEncryptedEntries(buffer) && !password && typeof options.passwordProvider === 'function') {
+    password = await options.passwordProvider(file);
+  }
+  return decodeZipBufferEntries(buffer, { ...options, password, source: options.source || 'zip', excludeRepositoryInternals: true });
+}
+
 export async function fileToArchiveImportEntries(file, options = {}) {
   const relativePath = safeArchivePath(fileRelativePath(file) || file?.name || 'upload');
   if (!relativePath) {
     return { entries: [], errors: [{ code: 'archive.unsafe-path', ref: file?.name || 'upload', message: 'Unsafe local path skipped.' }], warnings: [], diagnostics: { unsafeCount: 1 } };
   }
   if (/\.zip$/i.test(relativePath || file?.name || '')) {
-    const buffer = await file.arrayBuffer();
-    let password = options.password || '';
-    if (zipBufferHasEncryptedEntries(buffer) && !password && typeof options.passwordProvider === 'function') {
-      password = await options.passwordProvider(file);
-    }
-    return zipBufferToImportEntries(buffer, { ...options, password, source: options.source || 'zip', excludeRepositoryInternals: true });
+    const decoded = await fileToArchiveDecodedEntries(file, options);
+    return qualifyDecodedArchiveEntries(decoded, options);
   }
   const bytes = new Uint8Array(await file.arrayBuffer?.() || TEXT_ENCODER.encode(await file.text?.() || ''));
   let content = null;
@@ -205,17 +234,20 @@ export async function materializeArchiveFiles(files = [], options = {}) {
   const errors = [];
   const warnings = [];
   const transport = resolveTransportPlan(options.sourceConfig || {}, 'local-import', { defaultLevel: 'TL0', allowFallback: false });
-  const diagnostics = { sourceBoundary: 'local-archive', transportLevel: transport.selectedLevel, transportOperation: transport.operation, transport, fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, controlCount: 0, portableChangesetCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, bootstrapDetected: false, bootstrapStrippedCount: 0, portableControlDetected: false, portableControlStrippedCount: 0, mergePreflight: null, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
+  const diagnostics = { sourceBoundary: 'local-archive', transportLevel: transport.selectedLevel, transportOperation: transport.operation, transport, fileCount: 0, entryCount: 0, recordCount: 0, assetCount: 0, workspaceCount: 0, controlCount: 0, portableChangesetCount: 0, encryptedCount: 0, unsafeCount: 0, unsupportedCount: 0, previewOmittedCount: 0, bootstrapDetected: false, bootstrapStrippedCount: 0, portableControlDetected: false, portableControlStrippedCount: 0, archiveDecodePassCount: 0, mergePreflight: null, suggestedWorkspaceName: suggestWorkspaceNameForFiles(files) };
 
   for (const file of Array.from(files || []).filter(Boolean)) {
     diagnostics.fileCount += 1;
     try {
-      const result = await fileToArchiveImportEntries(file, options);
+      const result = options.predecodedArchive && Array.from(files || []).filter(Boolean).length === 1
+        ? await qualifyDecodedArchiveEntries(options.predecodedArchive, options)
+        : await fileToArchiveImportEntries(file, options);
       errors.push(...(result.errors || []));
       warnings.push(...(result.warnings || []));
       diagnostics.encryptedCount += Number(result.diagnostics?.encryptedCount || 0);
       diagnostics.unsafeCount += Number(result.diagnostics?.unsafeCount || 0);
       diagnostics.unsupportedCount += Number(result.diagnostics?.unsupportedCount || 0);
+      diagnostics.archiveDecodePassCount += Number(result.diagnostics?.archiveDecodePassCount || 0);
       diagnostics.bootstrapDetected = diagnostics.bootstrapDetected || Boolean(result.diagnostics?.bootstrapDetected);
       diagnostics.bootstrapStrippedCount += Number(result.diagnostics?.bootstrapStrippedCount || 0);
       diagnostics.portableControlDetected = diagnostics.portableControlDetected || Boolean(result.diagnostics?.portableControlDetected);

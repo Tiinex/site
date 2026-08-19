@@ -13,9 +13,12 @@ import { DiscoveryRecordList } from './workspace.discovery.views.jsx';
 import { WorkspaceTreeState } from './workspace.tree.views.jsx';
 import { WorkspaceAuditState } from './workspace.audit.views.jsx';
 import { WorkspaceLineageState } from './workspace.lineage.views.jsx';
+import { transitionProductContextForWorkspace } from '../../transitions/transition.productPresentation.browser.js';
+import { TimePortalBanner, TimePortalCompactMarker } from './workspace.timePortal.views.jsx';
 
 export { AssetDetailDialog } from './workspace.cards.views.jsx';
 export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
+export { WorkspaceCanonicalCreateDialog } from './workspace.canonicalTaskDialog.views.jsx';
 export { GovernanceBoundaryDialog } from './workspace.governance.views.jsx';
 
 function auditIndexForWorkspace(workspace = {}, records = []) {
@@ -36,7 +39,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -46,9 +49,14 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
     stage.scrollTop = Number.isFinite(top) && top > 0 ? top : 0;
   }, [restoreKey, stageScrollTop]);
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
-  const verse = state.view?.workspaceVerse || 'feed';
+  const requestedVerse = state.view?.workspaceVerse || 'feed';
+  const verse = readOnlyHistorical && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const lineageVerse = verse === 'lineage';
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
+  const transitionProductActionsVisible = !readOnlyHistorical && (verse === 'feed' || verse === 'lineage');
+  const transitionProductContext = useMemo(() => (transitionProductActionsVisible
+    ? transitionProductContextForWorkspace({ workspaceRecords: allRecords, referenceRecords })
+    : null), [transitionProductActionsVisible, allRecords, referenceRecords]);
   const selectedRecordId = String(state.view?.selectedRecordId || '');
   const lineageTraversalPreview = useMemo(() => (lineageVerse && selectedRecordId
     ? buildWorkspaceLineageView(workspace, { records: allRecords, query: '', selectedRecordId }).selectedTraversal
@@ -94,7 +102,12 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       <section className="tx-workspace-window tx-workspace-window-compact tx-schema-workspace-surface" aria-label={`Compact workspace ${presentation.title || ''}`.trim()} data-schema-id="tiinex.workspace.v1" data-workspace-layout="compact">
         <div className="tx-workspace-compact-inner">
           <Button icon="expand" variant="ghost" shape="round" aria-label={`Expand workspace ${presentation.title || ''}`.trim()} title="Expand workspace" onClick={() => onLayoutMode?.('expanded')} />
-          <button type="button" className="tx-workspace-compact-title" title="Rename workspace" onClick={onRenameWorkspace}>{presentation.title}</button>
+          {readOnlyHistorical ? (
+            <div className="tx-workspace-compact-historical">
+              <TimePortalCompactMarker timePortal={timePortal} />
+              <div className="tx-workspace-compact-title tx-workspace-compact-title-readonly" title={`Historical workspace review · ${presentation.title || ''}`.trim()}>{presentation.title}</div>
+            </div>
+          ) : <button type="button" className="tx-workspace-compact-title" title="Rename workspace" onClick={onRenameWorkspace}>{presentation.title}</button>}
           <div className="tx-workspace-compact-stats" aria-label={`${allRecords.length} records, ${allAssets.length} assets, ${sources.length} sources`}>
             <span><Icon name="manualFiles" />{allRecords.length}</span>
             <span><Icon name="asset" />{allAssets.length}</span>
@@ -111,7 +124,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       <header className="tx-window-header tx-workspace-schema-header tx-compact-window-header">
         <div className="tx-window-title-block">
           <h1>
-            <button type="button" className="tx-workspace-title-rename-button" title="Rename workspace" aria-label={`Rename workspace ${presentation.title || ''}`.trim()} onClick={onRenameWorkspace}>
+            <button type="button" className="tx-workspace-title-rename-button" title={readOnlyHistorical ? 'Historical workspace review' : 'Rename workspace'} aria-label={`${readOnlyHistorical ? 'Historical workspace review' : 'Rename workspace'} ${presentation.title || ''}`.trim()} onClick={readOnlyHistorical ? undefined : onRenameWorkspace}>
               <span>{presentation.title}</span>
               <Icon name="edit" />
             </button>
@@ -123,24 +136,26 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
           <span className="tx-stat-pill" title="Local assets"><Icon name="asset" />{allAssets.length}</span>
           <span className="tx-stat-pill" title="Workspace artifacts"><Icon name="workspace" />{workspaceArtifactCount}</span>
           <span className="tx-stat-pill" title="Sources"><Icon name="source" />{sources.length}</span>
-          <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} />
+          {!readOnlyHistorical ? <Button icon="create" variant="primary" aria-label="Create artifact" title="Create artifact" onClick={onOpenCreateArtifact}>Create</Button> : null}
+          {!readOnlyHistorical ? <Button icon="add" variant="primary" shape="round" aria-label="Add to workspace" title="Add to workspace" onClick={onOpenAddDialog} /> : null}
           <Button icon="shareNodes" variant="ghost" shape="round" aria-label="Share workspace" title="Share workspace" onClick={onShareWorkspace} />
-          <Button icon="edit" variant="ghost" shape="round" aria-label="Rename workspace" title="Rename workspace" onClick={onRenameWorkspace} />
-          <Button icon="download" variant="ghost" shape="round" aria-label="Prepare workspace export" title="Prepare workspace export" onClick={onExportWorkspace} />
+          {!readOnlyHistorical ? <Button icon="edit" variant="ghost" shape="round" aria-label="Rename workspace" title="Rename workspace" onClick={onRenameWorkspace} /> : null}
+          {!readOnlyHistorical ? <Button icon="download" variant="ghost" shape="round" aria-label="Prepare workspace export" title="Prepare workspace export" onClick={onExportWorkspace} /> : null}
           <Button icon="collapse" variant="ghost" shape="round" aria-label="Collapse workspace" title="Collapse workspace" onClick={() => onLayoutMode?.('compact')} />
           <Button icon="close" variant="ghost" shape="round" aria-label="Close workspace" title="Close workspace" onClick={onClose} />
         </div>
       </header>
-      <SourceStrip workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} onOpenGovernance={onOpenGovernance} />
-      <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} />
+      <TimePortalBanner timePortal={timePortal} readModel={historicalReadModel} onLoadSnapshot={onLoadHistoricalSnapshot} onReturnLatest={onReturnToLatest} />
+      <SourceStrip readOnly={readOnlyHistorical} workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} onOpenGovernance={onOpenGovernance} />
+      {!readOnlyHistorical ? <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} /> : null}
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
+      <ModeToolbar readOnly={readOnlyHistorical} state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
-          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
+          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnlyHistorical} />
           : verse === 'lineage'
-            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} workspaceRecords={allRecords} workspaceId={workspace.id} />
+            ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} workspaceRecords={allRecords} workspaceId={workspace.id} transitionProductContext={transitionProductContext} />
           : verse === 'audit'
             ? <WorkspaceAuditState workspace={workspace} query={query} records={allRecords} assets={allAssets} onOpenRecord={onOpenRecord} />
           : (records.length || assets.length)
@@ -152,12 +167,14 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
                 actionStateKey={interactionRevision}
                 workspaceRecords={allRecords}
                 workspaceId={workspace.id}
+                transitionProductContext={transitionProductContext}
                 onOpenRecord={onOpenRecord}
                 onFocusRecordLineage={onFocusRecordLineage}
                 onShareRecord={onShareRecord}
                 onRecordAction={onRecordAction}
                 onOpenSchema={onOpenSchema}
                 onOpenAsset={onOpenAsset}
+                readOnly={readOnlyHistorical}
               />
             : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} summary={materialSummary} progress={workspace.discoveryProgress} />}
       </section>
@@ -168,7 +185,11 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
 function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
   return previous.workspace === next.workspace
     && previous.state === next.state
+    && previous.referenceRecords === next.referenceRecords
     && previous.expandedLineageRecordIds === next.expandedLineageRecordIds
     && previous.lineageAuditReport === next.lineageAuditReport
-    && previous.lineageLoadReport === next.lineageLoadReport;
+    && previous.lineageLoadReport === next.lineageLoadReport
+    && previous.timePortal === next.timePortal
+    && previous.historicalReadModel === next.historicalReadModel
+    && previous.readOnlyHistorical === next.readOnlyHistorical;
 }

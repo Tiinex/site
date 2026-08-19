@@ -34,7 +34,7 @@ export const m1PoCParityScenarioDefinitions = Object.freeze([
     status: 'partial',
     legacyBehavior: 'When verified source material is equivalent to a local import, source becomes canonical and the redundant local payload is pruned. Divergent/newer local work remains explicit; closing source never resurrects a previously deduplicated copy.',
     semanticOwner: 'artifact identity + material reconciliation/source boundary',
-    runtimeOwner: 'src/workspaces/workspace.materialReconciliation + src/workspaces/workspace.sourceOverImport + source-close lifecycle',
+    runtimeOwner: 'src/workspaces/workspace.materialReconciliation + src/workspaces/workspace.sourceRecords + src/workspaces/workspace.lifecycle + src/workspaces/workspace.sourceMaterial',
     automatedChecks: ['src/workspaces/workspace.materialReconciliation.test.mjs', 'src/workspaces/workspace.sourceOverImport.test.mjs', 'src/workspaces/workspace.importLifecycle.test.mjs', 'src/acceptance/recoveryAcceptance.test.mjs'],
     manualChecks: ['import local material then load verified source and compare visible artifacts with .old', 'close source after exact dedupe', 'repeat with divergent local edit'],
     failureResult: 'unverified/divergent material remains explicit; exact verified duplicates do not create hidden resurrection snapshots'

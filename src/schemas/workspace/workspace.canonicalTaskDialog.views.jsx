@@ -3,40 +3,83 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { TextareaField, TextField } from '../../ui/primitives/Field.jsx';
 
-const FIELDS = Object.freeze([
-  ['Summary', 'Task title', false],
-  ['Objective', 'Objective', true],
-  ['Done Criteria', 'Done Criteria', true],
-  ['Scope', 'Scope', true],
-  ['Dependencies', 'Dependencies', true]
-]);
+const SHORT_FIELD_NAMES = new Set(['Summary', 'Source Role', 'Target Role', 'Interpretation Action']);
 
-export function CanonicalTaskCreateDialog({ record, action, onDismiss, onCreate }) {
-  const [values, setValues] = useState(() => Object.fromEntries(FIELDS.map(([name]) => [name, ''])));
+export function CanonicalAuthoringDialog({ record, action, onDismiss, onCreate, onBack = null }) {
+  const requiredInputs = Array.isArray(action?.authoring?.requiredInputs) ? action.authoring.requiredInputs : [];
+  const fixedInputs = action?.authoring?.fixedInputs || {};
+  const editableInputs = requiredInputs.filter((name) => !Object.prototype.hasOwnProperty.call(fixedInputs, name));
+  const initialValues = Object.fromEntries(requiredInputs.map((name) => [name, Object.prototype.hasOwnProperty.call(fixedInputs, name) ? fixedInputs[name] : '']));
+  const [values, setValues] = useState(() => initialValues);
   const [error, setError] = useState('');
-  const required = new Set(action?.authoring?.requiredInputs || []);
+  const required = new Set(requiredInputs);
+  const schemaLabel = action?.authoring?.schemaLabel || action?.authoring?.schemaId || 'Artifact';
   function set(name, value) { setValues((current) => ({ ...current, [name]: value })); }
   async function submit(event) {
     event.preventDefault();
-    const missing = [...required].find((name) => values[name] === undefined || String(values[name]).trim() === '');
+    const finalValues = { ...values, ...fixedInputs };
+    const missing = [...required].find((name) => finalValues[name] === undefined || String(finalValues[name]).trim() === '');
     if (missing) return setError(`${missing} is required.`);
     setError('');
-    const result = await onCreate?.(record, action, values);
-    if (result?.ok === false) setError(result.notice || 'Task could not be created.');
+    const result = await onCreate?.(record, action, finalValues);
+    if (result?.ok === false) setError(result.notice || `${schemaLabel} could not be created.`);
   }
+  const focusInput = editableInputs[0] || requiredInputs[0] || '';
   return (
-    <Modal title={action?.label || 'Create task'} onDismiss={onDismiss} initialFocus="canonicalTaskSummary">
-      <form className="tx-form" onSubmit={submit} data-form="canonical-task-create-form">
-        {FIELDS.map(([name, label, multiline], index) => multiline
-          ? <TextareaField key={name} id={`canonicalTask-${index}`} label={label} value={values[name]} onChange={(value) => set(name, value)} required={required.has(name)} rows={3} />
-          : <TextField key={name} id="canonicalTaskSummary" label={label} value={values[name]} onChange={(value) => set(name, value)} required={required.has(name)} autoFocus />)}
-        <p className="tx-muted">Creates one browser-local Task at the established continuation path beneath {record?.title || 'the selected Topic'}. No remote write is performed.</p>
+    <Modal title={action?.label || `Create ${schemaLabel}`} onDismiss={onDismiss} initialFocus={focusInput ? authoringInputId(focusInput) : undefined}>
+      <form className="tx-form" onSubmit={submit} data-form="canonical-authoring-form">
+        {requiredInputs.map((name) => {
+          const id = authoringInputId(name);
+          const fixed = Object.prototype.hasOwnProperty.call(fixedInputs, name);
+          const common = { key: name, id, label: authoringFieldLabel(name, schemaLabel), value: fixed ? fixedInputs[name] : values[name], required: required.has(name) };
+          if (fixed) return <TextField {...common} onChange={() => {}} readOnly aria-readonly="true" />;
+          if (SHORT_FIELD_NAMES.has(name)) return <TextField {...common} onChange={(value) => set(name, value)} autoFocus={name === focusInput} />;
+          return <TextareaField {...common} onChange={(value) => set(name, value)} rows={3} autoFocus={name === focusInput} />;
+        })}
+        <p className="tx-muted">{action?.continuityMode === 'root' ? `Creates one standalone browser-local ${schemaLabel} through the selected qualified canonical Transition. No Parent or source provenance is invented.` : `Creates one browser-local ${schemaLabel} through the qualified canonical Transition from ${record?.title || 'the selected artifact'}. The selected source artifact remains unchanged; no remote write is performed.`}</p>
         {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
         <div className="tx-dialog-actions">
-          <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
-          <Button type="submit" variant="primary" icon="create">Create local task</Button>
+          {onBack ? <Button type="button" variant="ghost" onClick={onBack}>Back</Button> : <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>}
+          <Button type="submit" variant="primary" icon="create">Create local {schemaLabel.toLowerCase()}</Button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+// Compatibility export for callers/tests that imported the first canonical slice by its old component name.
+export const CanonicalTaskCreateDialog = CanonicalAuthoringDialog;
+
+function authoringInputId(name = '') { return `canonicalAuthoring-${String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`; }
+function authoringFieldLabel(name = '', schemaLabel = 'Artifact') { return name === 'Summary' ? `${schemaLabel} title` : name; }
+
+
+export function WorkspaceCanonicalCreateDialog({ workspace, actions = [], onDismiss, onCreate }) {
+  const qualifiedActions = (Array.isArray(actions) ? actions : []).filter((action) => action?.productCapable === true && action?.enabled !== false && action?.productScope === 'workspace');
+  const [selectedDefinitionKey, setSelectedDefinitionKey] = useState('');
+  const selected = qualifiedActions.find((action) => action.definitionKey === selectedDefinitionKey) || null;
+  if (selected) {
+    return <CanonicalAuthoringDialog record={null} action={selected} onDismiss={onDismiss} onBack={() => setSelectedDefinitionKey('')} onCreate={onCreate} />;
+  }
+  return (
+    <Modal title="Create artifact" onDismiss={onDismiss} className="tx-workspace-entrypoint-choice-modal">
+      <div className="tx-workspace-entrypoint-choice-copy">
+        <p className="tx-kicker">{workspace?.name || workspace?.title || 'Workspace'}</p>
+        <p>Choose a qualified artifact type. Tiinex will ask only for the fields owned by that type's exact creation contract.</p>
+      </div>
+      {qualifiedActions.length ? (
+        <div className="tx-workspace-entrypoint-choice-actions" role="group" aria-label="Qualified artifact types">
+          {qualifiedActions.map((action) => (
+            <div className="tx-workspace-entrypoint-choice-option" key={action.definitionKey}>
+              <Button variant="primary" icon="create" onClick={() => setSelectedDefinitionKey(action.definitionKey)}>{action.label || action.authoring?.schemaLabel || 'Artifact'}</Button>
+              <small><strong>{action.authoring?.schemaLabel || action.authoring?.schemaId || 'Artifact'}.</strong> {action.description || 'Create one browser-local artifact through this qualified canonical Transition.'}</small>
+            </div>
+          ))}
+        </div>
+      ) : <p className="tx-muted">No standalone artifact type is currently qualified for creation in this workspace.</p>}
+      <div className="tx-dialog-actions">
+        <Button variant="subtle" onClick={onDismiss}>Cancel</Button>
+      </div>
     </Modal>
   );
 }

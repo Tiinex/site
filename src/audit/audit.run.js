@@ -23,7 +23,7 @@ export function runAudit(scope = {}) {
     findings,
     summary: summarizeFindings(findings),
     materialAvailability: availability,
-    validation: validationTruthFor({ parsed, schemaId, resolution: validationResult.resolution, childFindings: findings.filter((finding) => finding.qualification === 'schema-specific'), availability })
+    validation: validationResult.validation
   };
 }
 

@@ -3,9 +3,12 @@ import { Button } from '../../ui/primitives/Button.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { materialRoleLabel } from '../../workspaces/workspace.materialRole.js';
 import { normalizeWorkspaceDisplayOptions } from '../../workspaces/workspace.displayOptions.js';
+import { normalizeTimePortalView } from '../../workspaces/workspace.timePortal.js';
 
-export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery', onSubmit, onDismiss }) {
+export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery', timePortal = null, onResolveTimePortal, onReturnLatest, onSubmit, onDismiss }) {
   const [draft, setDraft] = useState(normalizeWorkspaceDisplayOptions(options));
+  const normalizedTimePortal = normalizeTimePortalView(timePortal);
+  const [timeDraft, setTimeDraft] = useState({ begin: normalizedTimePortal?.begin || '', end: normalizedTimePortal?.end || '' });
   const schemaChoices = Array.isArray(counts.schemaChoices) ? counts.schemaChoices : [];
   const artifactChoices = Array.isArray(counts.artifactChoices) ? counts.artifactChoices : [];
   const sourceChoices = Array.isArray(counts.sourceChoices) ? counts.sourceChoices : [];
@@ -57,6 +60,20 @@ export function DisplayOptionsDialog({ options, counts = {}, scope = 'discovery'
           <span><strong>Mismatches only</strong><small>{Number(counts.mismatches || 0)} record{Number(counts.mismatches || 0) === 1 ? '' : 's'} currently carry mismatch-level audit status</small></span>
           <input id="displayMismatchesOnly" type="checkbox" checked={draft.mismatchesOnly} onChange={(event) => setFlag('mismatchesOnly', event.target.checked)} />
         </label>
+        {!lineageScope ? (
+          <section className="tx-display-time-portal" aria-label="Time Portal">
+            <h3>Time Portal</h3>
+            <p className="tx-muted">Source-grounded historical review. Begin/End expresses intent only; no date is converted into a commit.</p>
+            <div className="tx-display-filter-grid">
+              <label className="tx-field"><span>Begin</span><input type="datetime-local" value={timeDraft.begin} onChange={(event) => setTimeDraft((current) => Object.assign({}, current, { begin: event.target.value }))} /></label>
+              <label className="tx-field"><span>End / as-of intent</span><input type="datetime-local" value={timeDraft.end} onChange={(event) => setTimeDraft((current) => Object.assign({}, current, { end: event.target.value }))} /></label>
+            </div>
+            <div className="tx-dialog-actions tx-time-portal-inline-actions">
+              {normalizedTimePortal ? <Button type="button" variant="ghost" onClick={onReturnLatest}>Return to latest</Button> : null}
+              <Button type="button" variant="ghost" onClick={() => onResolveTimePortal?.(timeDraft)}>Resolve source snapshot</Button>
+            </div>
+          </section>
+        ) : null}
         {!lineageScope ? (
           <>
             <label className="tx-display-option-row">

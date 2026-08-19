@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { historicalSnapshotReadModelKey, historicalWorkspaceForReadModel, loadTimePortalHistoricalReadModel } from './timePortalHistoricalRead.js';
+const commit = 'b'.repeat(40);
+const liveSource = { id:'github:docs', adapterId:'github', sourceKind:'github.repo', kind:'github-tree', label:'Docs', repo:'owner/repo', ref:'main', rootPath:'.topics', repoDiscovery:true, explicitFileRefs:[], issueDiscovery:false, config:{repo:'owner/repo',ref:'main',rootPath:'.topics'} };
+const liveRecord = { id:'live:a', title:'Live A', path:'.topics/live.md', markdown:'# Live A', source:{ id:'github:docs' } };
+const localDraft = { id:'local:draft', title:'Draft', path:'draft.trace.md', markdown:'# Draft', source:{id:'local'} };
+const workspace = { id:'w1', title:'Docs', sources:[{id:'local'}, liveSource], records:[liveRecord, localDraft], assets:[] };
+const before = JSON.stringify(workspace);
+const treeUrl = `https://api.github.com/repos/owner/repo/git/trees/${commit}?recursive=1`;
+const rawUrl = `https://raw.githubusercontent.com/owner/repo/${commit}/.topics/historical.md`;
+const calls=[];
+const result = await loadTimePortalHistoricalReadModel({ workspace, snapshot:{ sourceId:'github:docs', repository:'owner/repo', rootPath:'.topics', requestedRef:'old', resolvedRef:'old', materializedCommit:commit, inputTarget:'old', resolvedBy:'github.commit-resolution' }, fetchImpl: async (url) => {
+  calls.push(url);
+  if (url === treeUrl) return { ok:true, json: async()=>({truncated:false, tree:[{type:'blob',path:'.topics/historical.md'}]}) };
+  if (url === rawUrl) return { ok:true, text: async()=> '# Historical B\n\nBody' };
+  return { ok:false, status:404, statusText:'Not Found', json:async()=>({message:'missing'}), text:async()=>'' };
+}, options:{ allowCache:false, clock:()=> '2026-08-19T12:00:00.000Z' } });
+assert.equal(result.ok,true);
+assert.equal(result.state,'loaded');
+assert.equal(result.snapshot.materializedCommit,commit);
+assert.equal(result.source.ref,commit);
+assert.equal(result.source.materializedCommit,commit);
+assert.equal(result.source.issueDiscovery,false);
+assert.equal(result.records.length,1);
+assert.equal(result.records[0].sourceMode,'source-backed-historical');
+assert.equal(result.records[0].sourceTarget.materializedCommit,commit);
+assert.notEqual(result.records[0].id, liveRecord.id);
+assert.equal(JSON.stringify(workspace),before,'historical materialization cannot mutate live records/source/local drafts');
+assert(calls.includes(treeUrl) && calls.includes(rawUrl),'exact historical load must fetch the pinned tree/raw representation');
+assert.equal(calls.some((url)=>/\/commits\//.test(url)),false,'exact historical load must not resolve the already-pinned commit');
+assert.equal(calls.some((url)=>/raw\.githubusercontent\.com\/owner\/repo\/main\//.test(url)),false,'exact historical load must not touch current branch raw material');
+assert.equal(historicalSnapshotReadModelKey(result.snapshot),`github:docs@${commit}`);
+const historicalWorkspace = historicalWorkspaceForReadModel(workspace,result);
+assert.equal(historicalWorkspace.records[0].markdown.includes('Historical B'),true);
+assert.equal(historicalWorkspace.sources.length,1,'historical read shell excludes local/live source rows');
+assert.equal(workspace.records.some((r)=>r.id==='local:draft'),true,'local draft remains live and unchanged');
+
+const cached = await loadTimePortalHistoricalReadModel({ workspace, snapshot: result.snapshot, fetchImpl: async () => { throw new Error('cache restore must not use network'); }, options:{} });
+assert.equal(cached.ok,true,'cached exact historical snapshot remains reviewable without network');
+assert.equal(cached.state,'loaded');
+assert.equal(cached.cacheState,'cache','historical read model discloses that exact snapshot bytes came from current source cache');
+assert.equal(cached.records[0].sourceTarget.transportTier,'cache');
+assert.equal(JSON.stringify(workspace),before,'cache-only historical restore cannot mutate live/latest truth');
+
+const offline = await loadTimePortalHistoricalReadModel({ workspace, snapshot: result.snapshot, fetchImpl: async () => ({ ok:false, status:503, statusText:'Offline', json:async()=>({message:'offline'}), text:async()=>'' }), options:{ allowCache:false } });
+assert.equal(offline.state,'unavailable','cold/offline historical snapshot stays explicitly unavailable');
+assert.equal(offline.ok,false);
+assert.equal(JSON.stringify(workspace),before,'offline historical attempt cannot mutate live/latest truth');
+
+const missing = await loadTimePortalHistoricalReadModel({ workspace:{...workspace,sources:[{id:'local'}]}, snapshot:result.snapshot, fetchImpl:async()=>{throw new Error('must not fetch');} });
+assert.equal(missing.code,'time-portal.source.unavailable');
+console.log('timePortalHistoricalRead: ok');

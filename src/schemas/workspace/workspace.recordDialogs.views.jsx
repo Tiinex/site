@@ -1,22 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from '../../ui/primitives/Badge.jsx';
 import { Button } from '../../ui/primitives/Button.jsx';
-import { TextField } from '../../ui/primitives/Field.jsx';
+import { TextareaField, TextField } from '../../ui/primitives/Field.jsx';
 import { Modal } from '../../ui/primitives/Modal.jsx';
 import { createRecordActionResult, RecordActionKind } from '../../actions/record.actions.js';
 import { createReferenceDraft } from '../../transitions/record.transitions.js';
 import { isTransitionAction } from '../../transitions/transition.presentation.js';
 import { isCanonicalTransitionProductAction } from '../../transitions/transition.productPresentation.js';
 import { ContinuationDialog, TransitionValidationNotice } from './workspace.continuationDialog.views.jsx';
-import { CanonicalTaskCreateDialog } from './workspace.canonicalTaskDialog.views.jsx';
+import { CanonicalAuthoringDialog } from './workspace.canonicalTaskDialog.views.jsx';
+import { CanonicalReferenceDialog } from './workspace.canonicalReferenceDialog.views.jsx';
 import { SchemaReadView } from './workspace.read.views.jsx';
 import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './workspace.viewFormatting.js';
+import { readCanonicalTaskAuthoringValues, renderCanonicalTaskEditMarkdown } from '../core/task/tiinex.task.v1.authoring.js';
 
 
 export function RecordDetailDialog({ record, onDismiss, onShare }) {
   const source = record?.source || {};
   const displayPath = recordDisplayPath(record || {});
   const isSourceBacked = Boolean(source.adapterId && source.adapterId !== 'local');
+  const historical = Boolean(record?.historicalSnapshot?.materializedCommit || record?.sourceMode === 'source-backed-historical');
   return (
     <Modal title={record?.title || 'Artifact'} onDismiss={onDismiss} className="tx-dialog-record-detail">
       <div className="tx-record-detail tx-record-read-detail">
@@ -24,7 +27,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
           {recordLifecycleBadge(record) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(record)}</Badge> : null}
           {record?.status ? <Badge title="Record status">{record.status}</Badge> : null}
           <Badge>{recordSchemaBadge(record)}</Badge>
-          <Badge>{isSourceBacked ? 'source-backed' : 'local/session'}</Badge>
+          <Badge>{historical ? 'historical source snapshot' : isSourceBacked ? 'source-backed' : 'local/session'}</Badge>
         </div>
         <DeferredSchemaReadView record={record} />
         <details className="tx-record-provenance-details">
@@ -46,7 +49,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
         {!record?.markdown ? <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown body is available for this record.'}</p> : null}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
-          <Button variant="primary" icon="shareNodes" onClick={onShare}>Share artifact</Button>
+          {onShare && !historical ? <Button variant="primary" icon="shareNodes" onClick={onShare}>Share artifact</Button> : null}
         </div>
       </div>
     </Modal>
@@ -87,10 +90,11 @@ export function RecordMarkdownDialog({ record, onDismiss }) {
   );
 }
 
-export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], onDismiss, onShare, onCreateTransition, onCreateCanonicalTransition }) {
+export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], referenceTargets = [], onDismiss, onShare, onCreateTransition, onCreateCanonicalTransition, onCreateCanonicalReference, onUpdateLocalDraft }) {
   const actionId = action?.id || action;
   if (isCanonicalTransitionProductAction(action)) {
-    return <CanonicalTaskCreateDialog record={record} action={action} onDismiss={onDismiss} onCreate={onCreateCanonicalTransition} />;
+    if (action?.referenceCapability?.state === 'qualified') return <CanonicalReferenceDialog record={record} action={action} targets={referenceTargets} onDismiss={onDismiss} onCreate={onCreateCanonicalReference} />;
+    return <CanonicalAuthoringDialog record={record} action={action} onDismiss={onDismiss} onCreate={onCreateCanonicalTransition} />;
   }
   if (isTransitionAction(action)) {
     return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} transitionDefinition={action.transitionDefinition} workspaceRecords={workspaceRecords} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;
@@ -100,6 +104,9 @@ export function RecordActionDialog({ record, action, schemaRegistry, workspaceRe
   }
   if (actionId === RecordActionKind.markdown) {
     return <RecordMarkdownDialog record={record} onDismiss={onDismiss} />;
+  }
+  if (actionId === RecordActionKind.editLocal) {
+    return <LocalDraftEditDialog record={record} onDismiss={onDismiss} onUpdate={onUpdateLocalDraft} />;
   }
   if (actionId === RecordActionKind.reference) {
     const draft = createReferenceDraft(record);
@@ -142,6 +149,44 @@ export function RecordActionDialog({ record, action, schemaRegistry, workspaceRe
           <Button variant="primary" icon="shareNodes" onClick={() => onShare?.(record)}>Share artifact</Button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+
+function LocalDraftEditDialog({ record, onDismiss, onUpdate }) {
+  const taskAuthoring = readCanonicalTaskAuthoringValues(record?.markdown || '');
+  const schemaAware = record?.schemaId === 'tiinex.task.v1' && record?.sourceMode === 'local-transition-canonical' && taskAuthoring.qualified;
+  const [markdown, setMarkdown] = useState(() => String(record?.markdown || ''));
+  const [taskValues, setTaskValues] = useState(() => ({ ...(taskAuthoring.values || {}) }));
+  const [error, setError] = useState('');
+  function setTaskValue(name, value) { setTaskValues((current) => ({ ...current, [name]: value })); }
+  async function submit(event) {
+    event.preventDefault();
+    let candidateMarkdown = markdown;
+    if (schemaAware) {
+      const rendered = renderCanonicalTaskEditMarkdown(record?.markdown || '', taskValues);
+      if (rendered.state !== 'rendered') return setError('Complete every required Task field before saving.');
+      candidateMarkdown = rendered.markdown;
+    } else if (!String(markdown || '').trim()) return setError('Draft Markdown is required.');
+    setError('');
+    const result = await onUpdate?.(record, candidateMarkdown);
+    if (result?.ok === false) setError(result.notice || 'Local draft could not be updated.');
+  }
+  return (
+    <Modal title={`Edit ${record?.title || 'local draft'}`} onDismiss={onDismiss} initialFocus={schemaAware ? 'localDraftTask-Summary' : 'localDraftMarkdown'}>
+      <form className="tx-form" onSubmit={submit} data-form="local-draft-edit-form">
+        {schemaAware ? taskAuthoring.requiredInputs.map((name, index) => name === 'Summary'
+          ? <TextField key={name} id={`localDraftTask-${name}`} label="Task title" value={taskValues[name] || ''} onChange={(value) => setTaskValue(name, value)} required autoFocus={index === 0} />
+          : <TextareaField key={name} id={`localDraftTask-${name}`} label={name} value={taskValues[name] || ''} onChange={(value) => setTaskValue(name, value)} rows={3} required />)
+          : <TextareaField id="localDraftMarkdown" label="Artifact Markdown" value={markdown} onChange={setMarkdown} rows={18} required autoFocus />}
+        <p className="tx-muted">{schemaAware ? 'Edits the canonical Task through its schema-owned authoring fields. The existing local mutation command still preserves Current Schema, Parent continuity, record identity, path, source boundary, Created At, and refreshes verified self-integrity.' : 'Edits this browser-local compatibility draft in place. Current Schema, Parent continuity, record identity, path, source boundary, and Created At remain fixed; the exact schema validator must accept the edited artifact before it is saved.'}</p>
+        {error ? <p className="tx-form-error" role="alert">{error}</p> : null}
+        <div className="tx-dialog-actions">
+          <Button type="button" variant="ghost" onClick={onDismiss}>Cancel</Button>
+          <Button type="submit" variant="primary" icon="edit">Save local draft</Button>
+        </div>
+      </form>
     </Modal>
   );
 }

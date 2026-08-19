@@ -21,7 +21,9 @@ const expected = [
   'create-checkpoint',
   'build-runtime-package',
   'rehydrate-runtime-package',
-  'roundtrip-runtime-package'
+  'roundtrip-runtime-package',
+  'plan-publication',
+  'accept-publication-result'
 ];
 for (const name of expected) assert.equal(catalog.operations.some((operation) => operation.name === name), true, `missing operation ${name}`);
 for (const operation of catalog.operations) {

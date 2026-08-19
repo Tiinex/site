@@ -6,7 +6,7 @@ const workspace = {
   title: 'Recoverability Test',
   records: [
     { id: 'r1', title: 'Local', source: { adapterId: 'local', boundary: 'local' } },
-    { id: 'r2', title: 'GitHub Workspace', path: 'root.workspace.md', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'abcdef', boundary: 'source' } }
+    { id: 'r2', title: 'GitHub Workspace', path: 'root.workspace.md', source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'main', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', boundary: 'source' }, sourceTarget: { surface: 'repoFiles', targetKind: 'github-repo-file', sourceArtifactPath: 'root.workspace.md', materializedCommit: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }
   ],
   assets: [
     { id: 'a1', path: 'assets/a.png', previewState: 'metadata-only', source: { adapterId: 'local', boundary: 'asset local' } },

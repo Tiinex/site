@@ -285,7 +285,8 @@
       assets: Array.isArray(workspace.assets) ? workspace.assets.filter((asset) => !isSourceBackedForCache(asset)).map(compactAssetForCache) : [],
       workspaceMarkdown: localWorkspaceMarkdownForDelta(workspace),
       workspaceImport: Object.assign({}, workspace.workspaceImport || {}),
-      importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, SESSION_CACHE_LIMITS.maxImportLogEntries).map((item) => Object.assign({}, item)) : []
+      importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, SESSION_CACHE_LIMITS.maxImportLogEntries).map((item) => Object.assign({}, item)) : [],
+      publicationReceipts:(workspace.publicationReceipts||[]).slice(0,64)
     };
   }
 
@@ -297,7 +298,7 @@
   }
 
   function hasLocalWorkspaceDelta(workspace = {}) {
-    return Boolean((workspace.records || []).length || (workspace.assets || []).length || workspace.workspaceMarkdown);
+    return Boolean((workspace.records || []).length || (workspace.assets || []).length || workspace.workspaceMarkdown || (workspace.publicationReceipts || []).length);
   }
 
   function mergeStateWithLocalDeltas(state = {}, localDeltaState = null) {
@@ -318,7 +319,8 @@
       ...(legacyCandidates.length ? { workspaceMergeCandidates: legacyCandidates.slice() } : {}),
       workspaceMarkdown: local.workspaceMarkdown || workspace.workspaceMarkdown || '',
       workspaceImport: Object.assign({}, workspace.workspaceImport || {}, local.workspaceImport || {}),
-      importLog: Array.isArray(local.importLog) ? local.importLog : (workspace.importLog || [])
+      importLog: Array.isArray(local.importLog) ? local.importLog : (workspace.importLog || []),
+      publicationReceipts:local.publicationReceipts||workspace.publicationReceipts||[]
     });
   }
 

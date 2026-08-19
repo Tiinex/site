@@ -124,7 +124,7 @@ assert.match(appSource, /executeShareProjectionAction/);
 assert.match(appSource, /shareProjectionFor\(ShareScope\.artifact/);
 assert.match(appSource, /shareProjectionFor\(ShareScope\.workspace/);
 assert.match(appSource, /shareProjectionFor\(ShareScope\.current/);
-assert.match(appSource, /onShareWorkspace=\{\(\) => shareWorkspace\(workspace\.id\)\}/, 'visible workspace Share receives clicked workspace explicitly');
+assert.match(appSource, /onShareWorkspace=\{\(\) => historicalResolved \? shareCurrent\(\) : shareWorkspace\(workspace\.id\)\}/, 'visible live workspace Share receives clicked workspace explicitly while historical review shares exact current route state');
 assert.match(appSource, /onShare=\{shareCurrent\}/, 'Global Dock Share is explicit current scope');
 const shareRecordBody = appSource.match(/async function shareRecord[\s\S]*?\n  }/)?.[0] || '';
 assert.equal(shareRecordBody.includes('focusWorkspaceForInteraction'), false, 'Record Share target correctness does not depend on focus mutation');

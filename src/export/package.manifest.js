@@ -1,4 +1,5 @@
 import { buildExportPackagePreflight } from './package.preflight.js';
+import { packageAssetBytes, utf8Bytes } from './package.bytes.js';
 
 export const EXPORT_PACKAGE_MANIFEST_SCHEMA_ID = 'tiinex.export.package.manifest.v1';
 export const EXPORT_PACKAGE_RECEIPT_SCHEMA_ID = 'tiinex.export.package.receipt.v1';
@@ -18,6 +19,7 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
   const sourceReferences = (preflight.sourceReferenceEntries || []).map((entry) => manifestSourceReferenceEntry(entry));
   const assetEntries = (preflight.assetEntries || []).map((entry) => manifestAssetEntry(entry, assetIndex));
   const contextCandidates = (preflight.workspaceCandidateEntries || []).map((entry) => manifestWorkspaceCandidateEntry(entry, candidateIndex));
+  const workspaceContext = manifestWorkspaceContextEntry(preflight.workspaceContext || {}, workspace);
   const blocked = (preflight.blockedLocalEntries || []).map((entry) => manifestBlockedEntry(entry));
   const findings = (preflight.findings || []).map((finding) => manifestFinding('preflight', finding));
 
@@ -29,6 +31,7 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
     includesSourceReferences: sourceReferences.length > 0,
     includesAssets: assetEntries.length > 0,
     includesWorkspaceContextCandidates: contextCandidates.length > 0,
+    includesWorkspaceContext: true,
     governanceBoundary: preflight.governanceBoundary || null,
     sourceMutation: false,
     remoteFetch: false,
@@ -40,10 +43,11 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
     sourceReferences: Object.freeze(sourceReferences),
     assets: Object.freeze(assetEntries),
     workspaceContextCandidates: Object.freeze(contextCandidates),
+    workspaceContext,
     blocked: Object.freeze(blocked)
   });
   const counts = Object.freeze({
-    entries: localDrafts.length + sourceReferences.length + assetEntries.length + contextCandidates.length,
+    entries: localDrafts.length + sourceReferences.length + assetEntries.length + contextCandidates.length + 1,
     localDrafts: localDrafts.length,
     sourceReferences: sourceReferences.length,
     pinnedSourceReferences: sourceReferences.filter((entry) => entry.status === 'pinned-reference').length,
@@ -51,20 +55,14 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
     assets: assetEntries.length,
     metadataOnlyAssets: assetEntries.filter((entry) => entry.status === 'metadata-only').length,
     workspaceContextCandidates: contextCandidates.length,
+    workspaceContext: 1,
     blocked: blocked.length,
     errors: findings.filter((finding) => finding.severity === 'error').length,
     warnings: findings.filter((finding) => finding.severity === 'warning').length,
     findings: findings.length
   });
   const status = counts.blocked || counts.errors ? 'blocked' : (preflight.status === 'blocked' ? 'blocked' : (preflight.status === 'degraded' || counts.warnings || counts.metadataOnlyAssets || counts.degradedSourceReferences || counts.workspaceContextCandidates ? 'degraded' : 'ready'));
-  const fingerprintInput = {
-    workspaceId: packageScope.workspaceId,
-    status,
-    policy: 'tiinex-export-package-manifest-v1',
-    governanceBoundary: packageScope.governanceBoundary,
-    material
-  };
-  const fingerprint = stableFingerprint(fingerprintInput);
+  const fingerprint = exportPackageManifestFingerprint({ packageScope, workspaceId: packageScope.workspaceId, status, material });
   const packageId = `package:${safeToken(packageScope.workspaceId || 'workspace')}:${fingerprint}`;
 
   return deepFreeze({
@@ -91,6 +89,17 @@ export function buildExportPackageManifest(workspace = {}, input = {}) {
       fingerprint,
       note: 'Deterministic manifest fingerprint for conformance and roundtrip checks; not a cryptographic content hash.'
     })
+  });
+}
+
+
+export function exportPackageManifestFingerprint(manifest = {}) {
+  return stableFingerprint({
+    workspaceId: manifest.packageScope?.workspaceId || manifest.workspaceId || '',
+    status: manifest.status || 'unknown',
+    policy: 'tiinex-export-package-manifest-v1',
+    governanceBoundary: manifest.packageScope?.governanceBoundary || null,
+    material: manifest.material || {}
   });
 }
 
@@ -161,7 +170,7 @@ function manifestLocalDraftEntry(entry = {}, recordIndex = new Map()) {
     content: Object.freeze({
       available: Boolean(markdown),
       mediaType: 'text/markdown',
-      bytes: markdown.length,
+      bytes: utf8Bytes(markdown).byteLength,
       fingerprint: markdown ? stableFingerprint(markdown) : '',
       embeddedByFutureBuilder: Boolean(markdown)
     })
@@ -169,42 +178,53 @@ function manifestLocalDraftEntry(entry = {}, recordIndex = new Map()) {
 }
 
 function manifestSourceReferenceEntry(entry = {}) {
-  const path = normalizeRelativePath(entry.path || `${entry.id || 'source-reference'}.source.json`);
+  const target = entry.target || {};
+  const path = normalizeRelativePath(target.path || entry.path || `${entry.id || 'source-reference'}.source.json`);
   return Object.freeze({
     id: entry.id || path,
     title: entry.title || 'Source reference',
     kind: 'source-reference',
     path,
-    packagePath: `sources/${safeToken(entry.adapterId || 'source')}/${safeToken(entry.repo || 'repo')}/${safeToken(entry.ref || 'unpinned')}/${path}.source.json`,
-    adapterId: entry.adapterId || '',
-    repo: entry.repo || '',
-    ref: entry.ref || '',
-    status: entry.status || 'degraded-reference',
+    packagePath: `sources/${safeToken(target.adapterId || entry.adapterId || 'source')}/${safeToken(target.repo || entry.repo || target.inputTarget || 'target')}/${safeToken(target.materializedCommit || target.configuredRef || target.ref || entry.ref || 'unpinned')}/${safeToken(entry.id || path)}.source.json`,
+    adapterId: target.adapterId || entry.adapterId || '',
+    repo: target.repo || entry.repo || '',
+    ref: target.ref || entry.ref || '',
+    status: entry.status || target.status || 'degraded-reference',
     mode: entry.mode || 'preserve-source-reference',
-    boundary: entry.boundary || 'Package stores a reference to source-backed input; it does not republish it.',
-    target: Object.freeze({ adapterId: entry.adapterId || '', repo: entry.repo || '', ref: entry.ref || '', path })
+    boundary: entry.boundary || 'Package stores exact available source-target authority as a reference; it does not republish it.',
+    target: deepFreeze({ ...target })
   });
 }
 
 function manifestAssetEntry(entry = {}, assetIndex = new Map()) {
-  const sourceAsset = lookupEntry(assetIndex, entry);
-  const path = normalizeRelativePath(entry.path || sourceAsset?.path || `${entry.id || 'asset'}`);
-  const content = sourceAsset?.content || sourceAsset?.dataUrl || sourceAsset?.text || sourceAsset?.bytes || '';
-  const contentAvailable = entry.status === 'content-available' && Boolean(content);
+  const sourceAsset = lookupEntry(assetIndex, entry) || {};
+  const path = normalizeRelativePath(entry.path || sourceAsset.path || `${entry.id || 'asset'}`);
+  const byteProjection = packageAssetBytes(sourceAsset);
+  const contentAvailable = entry.status === 'content-available' && byteProjection.bytes.byteLength > 0;
+  const status = entry.status || (contentAvailable ? 'content-available' : 'metadata-only');
+  const id = entry.id || sourceAsset.id || path;
+  const packagePath = status === 'source-reference'
+    ? `sources/assets/${safeToken(id)}.asset.source.json`
+    : status === 'metadata-only'
+      ? `metadata/assets/${path}.asset.json`
+      : `assets/${path}`;
   return Object.freeze({
-    id: entry.id || sourceAsset?.id || path,
-    title: entry.title || sourceAsset?.name || path,
+    id,
+    title: entry.title || sourceAsset.name || path,
     kind: 'asset',
     path,
-    packagePath: `assets/${path}`,
-    mediaType: entry.mediaType || sourceAsset?.type || sourceAsset?.mimeType || '',
-    status: entry.status || (contentAvailable ? 'content-available' : 'metadata-only'),
+    packagePath,
+    mediaType: entry.mediaType || sourceAsset.type || sourceAsset.mimeType || byteProjection.mediaType || '',
+    byteSize: Number(entry.byteSize || sourceAsset.size || byteProjection.bytes.byteLength || 0),
+    status,
     mode: entry.mode || (contentAvailable ? 'asset-content-entry' : 'asset-metadata-entry'),
-    boundary: entry.boundary || sourceAsset?.source?.boundary || 'Asset boundary follows its intake source; assets are not fake leaves.',
+    boundary: entry.boundary || sourceAsset.source?.boundary || 'Asset boundary follows its intake source; assets are not fake leaves.',
+    sourceReference: entry.sourceReference ? deepFreeze({ ...entry.sourceReference }) : null,
     content: Object.freeze({
       available: contentAvailable,
-      fingerprint: contentAvailable ? stableFingerprint(content) : '',
-      note: contentAvailable ? 'Future package builder may embed asset bytes.' : 'Metadata-only asset requires reselection or explicit degraded package receipt.'
+      bytes: contentAvailable ? byteProjection.bytes.byteLength : 0,
+      representation: contentAvailable ? byteProjection.representation : 'none',
+      note: contentAvailable ? 'Package builder embeds exact owned bytes.' : 'No owned bytes are claimed by this manifest entry.'
     })
   });
 }
@@ -224,6 +244,24 @@ function manifestWorkspaceCandidateEntry(entry = {}, candidateIndex = new Map())
   });
 }
 
+function manifestWorkspaceContextEntry(context = {}, workspace = {}) {
+  const id = `workspace-context:${context.id || workspace.id || 'workspace'}`;
+  const packagePaths = ['context/workspace.json'];
+  if (context.workspaceMarkdown?.available) packagePaths.push(context.workspaceMarkdown.packagePath || 'context/workspace.workspace.md');
+  return Object.freeze({
+    id,
+    title: `Workspace context · ${context.title || workspace.title || workspace.name || 'Workspace'}`,
+    kind: 'workspace-context',
+    path: context.workspaceImport?.path || '',
+    packagePath: packagePaths[0],
+    packagePaths: Object.freeze(packagePaths),
+    status: 'ready',
+    mode: 'canonical-workspace-context',
+    boundary: context.boundary || 'Canonical workspace context projection for handoff/re-ingest.',
+    context: deepFreeze({ ...context })
+  });
+}
+
 function manifestBlockedEntry(entry = {}) {
   const path = normalizeRelativePath(entry.path || entry.id || 'blocked-entry');
   return Object.freeze({
@@ -234,6 +272,49 @@ function manifestBlockedEntry(entry = {}) {
     status: 'blocked',
     reason: entry.reason || 'not-package-ready',
     boundary: entry.boundary || 'Blocked material is excluded from package entries.'
+  });
+}
+
+export function finalizeExportPackageManifestPaths(manifest = {}, files = []) {
+  const byEntryId = new Map();
+  for (const file of files) {
+    const entryId = String(file.entryId || '');
+    if (!entryId) continue;
+    const current = byEntryId.get(entryId) || [];
+    current.push(String(file.path || ''));
+    byEntryId.set(entryId, current);
+  }
+  const material = manifest.material || {};
+  const remap = (entries = []) => entries.map((entry) => {
+    const paths = byEntryId.get(String(entry.id || '')) || [];
+    return paths.length ? Object.freeze({ ...entry, packagePath: paths[0], packagePaths: Object.freeze(paths.slice()) }) : entry;
+  });
+  const workspaceContext = material.workspaceContext ? (() => {
+    const baseId = String(material.workspaceContext.id || '');
+    const direct = byEntryId.get(baseId) || [];
+    const markdown = byEntryId.get(`${baseId}:markdown`) || [];
+    const paths = [...direct, ...markdown];
+    return paths.length ? Object.freeze({ ...material.workspaceContext, packagePath: paths[0], packagePaths: Object.freeze(paths) }) : material.workspaceContext;
+  })() : null;
+  const nextMaterial = Object.freeze({
+    localDrafts: Object.freeze(remap(material.localDrafts || [])),
+    sourceReferences: Object.freeze(remap(material.sourceReferences || [])),
+    assets: Object.freeze(remap(material.assets || [])),
+    workspaceContextCandidates: Object.freeze(remap(material.workspaceContextCandidates || [])),
+    workspaceContext,
+    blocked: Object.freeze(material.blocked || [])
+  });
+  const fingerprint = exportPackageManifestFingerprint({ ...manifest, material: nextMaterial });
+  const packageId = `package:${safeToken(manifest.packageScope?.workspaceId || manifest.workspaceId || 'workspace')}:${fingerprint}`;
+  return deepFreeze({
+    ...manifest,
+    packageId,
+    material: nextMaterial,
+    integrity: Object.freeze({
+      algorithm: 'tiinex-stable-fingerprint-v1',
+      fingerprint,
+      note: 'Deterministic manifest semantic fingerprint for conformance; durable serialized byte integrity is separately owned by tiinex.package/file-map.json.'
+    })
   });
 }
 
@@ -313,6 +394,7 @@ function stableStringify(value) {
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value;
   Object.freeze(value);
   for (const item of Object.values(value)) deepFreeze(item);
   return value;

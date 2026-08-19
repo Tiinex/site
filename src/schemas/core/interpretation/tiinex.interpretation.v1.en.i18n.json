@@ -1,0 +1,9 @@
+{
+  "label": "Interpretation",
+  "summary": "Explicit bounded interpretation of another artifact or target without mutating the original.",
+  "interpretation.schema.mismatch": "Interpretation validator was invoked for a different schema.",
+  "interpretation.title.missing": "Interpretation is missing a human-readable title.",
+  "interpretation.section.missing": "Interpretation is missing required section {section}.",
+  "interpretation.field.missing": "Interpretation is missing required field {field}.",
+  "interpretation.contract.readable": "Interpretation exposes the required bounded Use-as fields."
+}

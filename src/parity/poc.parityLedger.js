@@ -52,12 +52,12 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'continue-reference-conformance',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Continue creates local drafts; old Reference appears to be a cross-artifact relation and is not yet restored. Current Preserve evidence creates a local Evidence draft from the selected record.',
+      legacyBehavior: 'Continue creates canonical local drafts; one bounded old Reference product value is now restored as a separate durable typed non-parent Relation from Topic to a qualified distinct Task. Preserve evidence remains a different Evidence operation, and broader old Reference relation breadth is not claimed.',
       semanticOwner: 'transition + schema creation contracts',
-      runtimeOwner: 'src/transitions/record.transitions',
-      automatedChecks: ['src/transitions/record.transitions.test.mjs'],
-      manualChecks: ['create continuation/preserve-evidence, open generated markdown', 'compare old Reference relation before claiming parity'],
-      failureResult: 'draft remains local/provisional and old Reference parity stays unclaimed until subject/object/anchor semantics are restored'
+      runtimeOwner: 'src/transitions canonical product preparation/planners + src/app/canonicalReferenceLocalCreateCommand + Relation materializer',
+      automatedChecks: ['src/transitions/record.transitions.test.mjs', 'src/acceptance/postV423CanonicalTransitionProductVerticalSlice.test.mjs', 'src/acceptance/postV434M0DDurableReferenceIntegrationClosure.test.mjs', 'src/acceptance/postV435M0DExactAuthorityDurabilityCorrection.test.mjs'],
+      manualChecks: ['create Continue/Reference/Preserve evidence and inspect generated markdown', 'compare bounded current Reference against old Reference relation before final parity'],
+      failureResult: 'Reference fails closed when explicit generation, exact defining/generation authority representation, or durable participant identity is unqualified; broader old Reference relation parity remains a final product/manual claim'
     }),
     scenario({
       id: 'github-source-discovery',
@@ -102,32 +102,32 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'publication-reingest-preflight',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Before publication/re-ingest, the app distinguishes publishable local drafts, source-backed references, unpinned source boundaries, and local asset availability without performing hidden writes.',
-      semanticOwner: 'publication preflight + source-boundary diagnostics',
-      runtimeOwner: 'src/publication/publication.preflight + src/diagnostics/sourceBoundary.report + recoverability view',
-      automatedChecks: ['src/publication/publication.preflight.test.mjs', 'src/diagnostics/sourceBoundary.report.test.mjs', 'src/export/package.preflight.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['inspect Audit recoverability preflight after import', 'verify unpinned GitHub source does not expose guessed source link'],
-      failureResult: 'blocked/degraded preflight with explicit findings; no remote mutation and no guessed GitHub provenance'
+      legacyBehavior: 'Owned-local GitHub issue/comment publication is Copy → Open → exact-target human confirm → Verify; source-backed input stays reference-only.',
+      semanticOwner: 'publication preflight + shared plan/result + GitHub social target contract',
+      runtimeOwner: 'src/publication/** + src/app/workspaceGithubPublication + GitHub publication read owner+receipt persistence',
+      automatedChecks: ['src/publication/publication.githubSocialTargetRepresentationClosure.test.mjs', 'src/app/workspaceGithubPublication.test.mjs', 'src/workspaces/workspace.publicationReceipts.test.mjs', 'src/acceptance/postV449M0FExactMutationTargetAttestationClosure.test.mjs'],
+      manualChecks: ['Copy, Open GitHub, mutate, confirm exact plan+target, Verify, inspect durable receipt'],
+      failureResult: 'unattested or mismatched Verify creates no binding/receipt; matching remote bytes alone do not prove this operation wrote them'
     }),
     scenario({
       id: 'export-package-manifest-receipt',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Package/export manifest and receipt planning preserves the distinction between local draft Markdown, source-backed references, assets, metadata-only assets, and workspace context before any package zip is created.',
+      legacyBehavior: 'Explicit non-default Handoff export now builds and downloads the shared operational package while preserving local-owned Markdown/assets, source-backed references, package controls, and workspace context; ordinary Tree ZIP remains a separate envelope-free product path.',
       semanticOwner: 'export package preflight + manifest + receipt + source boundary + re-ingest plan',
-      runtimeOwner: 'src/export/package.preflight + src/export/package.manifest + src/adapters/export + recoverability view',
-      automatedChecks: ['src/export/package.preflight.test.mjs', 'src/export/package.manifest.test.mjs', 'src/workspaces/workspace.recoverabilityView.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['inspect Audit export package manifest row after local/archive import', 'verify assets stay assets and source-backed records stay references'],
-      failureResult: 'blocked/degraded export package manifest/receipt with explicit findings; no package zip and no provenance conversion'
+      runtimeOwner: 'src/export/package.preflight + src/export/package.manifest + src/export/package.builder + src/export/package.zip + src/export/handoff.plan + src/app/workspaceHandoffExport + recoverability view',
+      automatedChecks: ['src/export/package.preflight.test.mjs', 'src/export/package.manifest.test.mjs', 'src/export/package.builder.test.mjs', 'src/export/package.zip.test.mjs', 'src/app/workspaceHandoffExport.test.mjs', 'src/app/handoffPackageImportCommand.test.mjs', 'src/acceptance/postV441M0FProductExecutionIntegration.test.mjs', 'src/acceptance/postV442M0FHandoffFreshnessArchiveScalingCorrection.test.mjs', 'src/workspaces/workspace.recoverabilityView.test.mjs', 'src/conformance/conformance.run.test.mjs'],
+      manualChecks: ['select Handoff package explicitly, inspect truthful package summary, download one package ZIP, re-ingest it, and verify local assets stay assets while source-backed members remain references'],
+      failureResult: 'execution-time blocked/degraded Handoff qualification prevents download; stale render plans never own export bytes; invalid claimed package fails closed; no provenance conversion or generic archive fallback'
     }),
     scenario({
       id: 'export-package-file-map',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Package/export can build a bounded package file map from manifest data while preserving artifact/source/asset/workspace boundaries.',
+      legacyBehavior: 'The Handoff product path serializes the bounded shared package file map to one ZIP from latest execution-time workspace truth, while local single-ZIP intake decodes once and then rehydrates/imports/applies an operational package or preserves ordinary archive semantics without turning source references into local leaves.',
       semanticOwner: 'export package builder + manifest/receipt contract',
-      runtimeOwner: 'src/export/package.builder + src/adapters/export + recoverability view',
-      automatedChecks: ['src/export/package.builder.test.mjs', 'src/workspaces/workspace.recoverabilityView.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['inspect Audit package bundle row after local/archive import when surfaced'],
-      failureResult: 'blocked/degraded package bundle with control files only or metadata descriptors; no zip creation, no remote mutation, no fake local leaves'
+      runtimeOwner: 'src/export/package.builder + src/export/package.apply + src/export/package.zip + src/tooling/portable/package/runtime.package + src/app/handoffPackageImportCommand + canonical workspace lifecycle',
+      automatedChecks: ['src/export/package.builder.test.mjs', 'src/export/package.apply.test.mjs', 'src/export/package.zip.test.mjs', 'src/tooling/portable/package/runtime.package.test.mjs', 'src/app/handoffPackageImportCommand.test.mjs', 'src/acceptance/postV441M0FProductExecutionIntegration.test.mjs', 'src/acceptance/postV442M0FHandoffFreshnessArchiveScalingCorrection.test.mjs', 'src/workspaces/workspace.recoverabilityView.test.mjs', 'src/conformance/conformance.run.test.mjs'],
+      manualChecks: ['download and re-ingest one qualified Handoff package; confirm package controls/context, local bytes, source-reference descriptors, and ordinary Tree ZIP separation'],
+      failureResult: 'blocked/invalid operational package remains non-executable or fails closed; no remote mutation, no fake source leaves, and ordinary Tree ZIP is not reinterpreted as a package'
     }),
     scenario({
       id: 'schema-capability-registry',
@@ -143,11 +143,11 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'artifact-creation-contracts',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Continue/Reference and future Use-as creation flow should generate schema-bound local draft leaves through creation contracts rather than ad-hoc UI Markdown.',
+      legacyBehavior: 'Continue, bounded Reference, Use-as, and standalone Create now exercise the canonical schema/Transition authoring spine without ad-hoc per-action Markdown in the UI; broader schema/action breadth remains non-final.' ,
       semanticOwner: 'artifact creation contract + schema capability registry + root envelope',
-      runtimeOwner: 'src/schemas/creation.contracts + src/transitions/record.transitions + conformance spine',
-      automatedChecks: ['src/schemas/creation.contracts.test.mjs', 'src/transitions/record.transitions.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['create Continue/Reference and inspect generated markdown when surfaced'],
+      runtimeOwner: 'src/schemas/creation.contracts + canonical Transition product preparation/planners + bounded schema materializers + conformance spine',
+      automatedChecks: ['src/schemas/creation.contracts.test.mjs', 'src/acceptance/postV431M0DCanonicalAuthoringParityClosure.test.mjs', 'src/acceptance/postV432M0DStandaloneCreateClosure.test.mjs', 'src/acceptance/postV434M0DDurableReferenceIntegrationClosure.test.mjs', 'src/conformance/conformance.run.test.mjs'],
+      manualChecks: ['create Continue/Reference/Use-as/root Create and inspect generated artifacts'],
       failureResult: 'creation is blocked for unknown schemas; local draft remains source-free and reports validation findings'
     }),
 
@@ -172,6 +172,16 @@ export const pocParityLedger = Object.freeze({
       failureResult: 'transport report/policy classifies rate-limit/not-found/unpinned/cache/budget states; no provenance inference and no hidden fetch/retry'
     }),
     scenario({
+      id: 'time-portal-source-snapshot',
+      status: PoCParityStatus.partial,
+      legacyBehavior: 'Display options preserves explicit Begin/End review intent, requires an explicit GitHub snapshot target, resolves named refs once to an immutable commit, and reviews that historical source separately from live/latest workspace truth.',
+      semanticOwner: 'workspace view temporal intent + exact source representation identity + read-only historical source projection',
+      runtimeOwner: 'src/workspaces/workspace.timePortal + src/app/timePortalSnapshotResolution + src/app/timePortalHistoricalRead + workspace Time Portal views',
+      automatedChecks: ['src/workspaces/workspace.timePortal.test.mjs', 'src/adapters/github/github.snapshotTarget.test.mjs', 'src/app/timePortalSnapshotResolution.test.mjs', 'src/app/timePortalHistoricalRead.test.mjs', 'src/app/timePortalRouteShare.test.mjs', 'src/acceptance/postV437M0ETimePortalProductParityClosure.test.mjs'],
+      manualChecks: ['Display options → Time Portal Begin/End → Resolve source snapshot', 'historical banner shows exact commit and Return to latest', 'Back/Forward and shared exact state restore selected historical snapshot without silently fetching on cold restore'],
+      failureResult: 'unresolved intent remains unresolved; invalid/unavailable snapshot remains explicit; live source/local drafts stay unchanged and no date is converted into a commit'
+    }),
+    scenario({
       id: 'route-shell-material-boundaries',
       status: PoCParityStatus.partial,
       legacyBehavior: 'Share/session route should preserve workspace material boundaries and metadata without inventing unavailable content.',
@@ -184,21 +194,21 @@ export const pocParityLedger = Object.freeze({
     scenario({
       id: 'surface-registry-truth',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'PoC surfaces feel available only when their behavior is actually present; scaffolded commands should not be counted as parity-ready.',
+      legacyBehavior: 'PoC surfaces feel available only when their behavior is actually present; implemented current paths must not be mislabeled scaffold, while partial must still not be counted as final parity.',
       semanticOwner: 'surface registry + explicit implementation status',
       runtimeOwner: 'src/surfaces/registry + src/surfaces/contracts',
-      automatedChecks: ['src/surfaces/registry.test.mjs', 'src/conformance/conformance.run.test.mjs'],
-      manualChecks: ['browser review of Feed/Tree/Lineage/Audit surface affordances'],
-      failureResult: 'surface remains scaffold/partial with finding; no false parity claim'
+      automatedChecks: ['src/surfaces/registry.test.mjs', 'src/conformance/conformance.run.test.mjs', 'src/acceptance/postV436M0EFIntegratedProductParityDiscovery.test.mjs'],
+      manualChecks: ['browser review of all eleven registered surface affordances across desktop/mobile'],
+      failureResult: 'implemented surface remains partial until final product proof; absent paths remain scaffold/unavailable rather than being promoted by label alone'
     }),
     scenario({
       id: 'discovery-presentation-parity',
       status: PoCParityStatus.partial,
-      legacyBehavior: 'Discovery should prioritize valuable Tiinex leaves, distinguish Display option ordering from filtering, keep Tree expansion stable, show source registration/materialization as distinct observable transitions, and keep selected Lineage separate from workspace-wide diagnostics.',
+      legacyBehavior: 'Discovery should prioritize valuable Tiinex leaves, distinguish Display option ordering from filtering, preserve Feed/Tree return context when opening selected Lineage, project qualified schema identity in the Schema filter, keep Tree expansion stable, show source registration/materialization as distinct observable transitions, and keep selected Lineage separate from workspace-wide diagnostics.',
       semanticOwner: 'workspace presentation read model + Display options contract + source/material boundary + selected lineage scope',
-      runtimeOwner: 'src/schemas/workspace/workspace.views + workspace.add.views + src/workspaces/workspace.discoveryProgress + src/app/TiinexApp',
-      automatedChecks: ['tools/check-ui-shape.mjs', 'tools/check-uc001.mjs'],
-      manualChecks: ['Feed shows leaves/work artifacts first', 'Display options has Leaves only, Mismatches only, schema/artifact filters without clipping', 'Tree branches persist across view changes', 'GitHub register-only clearly says no loading is running', 'GitHub import shows accepted/loading/done receipt', 'Source Continue opens prefilled source context', 'Selected Lineage appears before collapsed workspace overview'],
+      runtimeOwner: 'src/app/workspaceScopedInteraction + src/workspaces/workspace.displayFilters + src/workspaces/workspace.discoveryView + workspace views',
+      automatedChecks: ['tools/check-ui-shape.mjs', 'tools/check-uc001.mjs', 'src/app/workspaceScopedInteraction.test.mjs', 'src/workspaces/workspace.displayFilters.test.mjs', 'src/acceptance/postV427DiscoveryReturnContextSchemaFilterParityClosure.test.mjs'],
+      manualChecks: ['Feed shows leaves/work artifacts first', 'Tree → selected Lineage → Back restores Tree', 'Feed → selected Lineage → Back restores Feed', 'Schema filter lists only qualified schema identities, not markdown/supporting kind labels', 'Display options has Leaves only, Mismatches only, schema/artifact filters without clipping', 'Tree branches persist across view changes', 'GitHub register-only clearly says no loading is running', 'GitHub import shows accepted/loading/done receipt', 'Source Continue opens prefilled source context', 'Selected Lineage appears before collapsed workspace overview'],
       failureResult: 'supporting docs remain preserved but do not dominate Discovery; source registration and source materialization are not confused; workspace diagnostics stay secondary to selected artifact status'
     }),
     scenario({

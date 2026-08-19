@@ -68,12 +68,13 @@ export function discoveryRecordMembership(record = {}, options = {}, auditById =
   const workspaceArtifactRecord = role === MaterialRole.workspaceArtifact;
   const parentReason = discoveryParentReason(record, materialIndex);
   if (isLocalShadowedBySourceRecord(record)) return hidden('hidden-local-shadowed-by-source', role, discoveryLeaf, supporting);
-  if (workspaceArtifactRecord && options.showWorkspaceArtifacts === false) return hidden('hidden-workspace-artifacts', role, discoveryLeaf, supporting);
-  if (options.leavesOnly && !discoveryLeaf) return hidden(parentReason || (workspaceArtifactRecord ? 'hidden-workspace-parent' : 'hidden-not-terminal-work-leaf'), role, discoveryLeaf, supporting);
-  if (!workspaceArtifactRecord && !options.showSupportingMarkdown && supporting) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
-  if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const schemaFilter = normalizeDisplayFilterValue(options.schemaFilter);
-  if (schemaFilter !== 'all' && recordSchemaValue(record) !== schemaFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
+  const explicitSchemaMatch = schemaFilter !== 'all' && recordSchemaValue(record) === schemaFilter;
+  if (workspaceArtifactRecord && options.showWorkspaceArtifacts === false) return hidden('hidden-workspace-artifacts', role, discoveryLeaf, supporting);
+  if (options.leavesOnly && !discoveryLeaf && !explicitSchemaMatch) return hidden(parentReason || (workspaceArtifactRecord ? 'hidden-workspace-parent' : 'hidden-not-terminal-work-leaf'), role, discoveryLeaf, supporting);
+  if (!workspaceArtifactRecord && !options.showSupportingMarkdown && supporting && !explicitSchemaMatch) return hidden('hidden-supporting', role, discoveryLeaf, supporting);
+  if (options.mismatchesOnly && !auditIsMismatch(record, auditById.get(record.id))) return hidden('hidden-filter', role, discoveryLeaf, supporting);
+  if (schemaFilter !== 'all' && !explicitSchemaMatch) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const artifactFilter = normalizeDisplayFilterValue(options.artifactFilter);
   if (artifactFilter !== 'all' && role !== artifactFilter) return hidden('hidden-filter', role, discoveryLeaf, supporting);
   const sourceFilter = normalizeDisplayFilterValue(options.sourceFilter);
@@ -206,7 +207,7 @@ function discoveryOptionChoices(records = [], auditById = new Map(), materialInd
   for (const record of items) {
     const descriptor = descriptorFor(record, materialIndex);
     const schema = descriptor?.schema || recordSchemaValue(record);
-    schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
+    if (schema) schemaCounts.set(schema, (schemaCounts.get(schema) || 0) + 1);
     const artifact = descriptor?.role || inferRecordMaterialRole(record);
     artifactCounts.set(artifact, (artifactCounts.get(artifact) || 0) + 1);
     const sourceClass = descriptor?.sourceClass || sourceBoundaryClass(record);

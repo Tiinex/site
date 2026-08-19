@@ -164,7 +164,9 @@ function nodeMatchesQuery(node = {}, query = '') {
     node.origin,
     node.boundary,
     record.summary,
-    record.kind,
+    record.schemaId,
+    record.currentSchemaId,
+    record.markdown,
     record.source?.label
   ].some((value) => String(value || '').toLowerCase().includes(query));
 }

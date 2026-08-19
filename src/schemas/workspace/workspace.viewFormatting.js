@@ -1,5 +1,37 @@
 import { RecordActionKind } from '../../actions/record.actions.js';
 import { recordLogicalPath } from '../../workspaces/workspace.recordPaths.js';
+import { sourceBoundaryClass } from '../../workspaces/workspace.materialRole.js';
+
+
+export function assetSourceBadge(asset = {}) {
+  const boundary = sourceBoundaryClass(asset);
+  if (boundary === 'source-backed') return 'source-backed';
+  if (boundary === 'local') return 'local/session';
+  return 'source unknown';
+}
+
+export function assetSourceBoundary(asset = {}) {
+  const declared = String(asset?.source?.boundary || asset?.boundary || '').trim();
+  if (declared) return declared;
+  const boundary = sourceBoundaryClass(asset);
+  if (boundary === 'source-backed') return 'Source-backed asset material/reference; preview availability is separate from source provenance.';
+  if (boundary === 'local') return 'Browser-local asset; no GitHub provenance inferred.';
+  return 'Asset source boundary is unresolved; no provenance inferred.';
+}
+
+export function assetPreviewSummary(asset = {}) {
+  const boundary = sourceBoundaryClass(asset);
+  const size = Number(asset?.size || 0);
+  if (boundary === 'source-backed') return size > 0
+    ? `${size} bytes described for a source-backed asset; preview availability is separate.`
+    : 'Source-backed asset/reference preserved without inventing preview availability.';
+  if (boundary === 'local') return size > 0
+    ? `${size} bytes preserved as local asset.`
+    : 'Preserved as a local asset, not a fake leaf.';
+  return size > 0
+    ? `${size} bytes described; source ownership is unresolved.`
+    : 'Asset metadata preserved; source ownership is unresolved.';
+}
 
 export function compactPath(path = '') {
   const value = String(path || '').trim();
@@ -23,7 +55,7 @@ export function compactRecordDate(record = {}) {
 }
 
 export function recordSchemaOpenValue(record = {}) {
-  return String(record.schemaId || record.currentSchemaId || record.kind || record.schema || 'artifact').trim() || 'artifact';
+  return String(record.schemaId || record.currentSchemaId || record.envelopeSchemaId || '').trim();
 }
 
 
@@ -70,7 +102,7 @@ export function recordLifecycleBadge(record = {}) {
 export function actionClassName(action = {}) {
   const id = action.id;
   const isTransition = String(id || '').startsWith('record.transition:');
-  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge;
+  const labeled = id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.editLocal || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge;
   const danger = id === RecordActionKind.deleteLocal;
   const side = isTransition || id === RecordActionKind.continue || id === RecordActionKind.reference || id === RecordActionKind.workspaceOpen || id === RecordActionKind.workspaceMerge ? 'tx-action-right' : 'tx-action-left';
   return ['tx-button', 'tx-button-ghost', 'tx-legacy-action', isTransition ? 'tx-transition-action' : '', danger ? 'tx-danger tx-delete-local-action' : '', labeled ? 'tx-labeled-action' : '', side].filter(Boolean).join(' ');
@@ -82,6 +114,7 @@ export function actionLabel(action = {}) {
   if (action.id === RecordActionKind.lineage) return 'Anchor';
   if (action.id === RecordActionKind.workspaceOpen) return 'Open';
   if (action.id === RecordActionKind.workspaceMerge) return 'Merge';
+  if (action.id === RecordActionKind.editLocal) return 'Edit local draft';
   if (action.id === RecordActionKind.deleteLocal) return 'Delete local draft';
   return action.label;
 }

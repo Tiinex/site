@@ -23,6 +23,26 @@
       "originTrustRole": "viewer-extension"
     },
     {
+      "schemaId": "tiinex.interpretation.v1",
+      "kind": "concrete",
+      "role": "core-interpretation-artifact",
+      "path": "core/interpretation/tiinex.interpretation.v1.schema.json",
+      "checksum": "977a46d67eb4e3e8ce383f7f33efbf10798122cc3f94e5b948c084a9af311017",
+      "sourceBlobSha": "330d8668e78cd6d164a76093982b02f616fd6ab4",
+      "originId": "tiinex-docs-053d46ce",
+      "originTrustRole": "canonical-core"
+    },
+    {
+      "schemaId": "tiinex.relation.v1",
+      "kind": "concrete",
+      "role": "core-relation-artifact",
+      "path": "core/relation/tiinex.relation.v1.schema.json",
+      "checksum": "c2f2f5fc949c9a89933cbb9263e251e62f139e883b5b60c30171e47625083a59",
+      "sourceBlobSha": "46c476c6b24f448f462c9f67e56cb1a40751ee14",
+      "originId": "tiinex-docs-053d46ce",
+      "originTrustRole": "canonical-core"
+    },
+    {
       "schemaId": "tiinex.evidence.v1",
       "kind": "concrete",
       "role": "core-evidence-artifact",
@@ -91,6 +111,16 @@
       "repository": "Tiinex/site",
       "rootPath": "src/schemas",
       "trustRole": "viewer-extension"
+    },
+    {
+      "id": "tiinex-docs-053d46ce",
+      "label": "Tiinex docs canonical snapshot 053d46ce",
+      "kind": "github-tree",
+      "repository": "Tiinex/docs",
+      "ref": "053d46ce082d4ec261b82abc44ecca403d61e240",
+      "sourceCommit": "053d46ce082d4ec261b82abc44ecca403d61e240",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core"
     }
   ]
 }

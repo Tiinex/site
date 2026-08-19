@@ -7,26 +7,32 @@ import { TASK_CANONICAL_REQUIRED_INPUTS } from '../schemas/core/task/tiinex.task
 
 export const CANONICAL_TASK_LOCAL_MATERIALIZER_SCHEMA_ID = 'tiinex.site.canonical-task-local-materializer.v1';
 export const CANONICAL_TASK_SCHEMA_ID = 'tiinex.task.v1';
-const CANONICAL_TOPIC_SCHEMA_ID = 'tiinex.topic.v1';
 const REQUIRED_INPUTS = TASK_CANONICAL_REQUIRED_INPUTS;
 
 export function renderCanonicalTaskLocalArtifact(input = {}) {
   const values = input.values || {};
-  const parent = input.parent || {};
+  const parent = input.parent || null;
+  const continuityMode = input.continuityMode === 'root' ? 'root' : 'parent';
+  const parentQualified = continuityMode === 'root'
+    ? !parent
+    : Boolean(parent?.state === 'qualified' && parent?.finalized === true && String(parent?.schemaId || '').trim());
   const createdAt = rootTimestamp(input.now instanceof Date ? input.now : new Date(input.now || Date.now()));
-  if (parent.state !== 'qualified' || parent.finalized !== true || parent.schemaId !== CANONICAL_TOPIC_SCHEMA_ID || !REQUIRED_INPUTS.every((name) => Object.prototype.hasOwnProperty.call(values, name) && values[name] !== undefined)) {
-    const reason = parent.state !== 'qualified' || parent.finalized !== true ? 'parent-reference-unavailable' : parent.schemaId !== CANONICAL_TOPIC_SCHEMA_ID ? 'parent-schema-unsupported' : 'task-generation-input-missing';
+  if (!parentQualified || !REQUIRED_INPUTS.every((name) => Object.prototype.hasOwnProperty.call(values, name) && values[name] !== undefined)) {
+    const reason = !parentQualified ? (continuityMode === 'root' ? 'root-parent-must-be-absent' : 'parent-reference-unavailable') : 'task-generation-input-missing';
     return Object.freeze({ state: 'unqualified', reason, markdown: '' });
   }
   const summary = scalar(values.Summary);
-  const unsigned = `# Continuity Context
-
-- Envelope Schema: tiinex.root.v1
-- Parent
+  const parentEnvelope = continuityMode === 'parent'
+    ? `- Parent
   - Parent Schema: ${parent.schemaId}
   - Trace: ${parent.trace}
   - Origin: ${parent.origin}
-- Current
+`
+    : '';
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+${parentEnvelope}- Current
   - Current Schema: tiinex.task.v1
   - Created At: ${createdAt}
   - Summary: ${summary}
@@ -60,10 +66,10 @@ ${scalar(values.Dependencies)}
   const sealed = sealC14nV2Self(unsigned);
   if (sealed.state !== 'sealed') return Object.freeze({ state: 'unqualified', reason: 'canonical-task-integrity-seal-unavailable', markdown: '' });
   return Object.freeze({ state: 'rendered', markdown: sealed.markdown, createdAt, summary, integrityValue: sealed.value });
-
 }
 
-export function qualifyCanonicalTaskLocalArtifact({ markdown = '', schemaMaterials = [], values = {}, parent = {}, path = '' } = {}) {
+export function qualifyCanonicalTaskLocalArtifact({ markdown = '', schemaMaterials = [], values = {}, parent = null, path = '', continuityMode = 'parent' } = {}) {
+  const mode = continuityMode === 'root' ? 'root' : 'parent';
   let compiled, parsed, projection;
   try {
     compiled = compilePortableSchemaContractChain(schemaMaterials);
@@ -73,16 +79,19 @@ export function qualifyCanonicalTaskLocalArtifact({ markdown = '', schemaMateria
   const errors = (projection.validation?.findings || []).filter((finding) => finding?.severity === 'error' || finding?.state === 'structurally-invalid' || finding?.state === 'contradictory');
   const sections = sectionBodies(markdown);
   const current = parsed.envelope?.current || {};
-  const parentEnvelope = parsed.envelope?.parent || {};
+  const parentEnvelope = parsed.envelope?.parent || null;
   const exactBody = REQUIRED_INPUTS.slice(1).every((name) => sections[name] === scalar(values[name]));
   const integrity = canonicalC14nV2SelfState(markdown);
+  const parentInvariant = mode === 'root'
+    ? !parent && !declaredParentEnvelope(parentEnvelope)
+    : Boolean(parent && String(parent.schemaId || '').trim()
+      && String(parentEnvelope?.schema?.id || '') === parent.schemaId
+      && String(parentEnvelope?.trace || '') === String(parent.traceTarget || '')
+      && String(parentEnvelope?.origin || '') === String(parent.originTarget || ''));
   const invariant = compiled.schemaId === CANONICAL_TASK_SCHEMA_ID
     && current.schema?.id === CANONICAL_TASK_SCHEMA_ID
     && String(current.summary || '') === scalar(values.Summary)
-    && parent.schemaId === CANONICAL_TOPIC_SCHEMA_ID
-    && String(parentEnvelope.schema?.id || '') === parent.schemaId
-    && String(parentEnvelope.trace || '') === String(parent.traceTarget || '')
-    && String(parentEnvelope.origin || '') === String(parent.originTarget || '')
+    && parentInvariant
     && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(current.createdAt || ''))
     && firstBodyHeading(markdown) === scalar(values.Summary)
     && exactBody
@@ -103,6 +112,7 @@ export function qualifyCanonicalTaskLocalArtifact({ markdown = '', schemaMateria
 export function canonicalTaskRequiredInputs() { return REQUIRED_INPUTS; }
 function rootTimestamp(date) { return date.toISOString().replace('T', ' ').replace(/\.\d{3}Z$/, ''); }
 function scalar(value) { return String(value === null ? '' : value ?? ''); }
+function declaredParentEnvelope(parent = null) { return Boolean(parent && (String(parent.schema?.id || '').trim() || String(parent.trace || '').trim() || String(parent.origin || '').trim() || String(parent.createdAt || '').trim())); }
 function firstBodyHeading(markdown) { return String(markdown).split('\n---\n')[1]?.match(/^#\s+(.+)$/m)?.[1]?.trim() || ''; }
 function sectionBodies(markdown) {
   const body = String(markdown).split('\n---\n')[1] || '';

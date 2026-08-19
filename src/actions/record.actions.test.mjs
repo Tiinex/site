@@ -121,12 +121,14 @@ assert.equal(topicAvailability.continue.enabled, true, 'Topic companion transiti
 assert.equal(topicAvailability.reference.enabled, false, 'Topic has no Reference transition in the first slice');
 const topicActions = presentRecordActions(topicRecord);
 assert(topicActions.some((action) => action.id === RecordActionKind.continue), 'semantic Continue action remains available behind transition presentation');
-const localTaskDraft = { id: 'draft-1', title: 'Task draft', path: '.topics/news/001-1-task.trace.md', status: 'local', sourceMode: 'local-transition', source: { adapterId: 'local', kind: 'local-session' } };
+const localTaskDraft = { id: 'draft-1', title: 'Task draft', path: '.topics/news/001-1-task.trace.md', status: 'local', schemaId: 'tiinex.task.v1', kind: 'tiinex.task.v1', sourceMode: 'local-transition', source: { adapterId: 'local', kind: 'local-session' } };
 assert.equal(isRemovableLocalDraftRecord(localTaskDraft), true, 'browser-local transition drafts can be removed from the session');
 const localTaskActions = presentRecordActions(localTaskDraft);
+assert(localTaskActions.some((action) => action.id === RecordActionKind.editLocal && action.icon === 'edit'), 'editable local transition drafts expose Edit local draft');
 assert(localTaskActions.some((action) => action.id === RecordActionKind.deleteLocal && action.icon === 'delete'), 'local transition drafts expose Delete local draft');
 assert(localTaskActions.every(actionIsRenderable), 'delete-local action must be renderable');
 assert.equal(isRemovableLocalDraftRecord(topicRecord), false, 'source-backed records cannot be deleted through local draft removal');
+assert(!presentRecordActions(topicRecord).some((action) => action.id === RecordActionKind.editLocal), 'source-backed topic must not expose local edit');
 assert(!presentRecordActions(topicRecord).some((action) => action.id === RecordActionKind.deleteLocal), 'source-backed topic must not expose local delete');
 
 const githubAvailability = actionAvailabilityForRecord(githubRecord);

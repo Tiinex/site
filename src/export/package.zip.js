@@ -1,4 +1,5 @@
 import { inspectExportPackageBundle } from './package.builder.js';
+import { packageFileBytes } from './package.bytes.js';
 import { inspectTreeExportBundle } from './tree.bundle.js';
 
 export function exportPackageZipUint8Array(bundle = {}) {
@@ -14,7 +15,7 @@ export function exportTreeZipUint8Array(bundle = {}) {
 }
 
 export function exportFileMapZipUint8Array(files = [], invalidPathError = 'export.zip.path.invalid') {
-  const entries = (files || []).map((file) => ({ name: safeZipPath(file.path), data: utf8(String(file.content ?? '')) }));
+  const entries = (files || []).map((file) => ({ name: safeZipPath(file.path), data: packageFileBytes(file) }));
   if (entries.some((entry) => !entry.name)) throw new Error(invalidPathError);
   return storedZip(entries);
 }

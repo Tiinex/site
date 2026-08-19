@@ -19,7 +19,12 @@ const cacheCommit = 'd69b8ff55a56b8cb9282b8684db6a938a4435b94';
 const cacheUrlBySchema = Object.freeze({
   'tiinex.root.v1': new URL(`../transitions/canonical-schema-cache/${cacheCommit}/tiinex.root.v1.schema.md`, import.meta.url),
   'tiinex.transition.definition.v1': new URL(`../transitions/canonical-schema-cache/${cacheCommit}/tiinex.transition.definition.v1.schema.md`, import.meta.url),
-  'tiinex.task.v1': new URL('../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url)
+  'tiinex.task.v1': new URL('../schemas/core/task/tiinex.task.v1.schema.md', import.meta.url),
+  'tiinex.topic.v1': new URL('../transitions/canonical-schema-cache/52ecdea0a75893882ce282214d155f70e1309c2a/tiinex.topic.v1.schema.md', import.meta.url),
+  'tiinex.interpretation.v1': new URL('../schemas/core/interpretation/tiinex.interpretation.v1.schema.md', import.meta.url),
+  'tiinex.relation.v1': new URL('../transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.relation.v1.schema.md', import.meta.url),
+  'tiinex.schema.contract.v1': new URL('../transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.schema.contract.v1.schema.md', import.meta.url),
+  'tiinex.schema.generation.v1': new URL('../transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.schema.generation.v1.schema.md', import.meta.url)
 });
 const schemaCache = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => ({
   ...item,
@@ -204,10 +209,13 @@ assert.equal(pathlessLocalAction?.productCapable, false);
 const staleCache = schemaCache.map((item) => item.schemaId === 'tiinex.task.v1' ? { ...item, markdown: `${item.markdown}\n` } : item);
 assert.equal(qualifyCanonicalTransitionSchemaCache(staleCache).sourceQualified, false);
 const stalePrepared = prep(sourceTopic, [sourceTopic], { schemaCache: staleCache });
-assert.equal(stalePrepared.state, 'schema-cache-unqualified');
-assert.equal(stalePrepared.actions.length, 0);
+assert.equal(stalePrepared.state, 'prepared', 'output-schema cache failure must remain capability-local after v431');
+assert.equal(capableAction(stalePrepared)?.productCapable, false);
+assert.ok(capableAction(stalePrepared)?.capability?.reasons?.includes('creation-authority-unavailable'));
 const missingCache = schemaCache.filter((item) => item.schemaId !== 'tiinex.task.v1');
-assert.equal(prep(sourceTopic, [sourceTopic], { schemaCache: missingCache }).state, 'schema-cache-unqualified');
+const missingPrepared = prep(sourceTopic, [sourceTopic], { schemaCache: missingCache });
+assert.equal(missingPrepared.state, 'prepared');
+assert.equal(capableAction(missingPrepared)?.productCapable, false);
 
 // K/M. Malformed canonical authority stays malformed; legacy remains only compatibility presentation truth.
 const malformedDefinition = canonicalDefinitionMarkdown.replace('Effect: create-new', 'Effect: cretae-new');
@@ -254,7 +262,9 @@ assert.equal(preparationSource.includes("'tiinex.site.topic-to-task.v1'"), false
 assert.ok(presentationSource.includes("'tiinex.site.topic-to-task.v1': 'topic.continue.task'"), 'legacy suppression bridge must remain explicit presentation policy');
 assert.equal(materializerSource.includes('Next Step'), false);
 assert.equal(materializerSource.includes('Draft Local Integrity'), false);
-for (const field of ['Task title', 'Objective', 'Done Criteria', 'Scope', 'Dependencies']) assert.ok(dialogSource.includes(field), `canonical Task form must present ${field}`);
+assert.ok(dialogSource.includes('CanonicalAuthoringDialog'), 'canonical product dialog must project the authoring contract rather than hardcode one output schema');
+assert.ok(dialogSource.includes('action?.authoring?.requiredInputs'), 'canonical product dialog must consume schema-qualified required authoring inputs');
+assert.equal(dialogSource.includes('const FIELDS'), false, 'canonical product dialog must not own a hardcoded Task field list');
 assert.ok(canonicalDefinitionMarkdown.includes('Canonical Identifier: tiinex.site.topic-to-task.v1'));
 assert.equal(canonicalDefinitionMarkdown.includes('tiinex.site.transition.legacy-shorthand.v1'), false);
 
@@ -309,10 +319,13 @@ assert.equal(signalAction?.definition?.canonicalReadQualified, true);
 assert.equal(signalAction?.availability?.availability, 'available');
 assert.equal(signalAction?.parentRecovery?.state, 'qualified');
 assert.equal(signalAction?.parentRecovery?.schemaId, 'tiinex.signal.v1');
-assert.equal(signalAction?.productCapable, false);
-assert.ok(signalAction?.capability?.reasons?.includes('unsupported-parent-role-capability'));
-assert.ok(signalAction?.capability?.reasons?.includes('current-topic-schema-unqualified'));
-assertNoMutation(execute({ state: appState([signalRecord]), currentRecordId: signalRecord.id, definitionKey: signalAction.definitionKey, definitions: bundled(signalDefinitionMarkdown) }), 'Signal→Task must not execute as Topic→Task');
+assert.equal(signalAction?.productCapable, true, 'v431 generic canonical local-create pattern supports an exact one-input Signal→Task definition without Topic hardcoding');
+assert.deepEqual(signalAction?.capability?.reasons || [], []);
+const signalExecution = execute({ state: appState([signalRecord]), currentRecordId: signalRecord.id, definitionKey: signalAction.definitionKey, definitions: bundled(signalDefinitionMarkdown) });
+assert.equal(signalExecution.result.ok, true, 'Signal→Task now executes through the same authority-driven canonical pattern');
+assert.equal(signalExecution.adds, 1);
+assert.equal(signalExecution.result.record?.schemaId, 'tiinex.task.v1');
+assert.equal(signalExecution.result.record?.parentSchemaId, 'tiinex.signal.v1');
 
 const parentOtherRoleId = 'tiinex.site.topic-task-parent-role.v1';
 const parentOtherRoleDefinition = mutatedDefinition(parentOtherRoleId, [
@@ -371,7 +384,7 @@ const relationPrepared = prep(sourceTopic, [sourceTopic], { bundledDefinitions: 
 const relationAction = actionById(relationPrepared, 'tiinex.site.topic-relation.v1');
 assert.equal(relationAction?.definition?.canonicalReadQualified, true);
 assert.equal(relationAction?.productCapable, false);
-assert.ok(relationAction?.capability?.reasons?.includes('relation-effects-not-supported'));
+assert.ok((relationAction?.capability?.reasons || []).length > 0, 'relation-bearing shape remains fail-closed unless it satisfies a separately qualified bounded Reference capability');
 assertNoMutation(execute({ state: appState([sourceTopic]), currentRecordId: sourceTopic.id, definitionKey: relationAction.definitionKey, definitions: bundled(relationDefinition) }), 'relation effect unsupported');
 
 // B. Repo-shaped fields on local/session material must never manufacture GitHub provenance.
@@ -473,7 +486,7 @@ for (const [label, sourcePath, expectedFragment] of [
 // Mandatory closure sweep: source/current/path/definition/role failures are fail-closed with zero lifecycle mutation.
 const closureSweep = [
   ['topic-github-ordinary', sourceTopic, bundledDefinitions, action.definitionKey, true],
-  ['signal-github', signalRecord, bundled(signalDefinitionMarkdown), signalAction.definitionKey, false],
+  ['signal-github', signalRecord, bundled(signalDefinitionMarkdown), signalAction.definitionKey, true],
   ['task-github', wrongCurrent, bundledDefinitions, action.definitionKey, false],
   ['topic-local-shaped', repoShapedLocal, bundledDefinitions, repoShapedLocalAction?.definitionKey || action.definitionKey, true],
   ['topic-static-shaped', staticShaped, bundledDefinitions, capableAction(staticPrepared)?.definitionKey || action.definitionKey, false],

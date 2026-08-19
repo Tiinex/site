@@ -86,8 +86,10 @@ for (const file of bindingFiles) {
     if (!String(binding.permalink || '').startsWith('site-local:')) failures.push(`${rel} viewer-extension permalink must use site-local:`);
     if (!String(binding.rawUrl || '').startsWith('site-local:')) failures.push(`${rel} viewer-extension rawUrl must use site-local:`);
   } else {
-    if (binding.sourceRepository !== manifest.sourceRepository) failures.push(`${rel} sourceRepository differs from manifest`);
-    if (binding.sourceCommit !== manifest.sourceCommit) failures.push(`${rel} sourceCommit differs from manifest`);
+    const expectedRepository = origin?.repository || manifest.sourceRepository;
+    const expectedCommit = origin?.sourceCommit || manifest.sourceCommit;
+    if (binding.sourceRepository !== expectedRepository) failures.push(`${rel} sourceRepository differs from declared canonical origin`);
+    if (binding.sourceCommit !== expectedCommit) failures.push(`${rel} sourceCommit differs from declared canonical origin`);
     if (!binding.permalink.includes(`/blob/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} permalink is not pinned to sourceCommit/sourcePath`);
     if (!binding.rawUrl.includes(`/${binding.sourceCommit}/${binding.sourcePath}`)) failures.push(`${rel} rawUrl is not pinned to sourceCommit/sourcePath`);
   }
@@ -99,6 +101,7 @@ for (const file of bindingFiles) {
     if (manifestEntry.kind !== binding.kind) failures.push(`${rel} manifest kind mismatch`);
     if (manifestEntry.checksum !== binding.checksum?.value) failures.push(`${rel} manifest checksum mismatch`);
     if (manifestEntry.sourceBlobSha !== binding.sourceBlobSha) failures.push(`${rel} manifest sourceBlobSha mismatch`);
+    if ((manifestEntry.originId || binding.originId) && manifestEntry.originId !== binding.originId) failures.push(`${rel} manifest originId mismatch`);
     if ((manifestEntry.originTrustRole || binding.originTrustRole) && manifestEntry.originTrustRole !== binding.originTrustRole) failures.push(`${rel} manifest originTrustRole mismatch`);
   }
 }

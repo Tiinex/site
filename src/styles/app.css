@@ -8325,6 +8325,41 @@ body.tx-return-settle .tx-react-runtime {
   font-weight: 750;
   cursor: pointer;
 }
+.tx-workspace-compact-historical {
+  min-height: 0;
+  max-height: 22rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  gap: .35rem;
+}
+.tx-time-portal-compact-marker {
+  display: grid;
+  justify-items: center;
+  gap: .08rem;
+  max-inline-size: 4.75rem;
+  color: var(--tx-brand-muted);
+  font-size: .58rem;
+  line-height: 1.1;
+  text-align: center;
+}
+.tx-time-portal-compact-marker strong {
+  color: var(--tx-brand-white);
+  font-size: .6rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.tx-time-portal-compact-marker code {
+  max-inline-size: 4.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .55rem;
+}
+.tx-workspace-compact-title-readonly {
+  cursor: default;
+}
 .tx-workspace-compact-stats {
   display: grid;
   gap: .28rem;
@@ -8486,3 +8521,86 @@ body.tx-return-settle .tx-react-runtime {
 .tx-react-runtime .tx-dock-core.tx-poc-brand-first-dock .tx-dock-actions,
 .tx-react-runtime.tx-empty-stage-mode .tx-dock-core.tx-poc-brand-first-dock .tx-dock-actions,
 .tx-react-runtime.tx-workspace-mode .tx-dock-core.tx-poc-brand-first-dock .tx-dock-actions { justify-self: start; justify-content: flex-start; }
+
+
+/* v428 M0-A cold-start parity: resolving is owned presentation, never EmptyStage. */
+.tx-startup-resolving-shell {
+  min-height: 100dvh;
+  width: 100vw;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(189,115,255,.12), transparent 34%),
+    #05030a;
+}
+.tx-startup-stage {
+  width: min(560px, calc(100vw - 40px));
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  color: rgba(238,228,255,.72);
+  text-align: center;
+}
+.tx-startup-logo {
+  width: clamp(58px, 8vw, 76px);
+  height: clamp(58px, 8vw, 76px);
+  object-fit: contain;
+  filter: drop-shadow(0 0 22px rgba(189,115,255,.22));
+}
+.tx-startup-stage p {
+  margin: 0;
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+  font-weight: 620;
+  letter-spacing: -.015em;
+}
+.tx-startup-progress {
+  display: inline-flex;
+  gap: 6px;
+}
+.tx-startup-progress i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: .28;
+  animation: tx-startup-pulse 1.25s ease-in-out infinite;
+}
+.tx-startup-progress i:nth-child(2) { animation-delay: .14s; }
+.tx-startup-progress i:nth-child(3) { animation-delay: .28s; }
+@keyframes tx-startup-pulse {
+  0%, 65%, 100% { opacity: .22; transform: translateY(0); }
+  35% { opacity: .72; transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tx-startup-progress i { animation: none; opacity: .46; }
+}
+
+
+/* v428 pre-Q parity: Open/Merge consequence clarity. */
+.tx-workspace-entrypoint-choice-actions { display:grid; gap:.7rem; }
+.tx-workspace-entrypoint-choice-option { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.75rem; align-items:start; padding:.72rem; border:1px solid rgba(255,255,255,.08); border-radius:.9rem; background:rgba(255,255,255,.025); }
+.tx-workspace-entrypoint-choice-option small { color:var(--tx-muted); line-height:1.45; }
+.tx-workspace-entrypoint-choice-option small strong { color:var(--tx-text); }
+@media (max-width:540px) { .tx-workspace-entrypoint-choice-option { grid-template-columns:1fr; } }
+
+/* v437 Time Portal: source-grounded historical review presentation. */
+.tx-display-time-portal { margin-top:.8rem; padding:.8rem; border:1px solid rgba(126,184,164,.32); border-radius:.8rem; background:rgba(126,184,164,.06); }
+.tx-display-time-portal h3 { margin:0 0 .35rem; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; }
+.tx-time-portal-banner { display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; flex-wrap:wrap; margin:.55rem .75rem 0; padding:.7rem .8rem; border:1px solid rgba(90,190,155,.45); border-radius:.75rem; background:rgba(70,170,140,.10); }
+.tx-time-portal-banner > div:first-child { display:flex; flex-direction:column; gap:.2rem; min-width:12rem; }
+.tx-time-portal-banner strong { letter-spacing:.02em; }
+.tx-time-portal-identity { display:flex; flex-direction:column; gap:.18rem; min-width:14rem; }
+.tx-time-portal-identity code { max-width:min(38rem,78vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.75rem; }
+.tx-time-portal-actions { display:flex; gap:.45rem; align-items:center; }
+.tx-time-portal-banner[data-time-portal-state="unavailable"] { border-color:rgba(220,145,80,.5); background:rgba(220,145,80,.08); }
+
+/* v441: export type cards become real controls only for executable modes. */
+.tx-export-card-button { width: 100%; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.tx-export-card-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+/* v447: bounded guided GitHub social publication stays single-column and touch-reachable inside the existing export dialog. */
+.tx-github-publication .tx-field { margin: .15rem 0; }
+.tx-github-publication .tx-field select { width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid rgba(181,110,255,.3); border-radius: 14px; padding: 0 .8rem; background: rgba(255,255,255,.055); color: var(--tx-text,#f2ecff); font: inherit; }
+.tx-github-publication-actions { flex-wrap: wrap; }
+@media (max-width: 720px) { .tx-github-publication .tx-dialog-actions { align-items: stretch; } .tx-github-publication .tx-dialog-actions > * { flex: 1 1 100%; } }

@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { activeWorkspaceViewFor, stateWithWorkspaceViewPatch, stateWithWorkspacePresentationPruned } from './workspaceMulticolumn.js';
+import { timePortalWithIntent } from '../workspaces/workspace.timePortal.js';
+const state={activeWorkspaceId:'a',workspaces:[{id:'a',records:[]},{id:'b',records:[]}],view:{workspaceVerse:'feed'},workspaceViews:{}};
+const aView=timePortalWithIntent(activeWorkspaceViewFor(state,'a'),{end:'2026-05-31T22:40',sourceId:'github:a'});
+const withA=stateWithWorkspaceViewPatch(state,'a',aView);
+assert.equal(activeWorkspaceViewFor(withA,'a').timePortal.sourceId,'github:a');
+assert.equal(activeWorkspaceViewFor(withA,'b').timePortal,undefined,'temporal intent must not bleed across workspace view owners');
+const pruned=stateWithWorkspacePresentationPruned(withA);
+assert.equal(activeWorkspaceViewFor(pruned,'a').timePortal.end,'2026-05-31T22:40');
+assert.equal(activeWorkspaceViewFor(pruned,'b').timePortal,undefined);
+console.log('timePortalWorkspaceScope: ok');

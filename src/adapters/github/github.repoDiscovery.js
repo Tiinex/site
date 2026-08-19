@@ -154,3 +154,69 @@ export async function discoverGithubMarkdownRefs(source, options = {}) {
   if (totalMarkdown > refs.length) warnings.push({ code: 'github.discovery.bounded', message: `Loaded first ${refs.length} of ${totalMarkdown} markdown files.` });
   return { refs, warnings, ref: resolved.ref, resolvedBy: resolved.resolvedBy, materializedCommit, treeUrl, totalMarkdown, governanceBoundary: governanceBoundaryFromRootFiles(Object.assign({}, source, { ref: materializedCommit || resolved.ref }), governanceRootFiles, { rootChecked: true, discoveredFrom: 'github-tree-root-manifest' }) };
 }
+
+export function qualifyGithubSnapshotInput(source = {}, input = '') {
+  const target = String(input || '').trim();
+  if (!target) return snapshotFailure('github.snapshot.input.required', 'Enter an exact commit, GitHub tree/commit URL, or explicit ref.');
+  let configured;
+  try { configured = repoParts(source); }
+  catch (_) { return snapshotFailure('github.snapshot.source.unsupported', 'A configured GitHub repository source is required.'); }
+
+  if (exactGithubCommit(target)) return snapshotQualification(configured.repo, target, target, 'explicit-commit');
+
+  if (/^https?:\/\//i.test(target)) {
+    let url;
+    try { url = new URL(target); }
+    catch (_) { return snapshotFailure('github.snapshot.target.malformed', 'Snapshot target URL is malformed.'); }
+    if (url.hostname.toLowerCase() !== 'github.com') return snapshotFailure('github.snapshot.target.unsupported-host', 'Snapshot target must use github.com.');
+    const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+    if (parts.length < 4) return snapshotFailure('github.snapshot.target.unsupported', 'Use a GitHub commit or tree URL.');
+    const repository = `${parts[0]}/${String(parts[1] || '').replace(/\.git$/i, '')}`;
+    if (repository.toLowerCase() !== configured.repo.toLowerCase()) return snapshotFailure('github.snapshot.repository.mismatch', 'Snapshot target must belong to the configured source repository.');
+    const kind = String(parts[2] || '').toLowerCase();
+    if (kind === 'commit') {
+      const commit = exactGithubCommit(parts[3]);
+      return commit
+        ? snapshotQualification(repository, commit, target, 'github-commit-url')
+        : snapshotFailure('github.snapshot.commit-url.exact-required', 'GitHub commit URL must contain an exact 40-character commit SHA.');
+    }
+    if (kind === 'tree') {
+      if (exactGithubCommit(parts[3])) return snapshotQualification(repository, parts[3], target, 'github-tree-url-exact-commit');
+      if (parts.length !== 4) return snapshotFailure('github.snapshot.tree-ref.ambiguous', 'Tree URL ref is ambiguous with a repository path. Paste the ref directly or use an exact commit URL.');
+      return snapshotQualification(repository, parts[3], target, 'github-tree-url-ref');
+    }
+    return snapshotFailure('github.snapshot.target.unsupported', 'Use a GitHub commit or tree URL.');
+  }
+
+  if (/\s/.test(target) || target.includes('://')) return snapshotFailure('github.snapshot.ref.invalid', 'Git ref must be an explicit branch, tag, or commit without whitespace.');
+  return snapshotQualification(configured.repo, target, target, 'explicit-ref');
+}
+
+export async function resolveGithubSnapshotInput(source = {}, input = '', options = {}) {
+  const qualified = qualifyGithubSnapshotInput(source, input);
+  if (!qualified.ok) return qualified;
+  const exact = exactGithubCommit(qualified.requestedRef);
+  if (exact) return Object.assign({}, qualified, { materializedCommit: exact.toLowerCase(), resolvedRef: exact.toLowerCase(), resolvedBy: qualified.resolvedBy });
+  try {
+    const resolved = await resolveGithubMaterializedCommit(source, qualified.requestedRef, options);
+    const commit = exactGithubCommit(resolved.commit);
+    if (!commit) return snapshotFailure('github.snapshot.commit.unavailable', 'Git ref did not resolve to an exact immutable commit.');
+    return Object.assign({}, qualified, {
+      materializedCommit: commit.toLowerCase(),
+      resolvedRef: String(resolved.ref || qualified.requestedRef).trim(),
+      resolvedBy: resolved.commitResolvedBy || resolved.resolvedBy || 'github.commit-resolution'
+    });
+  } catch (error) {
+    const failure = snapshotFailure('github.snapshot.resolution.failed', error?.message || 'GitHub snapshot resolution failed.');
+    failure.status = error?.status || null;
+    return failure;
+  }
+}
+
+function snapshotQualification(repository, requestedRef, inputTarget, resolvedBy) {
+  return { ok: true, schema: 'tiinex.github.snapshotInput.v1', repository, requestedRef: String(requestedRef || '').trim(), inputTarget: String(inputTarget || '').trim(), resolvedBy };
+}
+
+function snapshotFailure(code, message) {
+  return { ok: false, schema: 'tiinex.github.snapshotInput.v1', code, message };
+}

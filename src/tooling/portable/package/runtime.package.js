@@ -1,6 +1,8 @@
 import { buildExportPackageApplyResult, buildExportPackageImportPlan } from '../../../export/package.apply.js';
 import { buildExportPackageBundle, inspectExportPackageBundle } from '../../../export/package.builder.js';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
+import { packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Text } from '../../../export/package.bytes.js';
+import { EXPORT_PACKAGE_CONTROL_PATHS, exportPackageControlKindForPath } from '../../../export/package.controlTopology.js';
 
 export const PORTABLE_RUNTIME_PACKAGE_SCHEMA_ID = 'tiinex.portable.runtime-package.v1';
 export const PORTABLE_RUNTIME_PACKAGE_ROUNDTRIP_SCHEMA_ID = 'tiinex.portable.runtime-package.roundtrip.v1';
@@ -46,13 +48,15 @@ export function rehydratePortableRuntimePackage(input = {}) {
   const suppliedFiles = Array.isArray(input.files) ? input.files : [];
   const findings = [];
   const byPath = new Map(suppliedFiles.map((file) => [normalizePath(file.path || file.name || ''), file]));
-  const manifest = parseJsonContent(byPath.get('tiinex.package/manifest.json'));
-  const receipt = parseJsonContent(byPath.get('tiinex.package/receipt.json'));
-  const contract = parseJsonContent(byPath.get('tiinex.package/contract.json'));
-  const buildReceipt = parseJsonContent(byPath.get('tiinex.package/build-receipt.json'));
+  const manifest = parseJsonContent(byPath.get(EXPORT_PACKAGE_CONTROL_PATHS.manifest));
+  const receipt = parseJsonContent(byPath.get(EXPORT_PACKAGE_CONTROL_PATHS.receipt));
+  const contract = parseJsonContent(byPath.get(EXPORT_PACKAGE_CONTROL_PATHS.contract));
+  const buildReceipt = parseJsonContent(byPath.get(EXPORT_PACKAGE_CONTROL_PATHS.buildReceipt));
+  const fileMap = parseJsonContent(byPath.get(EXPORT_PACKAGE_CONTROL_PATHS.fileMap));
   if (!manifest) findings.push(portableFinding('error', 'portable.runtime-package.rehydrate.manifest-missing', 'Serialized runtime package files are missing a readable manifest control file.'));
   const entryIndex = manifestEntryIndex(manifest || {});
-  const files = suppliedFiles.map((file) => rehydratedFile(file, entryIndex)).filter((file) => file.path);
+  const fileMapIndex = durableFileMapIndex(fileMap || {});
+  const files = suppliedFiles.map((file) => rehydratedFile(file, entryIndex, fileMapIndex)).filter((file) => file.path);
   const bundle = Object.freeze({
     schema: 'tiinex.export.package.bundle.v1',
     packageId: String(manifest?.packageId || receipt?.packageId || ''),
@@ -60,6 +64,8 @@ export function rehydratePortableRuntimePackage(input = {}) {
     status: String(manifest?.status || 'degraded'),
     boundary: 'Rehydrated from explicitly supplied serialized package files. No remote fetch, source mutation, or received-code execution occurred.',
     packageFingerprint: '',
+    packageRepresentationSha256: String(fileMap?.representationSha256 || ''),
+    fileMap: fileMap || null,
     contract: contract || {},
     manifest: manifest || {},
     receipt: receipt || {},
@@ -124,10 +130,17 @@ function portableWorkspace(input = {}) {
   const workspaceCandidates = [...(input.workspaceCandidates || input.workspaceMergeCandidates || [])];
   return Object.freeze({
     id: String(input.workspaceId || session.workspaceId || 'portable-runtime-package'),
-    title: String(input.title || input.workspaceTitle || 'Portable runtime package'),
+    name: String(input.name || input.title || input.workspaceTitle || session.workspaceTitle || 'Portable runtime package'),
+    title: String(input.title || input.workspaceTitle || session.workspaceTitle || 'Portable runtime package'),
+    createdAt: String(input.createdAt || session.createdAt || ''),
     records: Object.freeze(records),
     assets: Object.freeze(assets),
-    workspaceMergeCandidates: Object.freeze(workspaceCandidates)
+    workspaceMergeCandidates: Object.freeze(workspaceCandidates),
+    workspaceMarkdown: String(input.workspaceMarkdown || session.workspaceMarkdown || ''),
+    workspaceImport: Object.freeze({ ...(session.workspaceImport || {}), ...(input.workspaceImport || {}) }),
+    sources: Object.freeze([...(session.sources || input.sources || [])]),
+    sourceOrder: Object.freeze([...(session.sourceOrder || input.sourceOrder || [])]),
+    workspaceMemberBindings: Object.freeze([...(session.workspaceMemberBindings || input.workspaceMemberBindings || [])])
   });
 }
 
@@ -163,19 +176,33 @@ function dedupeRecords(records) {
 function compareRoundTrip(bundle, importPlan) {
   const findings = [];
   const artifactFiles = (bundle.files || []).filter((file) => file.kind === 'artifact-markdown');
-  const importedByPath = new Map((importPlan.records || []).map((record) => [normalizePath(record.path), record]));
+  const importedByEntry = new Map((importPlan.records || []).map((record) => [String(record.packageEntryId || '').trim(), record]));
   for (const file of artifactFiles) {
-    const path = normalizePath(file.path).replace(/^artifacts\//, '');
-    const imported = importedByPath.get(path);
-    if (!imported) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.artifact.missing', 'A bundled local artifact did not materialize during import.', { ref: path }));
-    else if (String(imported.markdown || '') !== String(file.content || '')) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.artifact.changed', 'A bundled local artifact changed during package import.', { ref: path }));
+    const entryId = String(file.entryId || '').trim();
+    const imported = importedByEntry.get(entryId);
+    if (!imported) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.artifact.missing', 'A governed bundled local artifact did not materialize during import.', { ref: entryId || file.path || '' }));
+    else {
+      const expected = typeof file.content === 'string' ? file.content : utf8Text(packageFileBytes(file));
+      if (String(imported.markdown || '') !== expected) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.artifact.changed', 'A governed bundled local artifact changed during package import.', { ref: entryId || file.path || '' }));
+    }
   }
-  if ((importPlan.sourceReferences || []).length !== (bundle.files || []).filter((file) => file.kind === 'source-reference').length) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.source-reference.count', 'Source reference count changed during package import.'));
+  if ((importPlan.records || []).length !== artifactFiles.length) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.artifact.count', 'Governed local artifact cardinality changed during package import.'));
+  const sourceFiles = (bundle.files || []).filter((file) => file.kind === 'source-reference' || file.kind === 'asset-source-reference');
+  if ((importPlan.sourceReferences || []).length !== sourceFiles.length) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.source-reference.count', 'Source reference cardinality changed during package import.'));
+  const assetFiles = (bundle.files || []).filter((file) => file.kind === 'asset-content' || file.kind === 'asset-metadata');
+  if ((importPlan.assets || []).length !== assetFiles.length) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.asset.count', 'Owned/metadata asset cardinality changed during package import.'));
+  for (const file of assetFiles.filter((item) => item.kind === 'asset-content')) {
+    const asset = (importPlan.assets || []).find((item) => String(item.packageEntryId || '') === String(file.entryId || ''));
+    if (!asset) continue;
+    const expected = packageFileBytes(file);
+    const actual = asset.bytes instanceof Uint8Array ? asset.bytes : packageFileBytes({ content: asset.content || '' });
+    if (expected.byteLength !== actual.byteLength || sha256Hex(expected) !== sha256Hex(actual)) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.asset.changed', 'Owned asset bytes changed during package import.', { ref: file.entryId || file.path || '' }));
+  }
   if ((importPlan.records || []).some((record) => record.source?.adapterId === 'github')) findings.push(portableFinding('error', 'portable.runtime-package.roundtrip.github-inference', 'Package import incorrectly materialized a local record as GitHub-backed.'));
   return Object.freeze({
-    schema: 'tiinex.portable.runtime-package.comparison.v1',
+    schema: 'tiinex.portable.runtime-package.comparison.v2',
     status: findings.some((finding) => finding.severity === 'error') ? 'mismatch' : 'match',
-    counts: Object.freeze({ artifacts: artifactFiles.length, importedRecords: importPlan.records?.length || 0, sourceReferences: importPlan.sourceReferences?.length || 0, assets: importPlan.assets?.length || 0 }),
+    counts: Object.freeze({ artifacts: artifactFiles.length, importedRecords: importPlan.records?.length || 0, sourceReferences: importPlan.sourceReferences?.length || 0, assets: importPlan.assets?.length || 0, workspaceContext: importPlan.counts?.workspaceContext || 0 }),
     findings: Object.freeze(findings)
   });
 }
@@ -185,22 +212,23 @@ function packageQualification(bundle = {}) {
     sharedRuntimeContract: bundle.schema === 'tiinex.export.package.bundle.v1',
     runtimeContractId: bundle.schema || 'tiinex.export.package.bundle.v1',
     canonicalPackageSchemaLocked: false,
-    canonicalHandoffGenerated: false,
+    canonicalHandoffGenerated: true,
     inMemoryFileMap: true,
+    durableSerializedFileMap: Boolean(bundle.fileMap || (bundle.files || []).some((file) => normalizePath(file.path) === EXPORT_PACKAGE_CONTROL_PATHS.fileMap)),
     remoteFetch: false,
     remoteWrite: false,
     sourceMutation: false,
-    statement: 'This is the current Tiinex/site runtime export package contract. It is not presented as a locked canonical package or handoff schema.'
+    statement: 'Operational Tiinex handoff package with durable representation-level file-map integrity. It is not tiinex.semantic.package.v1 and does not claim semantic ownership or external provenance.'
   });
 }
 
 function looksLikeSerializedPackage(files = []) {
-  return Array.isArray(files) && files.some((file) => normalizePath(file.path || file.name || '') === 'tiinex.package/manifest.json');
+  return Array.isArray(files) && files.some((file) => normalizePath(file.path || file.name || '') === EXPORT_PACKAGE_CONTROL_PATHS.manifest);
 }
 
 function parseJsonContent(file = null) {
   if (!file) return null;
-  try { return JSON.parse(String(file.content || file.markdown || '')); }
+  try { return JSON.parse(utf8Text(packageFileBytes(file))); }
   catch { return null; }
 }
 
@@ -214,37 +242,46 @@ function manifestEntryIndex(manifest = {}) {
   ];
   for (const [group, kind] of groups) {
     for (const entry of manifest.material?.[group] || []) {
-      const packagePath = normalizePath(entry.packagePath || '');
-      if (packagePath) index.set(packagePath, Object.freeze({ ...entry, inferredKind: kind }));
+      for (const packagePath of [entry.packagePath, ...(entry.packagePaths || [])].filter(Boolean)) index.set(normalizePath(packagePath), Object.freeze({ ...entry, inferredKind: kind }));
     }
+  }
+  const context = manifest.material?.workspaceContext;
+  if (context) {
+    for (const packagePath of [context.packagePath, ...(context.packagePaths || [])].filter(Boolean)) index.set(normalizePath(packagePath), Object.freeze({ ...context, inferredKind: packagePath.endsWith('.md') ? 'workspace-context-markdown' : 'workspace-context' }));
   }
   return index;
 }
 
-function rehydratedFile(file = {}, entryIndex = new Map()) {
+function durableFileMapIndex(fileMap = {}) {
+  const index = new Map();
+  for (const entry of fileMap.entries || []) if (entry?.path) index.set(normalizePath(entry.path), entry);
+  return index;
+}
+
+function rehydratedFile(file = {}, entryIndex = new Map(), fileMapIndex = new Map()) {
   const path = normalizePath(file.path || file.name || '');
-  const content = String(file.content ?? file.markdown ?? '');
+  const data = packageFileBytes(file);
   const entry = entryIndex.get(path) || null;
-  const controlKinds = {
-    'tiinex.package/index.json': 'package-index',
-    'tiinex.package/manifest.json': 'package-manifest',
-    'tiinex.package/receipt.json': 'package-receipt',
-    'tiinex.package/build-receipt.json': 'package-build-receipt',
-    'tiinex.package/contract.json': 'package-contract',
-    'tiinex.package/findings.json': 'package-findings'
-  };
-  let kind = controlKinds[path] || entry?.inferredKind || String(file.kind || 'unknown');
-  if (kind === 'asset') kind = entry?.content?.available ? 'asset-content' : 'asset-metadata';
+  const durable = fileMapIndex.get(path) || null;
+  let kind = exportPackageControlKindForPath(path) || durable?.kind || entry?.inferredKind || String(file.kind || 'unknown');
+  if (kind === 'asset') kind = entry?.status === 'source-reference' ? 'asset-source-reference' : entry?.content?.available ? 'asset-content' : 'asset-metadata';
+  const mediaType = String(durable?.mediaType || entry?.mediaType || file.mediaType || file.type || '');
+  const textual = kind.includes('json') || kind.includes('markdown') || /^text\//i.test(mediaType) || /json|markdown/i.test(mediaType);
   return Object.freeze({
     path,
+    requestedPath: String(durable?.requestedPath || path),
     kind,
-    content,
-    bytes: content.length,
-    fingerprint: stableTextFingerprint(content),
-    entryId: String(entry?.id || file.entryId || ''),
+    ...(textual ? { content: typeof file.content === 'string' ? file.content : utf8Text(data) } : {}),
+    data,
+    bytes: data.byteLength,
+    sha256: sha256Hex(data),
+    fingerprint: stableFingerprintBytes(data),
+    entryId: String(durable?.entryId || entry?.id || file.entryId || ''),
+    logicalKind: String(durable?.logicalKind || ''),
     title: String(entry?.title || file.title || ''),
-    mediaType: String(entry?.mediaType || file.mediaType || file.type || ''),
-    boundary: String(entry?.boundary || file.boundary || '')
+    mediaType,
+    boundary: String(durable?.boundary || entry?.boundary || file.boundary || ''),
+    sourceBoundary: String(durable?.sourceBoundary || '')
   });
 }
 
@@ -257,6 +294,8 @@ function packageFileCounts(files = [], findings = []) {
     sourceReferenceFiles: files.filter((file) => file.kind === 'source-reference').length,
     assetContentFiles: files.filter((file) => file.kind === 'asset-content').length,
     assetMetadataFiles: files.filter((file) => file.kind === 'asset-metadata').length,
+    assetReferenceFiles: files.filter((file) => file.kind === 'asset-source-reference').length,
+    workspaceContextFiles: files.filter((file) => file.kind === 'workspace-context' || file.kind === 'workspace-context-markdown').length,
     workspaceCandidateFiles: files.filter((file) => file.kind === 'workspace-candidate').length,
     errors: findings.filter((finding) => finding.severity === 'error').length,
     warnings: findings.filter((finding) => finding.severity === 'warning').length,

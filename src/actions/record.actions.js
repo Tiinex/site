@@ -1,6 +1,6 @@
 import { isWorkspaceEntrypointArtifact, workspaceEntrypointCapability } from '../workspaces/workspace.entrypointCapability.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
-import { canDiscardLocalDraft } from '../artifacts/artifact.localDraft.js';
+import { canDiscardLocalDraft, canEditLocalDraft } from '../artifacts/artifact.localDraft.js';
 
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
@@ -15,6 +15,7 @@ export const RecordActionKind = Object.freeze({
   share: 'record.share',
   workspaceOpen: 'record.workspace.open',
   workspaceMerge: 'record.workspace.merge',
+  editLocal: 'record.local.edit',
   deleteLocal: 'record.local.delete'
 });
 
@@ -73,6 +74,17 @@ export function presentRecordActions(record = {}, options = {}) {
       href: sourceHref,
       contract: RECORD_ACTIONS_CONTRACT_ID,
       capabilityStatus: 'implemented'
+    });
+  }
+  if (canEditLocalDraft(record)) {
+    actions.push({
+      id: RecordActionKind.editLocal,
+      label: 'Edit local draft',
+      icon: 'edit',
+      enabled: true,
+      contract: RECORD_ACTIONS_CONTRACT_ID,
+      capabilityStatus: 'implemented',
+      capabilityReason: 'Only schema-qualified browser-local drafts can be edited; source identity and provenance are preserved.'
     });
   }
   if (canDiscardLocalDraft(record)) {
@@ -230,7 +242,7 @@ function isSyntheticIssuePath(value = '') {
 
 export function actionIsRenderable(action = {}) {
   const id = String(action?.id || '');
-  return Boolean(action && action.enabled !== false && (id.startsWith('record.transition:') || action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.workspaceOpen || action.id === RecordActionKind.workspaceMerge || action.id === RecordActionKind.deleteLocal || action.href));
+  return Boolean(action && action.enabled !== false && (id.startsWith('record.transition:') || action.id === RecordActionKind.open || action.id === RecordActionKind.markdown || action.id === RecordActionKind.lineage || action.id === RecordActionKind.share || action.id === RecordActionKind.continue || action.id === RecordActionKind.reference || action.id === RecordActionKind.workspaceOpen || action.id === RecordActionKind.workspaceMerge || action.id === RecordActionKind.editLocal || action.id === RecordActionKind.deleteLocal || action.href));
 }
 
 export function createRecordActionResult(record = {}, actionId = '') {

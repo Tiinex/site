@@ -1,5 +1,6 @@
 import { buildPublicationPreflight } from '../publication/publication.preflight.js';
 import { buildSourceBoundaryReport, isSourceBacked } from '../diagnostics/sourceBoundary.report.js';
+import { projectPackageSourceReference } from '../export/package.sourceReference.js';
 
 export const REINGEST_PLAN_SCHEMA_ID = 'tiinex.reingest.plan.v1';
 
@@ -32,7 +33,8 @@ export function buildReingestPlan(workspace = {}, input = {}) {
     records: records.length,
     sourceTargets: sourceTargets.length,
     pinnedSourceTargets: sourceTargets.filter((target) => target.status === 'pinned').length,
-    degradedSourceTargets: sourceTargets.filter((target) => target.status !== 'pinned').length,
+    exactSourceTargets: sourceTargets.filter((target) => target.status === 'exact').length,
+    degradedSourceTargets: sourceTargets.filter((target) => target.status === 'degraded').length,
     localDraftTargets: localDraftTargets.length,
     blockedLocalTargets: blockedLocalTargets.length,
     assets: assetTargets.length,
@@ -61,26 +63,24 @@ export function buildReingestPlan(workspace = {}, input = {}) {
 }
 
 function sourceTargetForRecord(record = {}, findings = []) {
-  const source = record.source || {};
-  const repo = explicitRepo(source);
-  const ref = explicitRef(source);
-  const path = String(record.path || source.path || '').trim();
-  const id = record.id || path || record.title || 'record';
-  if (source.adapterId === 'github') {
-    if (!repo) findings.push(finding('error', 'reingest.github.repo-missing', 'GitHub re-ingest target is missing repo.', { recordId: id, path }));
-    if (!path) findings.push(finding('error', 'reingest.github.path-missing', 'GitHub re-ingest target is missing canonical path.', { recordId: id, repo }));
-    if (!ref) findings.push(finding('warning', 'reingest.github.ref-unpinned', 'GitHub re-ingest target has no explicit/resolved ref; future reads may drift.', { recordId: id, repo, path }));
+  const target = projectPackageSourceReference(record);
+  const id = record.id || target.path || record.path || record.title || 'record';
+  if (target.adapterId === 'github') {
+    if (!target.repo) findings.push(finding('error', 'reingest.github.repo-missing', 'GitHub re-ingest target is missing repo.', { recordId: id, path: target.path }));
+    if (!target.path && !target.inputTarget) findings.push(finding('error', 'reingest.github.path-missing', 'GitHub re-ingest target is missing exact source artifact target.', { recordId: id, repo: target.repo }));
+    if (!target.materializedCommit) findings.push(finding('warning', 'reingest.github.ref-unpinned', 'GitHub re-ingest target lacks exact materialized commit authority; branch/tag refs remain mutable or unqualified.', { recordId: id, repo: target.repo, path: target.path, configuredRef: target.configuredRef }));
   }
   return Object.freeze({
     id,
     title: record.title || 'Source-backed artifact',
-    adapterId: source.adapterId || '',
-    repo,
-    ref,
-    path,
-    status: source.adapterId === 'github' && repo && ref && path ? 'pinned' : 'degraded',
+    adapterId: target.adapterId,
+    repo: target.repo,
+    ref: target.ref,
+    path: target.path,
+    target,
+    status: target.status === 'pinned-reference' ? 'pinned' : target.status === 'exact-target-reference' ? 'exact' : 'degraded',
     mode: 'read-existing-source',
-    boundary: 'Source-backed material remains reference-only until an explicit derived local draft is created.'
+    boundary: 'Source-backed material remains reference-only; exact source-target authority is preserved and never inferred from workspace presentation paths.'
   });
 }
 

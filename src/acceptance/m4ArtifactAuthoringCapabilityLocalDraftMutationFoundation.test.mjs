@@ -29,6 +29,7 @@ assert.equal(taskProjection.operations.editLocalDraft.available, true, 'local Ta
 assert.equal(taskProjection.operations.discardLocalDraft.available, true, 'local Task discard capability is available');
 assert.equal(taskProjection.operations.createRoot.available, false, 'createRoot remains unavailable for local Task too');
 assert.equal(canDiscardLocalDraft(task), true);
+assert(presentRecordActions(task).some((action) => action.id === RecordActionKind.editLocal), 'action layer exposes qualified local-draft edit capability');
 assert(presentRecordActions(task).some((action) => action.id === RecordActionKind.deleteLocal), 'action layer consumes canonical discard policy');
 
 const isolated = createPersistenceOwnershipPolicy(PersistenceRouteOwner.semanticState, { durableLocalAuthority: DurableLocalAuthority.isolatedPreexistingRecovery });

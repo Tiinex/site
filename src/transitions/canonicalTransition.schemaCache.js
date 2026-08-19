@@ -1,13 +1,27 @@
 export const CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT = 'd69b8ff55a56b8cb9282b8684db6a938a4435b94';
+export const CANONICAL_INTERPRETATION_SCHEMA_CACHE_COMMIT = '053d46ce082d4ec261b82abc44ecca403d61e240';
+export const CANONICAL_REFERENCE_SCHEMA_CACHE_COMMIT = CANONICAL_INTERPRETATION_SCHEMA_CACHE_COMMIT;
+export const CANONICAL_TOPIC_SCHEMA_CACHE_COMMIT = '52ecdea0a75893882ce282214d155f70e1309c2a';
 export const CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST = Object.freeze([
   Object.freeze({ schemaId: 'tiinex.root.v1', repository: 'Tiinex/docs', commit: CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/tiinex.root.v1.schema.md', gitBlob: '7078e4832872be0df0df4ee944ee1bcd1d886f12' }),
   Object.freeze({ schemaId: 'tiinex.transition.definition.v1', repository: 'Tiinex/docs', commit: CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/transition/definition/tiinex.transition.definition.v1.schema.md', gitBlob: '548dac027abcc4fddf918e294a80b5aca1603c46' }),
-  Object.freeze({ schemaId: 'tiinex.task.v1', repository: 'Tiinex/docs', commit: CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/core/task/tiinex.task.v1.schema.md', gitBlob: 'e4d545ad45382a150351ead587339d8b43cc0fb2' })
+  Object.freeze({ schemaId: 'tiinex.task.v1', repository: 'Tiinex/docs', commit: CANONICAL_TRANSITION_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/core/task/tiinex.task.v1.schema.md', gitBlob: 'e4d545ad45382a150351ead587339d8b43cc0fb2' }),
+  Object.freeze({ schemaId: 'tiinex.topic.v1', repository: 'Tiinex/docs', commit: CANONICAL_TOPIC_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/core/topic/tiinex.topic.v1.schema.md', gitBlob: 'c36472b0d20ad97d01cc1ca78a50fc69ce35fdae' }),
+  Object.freeze({ schemaId: 'tiinex.interpretation.v1', repository: 'Tiinex/docs', commit: CANONICAL_INTERPRETATION_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/core/interpretation/tiinex.interpretation.v1.schema.md', gitBlob: '330d8668e78cd6d164a76093982b02f616fd6ab4' }),
+  Object.freeze({ schemaId: 'tiinex.relation.v1', repository: 'Tiinex/docs', commit: CANONICAL_REFERENCE_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/relation/tiinex.relation.v1.schema.md', gitBlob: '46c476c6b24f448f462c9f67e56cb1a40751ee14' }),
+  Object.freeze({ schemaId: 'tiinex.schema.contract.v1', repository: 'Tiinex/docs', commit: CANONICAL_REFERENCE_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/schema/contract/tiinex.schema.contract.v1.schema.md', gitBlob: '02d42cee2e797c770f9e5596da9afdf8368c7c9c' }),
+  Object.freeze({ schemaId: 'tiinex.schema.generation.v1', repository: 'Tiinex/docs', commit: CANONICAL_REFERENCE_SCHEMA_CACHE_COMMIT, path: '.topics/.schemas/schema/contract/generation/tiinex.schema.generation.v1.schema.md', gitBlob: '46d803c0e17371121fa094add7be8f6459b6becb' })
 ]);
 
 export function qualifyCanonicalTransitionSchemaCache(entries = []) {
+  return qualifyCanonicalTransitionSchemaCacheSubset(entries, CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => item.schemaId));
+}
+
+export function qualifyCanonicalTransitionSchemaCacheSubset(entries = [], requiredSchemaIds = []) {
+  const requested = new Set((Array.isArray(requiredSchemaIds) ? requiredSchemaIds : []).map((value) => String(value || '').trim()).filter(Boolean));
+  const expectedEntries = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.filter((item) => requested.has(item.schemaId));
   const findings = [], qualified = [];
-  for (const expected of CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST) {
+  for (const expected of expectedEntries) {
     const matches = (Array.isArray(entries) ? entries : []).filter((item) => String(item?.schemaId || '') === expected.schemaId);
     if (matches.length !== 1) {
       findings.push(Object.freeze({ code: matches.length ? 'schema-cache-entry-duplicate' : 'schema-cache-entry-missing', schemaId: expected.schemaId }));
@@ -21,9 +35,13 @@ export function qualifyCanonicalTransitionSchemaCache(entries = []) {
     }
     qualified.push(Object.freeze({ ...expected, markdown, sourceQualification: 'source-qualified' }));
   }
+  const complete = findings.length === 0 && qualified.length === expectedEntries.length && expectedEntries.length === requested.size;
+  if (expectedEntries.length !== requested.size) {
+    for (const schemaId of requested) if (!CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.some((item) => item.schemaId === schemaId)) findings.push(Object.freeze({ code: 'schema-cache-schema-unregistered', schemaId }));
+  }
   return Object.freeze({
-    status: findings.length ? 'unqualified' : 'qualified',
-    sourceQualified: findings.length === 0 && qualified.length === CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.length,
+    status: complete ? 'qualified' : 'unqualified',
+    sourceQualified: complete,
     entries: Object.freeze(qualified),
     findings: Object.freeze(findings)
   });

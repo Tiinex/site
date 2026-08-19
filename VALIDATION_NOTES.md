@@ -1,478 +1,213 @@
-# Validation Notes v426 — Semantic-Package Locality + Compiled Transition Registry Integration
+# Validation Notes v449 — M0-F Exact Mutation Target Attestation Closure
 
-Checkpoint: `v426`  
-Version: `0.2.245-v426`  
-Runtime: `react-v426-semantic-package-locality-transition-registry-integration`
+Checkpoint: `v449`  
+Version: `0.2.268-v449`  
+Runtime: `react-v449-m0f-exact-mutation-target-attestation-closure`
 
-## Starting baseline
+## v449 bounded Site correction
 
-Architect-supplied premerged source:
+- exact GitHub remote equality is treated as representation verification only; it does not independently prove that the current guided publication operation performed a write;
+- Site exposes explicit human GitHub web mutation confirmation bound to exact `planSha256` **and** exact qualified GitHub issue/comment target;
+- Copy/Open remain non-write evidence and cannot substitute for the human mutation attestation;
+- `verifyWorkspaceGithubPublication(...)` qualifies the exact final target first, then fails closed before remote read/shared success when exact plan+target attestation is missing, stale, or mismatched;
+- with valid attestation, exact target and exact payload verification still flow through the unchanged shared `buildPublicationResult(...)` success authority;
+- qualified durable workspace receipts preserve Site-local execution-attestation type, exact plan SHA, exact target kind/canonical `inputTarget`, confirmation timestamp, and the boundary that Tiinex did not perform a hidden/API write;
+- local input remains unchanged and attestation does not become source/artifact semantics;
+- v446 exact social target parser/contract and shared `buildPublicationResult(...)`, Tree/Handoff/package/re-ingest, and Tooling portable remain byte-unchanged.
 
-```text
-Dev v425 full
-11134abb7547a68075ef15a59b169075be44eb53ad471e50af4b31a89fa21dce
+Known source-clean missing-React behavior at `src/app/useLocalMaterialIntake.test.mjs` remains explicit if dependencies are absent. Browser/public runtime is not claimed unless separately exercised.
 
-+ frozen final Tooling overlay
-cfe89535e0a2dfff654f5dc13edbe71e54e974888b9f4c3d76654418e6381199
+---
 
-premerged source
-df72fee7489ccc9fdfab9c41b3116adb759613edf24829fd647abb2b8e85f7ef
-```
+# Validation Notes v447 — M0-F GitHub Social Publication Product Integration
 
-Tooling semantic-package compiler is frozen. v426 changes Site integration/locality, not Tooling semantics.
+Checkpoint: `v447`  
+Version: `0.2.266-v447`  
+Runtime: `react-v447-m0f-github-social-publication-product-integration`
 
-## Task authority resolution
+## v447 bounded Site integration
 
-The pre-v426 Site-local Task schema was stale. Architect authorized exact materialization of the already-qualified canonical Task bytes at:
+- existing Export dialog now exposes guided GitHub issue/comment publication for preflight-qualified owned-local artifacts;
+- current shared `buildPublicationPlan(...)`, v446 exact target authority, and `buildPublicationResult(...)` remain semantic/result owners;
+- supported guided modes are create-new issue, create-comment, update-known issue, and update-known comment;
+- copied bytes are exactly `plan.outboundPayload.content`; Site does not generate a second publication body;
+- Open uses a bounded GitHub web destination and never performs provider mutation;
+- exact final target is qualified by the shared v446 parser before the read-only GitHub body owner is invoked;
+- issue/comment body SHA-256 must equal the shared plan payload SHA-256 before shared success/source binding can qualify;
+- qualified receipts/source bindings persist in browser-local workspace delta state while local/source input records stay unchanged;
+- product Copy/Open/Verify completion is tied to the exact current plan identity, and stale verification is cleared when product input changes;
+- issue-snapshot parsing does not qualify publication targets; no GitHub credentials, write API, Parent inference, or local-draft pruning is introduced;
+- Tree/Handoff/package/re-ingest and M0-A–E behavior remain regression-gated.
 
-```text
-src/schemas/core/task/tiinex.task.v1.schema.md
-```
+Known source-clean missing-React behavior at `src/app/useLocalMaterialIntake.test.mjs` remains explicit if dependencies are absent. Browser/public runtime is not claimed unless separately exercised.
 
-Qualification:
+---
 
-```text
-SHA256             ff26811ac5c4393bc6b69d652f0b9fcdb38c2bdc9688dccb0b42608cbef07a98
-Git blob           e4d545ad45382a150351ead587339d8b43cc0fb2
-validation groups  6
-creation groups    2
-freshness           equivalent-current
-```
+# Validation Notes v446 — M0-F Exact GitHub Social Target Representation Closure
 
-The duplicate Task cache materialization under `src/transitions/canonical-schema-cache/d69b8ff.../` is removed. `CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST` still preserves remote canonical repository/commit/path/blob identity.
+Checkpoint: `v446`  
+Version: `0.2.265-v446`  
+Runtime: `react-v446-m0f-exact-social-target-representation-closure`
 
-## Semantic-package integration
+## v446 bounded Tooling correction
 
-Focused v426 acceptance proves:
+- GitHub social `externalTarget`, `containerTarget`, and execution/result target aliases are preserved raw until `parseExactGithubIssueTarget(...)` qualification; shared publication code does not trim or structurally rewrite them first.
+- Unsupported whitespace-wrapped observations remain blocked/failing and are preserved exactly in plan/result evidence.
+- Accepted issue-number lexemes must be positive decimal integers that round-trip exactly through JavaScript safe-integer representation; `Number.MAX_SAFE_INTEGER` is accepted, larger lexemes fail closed.
+- The parser exposes exact `issueNumber` string identity while retaining numeric `number` convenience for existing consumers; canonical issue URLs are built from the accepted lexeme, never from a rounded/exponent-formatted number.
+- Shared publication comparisons use exact issue identity rather than lossy numeric coercion.
+- v445's explicit normalization allowlist is unchanged; no query, case, percent-decoding, path normalization, backslash, whitespace, or alternate-host broadening is introduced.
+- Repo-file behavior, GitHub snapshot/read surfaces, package/re-ingest, Site/React, credentials, host execution, Semantic Package, canonical schema cache, and Tiinex/docs remain unchanged.
 
-```text
-Task package                       valid
-Topic package                      valid
-package nodes                      2
-Topic/Task schema resolutions      4 / 4 resolved
-Task companion                     valid / consistent
-Topic companion                    valid / consistent
-compiled Transition registry       exactly 1 Topic→Task representation
-attachment provenance              2 explicit companion routes
-relative cross-package escape      absent
-old Transition source path         absent
-new Task-local .transitions path   present
-```
+## Validation model
 
-The package graph intentionally contains a declared Topic↔Task cycle. The portable compiler reports the cycle informationally and terminates it by exact manifest representation; repeated compilation yields identical graph/resolution/registry projections.
+Run the combined parser + publication target-representation closure matrix, all issue-target/social-publication tests, adjacent GitHub snapshot/adapter/transport and portable publication regressions, all `src/**/*.test.mjs` individually, and repository gates. The inherited source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable.
 
-## Frozen product regressions
+Browser/public runtime remains unclaimed unless separately exercised.
 
-Required preservation sequence includes:
+---
 
-```text
-final v424 product capability/source/path/placement matrix
-v422 invocation/binding planner
-v423 generation/materialization-intent planner
-canonical Task cache source identity
-portable semantic-package suites
-portable aggregate
-v425 browser import boundary
-schema navigation
-```
+# Validation Notes v445 — M0-F Raw GitHub Social Target Lexical Hardening
 
-The product still executes fresh v422 + v423 and creates exactly one local Task from a qualified source-backed Topic. No product semantic redesign is part of v426.
+Checkpoint: `v445`  
+Version: `0.2.264-v445`  
+Runtime: `react-v445-m0f-raw-social-target-lexical-hardening`
 
-## Browser import boundary
+## v445 bounded Tooling correction
 
-`tools/check-browser-import-boundary.mjs` remains authoritative for the browser entrypoint. v426 must retain:
+- exact GitHub issue/comment authority is qualified from an explicit raw positive lexical grammar before any structural URL normalization;
+- exact supported web forms are lowercase `https://github.com/<owner>/<repo>/issues/<positive-integer>` with optional single trailing slash and optional exact `#issuecomment-<digits>` fragment;
+- exact supported API issue-body form is lowercase `https://api.github.com/repos/<owner>/<repo>/issues/<positive-integer>` with optional single trailing slash;
+- literal/encoded dot-segments, backslashes, doubled separators, encoded structural delimiters, queries, unsupported prefixes/suffixes, case-normalized host/scheme variants, and surrounding whitespace fail closed;
+- WHATWG path normalization is no longer used as qualification authority;
+- publication-result pressure preserves hostile raw observations as failure evidence, emits `publication.result.social-target.invalid`, keeps `sourceBinding = null`, and never manufactures a nominal canonical permalink;
+- adjacent issue/comment/pull/discussion/hosted-direct snapshot behavior remains independently regression-qualified;
+- no React/UI, host write, credentials, workspace lifecycle, Handoff package/export/re-ingest, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced.
 
-```text
-node:* edges/importers          0
-broad portable barrel edges    0
-unresolved local imports       0
-```
+## Validation model
 
-## Full validate boundary
+Run the exact raw lexical matrix, publication-result hostile observation matrix, adjacent GitHub reader regressions, portable publication regression, all `src/**/*.test.mjs` individually, and repository gates. The inherited source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable.
 
-Full `npm run validate` is run on final candidate bytes. In restore-source environments without installed React/Vite dependencies, the expected first environment stop remains the historical React import boundary after the complete pre-React tranche. The suffix is then run separately so later source regressions are not hidden by the environment.
+Browser/public runtime remains unclaimed unless separately exercised.
 
-Runtime smoke and public build are not claimed unless dependencies are actually present.
+---
 
-## Final canonical-contract + integrity closure
+# Validation Notes v444 — M0-F Exact GitHub Social Target Hardening
 
-Architect's final v426 source gate identified two coupled authority gaps and both are closed without changing Tooling production semantics or package topology.
+Checkpoint: `v444`  
+Version: `0.2.263-v444`  
+Runtime: `react-v444-m0f-exact-github-social-target-hardening`
 
-### G — inherited Root integrity
-
-These four v426 artifacts now carry real c14n-v2 self seals and validate as `valid` under the exact full canonical Root + descendant contract chains:
-
-```text
-src/schemas/core/task/task-semantic-package.trace.md
-src/schemas/core/topic/topic-semantic-package.trace.md
-src/schemas/core/task/tiinex.task.v1-transitions.trace.md
-src/schemas/core/topic/tiinex.topic.v1-transitions.trace.md
-```
-
-Focused acceptance also removes the footer from one package and one companion and requires full-chain validation to return `incomplete`, proving that inherited `Continuity Integrity` remains an active canonical requirement.
-
-### H — production canonical contract source
-
-Production browser/package compilation no longer consumes Tooling pressure fixtures as contract authority. Exact source-qualified snapshots are used for Root, Transition Definition, Semantic Package, and Schema Transition Companion. The two newly materialized canonical snapshots are byte-checked against:
-
-```text
-tiinex.semantic.package.v1
-SHA256  5a457d9a7a4f6b9281819d2c1e1bc80e7d4f3ea15069285399fce4f7a28c1502
-Git blob 5686051540603e05d483dc527af27b8e69ffee36
+## v444 bounded Tooling correction
 
-tiinex.schema.transition.companion.v1
-SHA256  f78dbf800c3080d6f0ab5832a31e793278ba723796996aae57a6a82a4a5c8f4a
-Git blob 1b45d674c3f8b553b9a26f2e9983d2ccf4197cca
-```
+- exact GitHub web issue/comment authority is restricted to `https://github.com/<owner>/<repo>/issues/<number>` with an optional exact `#issuecomment-<digits>` fragment;
+- arbitrary `*.github.com` hosts, query-derived comment tokens, unsupported trailing path segments, malformed comment anchors, credentials/ports/non-HTTPS input, and unrelated raw-string token matches fail closed;
+- unsupported observations are preserved as failure evidence and are never rewritten into a different supported permalink;
+- one trailing slash is the only web-path normalization accepted;
+- the separately explicit `https://api.github.com/repos/<owner>/<repo>/issues/<number>` issue-body read surface remains supported;
+- v443 create-new issue intent, create-comment parent issue intent, update-known matching, repo/container mismatch detection, payload SHA-256 verification, mutable social binding, immutable repo-file binding, package/Handoff behavior, and portable facade remain unchanged;
+- ordinary issue/comment/pull/discussion/hosted-direct issue snapshot behavior remains regression-qualified;
+- no React/UI, credentials, host write, workspace lifecycle, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced.
 
-The real product path uses the exact full Transition Definition contract. Site derives the required Topic/Task schema resolver facts from the selected exact schema materials: valid/complete lineage, actual Artifact Creation Contract, and actual File Naming contract surface. This closes the full-contract `target-schema` / classification resolution without modifying the frozen portable compiler.
+## Semantic authority
 
-`tools/check-browser-import-boundary.mjs` now also fails when any browser-reachable production module imports `src/tooling/portable/package/fixtures/**`.
+Current `Tiinex/docs` head was re-checked before mutation and remained `053d46ce082d4ec261b82abc44ecca403d61e240`. No semantic escalation was required.
 
-Required final invariants:
+## Validation model
 
-```text
-four package/companion full canonical-chain validations   PASS
-real c14n-v2 self seals                                  PASS
-production package pressure-fixture imports              0
-Semantic Package snapshot identity                       exact
-Schema Transition Companion snapshot identity            exact
-compiled Task↔Topic registry                              valid / exactly one Topic→Task
-compiled registry → Site product → fresh v422/v423       PASS
-v424 product matrix                                       PASS
-v425 browser boundary                                     PASS
-```
+Run exact parser pressure, Architect's three publication-result reproductions, adjacent GitHub issue snapshot/readers, package/re-ingest/portable regressions, all `src/**/*.test.mjs` individually, and repository gates. The inherited source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable.
 
-## Q-fail canonical Topic→Task browser-path closure
+Browser/public runtime remains unclaimed unless separately exercised.
 
-Q acceptance exposed a real actual-path mismatch: ordinary GitHub source loading with blank/default Ref left a moving branch (`main`/`master`) as `source.ref`, while canonical Parent recovery correctly required immutable commit-pinned provenance. Presentation then exposed legacy `topic.continue.task`, masking the unavailable canonical path.
+---
 
-The bounded correction preserves requested/configured ref truth and adds immutable materialization provenance rather than weakening Parent semantics.
+# Validation Notes v443 — M0-F GitHub Social Publication Contract Reconciliation
 
-Required focused pressure now covers:
+Checkpoint: `v443`  
+Version: `0.2.262-v443`  
+Runtime: `react-v443-m0f-github-social-publication-contract-reconciliation`
 
-```text
-blank/default ref + exact resolved commit
-→ branch/default ref preserved
-→ materializedCommit preserved
-→ raw Markdown loaded from exact commit URL
-→ canonical Parent qualified
+## v443 shared publication contract
 
-named branch + exact resolved commit
-→ canonical Parent qualified
+- shared GitHub target qualification is surface-specific: `github.repo.file`, `github.issue.body`, and `github.issue.comment`;
+- the existing exact GitHub issue/comment URL parser is centralized as a pure shared source owner and consumed by both publication and issue-snapshot materialization;
+- repo-file publication still requires exact repository/path plus a 40-character materialized commit before qualified success;
+- create-new issue plans may be ready without a final issue permalink;
+- create-comment plans may be ready with an exact parent issue container before the final comment permalink exists;
+- update-known issue/comment plans require the exact known remote target before execution;
+- social publication result qualification requires matching target kind/repository/container, exact remote issue/comment identity, explicit execution success, verification state `verified`, and exact payload SHA-256 equality;
+- successful social source bindings remain mutable remote representations and carry no fake repo-file path or materialized commit;
+- the local draft remains distinct and unchanged; publication targets never imply Continuity Parent;
+- shared/portable publication remains planning/result normalization only: no fetch, credentials, write execution, or Site/React dependency;
+- v442 Handoff export/re-ingest behavior remains regression-qualified;
+- no Tiinex/docs, canonical schema cache, Semantic Package, Site publication UI, OAuth/token, or GitHub host-write implementation is introduced.
 
-explicit 40-char commit
-→ unchanged qualified
-→ no redundant commit-resolution request
+## Semantic authority
 
-branch with no exact material commit
-→ source load may remain readable
-→ materializedCommit absent
-→ canonical product unavailable
-→ legacy compatibility does not mask active bundled canonical authority
-```
+Current `Tiinex/docs` head was re-checked before mutation and remained `053d46ce082d4ec261b82abc44ecca403d61e240`. No newer semantic authority changed this tranche and no Schemer escalation was required.
 
-The Q-like actual-path acceptance runs through `runGithubSourceOperation` with a blank Ref and proves:
+## Validation model
 
-```text
-configured source ref         main
-requestedRef                  blank
-materializedCommit            exact 40-char SHA
-record sourceTarget commit    same exact SHA
-raw URL                       exact commit-pinned URL
-canonical product action      present / productCapable
-legacy topic.continue.task    absent
-canonical authoring inputs    Summary, Objective, Done Criteria, Scope, Dependencies
-fresh v422                    qualified
-fresh v423                    qualified
-local Task                    exactly one
-source Topic                  byte-unchanged
-Parent permalink              exact commit-pinned GitHub blob URL
-```
+Run focused publication/social target tests, GitHub issue-source regression, package/re-ingest/portable regressions, all `src/**/*.test.mjs` individually, and repository gates. The inherited source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable; it is not a runtime/product PASS claim.
 
-Durability regressions additionally prove that `materializedCommit` does not redefine configured-source identity and survives route/F5 projection separately from requested/default ref truth.
+Browser/public runtime remains unclaimed unless separately exercised.
 
-The browser import-boundary invariants remain unchanged:
+---
 
-```text
-node:* edges/importers          0
-broad portable barrel edges    0
-package pressure fixture edges 0
-unresolved local imports       0
-```
+# Validation Notes v442 — M0-F Handoff Freshness + Archive Intake Scaling Correction
 
-## Final GitHub discovery request-budget closure
+Checkpoint: `v442`  
+Version: `0.2.261-v442`  
+Runtime: `react-v442-m0f-handoff-freshness-archive-scaling-correction`
 
-The immutable GitHub provenance correction increased the direct repo-discovery request shape. Transport policy now derives the budget before discovery from the selected ref:
+## v442 bounded correction
 
-```text
-blank/default + budget 2   → blocked before fetch
-blank/default + budget 3   → allowed
-named ref + budget 1       → blocked before fetch
-named ref + budget 2       → allowed
-exact commit + budget 1    → allowed
-```
+- Handoff render/read-model planning is cheap configuration only; it stores no package bundle or exact inspection.
+- Explicit execution builds and inspects exactly once from the latest current workspace passed to the execution command.
+- Single selected ZIP intake performs one archive decode ownership pass, then reuses decoded entries for Handoff detection or ordinary archive qualification.
+- Invalid claimed Handoff packages still fail closed; ordinary Tree ZIP remains ordinary intake.
+- v441 publication Case C remains unchanged.
 
-Blocked discovery preserves the existing degraded-warning contract and performs zero direct GitHub discovery fetches. The correction is owned by `github.repoDiscovery.js`; `github.adapter.js` only consumes the derived count and remains under the 24 KB source guard.
+---
 
-## Final GitHub raw-file request-budget closure
+# Validation Notes v441 — M0-F Product Execution Integration
 
-Explicit/raw-file loading now derives request-policy cost from the same ref-shape authority as repo discovery. Focused direct-transport pressure proves:
+Checkpoint: `v441`  
+Version: `0.2.260-v441`  
+Runtime: `react-v441-m0f-product-execution-integration`
 
-```text
-one explicit file, blank/default, budget 2
-→ BLOCKED before any direct fetch
-→ requestedRequests = 3
+## v441 bounded Site integration
 
-one explicit file, blank/default, budget 3
-→ ALLOWED
-→ exact commit-pinned raw load
+- Tree export remains the default ordinary envelope-free ZIP.
+- Handoff package is explicit opt-in and only builds/qualifies the shared operational package after selection.
+- Valid Handoff ZIP intake rehydrates/inspects/imports/applies through accepted shared package owners and canonical workspace lifecycle.
+- Claimed invalid operational packages fail closed and do not fall through to generic archive leaves.
+- Source-backed package members remain reference-only; local package-owned records/assets remain local. Shared `Uint8Array` asset bytes are normalized only at the Site lifecycle boundary to JSON-safe byte arrays so exact bytes survive clone/persistence/reopen and remain reusable by shared package byte owners.
+- GitHub publication is intentionally held as Case C: current shared GitHub publication requires exact repository/ref/path + verified commit, while the PoC product target is issue/comment shaped.
+- The historical source-clean missing-React exception at `src/app/useLocalMaterialIntake.test.mjs` remains explicit; `npm run validate` is not labeled PASS when it occurs.
 
-one explicit file, named branch, budget 1
-→ BLOCKED before any direct fetch
-→ requestedRequests = 2
+---
 
-one explicit file, named branch, budget 2
-→ ALLOWED
+# Validation Notes v440 — M0-F Control-Set Completeness Correction
 
-one explicit file, exact commit, budget 1
-→ ALLOWED
-→ no default-branch or commit-resolution fetch
+Checkpoint: `v440`  
+Version: `0.2.259-v440`  
+Runtime: `react-v440-m0f-control-set-completeness-correction`
 
-two unique explicit files, blank/default, budget 3
-→ BLOCKED
-→ requestedRequests = 4
+## v440 bounded Tooling correction
 
-two unique explicit files, blank/default, budget 4
-→ ALLOWED
+- current operational package control topology is owned once by `src/export/package.controlTopology.js`;
+- required controls are `index.json`, `manifest.json`, `receipt.json`, `build-receipt.json`, `contract.json`, `findings.json`, and `file-map.json`;
+- every required control must exist physically and be readable JSON;
+- the serialized index must point every declared control role at its exact current canonical operational path;
+- blank, redirected, or duplicate control pointers fail closed;
+- removing build receipt, contract, or findings and rebuilding only the durable file map remains invalid;
+- unreadable index/build-receipt/contract/findings remain invalid even when outer byte metadata and file-map integrity are rebuilt;
+- v439 material SHA/byte checks, collision cardinality, build-receipt material representation, manifest/receipt/contract consistency, source projection, asset bytes, workspace context, publication contracts, and Semantic Package separation remain unchanged;
+- no React/UI/Site product execution, remote publication execution, credentials, canonical schema cache, or Tiinex/docs mutation is introduced.
 
-prequalified materializedCommit + one raw target, budget 1
-→ ALLOWED
-→ only the raw target request is made
-```
+## Validation model
 
-Repo-discovery 3/2/1 accounting remains unchanged and is now implemented from the same `githubRefResolutionRequestCount()` owner. No global budget, provenance rule, configured-source identity, canonical Parent rule, legacy migration rule, package/locality behavior, Tooling semantic code, or Task product semantics changes in this closure.
+Run the v440 control-topology adversarial matrix, v439 transport/publication regressions, all `src/**/*.test.mjs` individually, and repository gates. The historical source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable; it is not a product/runtime PASS claim.
 
-
-## Prequalified materializedCommit repo-discovery consistency closure
-
-Focused direct-transport pressure proves:
-
-```text
-ref=main + prequalified exact materializedCommit + discovery budget 1
-→ allowed
-→ tree at exact materializedCommit
-→ zero /commits/ requests
-→ raw record uses the same exact materializedCommit
-→ configured ref remains main
-
-blank ref + prequalified exact materializedCommit + discovery budget 1
-→ allowed
-→ no repo metadata/default-branch request
-→ no /commits/ request
-→ tree + raw use the exact materializedCommit
-→ configured ref remains blank
-
-fresh named branch without prequalification
-→ existing 2-request discovery accounting preserved
-
-fresh blank/default without prequalification
-→ existing 3-request discovery accounting preserved
-
-exact commit ref without separate materializedCommit
-→ existing tree-only discovery preserved
-```
-
-An actual `runGithubSourceOperation` refresh regression seeds `ref=main` with historical `OLD materializedCommit`, performs a fresh direct refresh, resolves the branch to `NEW`, uses `NEW` for both tree and raw bytes, preserves configured `ref=main`, and persists `NEW` as the new immutable materialization receipt. This prevents prequalified optimization from freezing ordinary mutable-branch refresh semantics.
-
-## Q acceptance discovery-consolidated closure
-
-The new focused acceptance is:
-
-```text
-src/acceptance/postV426QAcceptanceDiscoveryConsolidatedClosure.test.mjs
-```
-
-It pressure-tests the actual Site integration rather than only planner truth:
-
-```text
-local/session Topic with concrete path
-→ canonical five-field action visible
-→ first child 001-1-dark-mode.trace.md
-→ second sibling 001-2-dark-mode.trace.md
-→ deterministic local record id from concrete path
-→ tree projection uses concrete hierarchy
-→ loaded lineage resolves parent
-→ no fabricated Git provenance
-
-GitHub issue-body embedded Topic via issueSnapshot adapter
-→ canonical action visible
-→ concrete continuation path
-→ Trace identifies exact embedded parent path
-→ Origin preserves exact issue URL
-→ exact Root+Task projection valid
-→ loaded lineage resolves parent
-
-GitHub issue-comment embedded Topic via issueSnapshot adapter
-→ same guarantees
-→ Origin preserves exact comment URL
-
-multiple embedded Topics sharing one issue container
-→ same source-container URL retained
-→ distinct sourceArtifactPath-backed registry identities
-→ distinct canonical parent identities
-
-issue child with parent absent
-→ lineage recovery plan uses issue Origin URL
-→ Trace remains the exact artifact selector
-
-pathless local Topic
-→ canonical action unavailable
-→ legacy topic.continue.task remains suppressed while bundled canonical authority is active
-```
-
-Naming regressions preserve the established continuation allocator for `001`, `12-01`, recovered `comment-001`, and occupied source-backed sibling paths. v422/v423 remain path-agnostic; only Site execution allocates the final local path.
-
-UI-shape pressure proves `CanonicalTaskCreateDialog` consumes the shared `TextareaField` / `tx-textarea-field` styling hook and contains no raw textarea element of its own.
-
-The strict canonical Root+Task projection accepts the truthful issue/local Trace and Origin representations used here, so no Schemer/docs exception or validation weakening was required.
-
-## Final Task companion + canonical integrity closure
-
-Architect's final pre-Q audit found two runtime-truth blockers:
-
-```text
-fresh canonical Task
-→ exact Task companion
-→ stale task.nextStep.missing warning
-
-local-transition-canonical-v1
-→ Towards: self
-→ value depended only on Parent + timestamp
-→ body mutation did not invalidate it
-```
-
-The correction keeps the same v426 identity and introduces no schema redesign.
-
-Focused acceptance proves:
-
-```text
-canonical Task
-→ Objective / Done Criteria / Scope / Dependencies recognized
-→ no task.nextStep.missing
-→ exact companion coverage
-
-missing Objective
-→ Task error
-
-missing Done Criteria
-→ Task error
-
-legacy pre-canonical Task body
-→ explicit legacy-shape warning
-→ canonical section errors
-→ not presented as current exact Task shape
-
-canonical Task A vs B
-same Parent + timestamp
-materially different body
-→ different sha256-base64url-c14n-v2 self values
-
-body mutation with old footer
-→ integrity.c14n-v2.mismatch
-→ no integrity.c14n-v2.verified
-→ canonical materializer qualification fails
-```
-
-The browser-safe c14n-v2 engine is anchored against the existing source-qualified canonical Task schema self seal and implements the maintained validator semantics: LF normalization, line trailing-space removal, document trailing-whitespace removal, preserved integrity footer, active self `Value` content neutralization, SHA-256 UTF-8 digest, and unpadded base64url output.
-
-Adjacent integrity sweep:
-
-```text
-production self-v2 artifacts under src/schemas + canonical schema cache
-15 / 15 verified
-0 mismatch
-```
-
-That sweep exposed four earlier v426 package/companion seals produced by the old v425 test helper's incorrect `Value:` neutralization. Only those four integrity values and the regression oracle were corrected; semantic-package topology and compiled-registry behavior remain unchanged.
-
-Full-validate exposed the expected historical M4 compatibility consequence after the Task companion became truthful. The bounded compatibility correction preserves old `local-transition` draft editing through an explicit legacy-shape validator while keeping exact current Task authority closed. Canonical `local-transition-canonical` Edit reseals c14n-v2 internally after the protected shell has been checked; direct caller mutation of the integrity footer remains refused.
-
-## Final external-web / explicit-URL source-neutrality closure
-
-Architect's final source-neutrality sweep found that the same supported `web.markdown` surface had two incompatible runtime truths: explicit URL intake lost its URL and became fake local hierarchy, while a truthfully source-backed web record was unavailable to canonical Topic→Task.
-
-The correction is Site-owned and limited to external-web provenance/placement:
-
-```text
-explicit URL input
-→ exact sourceTarget.inputTarget retained
-→ normalized/materialized fetch target retained separately as sourceTarget.rawUrl
-→ local/session persistence classification may remain
-→ URL itself is not a local path
-
-web Parent
-→ representationKind web-markdown
-→ Trace exact URL
-→ Origin exact URL
-→ no repository/ref
-→ no browse + git label
-
-placement
-→ no URL-derived local parent directory
-→ existing .topics fallback allocation
-```
-
-Required actual-path pressure now proves:
-
-```text
-runExplicitUrlMaterialImportCommand
-→ canonical five-field action
-→ exact URL Parent
-→ fallback local Task path
-→ exact Task validation
-→ c14n-v2 verified
-→ loaded lineage Parent edge
-→ source Topic unchanged
-
-publicTargetFromExternalUrl(..., web.markdown)
-→ runPublicTargetRestoreCommand
-→ same canonical action/provenance/placement semantics
-
-source-backed web.markdown
-→ same canonical Parent representation
-
-invalid external target
-→ canonical unavailable
-→ no legacy masking
-```
-
-A GitHub blob URL passed through generic explicit-URL intake keeps the blob URL as `inputTarget` while the raw URL used to fetch bytes is retained separately as `rawUrl`; source identity is not silently replaced by fetch normalization.
-
-Missing-parent web recovery was pressure-tested separately. The current bounded recovery owner remains GitHub-specific, so no automatic web recovery claim is made. Exact external Origin remains preserved and the missing-parent web auto-recovery capability is returned as a next-milestone precondition.
-
-## External-web multi-target identity / collision closure
-
-Focused v426 pressure uses the real `runExplicitUrlMaterialImportCommand(...)` path and proves:
-
-```text
-A = https://a.example.test/folder/001.trace.md
-B = https://b.example.test/other/001.trace.md
-
-adapter records          2
-workspace records        2
-distinct ids             PASS
-exact inputTargets       PASS
-same presentation path   allowed / non-authoritative
-Tree records             2
-```
-
-The lifecycle reuses `artifactRegistryIdentityForRecord(...)` input-target authority for target-qualified local/session material. Path replacement is only available when both incoming and existing records are genuinely path-identified.
-
-Two same-title canonical Tasks created from A and B both survive with collision-safe fallback paths, exact Parent Trace/Origin per URL, verified c14n-v2 integrity and loaded lineage edges to the correct parent.
-
-Exact duplicate normalized URLs are deduped before fetch and report truthful counts. Query-distinct normalized targets do not collapse. Existing persistence `writeState/readInitialState` round-trip preserves both deterministic target-qualified IDs and both exact inputTargets.
-
-Generic external HTTP(S) Parent URLs are no longer degraded into pathname/suffix matching by the lineage declared-parent binding owner; they fall through to the existing exact provenance-target index. GitHub repo-file and issue/comment exact owners remain unchanged.
-
-Redirect boundary: `rawUrl` means Tiinex's normalized requested fetch target, not a post-redirect `response.url` supplied by the HTTP implementation.
+Browser/public runtime remains unclaimed unless separately exercised.

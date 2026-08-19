@@ -2,6 +2,8 @@ import { collectLocalFilesFromDataTransfer, materializeLocalMarkdownFiles } from
 import { applyLocalAdapterResultToWorkspace } from '../workspaces/workspace.import.js';
 import { assertCanonicalWorkspaceRuntimeState } from '../workspaces/workspace.runtimeCanonical.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
+import { applyOperationalHandoffPackageToWorkspace, tryReadOperationalHandoffPackage } from './handoffPackageImportCommand.js';
+import { fileToArchiveDecodedEntries } from '../adapters/archive/archive.adapter.js';
 
 export async function runLocalMaterialImportCommand(input = {}) {
   const lifecycle = input.lifecycle;
@@ -18,9 +20,29 @@ export async function runLocalMaterialImportCommand(input = {}) {
   if (!files.length && !input.adapterResult) return { ok: false, error: 'local.files.empty', state, notice: 'No files selected.', files: [] };
 
   let adapterResult = input.adapterResult || null;
+  let predecodedArchive = null;
+  const singleZip = files.length === 1 && /\.zip$/i.test(String(files[0]?.name || files[0]?.relativePath || files[0]?.tiinexRelativePath || ''));
+  if (!adapterResult && options.handoffPackage !== false && singleZip) {
+    try {
+      predecodedArchive = await fileToArchiveDecodedEntries(files[0], options);
+    } catch (error) {
+      return { ok: false, error: 'local.materialize.failed', state, notice: 'Could not read local files or archives.', exception: error, files };
+    }
+  }
+  if (!adapterResult && options.handoffPackage !== false) {
+    const handoff = await tryReadOperationalHandoffPackage(files, predecodedArchive ? { ...options, predecodedArchive } : options);
+    if (handoff.detected) {
+      if (!handoff.ok) return { ok: false, error: handoff.error || 'handoff-package.invalid', state, notice: handoff.notice || 'Claimed Handoff package failed validation.', files, handoffPackage: handoff };
+      const appliedHandoff = applyOperationalHandoffPackageToWorkspace({ lifecycle, state, handoff, options });
+      if (!appliedHandoff?.ok) return { ok: false, error: appliedHandoff?.error || 'handoff-package.apply-failed', state, notice: appliedHandoff?.notice || 'Could not import Handoff package.', files, handoffPackage: handoff, applied: appliedHandoff };
+      const canonicality = assertCanonicalWorkspaceRuntimeState(appliedHandoff.state, 'handoff-package-import');
+      if (!canonicality.ok) return { ok: false, error: 'workspace.runtime-candidate-model-leak', state, notice: 'Imported Handoff package could not be normalized safely.', files, handoffPackage: handoff, applied: appliedHandoff, canonicality };
+      return { ok: true, state: appliedHandoff.state, notice: appliedHandoff.notice, files, handoffPackage: handoff, applied: appliedHandoff, materialCount: (appliedHandoff.adapterResult?.records?.length || 0) + (appliedHandoff.adapterResult?.assets?.length || 0) + (appliedHandoff.adapterResult?.workspaceEntries?.length || 0), workspaceId: appliedHandoff.workspaceId || '' };
+    }
+  }
   if (!adapterResult) {
     try {
-      adapterResult = await materialize(files, { ...options, sourceMode: options.sourceMode || 'manual-files' });
+      adapterResult = await materialize(files, { ...options, ...(predecodedArchive ? { predecodedArchive } : {}), sourceMode: options.sourceMode || 'manual-files' });
     } catch (error) {
       return { ok: false, error: 'local.materialize.failed', state, notice: 'Could not read local files or archives.', exception: error, files };
     }

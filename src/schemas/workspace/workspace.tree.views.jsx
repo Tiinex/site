@@ -5,7 +5,7 @@ import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { recordLifecycleBadge } from './workspace.viewFormatting.js';
 
-export function WorkspaceTreeState({ workspace, query = '', records, assets = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset }) {
+export function WorkspaceTreeState({ workspace, query = '', records, assets = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
   query = String(query || '').trim();
   const rootLabel = `Visible tree · ${workspace.title || workspace.name || 'workspace'}`;
   const tree = useMemo(() => buildWorkspacePathTree({
@@ -22,17 +22,17 @@ export function WorkspaceTreeState({ workspace, query = '', records, assets = []
         <TreeCountBadges counts={tree.counts} />
       </div>
       {tree.folders.map((folder) => (
-        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} expandedSet={expandedSet} onToggleFolder={onToggleTreeFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
+        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} expandedSet={expandedSet} onToggleFolder={onToggleTreeFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
       ))}
       {tree.items.map((item) => (
-        <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
+        <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
       ))}
       {tree.empty ? <p className="tx-tree-empty">No loaded artifacts or assets yet. Source and workspace boundaries remain visible.</p> : null}
     </div>
   );
 }
 
-function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset }) {
+function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
   const open = Boolean(query) || expandedSet.has(folder.path || folder.name || '');
   return (
     <details className="tx-tree-folder" open={open} role="group" data-tree-folder-path={folder.path || folder.name || ''} onToggle={(event) => { if (event.currentTarget === event.target && !query) onToggleFolder?.(folder.path || folder.name || '', event.currentTarget.open); }}>
@@ -42,17 +42,17 @@ function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, au
       </summary>
       <div className="tx-tree-folder-children">
         {folder.folders.map((child) => (
-          <TreeFolder key={child.path || child.name} folder={child} query={query} expandedSet={expandedSet} onToggleFolder={onToggleFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
+          <TreeFolder key={child.path || child.name} folder={child} query={query} expandedSet={expandedSet} onToggleFolder={onToggleFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
         ))}
         {folder.items.map((item) => (
-          <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} />
+          <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
         ))}
       </div>
     </details>
   );
 }
 
-function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset }) {
+function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
   if (item.type === 'asset') {
     return (
       <button type="button" className="tx-tree-record-row tx-tree-asset-row tx-tree-leaf-row" role="treeitem" onClick={() => onOpenAsset?.(item.source.id || item.source.path)} title={item.path || ''}>
@@ -64,7 +64,7 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecord
   const auditItem = auditById.get(item.source.id);
   return (
     <div className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" title={item.path || ''}>
-      <button type="button" className="tx-tree-row-main" onClick={() => onFocusRecordLineage?.(item.source.id)} aria-label={`Open lineage for ${item.name || item.title || 'artifact'}`}>
+      <button type="button" className="tx-tree-row-main" onClick={() => readOnly ? onOpenRecord?.(item.source.id) : onFocusRecordLineage?.(item.source.id)} aria-label={`${readOnly ? 'Open' : 'Open lineage for'} ${item.name || item.title || 'artifact'}`}>
         <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
       </button>
       <span className="tx-tree-row-badges">

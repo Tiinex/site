@@ -134,6 +134,27 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
 
 
 
+
+export function allocateRootArtifactPath({ targetId = '', targetLabel = '', title = '' } = {}, options = {}) {
+  const occupied = existingTransitionPaths(options);
+  const explicitPath = canonicalLocalPath(options.path || options.draftPath || '');
+  if (explicitPath) return { path: uniqueTransitionPath(explicitPath, occupied), policy: pathPolicyForExplicit(explicitPath) };
+  const labelSlug = slugify(title || targetLabel || labelFromSchemaId(targetId) || 'artifact');
+  const targetSlug = slugify(targetLabel || labelFromSchemaId(targetId) || 'artifact');
+  const basePath = `.topics/${labelSlug}--${targetSlug}.trace.md`;
+  return {
+    path: uniqueTransitionPath(basePath, occupied),
+    policy: {
+      schema: 'tiinex.transition.path-policy.v1',
+      kind: 'standalone-root',
+      parentDirectory: '.topics',
+      labelSlug,
+      targetSlug,
+      extension: '.trace.md'
+    }
+  };
+}
+
 export function allocateContinuationPath({ parentRecord = {}, targetId = '', targetLabel = '', title = '' } = {}, options = {}) {
   const occupied = existingTransitionPaths(options);
   const explicitPath = canonicalLocalPath(options.path || options.draftPath || '');

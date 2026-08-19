@@ -28,14 +28,27 @@ assert.equal(plan.counts.records, 2);
 assert.equal(plan.counts.assets, 1);
 assert.equal(plan.counts.sourceRecords, 1);
 assert.equal(plan.counts.localRecords, 1);
-assert(plan.adapters.some((adapter) => adapter.id === 'github' && adapter.status === 'future' && adapter.transportLevel === 'TL0'), 'GitHub adapter is visible but future/manual only');
-assert(plan.adapters.some((adapter) => adapter.id === 'handoff-package' && adapter.status === 'future'), 'handoff package is explicit and not default');
+assert(plan.adapters.some((adapter) => adapter.id === 'github' && adapter.status === 'available' && adapter.transportLevel === 'TL0'), 'GitHub adapter exposes the guided shared-contract publication routine without hidden provider write');
+assert(plan.adapters.some((adapter) => adapter.id === 'handoff-package' && adapter.status === 'available'), 'default Tree plan exposes Handoff as an explicit opt-in without performing package qualification work');
 assert(plan.exportTypes.some((type) => type.id === 'tree' && type.status === 'ready' && type.packageEnvelope === false));
-assert(plan.exportTypes.some((type) => type.id === 'handoff-package' && type.status === 'future' && type.packageEnvelope === true));
+assert(plan.exportTypes.some((type) => type.id === 'handoff-package' && type.status === 'available' && type.packageEnvelope === true));
+assert.equal(Object.prototype.hasOwnProperty.call(plan, 'handoffPreparation'), false, 'read-model never owns Handoff package preparation');
 
-const githubPlan = buildWorkspaceExportPlan(workspace, { adapterId: 'github' });
+const handoffPlan = buildWorkspaceExportPlan(workspace, { exportType: 'handoff-package', clock: () => '2026-08-07T12:00:00.000Z' });
+assert.equal(handoffPlan.selectedAdapterId, 'handoff-package');
+assert.equal(handoffPlan.execution.action, 'download-handoff-package');
+assert.equal(handoffPlan.execution.available, true);
+assert.equal(handoffPlan.packageEnvelope, true);
+assert.equal(handoffPlan.exportTypes.find((type) => type.id === 'handoff-package')?.status, 'available');
+assert.equal(Object.prototype.hasOwnProperty.call(handoffPlan, 'handoffBundle'), false, 'selected Handoff read-model must not cache serialized package truth');
+assert.equal(Object.prototype.hasOwnProperty.call(handoffPlan, 'handoffInspection'), false, 'selected Handoff read-model must not cache exact package qualification');
+assert.equal(handoffPlan.treeBundle, null, 'Handoff selection must not turn the ordinary Tree export into a package envelope');
+
+const githubPlan = buildWorkspaceExportPlan(workspace, { exportType: 'github-publish' });
 assert.equal(githubPlan.selectedAdapterId, 'github');
-assert.equal(githubPlan.status, 'future');
-assert.equal(githubPlan.execution.available, false, 'future adapters must not execute fake writes');
+assert.equal(githubPlan.status, 'available');
+assert.equal(githubPlan.execution.available, true);
+assert.equal(githubPlan.execution.action, 'guided-github-publication');
+assert.ok(githubPlan.execution.boundary.includes('No GitHub API mutation')); 
 
 console.log('✓ export plan tests passed');

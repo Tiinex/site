@@ -76,6 +76,11 @@ assert.equal(sourceTransport.status, PoCParityStatus.partial, 'source transport 
 assert(sourceTransport.automatedChecks.includes('src/diagnostics/sourceTransport.report.test.mjs'), 'source transport scenario must name transport report test');
 assert(sourceTransport.automatedChecks.includes('src/sources/transport.policy.test.mjs'), 'source transport scenario must name transport policy test');
 
+const timePortal = pocParityLedger.scenarios.find((item) => item.id === 'time-portal-source-snapshot');
+assert.equal(timePortal.status, PoCParityStatus.partial, 'Time Portal remains pre-Q partial after source-qualified implementation');
+assert(timePortal.automatedChecks.includes('src/acceptance/postV437M0ETimePortalProductParityClosure.test.mjs'), 'Time Portal must name the v437 closure acceptance');
+assert(timePortal.legacyBehavior.includes('immutable commit'), 'Time Portal ledger must preserve exact historical source identity instead of timestamp filtering');
+
 const routeShellMaterial = pocParityLedger.scenarios.find((item) => item.id === 'route-shell-material-boundaries');
 assert.equal(routeShellMaterial.status, PoCParityStatus.partial, 'route shell material boundary remains partial until browser share/reload checks');
 assert(routeShellMaterial.automatedChecks.includes('src/workspaces/workspace.route.test.mjs'), 'route shell material scenario must name route test');
@@ -100,6 +105,7 @@ assert(semanticActionTruth.automatedChecks.includes('src/actions/record.actions.
 const continueReference = pocParityLedger.scenarios.find((item) => item.id === 'continue-reference-conformance');
 assert(continueReference.legacyBehavior.includes('old Reference'), 'ledger must not silently redefine old Reference into preserve evidence');
 assert(continueReference.manualChecks.some((item) => item.includes('old Reference relation')), 'old Reference relation needs explicit manual parity evidence');
+assert(continueReference.automatedChecks.includes('src/acceptance/postV435M0DExactAuthorityDurabilityCorrection.test.mjs'), 'Reference parity evidence must include exact authority durability correction');
 
 const summary = summarizePoCParity();
 assert.equal(summary.checkpoint, pocParityLedger.checkpoint, 'summary checkpoint matches ledger');

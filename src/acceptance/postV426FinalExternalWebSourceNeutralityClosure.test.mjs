@@ -22,7 +22,12 @@ const cacheCommit = 'd69b8ff55a56b8cb9282b8684db6a938a4435b94';
 const cachePaths = {
   'tiinex.root.v1': `src/transitions/canonical-schema-cache/${cacheCommit}/tiinex.root.v1.schema.md`,
   'tiinex.transition.definition.v1': `src/transitions/canonical-schema-cache/${cacheCommit}/tiinex.transition.definition.v1.schema.md`,
-  'tiinex.task.v1': 'src/schemas/core/task/tiinex.task.v1.schema.md'
+  'tiinex.task.v1': 'src/schemas/core/task/tiinex.task.v1.schema.md',
+  'tiinex.topic.v1': 'src/transitions/canonical-schema-cache/52ecdea0a75893882ce282214d155f70e1309c2a/tiinex.topic.v1.schema.md',
+  'tiinex.interpretation.v1': 'src/schemas/core/interpretation/tiinex.interpretation.v1.schema.md',
+  'tiinex.relation.v1': 'src/transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.relation.v1.schema.md',
+  'tiinex.schema.contract.v1': 'src/transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.schema.contract.v1.schema.md',
+  'tiinex.schema.generation.v1': 'src/transitions/canonical-schema-cache/053d46ce082d4ec261b82abc44ecca403d61e240/tiinex.schema.generation.v1.schema.md'
 };
 const schemaCache = CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST.map((item) => ({ ...item, markdown: fs.readFileSync(cachePaths[item.schemaId], 'utf8'), sourceQualification: 'source-qualified-cache' }));
 const definitionPath = 'src/schemas/core/task/.transitions/topic-to-task-transition-definition.trace.md';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { activeWorkspaceViewFor } from './workspaceMulticolumn.js';
-import { stateAfterWorkspaceClosePresentation, stateWithWorkspaceViewPatchAndFocus } from './workspaceScopedInteraction.js';
+import { stateAfterWorkspaceClosePresentation, stateWithRecordLineageFocused, stateWithWorkspaceViewPatchAndFocus } from './workspaceScopedInteraction.js';
 
 const state = {
   activeWorkspaceId: 'a',
@@ -17,6 +17,20 @@ assert.equal(actedOnB.activeWorkspaceId, 'b', 'direct action on visible sibling 
 assert.equal(activeWorkspaceViewFor(actedOnB, 'b').workspaceVerse, 'tree', 'B action executes on B');
 assert.equal(activeWorkspaceViewFor(actedOnB, 'b').query, 'schema', 'B receives the requested query');
 assert.equal(activeWorkspaceViewFor(actedOnB, 'a').query, 'alpha', 'A is not mutated by direct action on B');
+
+
+const treeOrigin = stateWithWorkspaceViewPatchAndFocus(state, 'a', { workspaceVerse: 'tree', query: 'alpha' }, 1400);
+const lineageFromTree = stateWithRecordLineageFocused(treeOrigin, 'a', 'a1', 1400);
+assert.equal(activeWorkspaceViewFor(lineageFromTree, 'a').workspaceVerse, 'lineage', 'record focus enters lineage');
+assert.equal(activeWorkspaceViewFor(lineageFromTree, 'a').lineageReturnVerse, 'tree', 'Tree origin is preserved as explicit lineage return context');
+assert.equal(activeWorkspaceViewFor(lineageFromTree, 'a').selectedRecordId, 'a1', 'record focus selects the requested record');
+
+const feedOrigin = stateWithWorkspaceViewPatchAndFocus(state, 'a', { workspaceVerse: 'feed', query: 'alpha' }, 1400);
+const lineageFromFeed = stateWithRecordLineageFocused(feedOrigin, 'a', 'a1', 1400);
+assert.equal(activeWorkspaceViewFor(lineageFromFeed, 'a').lineageReturnVerse, 'feed', 'Feed origin is preserved as explicit lineage return context');
+
+const lineageTraversal = stateWithRecordLineageFocused(lineageFromTree, 'a', 'a1', 1400);
+assert.equal(activeWorkspaceViewFor(lineageTraversal, 'a').lineageReturnVerse, 'tree', 'lineage-to-lineage focus preserves the original Discovery return context');
 
 const afterClose = stateAfterWorkspaceClosePresentation(Object.assign({}, actedOnB, {
   workspaces: actedOnB.workspaces.filter((workspace) => workspace.id !== 'b'),

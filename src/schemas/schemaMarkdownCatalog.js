@@ -1,5 +1,6 @@
 // Generated schema reading-contract metadata. Source Markdown files remain authoritative.
 export const schemaMarkdownCatalog = Object.freeze({
+  "tiinex.interpretation.v1": Object.freeze({ schemaId: "tiinex.interpretation.v1", path: "src/schemas/core/interpretation/tiinex.interpretation.v1.schema.md", sourceLabel: 'Viewer schema registry' }),
   "tiinex.evidence.v1": Object.freeze({ schemaId: "tiinex.evidence.v1", path: "src/schemas/core/evidence/tiinex.evidence.v1.schema.md", sourceLabel: 'Viewer schema registry' }),
   "tiinex.preservation.v1": Object.freeze({ schemaId: "tiinex.preservation.v1", path: "src/schemas/core/preservation/tiinex.preservation.v1.schema.md", sourceLabel: 'Viewer schema registry' }),
   "tiinex.task.v1": Object.freeze({ schemaId: "tiinex.task.v1", path: "src/schemas/core/task/tiinex.task.v1.schema.md", sourceLabel: 'Viewer schema registry' }),

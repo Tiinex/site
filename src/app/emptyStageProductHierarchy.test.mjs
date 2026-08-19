@@ -5,6 +5,7 @@ const appShell = readFileSync(new URL('./appShell.views.jsx', import.meta.url), 
 const app = readFileSync(new URL('./TiinexApp.jsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../styles/app.css', import.meta.url), 'utf8');
 const bootstrapOperation = readFileSync(new URL('./initialWorkspaceBootstrapOperation.js', import.meta.url), 'utf8');
+const startupView = readFileSync(new URL('./startupPresentation.views.jsx', import.meta.url), 'utf8');
 
 const start = appShell.indexOf('export function EmptyStage');
 assert(start >= 0, 'EmptyStage view must remain explicit and inspectable');
@@ -27,6 +28,8 @@ assert(emptyStage.includes('tx-m1-product-empty-stage'), 'empty stage should car
 assert(emptyStage.includes('<p>{subtitle}</p>'), 'MOTD/subtitle surface should remain calm and content-light');
 assert(!appShell.includes('tx-dock-start-docs-button'), 'bootstrap ownership must stay below the UI; no default-start toolbar workaround');
 assert(!appShell.includes('Start from Tiinex docs'), 'automatic embedded/default bootstrap must not leak as a product bootstrap button');
+assert(startupView.includes('tx-startup-stage'), 'startup resolving must use a dedicated calm presentation surface rather than EmptyStage');
+assert(!startupView.includes('Start Tiinex') && !startupView.includes('Start from'), 'startup presentation must not introduce a technical/manual bootstrap action');
 assert(!app.includes('onStartDefaultWorkspace={startDefaultWorkspaceConfig}'), 'GlobalDock must not own startup/bootstrap semantics');
 assert(app.includes('runWorkspaceStartupTransition'), 'TiinexApp must reuse one startup/home transition beneath the UI');
 assert(bootstrapOperation.includes('resolveTiinexAppStartupGithubInput'), 'startup operation must resolve explicit query/runtime/host config before fallback');
@@ -34,7 +37,7 @@ assert(bootstrapOperation.includes('augmentStartupStateWithLocalRecovery'), 'sta
 assert(bootstrapOperation.includes('prepareDefaultWorkspaceStartCommand'), 'embedded/default config remains the final startup fallback');
 assert(!css.includes('tx-empty-bootstrap-path'), 'obsolete empty-stage bootstrap panel styles must be removed');
 assert(app.includes("import { initialStartupRenderPhase, shouldRenderProductStage } from './startupRenderPhase.js';"), 'startup render phase must be an explicit product-state contract');
-assert(app.includes("if (!shouldRenderProductStage(startupPhase)) return null;"), 'genuine product/EmptyStage render must remain gated while startup ownership is unresolved');
+assert(app.includes("if (!shouldRenderProductStage(startupPhase)) return <StartupStage"), 'startup resolving must render the dedicated startup surface while genuine product/EmptyStage remains gated');
 
 assert(appShell.includes('>Share</Button>'), 'PoC parity chrome must expose Share');
 assert(!appShell.includes('Share session'), 'PoC parity chrome must not rename Share to Share session');

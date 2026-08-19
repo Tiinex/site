@@ -179,7 +179,7 @@ export function summarizeConformanceInvariants(result = {}) {
     surfaceRegistryPresent: result.surfaceRegistry?.schema === 'tiinex.surface.registry.v1',
     surfaceRegistryNoParityClaims: (result.surfaceRegistry?.counts?.parity || 0) === 0,
     surfaceRegistryHasPartialCoreViews: (result.surfaceRegistry?.counts?.partial || 0) >= 4,
-    surfaceRegistryScaffoldsAreDisclosed: (result.surfaceFindings || []).some((finding) => finding.code === 'surface.status.scaffold'),
+    surfaceRegistryScaffoldsAreDisclosed: ((result.surfaceRegistry?.counts?.scaffold || 0) + (result.surfaceRegistry?.counts?.unavailable || 0)) === 0 || (result.surfaceFindings || []).some((finding) => finding.code === 'surface.status.scaffold'),
     artifactCreationContractsPresent: Array.isArray(result.creatableArtifactSchemas) && result.creatableArtifactSchemas.length >= 2,
     artifactCreationContractReady: result.topicCreationContract?.status === 'ready' && result.topicCreationContractValidation?.ok === true,
     artifactCreationUnknownBlocked: result.unknownCreationContract?.status === 'blocked' && result.unknownCreationContractValidation?.ok === false,
