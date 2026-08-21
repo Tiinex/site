@@ -1,0 +1,19 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.root.v1",
+  "sourceChecksum": "f3fbdb3334b8cde361192f62c1e91cad46f5fb4c66cedd73a6be9018aff8a4f7",
+  "sourceBytes": 17368,
+  "bindingChecksum": "f3fbdb3334b8cde361192f62c1e91cad46f5fb4c66cedd73a6be9018aff8a4f7",
+  "validationContract": null,
+  "creation": {
+    "declared": false,
+    "groupNames": [],
+    "requiredInputs": [],
+    "optionalInputs": [],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [],
+    "requiredShape": []
+  }
+}

@@ -1,5 +1,8 @@
 import { defineSchemaModule } from '../../contracts.js';
+import { genericArtifactCreationImplementation } from '../../creation.renderer.js';
+import { defineArtifactCreationCapability } from '../../creation.capability.js';
 import binding from './tiinex.evidence.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.evidence.v1.schema.source.js';
 import { evidenceCapabilities } from './tiinex.evidence.v1.capabilities.js';
 import { evidenceValidate } from './tiinex.evidence.v1.validate.js';
 import { evidencePresent } from './tiinex.evidence.v1.presenter.js';
@@ -16,10 +19,12 @@ export const evidenceSchemaModule = defineSchemaModule({
   parentSchemaId: "tiinex.preservation.v1",
   summary: 'Preserved material used to support, illuminate, test, or challenge a claim or question.',
   binding,
+  schemaSource,
+  artifactCreation: defineArtifactCreationCapability(binding, Object.freeze({ ...genericArtifactCreationImplementation, transitionTypes: Object.freeze(['create-artifact','reference-record']) })),
   capabilities: evidenceCapabilities,
   validate: evidenceValidate,
   present: evidencePresent,
-  read: Object.freeze({ label: 'Evidence', sections: Object.freeze(['Supported Claim', 'Supports', 'Evidence Material', 'Unavailable Material', 'Provenance', 'Interpretation Limits', 'Interpretation Notes and Limits']) }),
+  read: Object.freeze({ label: 'Evidence', sections: Object.freeze(['Supported Claim', 'Supports', 'Evidence Material', 'Unavailable Material', 'Provenance', 'Interpretation Limits', 'Interpretation Notes and Limits']), redundantIdentitySections: Object.freeze(['Evidence']) }),
   viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.source']) }),
   transitions: evidenceTransitions,
   i18n: Object.freeze({ en: evidenceI18nEn, sv: evidenceI18nSv }),

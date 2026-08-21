@@ -1,4 +1,5 @@
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 import '../sources/source.identity.js';
 import { compilePortableSchemaContractChain } from '../tooling/portable/schema/contract.compile.js';
 import { projectPortableContractInstance } from '../tooling/portable/schema/contract.project.js';
@@ -337,7 +338,7 @@ function unresolvedInstanceProjection() {
 }
 
 function finding(code, message, state) { return Object.freeze({ source: 'transition-definition-registry', code, severity: state === 'contradictory' ? 'error' : 'warning', state, message }); }
-function recordSchemaId(record = {}) { return String(record.schemaId || record.currentSchemaId || record.kind || '').trim(); }
+function recordSchemaId(record = {}) { return schemaIdForRecord(record); }
 function declaredRecordSchemaId(record = {}) {
   const markdown = String(record?.markdown || '');
   if (!markdown) return '';

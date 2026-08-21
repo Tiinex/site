@@ -17,7 +17,8 @@ assert.match(app, /onVerse=\{\(verse\) => setVerse\(verse, workspace\.id\)\}/, '
 assert.match(app, /onOpenAddDialog=\{\(sourceId = ''\) => openAddToWorkspace\(sourceId, workspace\.id\)\}/, 'visible sibling Add targets the clicked workspace explicitly');
 assert.doesNotMatch(app, /onClose=\{itemActive\s*\?/, 'workspace actions are not permission-gated by active focus');
 assert.doesNotMatch(app, /onVerse=\{itemActive\s*\?/, 'workspace view controls are not permission-gated by active focus');
-assert.match(app, /onMouseDownCapture=\{\(\) => \{ if \(!itemActive\) activateWorkspace\(workspace\.id\); \}\}/, 'direct interaction focuses the visible sibling without requiring a second click');
+assert.match(app, /onMouseDownCapture=\{\(\) => \{ if \(!selection\.session && !itemActive\) activateWorkspace\(workspace\.id\); \}\}/, 'direct interaction focuses a visible sibling outside selection without requiring a second click');
+assert.match(app, /!selection\.session && !itemActive/, 'workspace selection suppresses incidental sibling focus so origin interaction context can be restored exactly');
 
 assert.match(surface, /data-workspace-layout="compact"/, 'compact workspace is an explicit presentation surface');
 assert.match(surface, /onClick=\{\(\) => onLayoutMode\?\.\('expanded'\)\}/, 'compact workspace can expand in-place');

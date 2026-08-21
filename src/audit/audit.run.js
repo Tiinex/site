@@ -12,7 +12,7 @@ export function runAudit(scope = {}) {
   const parsed = parseArtifactMarkdown(markdown);
   if (isPlainSupportingMarkdown(parsed, record)) return supportingMarkdownAuditResult(record, parsed, availability);
 
-  const schemaId = parsed.envelope.current.schema.id || record?.schemaId || record?.kind || '';
+  const schemaId = parsed.envelope.current.schema.id || record?.schemaId || record?.currentSchemaId || '';
   const validationResult = validateArtifact({ parsed, schemaId, record });
   const findings = validationResult.findings;
   return {
@@ -74,7 +74,7 @@ function materialAvailabilityFor(scope = {}, record = {}, markdown = '') {
 }
 
 function unavailableAuditResult(record = {}, availability = {}) {
-  const schemaId = record?.schemaId || record?.kind || '';
+  const schemaId = record?.schemaId || record?.currentSchemaId || '';
   const resolution = resolveSchemaModule({ schemaId });
   const finding = {
     severity: 'info',

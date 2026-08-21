@@ -1,5 +1,6 @@
 import { defineSchemaModule } from '../../contracts.js';
 import binding from './tiinex.schema.module.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.schema.module.v1.schema.source.js';
 import { moduleCapabilities } from './tiinex.schema.module.v1.capabilities.js';
 import { moduleValidate } from './tiinex.schema.module.v1.validate.js';
 import { modulePresent } from './tiinex.schema.module.v1.presenter.js';
@@ -16,6 +17,7 @@ export const moduleSchemaModule = defineSchemaModule({
   parentSchemaId: "tiinex.root.v1",
   summary: 'Capability bundle around schema interpretation, viewing, validation, forms, and fallback behavior.',
   binding,
+  schemaSource,
   capabilities: moduleCapabilities,
   validate: moduleValidate,
   present: modulePresent,

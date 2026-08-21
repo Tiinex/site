@@ -8604,3 +8604,51 @@ body.tx-return-settle .tx-react-runtime {
 .tx-github-publication .tx-field select { width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid rgba(181,110,255,.3); border-radius: 14px; padding: 0 .8rem; background: rgba(255,255,255,.055); color: var(--tx-text,#f2ecff); font: inherit; }
 .tx-github-publication-actions { flex-wrap: wrap; }
 @media (max-width: 720px) { .tx-github-publication .tx-dialog-actions { align-items: stretch; } .tx-github-publication .tx-dialog-actions > * { flex: 1 1 100%; } }
+
+/* v450: the active React shell owns the footer as a real grid row.
+   Historical fixed-footer rules remain for legacy/inactive shells, but must not overlay the
+   workspace stage or require synthetic bottom padding in the current product shell. */
+.tx-react-runtime.tx-shell-footer-row-owned {
+  height: 100dvh;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.tx-react-runtime.tx-shell-footer-row-owned > .tx-top-dock { grid-row: 1; }
+.tx-react-runtime.tx-shell-footer-row-owned > .tx-workspace-single-stage,
+.tx-react-runtime.tx-shell-footer-row-owned > .tx-workspace-multicolumn-stage,
+.tx-react-runtime.tx-shell-footer-row-owned > .tx-empty-stage { grid-row: 2; min-height: 0; }
+.tx-react-runtime.tx-shell-footer-row-owned > .tx-footer {
+  grid-row: 3;
+  position: static;
+  inset: auto;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  min-height: 34px;
+  height: auto;
+  margin: 0;
+  box-sizing: border-box;
+}
+@media (max-width: 760px) {
+  .tx-react-runtime.tx-shell-footer-row-owned { padding-bottom: 0; }
+}
+
+/* v450: workspace-surface selection yields modal ownership while keeping spatial workspace context visible. */
+.tx-workspace-selection-surface { min-height:0; overflow:auto; padding:.72rem; display:grid; align-content:start; gap:.72rem; }
+.tx-workspace-selection-banner { position:sticky; top:0; z-index:3; display:flex; align-items:flex-start; justify-content:space-between; gap:.75rem; padding:.7rem .75rem; border:1px solid rgba(189,115,255,.38); border-radius:14px; background:rgba(18,10,30,.96); box-shadow:0 10px 28px rgba(0,0,0,.22); }
+.tx-workspace-selection-banner p { margin:.22rem 0 0; color:var(--tx-muted); font-size:.8rem; line-height:1.4; }
+.tx-workspace-selection-candidates { display:grid; gap:.58rem; }
+.tx-workspace-selection-candidate { display:grid; gap:.38rem; width:100%; padding:.8rem; text-align:left; color:var(--tx-text); border:1px solid rgba(255,255,255,.12); border-radius:15px; background:rgba(255,255,255,.035); cursor:pointer; }
+.tx-workspace-selection-candidate:hover,.tx-workspace-selection-candidate:focus-visible { border-color:rgba(189,115,255,.7); background:rgba(189,115,255,.1); box-shadow:var(--tx-focus-ring); }
+.tx-workspace-selection-candidate-title { font-weight:800; }
+.tx-workspace-selection-candidate-meta { display:flex; gap:.35rem; flex-wrap:wrap; }
+.tx-workspace-selection-candidate code,.tx-workspace-selection-candidate small { color:var(--tx-muted); overflow-wrap:anywhere; }
+.tx-workspace-selection-empty { color:var(--tx-muted); padding:.7rem; }
+.tx-authoring-placement-controls { display:grid; gap:.65rem; padding:.7rem; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:rgba(255,255,255,.025); }
+.tx-authoring-placement-controls > div { display:flex; flex-wrap:wrap; align-items:center; gap:.45rem .6rem; }
+.tx-authoring-placement-controls strong { flex:1 1 100%; }
+.tx-authoring-placement-controls p { margin:0; flex:1 1 14rem; }
+.tx-dialog-reference-review { width:min(660px,calc(100vw - 32px)); }

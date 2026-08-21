@@ -1,6 +1,10 @@
 const ORIGIN_REFERENCE_SCHEMA = 'tiinex.origin.reference.v1';
 const ORIGIN_SOURCE_KIND = 'github.origin-reference';
 
+export function parseOriginReferenceValue(value = '') {
+  return normalizeOriginReference(value, { source: 'explicit-parse' });
+}
+
 export function collectOriginReferencesFromMarkdown(markdown = '') {
   const refs = [];
   const blocks = originBlocks(markdown);

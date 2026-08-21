@@ -1,0 +1,96 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.preservation.v1",
+  "sourceChecksum": "65593b96d3d68d378c4f7be9a765f0c0a97dcbd109c19bec817d4f63c6c8fd1b",
+  "sourceBytes": 10195,
+  "bindingChecksum": "65593b96d3d68d378c4f7be9a765f0c0a97dcbd109c19bec817d4f63c6c8fd1b",
+  "validationContract": null,
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Fields",
+      "Creation Rules"
+    ],
+    "requiredInputs": [
+      "Material Description",
+      "Material Kind",
+      "Preservation Method",
+      "Preservation Time Or State",
+      "Known Source",
+      "Provenance Limits",
+      "Fidelity Notes",
+      "Known Losses",
+      "Storage Or Custody State",
+      "Reuse Boundary",
+      "Does Not Prove",
+      "Not Yet Used As"
+    ],
+    "optionalInputs": [],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Material Description",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Material Kind",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Preservation Method",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Preservation Time Or State",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Known Source",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Provenance Limits",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Fidelity Notes",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Known Losses",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Storage Or Custody State",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Reuse Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Does Not Prove",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Not Yet Used As",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

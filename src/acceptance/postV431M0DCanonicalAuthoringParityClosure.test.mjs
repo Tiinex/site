@@ -56,6 +56,8 @@ const preparedEvidence = prepareCanonicalTransitionProductActions({ currentRecor
 const useAs = preparedEvidence.actions.find((action) => action.canonicalIdentifier === 'tiinex.site.evidence-to-interpretation.v1');
 assert.equal(useAs?.productCapable, true, 'exact Evidence participant exposes the bounded canonical Use-as slice');
 assert.equal(useAs?.label, 'Use as');
+assert.equal(useAs?.icon, 'continue', 'Use-as keeps a truthful generic qualified continuation icon until declarative presentation authority exists');
+assert.equal(fs.readFileSync('src/transitions/transition.productPreparation.js','utf8').includes("requiredInputs || []).includes('Interpretation Action')"), false, 'authoring field names are not semantic icon authority');
 assert.equal(useAs?.authoring?.schemaId, 'tiinex.interpretation.v1');
 assert.deepEqual(useAs?.authoring?.requiredInputs, [...INTERPRETATION_CREATION_FIELDS]);
 assert.equal(useAs?.authoring?.fixedInputs?.['Source Target'], evidence.path, 'selected source identity is fixed by the qualified parent/materializer owner');

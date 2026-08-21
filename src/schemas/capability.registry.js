@@ -1,5 +1,6 @@
 import { schemaRegistry } from './registry.js';
 import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';
+import { qualifyArtifactCreationCapability } from './creation.capability.js';
 
 export const SCHEMA_CAPABILITY_REGISTRY_SCHEMA_ID = 'tiinex.schema.capability.registry.v1';
 export const SCHEMA_CAPABILITY_DESCRIPTOR_SCHEMA_ID = 'tiinex.schema.capability.descriptor.v1';
@@ -139,9 +140,10 @@ function makeActionCapabilityMap(module = {}, capabilities = {}) {
   actions.read = capability('read', Boolean(module.id && module.binding), 'registered module with binding');
   actions.validate = capability('validate', typeof module.validate === 'function', 'validation implementation');
   actions.present = capability('present', typeof module.present === 'function', 'presentation implementation');
-  actions.create = capability('create', capabilities.canCreateArtifact === true || declaredActions.has('create-artifact') || declaredActions.has('create-workspace'), 'creation capability');
-  actions.continue = capability('continue', transitionSupports(module.transitions, 'continue'), 'transition implementation');
-  actions.reference = capability('reference', transitionSupports(module.transitions, 'reference'), 'transition implementation');
+  const creation = qualifyArtifactCreationCapability(module, 'create-artifact');
+  actions.create = capability('create', creation.ready || declaredActions.has('create-workspace'), creation.ready ? 'qualified schema creation authority + installed implementation' : 'ordinary creation requires semantic authority and implementation capability');
+  actions.continue = capability('continue', false, 'canonical Transition Definition owns Continue applicability; companion transition metadata is non-authoritative');
+  actions.reference = capability('reference', false, 'canonical Transition Definition owns Reference applicability; companion transition metadata is non-authoritative');
   actions.fallback = capability('fallback', capabilities.canRenderFallback === true || Boolean(capabilities.fallback) || module.id === 'tiinex.root.v1', 'fallback policy');
   actions.findings = capability('findings', Boolean(module.findings), 'findings companion');
   actions.i18n = capability('i18n', Boolean(module.i18n), 'i18n companion');
@@ -151,16 +153,6 @@ function makeActionCapabilityMap(module = {}, capabilities = {}) {
     if (!actions[action]) actions[action] = capability(action, true, 'declared schema action');
   }
   return freezeCapabilityMap(actions);
-}
-
-function transitionSupports(transitions, action) {
-  if (!transitions) return false;
-  if (typeof transitions === 'function') return true;
-  const wanted = String(action || '').toLowerCase();
-  const values = Array.isArray(transitions) ? transitions : Object.values(transitions || {});
-  if (values.some((entry) => String(entry?.intent || '').toLowerCase() === wanted || String(entry?.id || '').toLowerCase().includes(`.${wanted}.`))) return true;
-  const keys = Object.keys(transitions || {}).map((key) => key.toLowerCase());
-  return keys.some((key) => key.includes(wanted));
 }
 
 function capability(name, supported, reason) {

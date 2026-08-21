@@ -90,11 +90,11 @@ export function RecordMarkdownDialog({ record, onDismiss }) {
   );
 }
 
-export function RecordActionDialog({ record, action, schemaRegistry, workspaceRecords = [], referenceTargets = [], onDismiss, onShare, onCreateTransition, onCreateCanonicalTransition, onCreateCanonicalReference, onUpdateLocalDraft }) {
+export function RecordActionDialog({ record, action, schemaRegistry, workspaceId = '', workspaceRecords = [], referenceTargets = [], placementTargets = [], selectionSession = null, selectionResult = null, onBeginSelection, onSelectionConsumed, onDismiss, onShare, onCreateTransition, onCreateCanonicalTransition, onCreateCanonicalReference, onUpdateLocalDraft }) {
   const actionId = action?.id || action;
   if (isCanonicalTransitionProductAction(action)) {
-    if (action?.referenceCapability?.state === 'qualified') return <CanonicalReferenceDialog record={record} action={action} targets={referenceTargets} onDismiss={onDismiss} onCreate={onCreateCanonicalReference} />;
-    return <CanonicalAuthoringDialog record={record} action={action} onDismiss={onDismiss} onCreate={onCreateCanonicalTransition} />;
+    if (action?.referenceCapability?.state === 'qualified') return <CanonicalReferenceDialog record={record} action={action} workspaceId={workspaceId} targets={referenceTargets} selectionSession={selectionSession} selectionResult={selectionResult} onBeginSelection={onBeginSelection} onSelectionConsumed={onSelectionConsumed} onDismiss={onDismiss} onCreate={onCreateCanonicalReference} />;
+    return <CanonicalAuthoringDialog record={record} action={action} workspaceId={workspaceId} placementTargets={placementTargets} selectionSession={selectionSession} selectionResult={selectionResult} onBeginSelection={onBeginSelection} onSelectionConsumed={onSelectionConsumed} onDismiss={onDismiss} onCreate={onCreateCanonicalTransition} />;
   }
   if (isTransitionAction(action)) {
     return <ContinuationDialog record={record} schemaRegistry={schemaRegistry} transitionDefinition={action.transitionDefinition} workspaceRecords={workspaceRecords} onDismiss={onDismiss} onCreateTransition={onCreateTransition} />;

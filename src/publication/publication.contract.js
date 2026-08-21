@@ -35,7 +35,7 @@ export function buildPublicationPlan(workspace = {}, input = {}) {
     id: String(record?.id || ''),
     title: String(record?.title || ''),
     path: String(record?.path || ''),
-    schemaId: String(record?.schemaId || record?.kind || ''),
+    schemaId: String(record?.schemaId || record?.currentSchemaId || ''),
     sourceMode: String(record?.sourceMode || ''),
     ownership: record && !isSourceBacked(record.source || {}) ? 'owned-local' : 'not-owned-local',
     sourceUnchangedGuarantee: true

@@ -81,5 +81,5 @@ function schemaEntryWithMarkdown(schemaId) {
 }
 
 function topicMarkdown(title, schemaId) {
-  return `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n- Current\n  - Current Schema: [${schemaId}](${schemaId}.schema.md)\n  - Created At: 2026-08-09\n  - Summary: ${title}\n\n---\n\n# ${title}\n\nLocal topic body.\n`;
+  return `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n- Current\n  - Current Schema: ${schemaId}\n  - Created At: 2026-08-09\n  - Summary: ${title}\n\n---\n\n# ${title}\n\nLocal topic body.\n`;
 }

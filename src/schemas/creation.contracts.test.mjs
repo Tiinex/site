@@ -11,7 +11,7 @@ import {
 
 const creatable = listCreatableArtifactSchemas(schemaRegistry);
 assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.topic.v1'), 'topic creation contract must be available');
-assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.evidence.v1'), 'evidence creation contract must be available');
+assert.equal(creatable.some((contract) => contract.target.schemaId === 'tiinex.evidence.v1'), false, 'evidence ordinary Create stays blocked until its executable satisfies exact Evidence validation');
 assert(creatable.some((contract) => contract.target.schemaId === 'tiinex.task.v1'), 'task creation contract must be available for the first Topic → Task slice');
 assert(creatable.every((contract) => contract.schema === ARTIFACT_CREATION_CONTRACT_SCHEMA_ID), 'all creation targets are contracts');
 assert(creatable.every((contract) => contract.status === 'ready'), 'registered core artifact contracts should be ready');
@@ -29,6 +29,7 @@ const parent = {
   summary: 'Parent summary',
   path: 'notes/parent.md',
   kind: 'tiinex.topic.v1',
+  schemaId: 'tiinex.topic.v1',
   createdAt: '2026-07-20T00:00:00.000Z',
   sourceMode: 'local-files',
   source: { adapterId: 'local', kind: 'local-session' }

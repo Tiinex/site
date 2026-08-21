@@ -1,13 +1,13 @@
 import { schemaRegistry } from './registry.js';
 
-export function resolveSchemaModule({ schemaId, checksum } = {}) {
-  if (checksum && schemaRegistry.byChecksum.has(checksum)) {
-    const module = schemaRegistry.byChecksum.get(checksum);
+export function resolveSchemaModule({ schemaId, checksum, registry = schemaRegistry } = {}) {
+  if (checksum && registry.byChecksum?.has(checksum)) {
+    const module = registry.byChecksum.get(checksum);
     return { module, status: 'checksum-match', fallbackUsed: false };
   }
-  if (schemaId && schemaRegistry.byId.has(schemaId)) {
-    const module = schemaRegistry.byId.get(schemaId);
+  if (schemaId && registry.byId?.has(schemaId)) {
+    const module = registry.byId.get(schemaId);
     return { module, status: 'schema-id-match', fallbackUsed: false };
   }
-  return { module: schemaRegistry.fallback, status: 'root-fallback', fallbackUsed: true, unresolvedSchemaId: schemaId || 'missing' };
+  return { module: registry.fallback || null, status: 'root-fallback', fallbackUsed: true, unresolvedSchemaId: schemaId || 'missing' };
 }

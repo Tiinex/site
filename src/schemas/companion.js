@@ -1,4 +1,5 @@
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
+import { schemaIdForRecord } from './schema.identity.js';
 import { presentRecordActions, RecordActionKind } from '../actions/record.actions.js';
 import { resolveSchemaModule, schemaRegistry } from './registry.js';
 
@@ -14,13 +15,13 @@ const DEFAULT_LINEAGE_ACTIONS = Object.freeze([
 ]);
 
 export function companionForRecord(record = {}) {
-  const schemaId = recordSchemaId(record);
+  const schemaId = schemaIdForRecord(record);
   return resolveSchemaModule({ schemaId }) || schemaRegistry.fallback;
 }
 
 export function schemaReadPresentation(record = {}, options = {}) {
   const parsed = parseRecordMarkdown(record);
-  const schema = recordSchemaId(record, parsed);
+  const schema = schemaIdForRecord(record, { markdown: record.markdown || parsed?.body?.text || '' }) || String(parsed?.envelope?.current?.schema?.id || '').trim();
   const exactCompanion = Boolean(schema && schemaRegistry.byId?.has(schema));
   const companion = companionForRecord({ ...record, schemaId: schema });
   const read = companion?.read || {};
@@ -76,7 +77,7 @@ function schemaOwnedReadSections({ parsed, record, schema, sections, read, optio
   if (!picked.length) {
     for (const [label, value] of sections.entries()) {
       if (isEnvelopeSection(label)) continue;
-      if (options.compact && isRedundantIdentitySection(label, value, record, schema)) continue;
+      if (options.compact && isRedundantIdentitySection(label, value, record, read)) continue;
       if (picked.length >= (options.compact ? 2 : 5)) break;
       picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
     }
@@ -104,7 +105,7 @@ function rootFallbackReadSections({ parsed, record, schema, sections, options })
   const picked = [];
   if (currentLines) picked.push({ label: 'Fallback status', value: trimReadValue(`Root fallback preserves ${schema || 'this schema'} because no exact schema-owned read companion is registered yet.\n${currentLines}`, options) });
   if (continuityLines) picked.push({ label: 'Continuity', value: trimReadValue(continuityLines, options) });
-  const bodySections = Array.from(sections.entries()).filter(([label, value]) => !isEnvelopeSection(label) && !isRedundantIdentitySection(label, value, record, schema));
+  const bodySections = Array.from(sections.entries()).filter(([label, value]) => !isEnvelopeSection(label) && !isRedundantIdentitySection(label, value, record, {}));
   for (const [label, value] of bodySections) {
     if (picked.length >= (options.compact ? 2 : 5)) break;
     picked.push({ label: displaySectionLabel(label), value: trimReadValue(value, options) });
@@ -140,8 +141,8 @@ export function schemaCanonicalBinding(record = {}) {
   const companion = companionForRecord(record);
   const binding = companion?.binding || {};
   return {
-    schemaId: companion?.id || recordSchemaId(record),
-    label: companion?.label || displaySchemaLabel(companion?.id || recordSchemaId(record)),
+    schemaId: companion?.id || schemaIdForRecord(record),
+    label: companion?.label || displaySchemaLabel(companion?.id || schemaIdForRecord(record)),
     sourcePath: binding.sourcePath || '',
     permalink: binding.permalink || '',
     snapshot: binding.snapshot || '',
@@ -154,9 +155,6 @@ function parseRecordMarkdown(record = {}) {
   catch (error) { return { title: record.title || '', envelope: {}, body: { text: record.markdown || '' } }; }
 }
 
-function recordSchemaId(record = {}, parsed = null) {
-  return String(record.schemaId || record.currentSchemaId || record.kind || parsed?.envelope?.current?.schema?.id || '').trim();
-}
 
 function extractMarkdownSections(markdown = '') {
   const text = String(markdown || '').replace(/\r\n?/g, '\n').trim();
@@ -234,14 +232,14 @@ function trimReadValue(value = '', options = {}) {
   return clipped.split('\n').slice(0, options.compact ? 7 : 18).join('\n');
 }
 
-function isRedundantIdentitySection(label = '', value = '', record = {}, schema = '') {
+function isRedundantIdentitySection(label = '', value = '', record = {}, read = {}) {
   const normalized = normalizeSectionName(label);
   if (normalized === 'root') return true;
   const title = normalizeSectionName(record.title || '');
   const summary = normalizeSectionName(record.summary || '');
   const body = normalizeSectionName(value).slice(0, 240);
   if (title && body.startsWith(title) && summary && body.includes(summary.slice(0, 80))) return true;
-  if (schema === 'tiinex.topic.v1' && normalized === 'topic') return true;
-  if (schema === 'tiinex.evidence.v1' && normalized === 'evidence') return true;
+  const redundant = new Set((Array.isArray(read?.redundantIdentitySections) ? read.redundantIdentitySections : []).map(normalizeSectionName));
+  if (redundant.has(normalized)) return true;
   return false;
 }

@@ -1,6 +1,7 @@
 import { isWorkspaceEntrypointArtifact, workspaceEntrypointCapability } from '../workspaces/workspace.entrypointCapability.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from '../schemas/capability.registry.js';
 import { canDiscardLocalDraft, canEditLocalDraft } from '../artifacts/artifact.localDraft.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export const RECORD_ACTIONS_CONTRACT_ID = 'tiinex.record.actions.v1';
 export const RECORD_ACTION_RESULT_SCHEMA_ID = 'tiinex.record.action.result.v1';
@@ -133,7 +134,7 @@ export function presentRecordActions(record = {}, options = {}) {
 }
 
 export function actionAvailabilityForRecord(record = {}, options = {}) {
-  const schemaId = recordSchemaId(record);
+  const schemaId = schemaIdForRecord(record);
   const resolution = resolveSchemaCapabilities({ schemaId });
   const fallbackUsed = Boolean(resolution.fallbackUsed || resolution.descriptor?.resolution?.fallbackUsed);
   const actions = resolution.descriptor?.actions || {};
@@ -163,9 +164,6 @@ export function isWorkspaceRecord(record = {}) {
   return isWorkspaceEntrypointArtifact(record);
 }
 
-function recordSchemaId(record = {}) {
-  return String(record.schemaId || record.currentSchemaId || record.kind || '').trim();
-}
 
 export function sourceHrefForRecord(record = {}) {
   const source = record.source || {};

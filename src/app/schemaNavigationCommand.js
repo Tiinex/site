@@ -1,9 +1,13 @@
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { parseArtifactMarkdown } from '../artifacts/artifact.parse.js';
 import { schemaCatalogEntryForId, schemaFilenameForId, schemaMarkdownCatalog } from '../schemas/schemaMarkdownCatalog.js';
-import { recoverDeclaredSchemaEntry } from './schemaSourceRecovery.js';
+import { declaredSchemaRecoveryTarget, qualifySchemaRecordRecoveryRepresentation, recoverDeclaredSchemaEntry, schemaRecoveryRepresentationIdentity } from './schemaSourceRecovery.js';
+import { qualifySchemaReadingContractMarkdown } from './schemaReadingContractQualification.js';
 import { normalizeExplicitFileRefs } from '../sources/source.explicitTargets.js';
-import { stateWithActiveWorkspace, stateWithWorkspaceViewPatch } from './workspaceMulticolumn.js';
+import { isSchemaDefinitionPath } from '../workspaces/workspace.entrypointCapability.js';
+import { qualifyRecordCurrentSchemaDeclaration } from './schemaCurrentDeclaration.js';
+import { focusSchemaRecordState, stateWithWorkspaceStructuralCopy } from './schemaNavigationState.js';
+import { coalesceRecoveredGithubSchemaSource, qualifySchemaMaterializationReuse } from './schemaNavigationMaterialization.js';
 
 const SCHEMA_SOURCE_ID = 'viewer-schema-registry';
 const SCHEMA_SOURCE_LABEL = 'Viewer schema registry';
@@ -14,57 +18,130 @@ export async function openSchemaForRecordCommand(input = {}) {
   const workspace = input.workspace || workspaceById(state, input.workspaceId || state?.activeWorkspaceId);
   if (!workspace) return { ok: false, error: 'workspace.missing', state, notice: 'No active workspace is available.' };
   const record = input.record || recordById(workspace, input.recordId || state?.view?.selectedRecordId || '');
-  const schemaId = normalizeSchemaId(input.schemaId || recordSchemaId(record));
-  if (!schemaId || schemaId === 'plain' || schemaId === 'markdown' || schemaId === 'unknown') return { ok: false, error: 'schema.missing', state, notice: 'This artifact does not declare an openable reading contract schema.' };
+  const explicitSchemaId = normalizeSchemaId(input.schemaId || '');
+  const declaration = qualifyRecordCurrentSchemaDeclaration(record, explicitSchemaId);
+  if (declaration.materialState === 'concrete' && declaration.state !== 'qualified') {
+    const error = declaration.state === 'ambiguous' ? 'schema.declaration.ambiguous' : (declaration.state === 'mismatch' ? 'schema.declaration.mismatch' : 'schema.declaration.unavailable');
+    return { ok: false, error, state, schemaId: explicitSchemaId || normalizeSchemaId(recordSchemaId(record)), declaration, notice: 'This artifact does not provide one exact Current Schema declaration that can authorize Open Schema.' };
+  }
+  if (declaration.materialState === 'read-failed') return { ok: false, error: 'schema.declaration.unavailable', state, declaration, notice: 'This artifact\'s concrete Current Schema declaration could not be read.' };
+  const schemaId = declaration.state === 'qualified' ? declaration.schemaId : (explicitSchemaId || normalizeSchemaId(recordSchemaId(record)));
+  if (!schemaId || schemaId === 'plain' || schemaId === 'markdown' || schemaId === 'unknown') return { ok: false, error: 'schema.missing', state, declaration, notice: 'This artifact does not declare an openable reading contract schema.' };
 
-  const existing = findLoadedSchemaRecord(workspace, schemaId);
-  if (existing) return focusSchemaRecord({ state, workspaceId: workspace.id, record: existing, schemaId, notice: `Opened reading contract: ${schemaShortLabel(schemaId)}.`, existing: true });
+  const linkedDeclaration = declaration.state === 'qualified' && Boolean(declaration.target);
+  const declaredTarget = linkedDeclaration ? declaredSchemaRecoveryTarget(record, schemaId) : null;
+  const representationIdentity = linkedDeclaration && declaredTarget?.ok ? schemaRecoveryRepresentationIdentity(declaredTarget) : '';
+  if (linkedDeclaration && (!declaredTarget?.ok || !representationIdentity)) {
+    return { ok: false, error: 'schema.unavailable', state, schemaId, declaration, recovery: declaredTarget, notice: `Reading contract schema ${schemaId} is unavailable because its declared representation target cannot be qualified.` };
+  }
+
+  const loadedQualification = qualifyLoadedSchemaRecords(workspace, schemaId, representationIdentity);
+  if (loadedQualification.state === 'ambiguous') return { ok: false, error: 'schema.ambiguous', state, schemaId, notice: `Multiple qualified reading contracts are loaded for ${schemaId}; exact selection authority is unavailable.` };
+  const existing = loadedQualification.record || null;
+  if (existing) return focusSchemaRecordState({ state, workspaceId: workspace.id, record: existing, schemaId, notice: `Opened reading contract: ${schemaShortLabel(schemaId)}.`, existing: true });
 
   let recovered = null;
-  if (!input.schemaEntry) recovered = await recoverDeclaredSchemaEntry({ record, schemaId, fetchImpl: input.fetchImpl });
+  if (linkedDeclaration) {
+    recovered = await recoverDeclaredSchemaEntry({ record, schemaId, fetchImpl: input.fetchImpl });
+    if (!recovered?.ok) return { ok: false, error: 'schema.unavailable', state, schemaId, declaration, recovery: recovered, notice: `Reading contract schema ${schemaId} is unavailable because its declared representation could not be recovered and qualified.` };
+  } else if (!input.schemaEntry) recovered = await recoverDeclaredSchemaEntry({ record, schemaId, fetchImpl: input.fetchImpl });
   const catalog = input.catalog || schemaMarkdownCatalog;
-  let entry = input.schemaEntry || (recovered?.ok ? recovered : null) || (catalog?.[schemaId] || schemaCatalogEntryForId(schemaId));
+  let entry = linkedDeclaration ? recovered : (input.schemaEntry || (recovered?.ok ? recovered : null) || (catalog?.[schemaId] || schemaCatalogEntryForId(schemaId)));
   if (entry && !entry.markdown && typeof input.loadSchemaMarkdown === 'function') {
     try { entry = await input.loadSchemaMarkdown(schemaId); }
     catch (error) { return { ok: false, error: 'schema.fetch.failed', state, schemaId, exception: error, notice: `Could not open reading contract schema ${schemaId}.` }; }
   }
-  if (!entry?.markdown) return { ok: false, error: 'schema.unavailable', state, schemaId, notice: `Reading contract schema ${schemaId} is not loaded or bundled for this workspace.` };
+  if (!entry?.markdown) return { ok: false, error: 'schema.unavailable', state, schemaId, recovery: recovered, notice: `Reading contract schema ${schemaId} is not loaded or bundled for this workspace.` };
+  const semanticQualificationEvidence = entry?.semanticQualification || null;
+  const semanticQualification = qualifySchemaReadingContractMarkdown(entry.markdown, schemaId);
+  if (semanticQualification.state !== 'qualified') return { ok: false, error: 'schema.unavailable', state, schemaId, recovery: recovered, semanticQualification, notice: `Reading contract schema ${schemaId} is unavailable because its material is not qualified as the exact supported Tiinex schema artifact.` };
+  entry = Object.assign({}, entry, { semanticQualification, semanticQualificationEvidence });
 
-  const next = cloneState(state);
-  const target = workspaceById(next, workspace.id);
-  if (!target) return { ok: false, error: 'workspace.missing-after-clone', state, notice: 'No active workspace is available.' };
+  const copied = stateWithWorkspaceStructuralCopy(state, workspace.id);
+  const next = copied.state;
+  const target = copied.workspace;
+  if (!target) return { ok: false, error: 'workspace.missing-after-copy', state, notice: 'No active workspace is available.' };
   const createdAt = input.clock ? input.clock() : new Date().toISOString();
   if (entry?.source?.sourceBacked && String(entry.source.adapterId || '').toLowerCase() === 'github') {
     const coalesced = coalesceRecoveredGithubSchemaSource(target.sources, entry.source, entry.path || recovered?.path || '');
+    if (!coalesced.ok) {
+      return { ok: false, error: coalesced.reason === 'github-source-boundary-ambiguous' ? 'schema.source.ambiguous' : 'schema.source.unavailable', state, schemaId, sourceQualification: coalesced, notice: `Reading contract schema ${schemaId} could not be attached to one truthful exact GitHub source boundary.` };
+    }
     target.sources = coalesced.sources;
     entry = Object.assign({}, entry, { source: coalesced.source });
   }
   const schemaRecord = makeSchemaRecord({ workspace: target, entry, schemaId, createdAt });
   const records = Array.isArray(target.records) ? target.records.slice() : [];
-  const existingIndex = records.findIndex((item) => sameRecordIdentity(item, schemaRecord));
+  const materialization = qualifySchemaMaterializationReuse(records, schemaRecord, schemaId);
+  if (materialization.state === 'ambiguous') {
+    return { ok: false, error: 'schema.materialization.ambiguous', state, schemaId, materialization, notice: `Multiple concrete records qualify as the exact reading contract for ${schemaId}; materialization authority is ambiguous.` };
+  }
+  if (materialization.state === 'conflict') {
+    return { ok: false, error: 'schema.materialization.identity-conflict', state, schemaId, materialization, notice: `An unrelated record occupies the reading-contract storage identity for ${schemaId}; it was not overwritten or upgraded.` };
+  }
+  const existingIndex = materialization.index;
   if (existingIndex >= 0) records[existingIndex] = mergeSchemaNavigationMetadata(records[existingIndex], schemaRecord);
   else records.unshift(schemaRecord);
   target.records = records;
-  target.sources = schemaRecord.source?.sourceBacked ? updateRecoveredSchemaSourceCounts(target.sources, schemaRecord.source, target.records) : upsertSchemaSource(target.sources, target.records);
+  const selected = existingIndex >= 0 ? records[existingIndex] : schemaRecord;
+  const selectedSource = selected?.source || schemaRecord.source;
+  target.sources = selectedSource?.sourceBacked ? updateRecoveredSchemaSourceCounts(target.sources, selectedSource, target.records) : upsertSchemaSource(target.sources, target.records);
   target.sourceOrder = Array.isArray(target.sources) ? target.sources.map((source) => source.id).filter(Boolean) : [];
   next.activeWorkspaceId = target.id;
-  const selected = existingIndex >= 0 ? records[existingIndex] : schemaRecord;
-  return focusSchemaRecord({ state: next, workspaceId: target.id, record: selected, schemaId, notice: `Opened reading contract: ${schemaShortLabel(schemaId)}.`, loaded: existingIndex < 0 });
+  return focusSchemaRecordState({ state: next, workspaceId: target.id, record: selected, schemaId, notice: `Opened reading contract: ${schemaShortLabel(schemaId)}.`, loaded: existingIndex < 0 });
 }
 
 export function findLoadedSchemaRecord(workspace = {}, schemaId = '') {
+  const qualified = qualifyLoadedSchemaRecords(workspace, schemaId);
+  return qualified.state === 'qualified' ? qualified.record : null;
+}
+
+function qualifyLoadedSchemaRecords(workspace = {}, schemaId = '', representationIdentity = '') {
   const clean = normalizeSchemaId(schemaId);
-  if (!clean) return null;
-  const filename = schemaFilenameForId(clean).toLowerCase();
+  if (!clean) return Object.freeze({ state: 'unavailable', record: null, matches: Object.freeze([]), candidateCount: 0, failures: Object.freeze([]) });
   const records = Array.isArray(workspace.records) ? workspace.records : [];
-  return records.find((record) => {
-    const navId = normalizeSchemaId(record?.schemaNavigation?.schemaId || '');
-    if (navId === clean && isSchemaMarkdownPath(record?.path)) return true;
-    const path = String(record?.path || record?.sourceTarget?.sourceArtifactPath || '').toLowerCase();
-    if (filename && path.endsWith(`/${filename}`)) return true;
-    if (filename && path === filename) return true;
-    return false;
-  }) || null;
+  const candidates = records.filter((record) => loadedSchemaCandidateEvidence(record, clean));
+  const matches = [];
+  const failures = [];
+  for (const record of candidates) {
+    try {
+      if (representationIdentity) {
+        const representation = qualifySchemaRecordRecoveryRepresentation(record);
+        if (representation.state !== 'qualified' || representation.identity !== representationIdentity) {
+          failures.push(Object.freeze({ id: String(record?.id || ''), state: representation.state, reason: representation.reason || 'representation-target-mismatch' }));
+          continue;
+        }
+      }
+      const qualification = qualifySchemaReadingContractMarkdown(record?.markdown || '', clean);
+      if (qualification.state === 'qualified') matches.push(record);
+      else failures.push(Object.freeze({ id: String(record?.id || ''), state: qualification.state }));
+    } catch (exception) {
+      failures.push(Object.freeze({ id: String(record?.id || ''), state: 'unavailable', reason: 'candidate-read-failed', exception }));
+    }
+  }
+  if (matches.length === 1) return Object.freeze({ state: 'qualified', record: matches[0], matches: Object.freeze(matches), candidateCount: candidates.length, failures: Object.freeze(failures) });
+  if (matches.length > 1) return Object.freeze({ state: 'ambiguous', record: null, matches: Object.freeze(matches), candidateCount: candidates.length, failures: Object.freeze(failures) });
+  return Object.freeze({ state: 'unavailable', record: null, matches: Object.freeze([]), candidateCount: candidates.length, failures: Object.freeze(failures) });
+}
+
+function loadedSchemaCandidateEvidence(record = {}, schemaId = '') {
+  const clean = normalizeSchemaId(schemaId);
+  if (!clean || !record || typeof record !== 'object') return '';
+  const navigation = record.schemaNavigation || {};
+  if (normalizeSchemaId(navigation.schemaId) === clean && (navigation.reason === 'reading-contract-badge' || navigation.schema === 'tiinex.workspace.schemaNavigation.v1')) return 'schema-navigation-reading-contract';
+
+  const filename = schemaFilenameForId(clean);
+  const paths = [record.path, record.sourcePath, record.sourceTarget?.sourceArtifactPath]
+    .map((value) => String(value || '').replace(/\\/g, '/').trim())
+    .filter(Boolean);
+  if (filename && paths.some((path) => isSchemaDefinitionPath(path) && path.split('/').filter(Boolean).at(-1) === filename)) return 'schema-definition-path';
+
+  const explicitRole = String(record.materialRole || record.materialKind || record.artifactRole || record.presentationRole || '').trim().toLowerCase();
+  const schemaDefinitionRole = explicitRole === 'schema-definition' || explicitRole === 'schema';
+  const governedId = normalizeSchemaId(record.schemaId || record.currentSchemaId || '');
+  if (schemaDefinitionRole && governedId === clean) return 'schema-definition-role';
+  if (String(record.lifecycleStatus || '').trim().toLowerCase() === 'reading contract' && governedId === clean) return 'reading-contract-lifecycle';
+  return '';
 }
 
 export function schemaPathCandidatesForRecord(record = {}, schemaId = '') {
@@ -92,10 +169,11 @@ export function schemaPathCandidatesForRecord(record = {}, schemaId = '') {
 }
 
 function makeSchemaRecord({ workspace, entry, schemaId, createdAt }) {
-  const path = normalizePath(entry.path || schemaFilenameForId(schemaId));
+  const representationIdentity = entry?.source?.sourceBacked ? schemaRecoveryRepresentationIdentity(entry) : '';
+  const path = schemaEntryRecordPath(entry, schemaId);
   const base = createRecordFromMarkdown(entry.markdown || '', { path, sourceMode: 'app-local-schema', lifecycleStatus: 'reading contract' });
   return Object.assign({}, base, {
-    id: `schema:${workspace.id}:${schemaId}`,
+    id: representationIdentity ? `schema:${workspace.id}:${schemaId}:representation:${encodeURIComponent(representationIdentity)}` : `schema:${workspace.id}:${schemaId}`,
     path,
     sourceMode: entry.source?.sourceBacked ? 'source-backed' : 'app-local-schema',
     lifecycleStatus: base.lifecycleStatus || 'reading contract',
@@ -103,9 +181,12 @@ function makeSchemaRecord({ workspace, entry, schemaId, createdAt }) {
     source: entry.source?.sourceBacked ? Object.assign({}, entry.source) : schemaSourceBase(recordsForSource(workspace.records).length + 1),
     sourceTarget: entry.source?.sourceBacked ? {
       sourceArtifactPath: path,
-      inputTarget: entry.declaredHref || entry.browseUrl || entry.fetchUrl || path,
-      browseUrl: entry.browseUrl || entry.source?.permalink || '',
-      rawUrl: entry.fetchUrl || ''
+      declaredLocator: entry.declaredHref || entry.declaredLocator || '',
+      effectiveRequestTarget: entry.effectiveRequestTarget || entry.fetchUrl || '',
+      finalRetrievedTarget: entry.finalRetrievedTarget || entry.effectiveRequestTarget || entry.fetchUrl || '',
+      inputTarget: entry.finalRetrievedTarget || entry.effectiveRequestTarget || entry.fetchUrl || entry.browseUrl || path,
+      browseUrl: entry.browseUrl || entry.source?.permalink || entry.finalRetrievedTarget || entry.fetchUrl || '',
+      rawUrl: entry.finalRetrievedTarget || entry.fetchUrl || ''
     } : base.sourceTarget,
     schemaNavigation: {
       schema: 'tiinex.workspace.schemaNavigation.v1',
@@ -113,24 +194,14 @@ function makeSchemaRecord({ workspace, entry, schemaId, createdAt }) {
       loadedAt: createdAt,
       reason: 'reading-contract-badge',
       source: entry.source?.sourceBacked ? 'declared-reading-contract-target' : 'bundled-viewer-schema-registry',
+      representationIdentity,
+      declaredLocator: entry.declaredHref || entry.declaredLocator || '',
+      effectiveRequestTarget: entry.effectiveRequestTarget || entry.fetchUrl || '',
+      finalRetrievedTarget: entry.finalRetrievedTarget || entry.effectiveRequestTarget || entry.fetchUrl || '',
+      semanticQualification: entry.semanticQualification || qualifySchemaReadingContractMarkdown(entry.markdown || '', schemaId),
       candidates: schemaPathCandidatesForRecord(base, schemaId)
     }
   });
-}
-
-function focusSchemaRecord({ state, workspaceId, record, schemaId, notice, existing = false, loaded = false }) {
-  const id = String(workspaceId || state?.activeWorkspaceId || '').trim();
-  let next = stateWithActiveWorkspace(cloneState(state), id);
-  const currentView = next.workspaceViews?.[id] || next.view || {};
-  next = stateWithWorkspaceViewPatch(next, id, {
-    workspaceVerse: 'lineage',
-    selectedRecordId: record.id,
-    lineageQuery: '',
-    lineageAuditReport: null,
-    lineageLoadReport: null,
-    expandedLineageRecordIds: unique([record.id].concat(currentView.expandedLineageRecordIds || []))
-  });
-  return { ok: true, state: next, workspace: workspaceById(next, id), record, schemaId, existing, loaded, commitMode: 'push', notice };
 }
 
 function mergeSchemaNavigationMetadata(existing = {}, schemaRecord = {}) {
@@ -139,49 +210,6 @@ function mergeSchemaNavigationMetadata(existing = {}, schemaRecord = {}) {
     source: existing.source || schemaRecord.source,
     sourceMode: existing.sourceMode || schemaRecord.sourceMode
   });
-}
-
-
-function coalesceRecoveredGithubSchemaSource(sources = [], recovered = {}, targetPath = '') {
-  const list = Array.isArray(sources) ? sources.slice() : [];
-  const repo = String(recovered.repo || recovered.repository || recovered.config?.repo || '').trim();
-  const ref = String(recovered.ref || recovered.config?.ref || '').trim();
-  const path = normalizePath(targetPath || recovered.path || '');
-  const rootPath = schemaSourceRootPath(path, recovered.rootPath || recovered.config?.rootPath || '');
-  const compatibleIndex = list.findIndex((source) => compatibleGithubSchemaBoundary(source, { repo, ref, rootPath }));
-  const existing = compatibleIndex >= 0 ? list[compatibleIndex] : null;
-  const explicitFileRefs = normalizeExplicitFileRefs([...(existing?.explicitFileRefs || existing?.config?.explicitFileRefs || []), path]);
-  const id = existing?.id || `github-exact:${repo.toLowerCase()}:${ref || 'default'}:${rootPath}`;
-  const source = Object.assign({}, existing || {}, recovered, {
-    id,
-    label: existing?.label || recovered.label || repo,
-    kind: existing?.kind || 'github-tree',
-    adapterId: 'github',
-    sourceKind: 'github.repo',
-    repo,
-    repository: repo,
-    ref,
-    rootPath,
-    sourceBacked: true,
-    originReferenceSource: false,
-    recoveryOnly: false,
-    loadable: true,
-    closeable: existing?.closeable !== false,
-    repoDiscovery: Boolean(existing?.repoDiscovery),
-    issueDiscovery: Boolean(existing?.issueDiscovery),
-    issueUrls: existing?.issueUrls || existing?.config?.issueUrls || '',
-    explicitFileRefs,
-    config: Object.assign({}, existing?.config || {}, recovered.config || {}, { repo, ref, rootPath, issueUrls: existing?.issueUrls || existing?.config?.issueUrls || '', explicitFileRefs: explicitFileRefs.slice() }),
-    requestedSurfaces: Object.assign({}, existing?.requestedSurfaces || {}, {
-      explicitFiles: Object.assign({}, existing?.requestedSurfaces?.explicitFiles || {}, { requested: true, requestedCount: explicitFileRefs.length })
-    }),
-    boundary: existing?.boundary || 'configured exact-target GitHub source; broad discovery remains explicit'
-  });
-  delete source.path;
-  delete source.permalink;
-  if (compatibleIndex >= 0) list[compatibleIndex] = source;
-  else list.push(source);
-  return { source, sources: list };
 }
 
 function updateRecoveredSchemaSourceCounts(sources = [], source = {}, records = []) {
@@ -201,24 +229,6 @@ function updateRecoveredSchemaSourceCounts(sources = [], source = {}, records = 
     surfaces: Object.assign({}, current.surfaces || {}, { explicitFiles })
   });
   return list;
-}
-
-function compatibleGithubSchemaBoundary(source = {}, target = {}) {
-  if (String(source.adapterId || '').toLowerCase() !== 'github') return false;
-  if (source.originReferenceSource === true || source.recoveryOnly === true) return false;
-  const repo = String(source.repo || source.repository || source.config?.repo || '').trim().toLowerCase();
-  const ref = String(source.ref || source.config?.ref || '').trim();
-  const rootPath = schemaSourceRootPath('', source.rootPath || source.config?.rootPath || '');
-  return Boolean(repo && repo === String(target.repo || '').trim().toLowerCase() && ref === String(target.ref || '').trim() && rootPath === target.rootPath);
-}
-
-function schemaSourceRootPath(path = '', configuredRoot = '') {
-  const root = normalizePath(configuredRoot);
-  if (root && root !== '.') return root;
-  const clean = normalizePath(path);
-  if (clean === '.topics' || clean.startsWith('.topics/')) return '.topics';
-  const parts = clean.split('/').filter(Boolean);
-  return parts.length > 1 ? parts[0] : '.';
 }
 
 function upsertSchemaSource(sources = [], records = []) {
@@ -248,15 +258,12 @@ function schemaSourceBase(count = 0) {
 }
 
 function recordsForSource(records = []) { return (Array.isArray(records) ? records : []).filter((record) => record?.source?.id === SCHEMA_SOURCE_ID); }
-function sameRecordIdentity(left = {}, right = {}) { return String(left.id || '') === String(right.id || '') || (normalizePath(left.path) && normalizePath(left.path) === normalizePath(right.path)); }
 function workspaceById(state = {}, workspaceId = '') { return (Array.isArray(state?.workspaces) ? state.workspaces : []).find((workspace) => String(workspace?.id || '') === String(workspaceId || '')) || null; }
 function recordById(workspace = {}, recordId = '') { return (Array.isArray(workspace.records) ? workspace.records : []).find((record) => String(record?.id || '') === String(recordId || '')) || null; }
-function recordSchemaId(record = {}) { return record?.schemaId || record?.currentSchemaId || record?.kind || record?.schema || ''; }
+function recordSchemaId(record = {}) { return record?.schemaId || record?.currentSchemaId || ''; }
 function normalizeSchemaId(value = '') { return String(value || '').replace(/^Current Schema:\s*/i, '').replace(/^\[([^\]]+)\]\([^)]*\)$/u, '$1').trim(); }
 function isSchemaMarkdownPath(path = '') { return /\.schema\.md$/i.test(String(path || '').trim()); }
 function schemaShortLabel(schemaId = '') { return normalizeSchemaId(schemaId).replace(/^tiinex\./, '').replace(/\.v\d+$/, '') || 'schema'; }
-function cloneState(value) { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value || {})); }
-function unique(values = []) { return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean))); }
 function markdownLinkHref(value = '') { return String(value || '').match(/^\[[^\]]+\]\(([^)]+)\)$/)?.[1] || ''; }
 function normalizePath(value = '') {
   const raw = String(value || '').replace(/\\/g, '/').trim();
@@ -268,6 +275,11 @@ function normalizePath(value = '') {
     else out.push(part);
   }
   return out.join('/');
+}
+function schemaEntryRecordPath(entry = {}, schemaId = '') {
+  const raw = String(entry.path || '').trim();
+  if (/^https?:\/\//u.test(raw)) return raw;
+  return normalizePath(raw || schemaFilenameForId(schemaId));
 }
 function dirname(path = '') { const parts = normalizePath(path).split('/').filter(Boolean); parts.pop(); return parts.join('/'); }
 function joinPath(...parts) { return normalizePath(parts.filter(Boolean).join('/')); }

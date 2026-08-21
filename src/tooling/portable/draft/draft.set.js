@@ -1,6 +1,5 @@
 import { createPortableLocalDraft } from './draft.create.js';
 import { prepareEpistemicMaterialization } from '../materialization/epistemic.plan.js';
-import path from 'node:path';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { resolveLineage } from '../../../lineage/lineage.resolve.js';
@@ -41,6 +40,7 @@ export function createPortableLocalArtifactSet(input = {}, options = {}) {
       sections: proposal.sections,
       bodyMarkdown: proposal.bodyMarkdown,
       createdAt: proposal.createdAt || input.createdAt || options.createdAt,
+      transitionType: proposal.creationContract?.transitionType || (proposal.parentKind ? 'continue-from-record' : 'create-artifact'),
       parentRecord
     }, options);
     findings.push(...(result.findings || []));
@@ -94,7 +94,7 @@ function createdParent(entry, childPath = '', proposalId = '') {
   const draft = entry?.result?.draft;
   if (!draft || entry.result.status !== 'created-clean') return {};
   return parentForChild({
-    id: draft.path,
+    id: draft.id || proposalId,
     path: draft.path,
     kind: draft.schemaId,
     schemaId: draft.schemaId,
@@ -106,18 +106,9 @@ function createdParent(entry, childPath = '', proposalId = '') {
 }
 
 function parentForChild(parent = {}, childPath = '') {
-  const parentPath = String(parent.path || '').replace(/\\/g, '/');
-  const child = String(childPath || '').replace(/\\/g, '/');
-  const continuationTrace = portableRelativeTrace(child, parentPath) || (parent.id ? `record:${parent.id}` : '');
-  return Object.freeze({ ...parent, continuationTrace });
-}
-
-function portableRelativeTrace(childPath = '', parentPath = '') {
-  if (!childPath || !parentPath) return '';
-  const from = path.posix.dirname(childPath);
-  const relative = path.posix.relative(from === '.' ? '' : from, parentPath);
-  if (!relative || relative.startsWith('../') && from === '') return relative;
-  return relative || path.posix.basename(parentPath);
+  void childPath;
+  const id = String(parent.id || '').trim();
+  return Object.freeze({ ...parent, continuationTrace: id ? `record:${id}` : '' });
 }
 
 

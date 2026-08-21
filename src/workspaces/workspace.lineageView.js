@@ -1,5 +1,6 @@
 import { resolveLineage } from '../lineage/lineage.resolve.js';
 import { traverseLoadedLineage } from '../lineage/lineage.traverse.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export const WORKSPACE_LINEAGE_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedLineageView.v1';
 
@@ -123,7 +124,7 @@ function presentNode(node = {}) {
     id: node.id,
     title: node.title || 'Untitled artifact',
     path: node.path || record.path || '',
-    schemaId: node.schemaId || record.schemaId || record.kind || '',
+    schemaId: node.schemaId || schemaIdForRecord(record),
     trace: node.trace || '',
     origin: node.origin || '',
     boundary: node.boundary || '',
@@ -193,7 +194,7 @@ function terminalTraversalNodes(traversal = {}) {
 function isRootLikeLineageNode(node = {}, nodesById = new Map()) {
   const resolvedNode = nodesById.get(node.id) || {};
   const record = resolvedNode.record || {};
-  const schema = String(node.schemaId || resolvedNode.schemaId || record.schemaId || record.kind || '').toLowerCase();
+  const schema = String(node.schemaId || resolvedNode.schemaId || schemaIdForRecord(record)).toLowerCase();
   const title = String(node.title || resolvedNode.title || record.title || '').trim().toLowerCase();
   const path = String(node.path || resolvedNode.path || record.path || '').toLowerCase();
   return schema === 'tiinex.root.v1' || schema === 'root' || title === 'root' || /tiinex\.root\.v1\.schema\.md$/.test(path);

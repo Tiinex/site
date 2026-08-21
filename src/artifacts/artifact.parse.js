@@ -104,8 +104,10 @@ function parseIntegrityEntries(integrityText = '') {
 
 function extractSchemaField(text, label) {
   const raw = extractListField(text, label, { preserveRaw: true });
-  return { raw, id: markdownLabel(raw) || raw };
+  const link = markdownLink(raw);
+  return { raw, id: link?.label || raw, target: link?.href || '', form: link ? 'markdown-link' : raw ? 'plain-schema-id' : 'empty' };
 }
+
 
 function extractListField(text, label, options = {}) {
   const lines = String(text || '').split('\n');

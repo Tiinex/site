@@ -1,8 +1,8 @@
-export const TIINEX_SITE_CHECKPOINT = 'v449';
-export const TIINEX_SITE_VERSION = '0.2.268-v449';
-export const TIINEX_SITE_TITLE = 'Tiinex Site v449';
-export const TIINEX_RUNTIME_ID = 'react-v449-m0f-exact-mutation-target-attestation-closure';
-export const TIINEX_PUBLIC_BUILD_SOURCE = 'v449-m0f-exact-mutation-target-attestation-closure';
+export const TIINEX_SITE_CHECKPOINT = 'v470';
+export const TIINEX_SITE_VERSION = '0.2.289-v470';
+export const TIINEX_SITE_TITLE = 'Tiinex Site v470';
+export const TIINEX_RUNTIME_ID = 'react-v470-schema-reading-contract-materialization-identity-source-coalescing-authority-correction';
+export const TIINEX_PUBLIC_BUILD_SOURCE = 'v470-schema-reading-contract-materialization-identity-source-coalescing-authority-correction';
 
 export function tiinexBuildIdentity() {
   return Object.freeze({

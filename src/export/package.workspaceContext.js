@@ -1,4 +1,5 @@
 import { projectPackageSourceReference } from './package.sourceReference.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export const EXPORT_WORKSPACE_CONTEXT_SCHEMA_ID = 'tiinex.export.package.workspace-context.v1';
 
@@ -57,7 +58,7 @@ function localOwnedWorkspaceMarkdown(workspace = {}, workspaceImport = {}) {
 
 function isWorkspaceArtifactRecord(record = {}) {
   return Boolean(record.workspaceArtifactRole?.openEligible || record.workspaceArtifactRole?.mergeEligible)
-    || String(record.schemaId || record.kind || '').trim() === 'tiinex.workspace.v1'
+    || schemaIdForRecord(record) === 'tiinex.workspace.v1'
     || /\.workspace\.md$/i.test(String(record.sourceTarget?.sourceArtifactPath || record.path || ''));
 }
 
@@ -67,7 +68,7 @@ function workspaceArtifactDescriptor(record = {}) {
     id: String(record.id || record.path || ''),
     title: String(record.title || record.path || 'Workspace artifact'),
     path: String(record.path || ''),
-    schemaId: String(record.schemaId || record.kind || 'tiinex.workspace.v1'),
+    schemaId: schemaIdForRecord(record),
     sourceMode: String(record.sourceMode || ''),
     sourceReference: sourceTarget,
     openEligible: record.workspaceArtifactRole?.openEligible !== false,

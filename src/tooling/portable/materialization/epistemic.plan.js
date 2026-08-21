@@ -3,6 +3,7 @@ import { resolveLineage } from '../../../lineage/lineage.resolve.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { planPortableArtifact } from '../schema/schema.guide.js';
+import { indexPortableLoadedParentRecords, projectPortableLoadedParentRecord, resolvePortableLoadedParentReference } from './loaded.parent.js';
 
 export const PORTABLE_EPISTEMIC_PLAN_SCHEMA_ID = 'tiinex.portable.epistemic-materialization-plan.v1';
 
@@ -11,7 +12,7 @@ export function prepareEpistemicMaterialization(input = {}, options = {}) {
   const proposals = normalizeProposals(input.proposals || input.proposal || []);
   const artifactRecords = material.records.filter(isArtifactRecord);
   const lineage = resolveLineage(artifactRecords, { depth: 'portable-epistemic-plan' });
-  const loadedIndex = recordIndex(artifactRecords);
+  const loadedIndex = indexPortableLoadedParentRecords(artifactRecords);
   const proposalIds = new Set(proposals.map((proposal) => proposal.id));
   const candidateSchemas = listCreatableArtifactSchemas().map((contract) => Object.freeze({
     schemaId: contract.target.schemaId,
@@ -129,7 +130,7 @@ function normalizeProposals(value) {
       id,
       mode: clean(raw.mode || ''),
       schemaId: clean(raw.schemaId || raw.schema || ''),
-      parentRef: clean(raw.parentRef || raw.parent || ''),
+      parentRef: exact(raw.parentRef ?? raw.parent ?? ''),
       path: clean(raw.path || `lineage/${String(index + 1).padStart(3, '0')}-${slug(id)}.trace.md`),
       title: clean(raw.title || ''),
       summary: clean(raw.summary || ''),
@@ -146,30 +147,18 @@ function normalizeProposals(value) {
 
 function resolveParentReference(ref, { loadedIndex, proposalIds, proposalIndex, proposals }) {
   if (!ref) return { status: 'none', kind: 'none', parent: null };
-  const normalized = clean(ref);
-  const proposalRef = normalized.startsWith('proposal:') ? normalized.slice('proposal:'.length) : proposalIds.has(normalized) ? normalized : '';
+  const reference = exact(ref);
+  const proposalRef = reference.startsWith('proposal:') ? reference.slice('proposal:'.length) : proposalIds.has(reference) ? reference : '';
   if (proposalRef) {
     const targetIndex = proposals.findIndex((proposal) => proposal.id === proposalRef);
     if (targetIndex < 0) return { status: 'missing', code: 'portable.materialization.parent.proposal-missing', message: 'The Parent proposal does not exist.', candidates: [] };
     if (targetIndex >= proposalIndex) return { status: 'invalid-order', code: 'portable.materialization.parent.proposal-order', message: 'A proposal may only continue an earlier proposal in the same artifact set.', candidates: [proposalRef] };
     return { status: 'resolved', kind: 'proposal', parent: Object.freeze({ proposalId: proposalRef }) };
   }
-  const candidates = loadedIndex.get(normalized) || [];
-  if (!candidates.length) return { status: 'missing', code: 'portable.materialization.parent.missing', message: 'The declared Parent reference is not present in loaded material.', candidates: [] };
-  if (candidates.length > 1) return { status: 'ambiguous', code: 'portable.materialization.parent.ambiguous', message: 'The declared Parent reference matches multiple loaded records.', candidates: candidates.map((record) => record.id || record.path) };
-  return { status: 'resolved', kind: 'loaded-record', parent: parentProjection(candidates[0]) };
-}
-
-function recordIndex(records = []) {
-  const index = new Map();
-  for (const record of records) {
-    for (const key of normalizeStrings([record.id, record.path, record.trace && String(record.trace).startsWith('record:') ? String(record.trace).slice(7) : ''])) {
-      const list = index.get(key) || [];
-      if (!list.includes(record)) list.push(record);
-      index.set(key, list);
-    }
-  }
-  return index;
+  const resolved = resolvePortableLoadedParentReference(reference, loadedIndex);
+  if (resolved.status === 'missing') return { status: 'missing', code: 'portable.materialization.parent.missing', message: 'The declared Parent reference is not present in loaded material.', candidates: [] };
+  if (resolved.status === 'ambiguous') return { status: 'ambiguous', code: 'portable.materialization.parent.ambiguous', message: 'The declared Parent reference matches multiple loaded records.', candidates: resolved.candidates.map((record) => record.id || record.path) };
+  return { status: 'resolved', kind: 'loaded-record', parent: projectPortableLoadedParentRecord(resolved.record) };
 }
 
 function lineageParentCandidates(lineage = {}) {
@@ -184,20 +173,6 @@ function lineageParentCandidates(lineage = {}) {
     role: childIds.has(node.id) ? 'ancestor-or-branch' : 'loaded-leaf-candidate',
     explicitOnly: true
   })));
-}
-
-function parentProjection(record = {}) {
-  return Object.freeze({
-    id: clean(record.id || record.path),
-    path: clean(record.path || ''),
-    schemaId: clean(record.schemaId || record.kind || ''),
-    createdAt: clean(record.currentCreatedAt || record.createdAt || ''),
-    trace: clean(record.id ? `record:${record.id}` : record.trace || ''),
-    boundary: clean(record.boundary || record.source?.boundary || 'loaded material boundary'),
-    sourceMode: clean(record.sourceMode || ''),
-    title: clean(record.title || ''),
-    summary: clean(record.summary || '')
-  });
 }
 
 function finalize({ status, material, proposals, candidateSchemas, parentCandidates, lineage, findings, clarificationNeeds }) {
@@ -236,5 +211,6 @@ function isArtifactRecord(record = {}) {
 
 function normalizeStrings(value) { return [...new Set((Array.isArray(value) ? value : [value]).map(clean).filter(Boolean))]; }
 function clean(value) { return String(value || '').replace(/\s+/g, ' ').trim(); }
+function exact(value) { return String(value ?? ''); }
 function slug(value) { return clean(value).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'artifact'; }
 function clone(value) { return value == null ? {} : JSON.parse(JSON.stringify(value)); }

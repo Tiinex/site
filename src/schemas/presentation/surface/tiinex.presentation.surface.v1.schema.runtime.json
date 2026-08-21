@@ -1,0 +1,149 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.presentation.surface.v1",
+  "sourceChecksum": "37c2469e9f3d08f8d2934d47de2e1f3601203dda4868402380fc787775bea4f2",
+  "sourceBytes": 15383,
+  "bindingChecksum": "37c2469e9f3d08f8d2934d47de2e1f3601203dda4868402380fc787775bea4f2",
+  "validationContract": null,
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Scope",
+      "Required Inputs",
+      "Generation Rules",
+      "Suggested Sequence"
+    ],
+    "requiredInputs": [
+      "Create When",
+      "Do Not Create When",
+      "Surface Name",
+      "Surface Id",
+      "Surface Kind",
+      "Stability",
+      "Purpose",
+      "Primary Audience",
+      "Primary Use",
+      "Interface Relationship",
+      "Interface Boundary",
+      "May-Contain Boundary",
+      "Must-Not-Contain Boundary",
+      "Supported Interactions",
+      "User Invocation Boundary",
+      "Write Capability",
+      "Side Effects",
+      "Disclosure Boundary",
+      "Implementation Limits"
+    ],
+    "optionalInputs": [
+      "Interaction Units",
+      "Conditional Behavior",
+      "Schema Modules",
+      "Validation Report Mapping",
+      "Form Mapping",
+      "Viewer Mapping",
+      "Accessibility Notes",
+      "Related Interface"
+    ],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Create When",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Do Not Create When",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Surface Name",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Surface Id",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Surface Kind",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Stability",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Purpose",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Primary Audience",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Primary Use",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Interface Relationship",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Interface Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "May-Contain Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Must-Not-Contain Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Supported Interactions",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "User Invocation Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Write Capability",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Side Effects",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Disclosure Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Implementation Limits",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

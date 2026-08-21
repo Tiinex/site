@@ -367,8 +367,8 @@ assertNoMutation(execute({ state: appState([sourceTopic]), currentRecordId: sour
 const wrongOutputSchemaDefinition = mutatedDefinition('tiinex.site.topic-output-schema.v1', [['  - Schema Constraint: tiinex.task.v1\n  - Generation Binding: target-schema', '  - Schema Constraint: tiinex.topic.v1\n  - Generation Binding: target-schema']]);
 const wrongOutputSchemaPrepared = prep(sourceTopic, [sourceTopic], { bundledDefinitions: bundled(wrongOutputSchemaDefinition) });
 const wrongOutputSchemaAction = actionById(wrongOutputSchemaPrepared, 'tiinex.site.topic-output-schema.v1');
-assert.notEqual(wrongOutputSchemaAction?.productCapable, true);
-assertNoMutation(execute({ state: appState([sourceTopic]), currentRecordId: sourceTopic.id, definitionKey: wrongOutputSchemaAction?.definitionKey || action.definitionKey, definitions: bundled(wrongOutputSchemaDefinition) }), 'wrong output schema');
+assert.equal(wrongOutputSchemaAction?.productCapable, true, 'v452 schema-owned materialization allows a qualified Topic output without adding a generic schema-id branch');
+assertNoMutation(execute({ state: appState([sourceTopic]), currentRecordId: sourceTopic.id, definitionKey: wrongOutputSchemaAction?.definitionKey || action.definitionKey, definitions: bundled(wrongOutputSchemaDefinition) }), 'Topic output without required Topic generation inputs must still fail closed');
 
 const noMaterializationDefinition = mutatedDefinition('tiinex.site.topic-placement-none.v1', [['  - Placement Intent: new-materialization', '  - Placement Intent: no-materialization']]);
 const noMaterializationPrepared = prep(sourceTopic, [sourceTopic], { bundledDefinitions: bundled(noMaterializationDefinition) });

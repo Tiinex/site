@@ -175,7 +175,7 @@ function declaredRecordSchemaId(record = {}) {
 }
 
 function metadataRecordSchemaId(record = {}) {
-  return normalizeToken(record.schemaId || record.currentSchemaId || record.kind || '');
+  return normalizeToken(record.schemaId || record.currentSchemaId || '');
 }
 
 function normalizeSchemaConstraint(value = '') {

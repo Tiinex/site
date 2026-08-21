@@ -205,7 +205,14 @@ assert.deepEqual(workspaceActions.actions.filter((a) => a.productCapable).map((a
 const dialogSource = fs.readFileSync('src/schemas/workspace/workspace.canonicalReferenceDialog.views.jsx', 'utf8');
 const recordDialogs = fs.readFileSync('src/schemas/workspace/workspace.recordDialogs.views.jsx', 'utf8');
 const cards = fs.readFileSync('src/schemas/workspace/workspace.cards.views.jsx', 'utf8');
-assert(dialogSource.includes('Search loaded qualified Tasks'));
+assert(dialogSource.includes('Choose target in workspace'));
+assert(dialogSource.includes('workspace surface'));
+const selectionSource = fs.readFileSync('src/schemas/workspace/workspace.selection.views.jsx', 'utf8');
+assert(selectionSource.includes('Existing workspace context remains visible while selection is active'));
+assert.equal(selectionSource.includes('session?.candidates'), false, 'Reference selection no longer hardens a separate generic candidate-list renderer');
+const workspaceViewsSource = fs.readFileSync('src/schemas/workspace/workspace.views.jsx', 'utf8');
+assert(workspaceViewsSource.includes('selectionCandidates={selectionCandidates}'));
+assert(workspaceViewsSource.includes('onSelectCandidate={onSelectionChoose}')); 
 assert(dialogSource.includes('non-parent'));
 assert(recordDialogs.includes("action?.referenceCapability?.state === 'qualified'"));
 assert.equal(cards.includes("label === 'Reference'"), false);

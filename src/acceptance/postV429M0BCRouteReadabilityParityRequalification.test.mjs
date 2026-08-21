@@ -36,7 +36,7 @@ const lineage = buildWorkspaceLineageView({ id: 'w', title: 'Schemas', records: 
 assert.equal(lineage.nodes.length, 1, 'Lineage overview search consumes the same loaded body readability value');
 
 const viewSource = fs.readFileSync('src/schemas/workspace/workspace.views.jsx', 'utf8');
-assert.ok(viewSource.includes("const transitionProductActionsVisible = !readOnlyHistorical && (verse === 'feed' || verse === 'lineage')"), 'Transition shared context is scoped to live action-card surfaces and historical review remains read-only');
+assert.ok(viewSource.includes("const transitionProductActionsVisible = !selectionActive && !readOnlyHistorical && (verse === 'feed' || verse === 'lineage')"), 'Transition shared context is scoped to live action-card surfaces and historical review remains read-only');
 assert.ok(viewSource.includes(': null), [transitionProductActionsVisible, allRecords, referenceRecords])'), 'Tree/Audit avoid unrelated transition preparation');
 
 const chrome = fs.readFileSync('src/schemas/workspace/workspace.chrome.views.jsx', 'utf8');

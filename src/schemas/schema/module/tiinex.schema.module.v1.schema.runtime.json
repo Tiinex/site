@@ -1,0 +1,114 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.schema.module.v1",
+  "sourceChecksum": "8ddcdbe372bf2c7e817ec63b8cacd91ec6e23588a7e23fb1f918a429f699973c",
+  "sourceBytes": 15759,
+  "bindingChecksum": "8ddcdbe372bf2c7e817ec63b8cacd91ec6e23588a7e23fb1f918a429f699973c",
+  "validationContract": null,
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Scope",
+      "Required Inputs",
+      "Generation Rules",
+      "Suggested Sequence"
+    ],
+    "requiredInputs": [
+      "Create When",
+      "Do Not Create When",
+      "Module Name",
+      "Module Id",
+      "Module Version",
+      "Module Status",
+      "Primary Schema",
+      "Applies-To Boundary",
+      "Dependency Chain",
+      "Capability List",
+      "Capability Boundaries",
+      "Fallback Behavior",
+      "Implementation Limits"
+    ],
+    "optionalInputs": [
+      "Source Access Modes",
+      "Validator Implementations",
+      "Interaction Units",
+      "Presentation Surfaces",
+      "Form Capabilities",
+      "Viewer Capabilities",
+      "Helper Capabilities",
+      "Related Validation Methods",
+      "Related Validation Reports"
+    ],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Create When",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Do Not Create When",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Module Name",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Module Id",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Module Version",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Module Status",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Primary Schema",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Applies-To Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Dependency Chain",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Capability List",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Capability Boundaries",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Fallback Behavior",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Implementation Limits",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

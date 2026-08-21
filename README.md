@@ -1,201 +1,60 @@
-# Tiinex Site v449 — M0-F Exact Mutation Target Attestation Closure
+# Tiinex Site v470 — Schema Reading-Contract Materialization Identity + Source Coalescing Authority Correction
 
-v449 binds Site-owned human GitHub mutation evidence to both the exact current `planSha256` and the exact qualified issue/comment target. Matching remote body bytes remain necessary but cannot qualify a different target, and changing the final target invalidates the current attestation before remote read.
+v470 preserves v469 effective retrieval/representation truth while closing two same-owner Open Schema false-PASS families. Materialization collisions are bounded candidate evidence only: the concrete record that will actually be returned must itself qualify as the exact requested reading contract and exact declared representation when one is required; first-hit collision ordering no longer transfers semantic qualification between byte sequences. Exact GitHub source coalescing now qualifies repo/ref/root same-dimension assertions with explicit 0/1/>1 truth, leaves ambiguous sources untouched, and never silently rewrites them into coherence. Tooling, canonical schema bytes, and generic origin parsing remain frozen.
 
-Copy and Open remain navigation/clipboard progress only. A matching pre-existing GitHub target without the plan-bound human mutation attestation fails closed before remote verification and cannot create `sourceBinding` or a `remoteWritePerformed=true` receipt. Plan identity changes invalidate the attestation. Qualified success persists the bounded Site-local human mutation confirmation beside the shared receipt/source binding while leaving the local input artifact unchanged and without claiming that Tiinex performed a hidden/API write.
+## v469 predecessor
 
-The v446 shared publication plan/result/target contract remains the success authority and Tooling portable is unchanged. Tree, Handoff, package/re-ingest, exact social-target qualification, and M0-A–E behavior remain regression-gated. Browser/public runtime is not claimed.
+# Tiinex Site v469 — Effective Schema Retrieval Identity + Representation Evidence + Bounded Open Correction
 
-# v447 predecessor
+v469 preserves v468 exact declared-representation precedence while separating declaration lexeme, effective HTTP request target, and final retrieved target. Redirect/final-target mismatch fails closed when transport evidence is available; generic HTTP representation identity follows the effective request target rather than a pre-normalized locator. Loaded schema representation qualification cross-checks GitHub tuple authority against concrete source-target evidence, rejects conflicting repo/ref aliases, and treats cached representation identity as derived metadata. Open Schema focus/materialization now uses targeted immutable structural copies instead of full-state cloning, so unrelated artifact material is not deep-read merely to select or insert one reading contract. Tooling, canonical schema bytes, and generic origin parsing remain frozen.
 
-# Tiinex Site v447 — M0-F GitHub Social Publication Product Integration
+## v468 predecessor
 
-v447 consumes the Architect/Tooling-approved v446 exact GitHub social target contract in the existing workspace Export product. One owned-local artifact can now enter a guided no-auth GitHub issue/comment routine: qualify the exact shared publication plan, copy the exact local-Markdown payload, open the appropriate GitHub web surface, supply or reuse the exact final target, read the remote issue/comment body, and accept success only through the shared publication result contract.
+# Tiinex Site v468 — Exact Declared Schema Representation + Recovery Precedence Correction
 
-Create-new issue, create-comment, update-known issue, and update-known comment are supported only when the shared contract qualifies their repository/target requirements. Source-backed records remain ineligible. Clipboard/open success never means publication success, and Site performs no GitHub mutation API call. Exact read-after-write body verification is required before `sourceBinding` exists. Qualified receipts are persisted as browser-local workspace publication facts without mutating, deleting, or re-identifying the local draft.
+v468 preserves v467 candidate-role and concrete declaration authority while separating logical schema identity from explicit representation/source identity. Linked Current Schema declarations now narrow loaded contracts by the exact recovery-target identity before semantic qualification, recover only that declared representation, fail closed on linked recovery failure without bundled substitution, and materialize same-schema/different-target reading contracts as distinct records with exact provenance metadata. Plain schema-id declarations retain logical-contract reuse. Tooling, canonical schema bytes, and generic origin parsing remain frozen.
 
-The GitHub issue snapshot surface remains a separate historical/read-source concern; v447 publication target qualification never uses its permissive parser. The exact publication read path receives an already-qualified v446 target and shares the same read-only GitHub JSON transport owner used by issue snapshots. Handoff/Tree/package semantics remain unchanged. Browser/public runtime is not claimed.
+## v467 predecessor
 
-# v446 predecessor
+# Tiinex Site v467 — Schema Reading-Contract Candidate Role + Declaration Authority Correction
 
-# Tiinex Site v446 — M0-F Exact GitHub Social Target Representation Closure
+v467 preserves v466 retrieval-vs-semantic schema authority while separating ordinary governed work artifacts from schema reading-contract material candidacy. Loaded-schema reuse now narrows only through explicit reading-contract/schema-definition role evidence before exact byte qualification, isolates malformed candidate reads, and keeps 0/1/ambiguous semantics. Open Schema now derives a bounded concrete Current Schema declaration authority with 0/1/2+ multiplicity, exact requested-id binding, and no contradictory remote or bundled fallback. Cached schema ids remain evidence; concrete declaration authority wins when no explicit request contradicts it. Tooling, canonical schema bytes, and generic origin parsing remain frozen.
 
-v446 closes the shared exact GitHub social-target representation seam left open by v445. GitHub issue/comment target observations now enter exact qualification without caller-side trimming or structural rewriting, so surrounding whitespace and other unsupported raw differences remain unsupported evidence instead of being silently upgraded before the parser sees them.
+## v466 predecessor
 
-Issue-number identity is also bounded to exact JavaScript safe-integer representation. The parser preserves the accepted decimal lexeme as authoritative `issueNumber` identity while retaining the historical numeric `number` convenience field; canonical targets are built from the exact accepted lexeme. Values beyond `Number.MAX_SAFE_INTEGER` fail closed instead of rounding or exponent-formatting into a different issue identity.
+# Tiinex Site v466 — Schema Recovery Authority + Bounded Discovery Correction
 
-The normalization allowlist remains unchanged from v445: exact web issue, one trailing slash, exact issue-comment, one trailing slash before the exact comment fragment, exact API issue-body, and its one trailing-slash variant. Shared publication plan/result qualification consumes the same raw owner and preserves unsupported observations exactly in failure evidence. No React/UI, host write, credentials, package/re-ingest, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. Browser/public runtime is not claimed.
+v466 preserves v465 retrieval-vs-semantic schema authority while closing three recovery/open-boundary gaps. Final schema materialization now always re-derives semantic qualification from the concrete Markdown bytes plus requested schema id; precomputed status metadata cannot self-certify. GitHub relative recovery is total and repository-bounded, rejects clamped traversal and unsupported relative URL syntax, and promotes only canonical GitHub absolute forms while leaving noncanonical explicit HTTP(S) targets provider-neutral. Loaded-schema discovery now uses cheap non-authoritative metadata/path evidence to narrow candidates before exact deep qualification, avoiding full-workspace Markdown reads while preserving 0/1/ambiguous fail-closed semantics.
 
-## v445 predecessor
+## v462 predecessor
 
-v445 hardens the shared GitHub issue/comment target owner at the raw lexical boundary. Exact publication authority is now qualified by explicit positive web/API grammars before any URL parser can rewrite path structure. Dot segments, encoded dot-segments, backslashes, duplicate separators, encoded structural delimiters, queries, unsupported suffix/prefix forms, host/scheme case variants, and surrounding whitespace fail closed instead of being canonicalized into another supported issue/comment target.
+# Tiinex Site v462 — Exact Schema Reference Lexical / Source-Target Authority Correction
 
-Intentional normalization remains bounded and explicit: one trailing slash on the exact supported web issue path, plus the already-declared API issue-body to canonical web issue projection (with its one trailing-slash variant). Publication still consumes the same shared target owner, so hostile raw observations produce failure, `sourceBinding = null`, the exact invalid-target finding, and preserved supplied observation evidence.
+v462 preserves v461 immutable execution-input ownership while separating generic origin recognition from exact schema-reference target authority. Exact GitHub schema-reference URLs are mechanically derived from already-qualified schema-source repository + 40-char commit + exact source path, and only canonical HTTPS github.com blob / raw.githubusercontent.com forms qualify. Unsafe schemes, hosts, credentials, ports, path aliases, query/hash aliases and normalization tricks cannot become exact target authority. Generic origin-reference semantics, Tooling portable semantics and canonical schema bytes remain frozen.
 
-No React/UI, GitHub host write, credentials, Handoff package/export/re-ingest, workspace lifecycle, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. Browser/public runtime is not claimed.
+## v461 predecessor
 
-## v444 predecessor
+# Tiinex Site v461 — Immutable Execution Input + Schema Reference Source Authority Correction
 
-# Tiinex Site v444 — M0-F Exact GitHub Social Target Hardening
+v461 preserves v460 schema-id/reference separation and Root metadata boundaries while binding ordinary Create to an independent immutable execution snapshot before implementation. Declared caller creation values and canonical Created At are copied into frozen scalar projections; implementation mutation cannot redefine post-execution expected truth. Schema-reference targets are cross-qualified against the already-qualified schema-source repository, exact commit, and exact source path; raw binding URL fields cannot self-certify an unrelated target. Tooling portable semantics and canonical schema/binding bytes remain frozen.
 
-v444 hardens the shared GitHub issue/comment target owner so publication verification qualifies only exact supported observations. GitHub web identity accepts the exact `github.com` issue path with either no fragment or the exact `#issuecomment-<digits>` comment fragment; query text, unsupported path suffixes, arbitrary subdomains, malformed anchors, and GitHub-looking tokens elsewhere in a URL fail closed instead of being promoted into a canonical permalink.
+## v459 predecessor
 
-A single trailing slash is the only web-path normalization retained. Exact `api.github.com/repos/<owner>/<repo>/issues/<number>` issue-body input remains a separately explicit read/normalization surface. The v443 separation between repo-file, issue-body, and issue-comment publication remains unchanged, as do payload verification, mutable social binding, immutable repo-file binding, package/Handoff semantics, and the thin portable facade.
+# Tiinex Site v459 — Root Envelope Multiplicity + Execution Metadata Fidelity Correction
 
-No React/UI, credentials, GitHub write execution, workspace lifecycle, Semantic Package, canonical schema cache, or Tiinex/docs mutation is introduced. M0-F GitHub publication remains a Site product-integration HOLD pending Architect acceptance. Browser/public runtime is not claimed.
+v459 preserves v458 representation completeness and Required Shape ownership while closing two adjacent ordinary-root-Create false-PASS boundaries. `Envelope Schema` now participates in the same schema-opaque raw occurrence model as the other creation-owned Root surfaces, so duplicate-identical and duplicate-conflicting values fail closed before accepted Markdown leaves the creation boundary. Concrete ordinary Create execution also qualifies execution-owned `Created At` against the exact invocation instant after canonical UTC/Root conversion; a representative-preflight timestamp cannot be frozen or replayed as later concrete success. Caller-content fidelity, execution-metadata fidelity, representation multiplicity, portable structural validation, Required Shape coverage, and c14n-v2 integrity remain distinct qualification states. Tooling portable semantics and canonical schema/binding bytes remain frozen.
 
-## v443 predecessor
+## v458 predecessor
 
-v443 corrects the shared/platform-neutral publication target contract so GitHub provider identity no longer implies repo-file representation. The shared contract now distinguishes repo-file, issue-body, and issue-comment target surfaces, separates pre-execution destination intent from the exact materialized remote result target, and preserves mutable social-source binding without inventing Git commit/path authority.
+# Tiinex Site v458 — Creation Representation Completeness + Multiplicity Fail-Closed Correction
 
-Repo-file publication keeps its exact repository/path/materialized-commit qualification. GitHub issue creation can be planned before a final issue URL exists; create-comment can be planned from an exact parent issue target before the new comment permalink exists. Qualified social publication success still requires explicit host execution success, exact payload SHA-256 verification, and an exact resulting issue/comment target. No network fetch, credentials, GitHub write API, Site publication UI, local-source mutation, Parent implication, Semantic Package change, or canonical docs/schema mutation is introduced.
+v458 preserves v457 per-execution exact input fidelity while closing adjacent representation false-PASS boundaries. Ordinary root Create now qualifies unique concrete representation occurrences before consuming parsed projections, preserves every declared Artifact Creation Required Shape item with explicit generic/residual coverage, delegates Topic's residual orienting-sentence shape to a schema-owned creation companion, renders Root `Created At` in canonical `YYYY-MM-DD hh:mm:ss` form, and reports portable Root+target validation as structural coverage rather than exact semantic coverage. Schema-owned Topic/Task local-materialization qualifiers reject correctly resealed duplicate required headings. Tooling portable semantics and canonical schema/binding bytes remain frozen.
 
-M0-F GitHub publication remains a Site product-integration HOLD pending Architect acceptance of this shared contract. Browser/public runtime is not claimed by this source/static candidate.
+## Tiinex Site v457 — Per-Execution Creation Fidelity + Exact Input Binding Correction
 
-## v442 predecessor
+v457 preserves v456's exact Root + target result qualification while separating cached representative readiness from concrete invocation fidelity. Every ordinary Create execution now verifies the exact declared caller input identities against exact projected representation bindings before any Markdown may leave the creation boundary; undeclared case/punctuation aliases and normalized first-match precedence are rejected. Exact contract validation and c14n-v2 integrity remain separate qualification dimensions.
 
-v442 corrects two active-path defects in the accepted v441 Handoff integration: package build/inspection now belongs exclusively to explicit execution against the latest workspace truth, and a single selected ZIP is decoded once before being projected either into Handoff qualification or ordinary archive materialization. v441 Handoff round-trip semantics and publication Case C remain otherwise unchanged.
-
-The correction does not change shared package/file-map/control authority, byte-safe asset transport, source-reference projection, workspace context, publication contracts, Semantic Package separation, remote writes, credentials, or Q-visible product scope. Tooling portable semantics remain frozen.
-
-M0-F remains open pending Architect acceptance of this Site correction and the already-held publication-target reconciliation. Browser/public runtime is not claimed by this source/static candidate.
-
-## v439 predecessor
-
-v439 establishes the shared/platform-neutral M0-F foundation above exact v438: durable serialized handoff-package file-map integrity, exact source-reference projection, byte-safe owned asset transport, canonical workspace-context round-trip, fail-closed serialized re-ingest, and publication plan/result contracts. It performs no remote write, no credentials/API UX, no Reference/Site product integration, and does not reinterpret `tiinex.semantic.package.v1`.
-
-M0-E is recommended machine/source-qualified after this bounded correction, with final integrated Q proof deferred. Browser/public runtime is not claimed by this source/static candidate.
-
-## v437 predecessor
-
-v437 closes the deterministic M0-E Time Portal product gap from the exact v436 source. Time Portal is a workspace-scoped semantic view intent with explicit snapshot resolution: Begin/End remain temporal intent only, while an exact commit or explicitly resolved GitHub ref owns immutable historical source identity. Historical material is loaded into a separate read-only snapshot model and never promoted into the configured live source, current source records, or local draft authority.
-
-Resolved historical route/share state preserves the exact immutable commit. Cold route restore remains network-silent and selected-but-not-loaded until the user explicitly loads the snapshot. Historical Feed/Tree/detail surfaces are visibly read-only and provide an explicit Return to latest path. No date-to-commit inference, git-history browser, source mutation, Time Portal artifact schema, or M0-F publication work is introduced.
-
-M0-E is recommended machine/source-qualified after source/static qualification, with final integrated viewport/product proof deferred to Q. Browser/public runtime is not claimed by this source/static candidate.
-
-## v436 predecessor
-
-v436 opened M0-E/F discovery and source-qualified assets/mobile structure while identifying Time Portal as the one deterministic M0-E product gap. Its surface-registry and source-backed asset presentation corrections remain preserved.
-
-## v435 predecessor
-
-
-v434 closes the final bounded M0-D machine/source gap with one canonical Topic → Task Reference capability. Reference is represented as a separate browser-local `tiinex.relation.v1` artifact: it preserves an exact typed non-parent relation, keeps both participant artifacts unchanged, carries no invented Parent or source provenance, and persists the defining predicate/subject/object/directionality/Transition/generation authority in readable artifact bytes.
-
-v435 corrects the exact-authority durability boundary for the bounded Topic → Task Reference slice. The Relation now preserves the resolvable Site-local Transition/Generation references **and** each defining authority representation's verified Root-qualified `sha256-base64url-c14n-v2` method/value. Same path with different bytes therefore cannot qualify as the same exact authority. Reference semantics, participant identity rules, Parent boundary, target qualification, Tooling's v433 seam, and product UX remain otherwise unchanged.
-
-
-The product path consumes the accepted v433 portable `qualifyPortableExplicitGenerationBinding(...)` seam before Site planning. The Tooling seam remains read-only authority qualification; Site still owns Transition applicability, exact participant/value binding, lifecycle, Relation bytes, local placement, integrity, persistence, and UI. The existing `target-schema` Topic→Task/Use-as/root-Create paths remain separate and regression-qualified.
-
-Reference is intentionally bounded rather than universal. Same-workspace browser-local targets qualify only with unique local path identity. Source-backed targets may qualify across loaded workspaces when their source target is durable. Cross-workspace browser-local targets fail closed because workspace placement is not promoted into semantic target identity.
-
-The Reference UI is capability-driven: qualified Topic cards expose Reference, users search/select a distinct qualified Task, review the non-Parent consequence, and create one local Relation. Preserve Evidence, Use-as, Parent continuity, and Reference remain distinct concepts. Relation Edit is not invented; local Relation discard remains available through the existing local-draft lifecycle.
-
-M0-D is recommended machine/source-qualified by Dev after v434 qualification, with final product proof deferred to Architect/Q. Browser/public runtime is not claimed by source/static qualification.
-
-## Canonical locality
-
-The one bundled Topic → Task Transition Definition now lives at:
-
-```text
-src/schemas/core/task/.transitions/
-  topic-to-task-transition-definition.trace.md
-```
-
-There is no second bundled representation under `src/transitions/definitions/`.
-
-Task and Topic expose explicit package neighborhoods:
-
-```text
-src/schemas/core/task/
-  task-semantic-package.trace.md
-  tiinex.task.v1-transitions.trace.md
-  tiinex.task.v1.schema.md
-  .transitions/topic-to-task-transition-definition.trace.md
-
-src/schemas/core/topic/
-  topic-semantic-package.trace.md
-  tiinex.topic.v1-transitions.trace.md
-  tiinex.topic.v1.schema.md
-```
-
-The package graph uses explicit `site-local:` cross-package routes. Task owns the Transition representation. Topic reverse-discoverability is an explicit companion attachment through the declared Task package dependency; it does not duplicate the Transition.
-
-## Task schema authority normalization
-
-`src/schemas/core/task/tiinex.task.v1.schema.md` now contains the exact already-qualified canonical Task bytes:
-
-```text
-SHA256  ff26811ac5c4393bc6b69d652f0b9fcdb38c2bdc9688dccb0b42608cbef07a98
-Git blob e4d545ad45382a150351ead587339d8b43cc0fb2
-```
-
-Canonical source identity remains Tiinex/docs at the manifest-declared repository/commit/path/blob. The old duplicate physical Task copy under `src/transitions/canonical-schema-cache/d69b8ff.../` is removed. Root and Transition Definition cache entries remain where they were.
-
-## Compiled runtime discovery
-
-`canonicalTransition.semanticPackage.js` is a Site adapter over the frozen portable leaf compiler. It compiles:
-
-```text
-Semantic Package Manifest
-+ Schema Transition Companion
-+ exact schema material
-+ one Task-local Transition Definition
-→ package graph
-→ schema resolutions
-→ attachment projection
-→ distributed Transition registry
-```
-
-The browser defaults consume the resulting compiled registry rather than importing a hard-coded `src/transitions/definitions` file. Site still adapts the compiled representation into the existing frozen Transition read/planner/product shapes.
-
-The compiled package is expected to prove:
-
-```text
-2 package nodes
-4/4 Topic/Task schema resolutions
-2 valid companions
-1 Topic → Task registry representation
-2 explicit attachment provenance records
-```
-
-The Topic↔Task package cycle is explicit, observable, and deterministically terminated by the portable compiler. Package path is locality/provenance, not Transition semantic identity.
-
-## Product behavior preserved
-
-v426 does not reopen the v424 product mechanism:
-
-```text
-source-backed Topic
-→ Create task
-→ canonical five-field form
-→ fresh v422
-→ fresh v423
-→ canonical Task Markdown
-→ source-backed Parent
-→ exactly one browser-local Task
-```
-
-No remote write, repository path allocation, source mutation, relation materialization, or generic Transition execution is introduced.
-
-The legacy `topic.continue.task` bridge remains compatibility-only and is suppressed only by the exact Site-bundled compiled Topic→Task representation provenance, not by Canonical Identifier or path equality.
-
-## Browser boundary
-
-v425 remains frozen:
-
-```text
-src/main.jsx browser graph
-→ 0 node:* import edges/importers
-→ 0 broad src/tooling/portable/index.js edges
-```
-
-v426 imports only exact portable leaf owners for semantic-package compilation and schema contracts.
-
-## Environment boundary
-
-Restore-source validation may still stop when the later React-specific tranche reaches `useLocalMaterialIntake` without installed dependencies. That is an environment boundary, not a v426 product claim. Runtime/public build remain unclaimed unless a real Vite/React dependency tree is available.
+v456 preserves v455's source-derived creation input bindings and root/continuation split while closing exact ordinary-Create result qualification. Ready ordinary creation now proves representative execution against a mechanically generated compact Root + target portable validation projection, uses verified c14n-v2 self-integrity for root Create, and rejects one-line Summary/title values that cannot be represented exactly instead of silently trimming, collapsing, or truncating them. Topic and Task remain ready; Evidence and Relation remain blocked. Full readable schema Markdown remains lazy, Tooling semantics remain frozen, and contextual continuation behavior is preserved.
 
 ## Supported local start
 

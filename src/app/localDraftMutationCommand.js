@@ -80,10 +80,13 @@ function buildEditedLocalDraftRecord(original = {}, parsed = {}, markdown = '', 
 }
 
 function validateStableEditIdentity(original = {}, candidate = {}, before = {}, after = {}) {
+  const candidateSchema = explicitRecordSchemaMetadata(candidate);
+  const originalSchema = explicitRecordSchemaMetadata(original);
   const checks = [
     ['record.edit.id.changed', candidate.id, original.id, 'Record identity cannot change during local draft edit.'],
     ['record.edit.path.changed', candidate.path, original.path, 'Draft path cannot change during local draft edit.'],
-    ['record.edit.schema.changed', candidate.schemaId || candidate.kind, artifactSchemaId(original), 'Current Schema cannot change during local draft edit.'],
+    ['record.edit.kind.changed', candidate.kind, original.kind, 'Record representation kind cannot change during local draft edit.'],
+    ['record.edit.schema.changed', candidateSchema.present ? candidateSchema.value : undefined, originalSchema.value, 'Schema metadata cannot change during local draft edit.'],
     ['record.edit.current-schema.changed', after.envelope?.current?.schema?.id, before.envelope?.current?.schema?.id, 'Current Schema cannot change during local draft edit.'],
     ['record.edit.created-at.changed', after.envelope?.current?.createdAt, before.envelope?.current?.createdAt, 'Original Created At must remain stable during local draft edit.'],
     ['record.edit.parent-schema.changed', after.envelope?.parent?.schema?.id, before.envelope?.parent?.schema?.id, 'Parent Schema cannot change during local draft edit.'],
@@ -100,6 +103,17 @@ function validateStableEditIdentity(original = {}, candidate = {}, before = {}, 
     return { code: 'record.edit.continuity-shell.changed', notice: 'Continuity, provenance, status, schema locators, and integrity declarations cannot change during local Task edit.' };
   }
   return null;
+}
+
+
+function explicitRecordSchemaMetadata(record = {}) {
+  if (!record || typeof record !== 'object') return { present: false, value: '' };
+  if (Object.prototype.hasOwnProperty.call(record, 'schemaId')) return { present: true, value: String(record.schemaId || '').trim() };
+  if (Object.prototype.hasOwnProperty.call(record, 'currentSchemaId')) return { present: true, value: String(record.currentSchemaId || '').trim() };
+  if (record.rootFallback && typeof record.rootFallback === 'object' && Object.prototype.hasOwnProperty.call(record.rootFallback, 'currentSchemaId')) {
+    return { present: true, value: String(record.rootFallback.currentSchemaId || '').trim() };
+  }
+  return { present: false, value: '' };
 }
 
 function losslessEditShell(markdown = '') {

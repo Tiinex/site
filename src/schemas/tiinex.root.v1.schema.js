@@ -1,5 +1,6 @@
 import { defineSchemaModule } from './contracts.js';
 import binding from './tiinex.root.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.root.v1.schema.source.js';
 import { rootCapabilities } from './tiinex.root.v1.capabilities.js';
 import { rootValidate } from './tiinex.root.v1.validate.js';
 import { rootPresent } from './tiinex.root.v1.presenter.js';
@@ -16,6 +17,7 @@ export const rootSchemaModule = defineSchemaModule({
   parentSchemaId: null,
   summary: 'Minimum shared contract for Tiinex lineage artifacts; abstract envelope and fallback.',
   binding,
+  schemaSource,
   capabilities: rootCapabilities,
   validate: rootValidate,
   present: rootPresent,

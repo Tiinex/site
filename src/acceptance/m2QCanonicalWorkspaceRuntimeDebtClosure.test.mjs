@@ -27,7 +27,8 @@ const legacyState = {
   workspaces: [{ id: 'workspace:origin', name: 'Origin', title: 'Origin', records: [], assets: [], sources: [], workspaceMergeCandidates: [legacyCandidate] }]
 };
 
-const canonical = canonicalProductState(legacyState, recovery, 'v380-legacy-compatibility');
+const migrated = recovery.normalizeLegacyWorkspaceCandidateState(legacyState);
+const canonical = canonicalProductState(migrated, recovery, 'v380-legacy-compatibility');
 assert.equal(Object.prototype.hasOwnProperty.call(canonical.workspaces[0], 'workspaceMergeCandidates'), false, 'legacy candidate shape is consumed before product runtime');
 assert.equal(canonical.workspaces[0].records.length, 1, 'legacy candidate becomes one canonical artifact record');
 const record = canonical.workspaces[0].records[0];

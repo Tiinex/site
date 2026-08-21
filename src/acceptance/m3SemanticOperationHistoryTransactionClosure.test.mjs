@@ -98,7 +98,8 @@ const lifecycle = globalThis.TiinexWorkspaceLifecycle;
 
 const appSource = readFileSync(new URL('../app/TiinexApp.jsx', import.meta.url), 'utf8');
 assert(appSource.includes("from './semanticOperationHistory.js'"), 'React controller must consume the operation-scoped history owner');
-assert(appSource.includes("commit: guarded(options.semanticNavigation\n        ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation })"), 'user Add GitHub Source must use a fresh semantic operation history transaction');
+assert(appSource.includes("options.semanticNavigation\n          ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation })"), 'user Add GitHub Source must use a fresh semantic operation history transaction when product-state buffering is not requested');
+assert(appSource.includes("options.bufferProductState\n        ? () => {}"), 'startup-owned buffered GitHub materialization must not emit intermediate product-state commits');
 assert.equal((appSource.match(/semanticNavigationEstablished: true/g) || []).length, 2, 'Workspace Artifact Open and Merge must mark their child materialization as history-established');
 assert(appSource.includes("onAddGitHubSource={(input) => addGitHubSource(input, { state: latestStateRef.current || state, workspaceId: dialogWorkspace.id, semanticNavigation: true })}"), 'visible Add GitHub Source remains the user-navigation owner');
 

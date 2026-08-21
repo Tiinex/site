@@ -1,4 +1,4 @@
-import { parseArtifactMarkdown } from './artifact.parse.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export const LOCAL_DRAFT_ARTIFACT_POLICY_ID = 'tiinex.artifact.local-draft-policy.v1';
 export const EDITABLE_LOCAL_DRAFT_SCHEMA_IDS = Object.freeze(['tiinex.task.v1']);
@@ -24,9 +24,4 @@ export function localDraftArtifactPolicy(record = {}) {
 export function canEditLocalDraft(record = {}) { return localDraftArtifactPolicy(record).editLocalDraft; }
 export function canDiscardLocalDraft(record = {}) { return localDraftArtifactPolicy(record).discardLocalDraft; }
 
-export function artifactSchemaId(record = {}) {
-  const explicit = String(record?.schemaId || record?.currentSchemaId || record?.kind || '').trim();
-  if (explicit && explicit.includes('.')) return explicit;
-  try { return String(parseArtifactMarkdown(record?.markdown || '').envelope?.current?.schema?.id || explicit).trim(); }
-  catch (_) { return explicit; }
-}
+export function artifactSchemaId(record = {}) { return schemaIdForRecord(record); }

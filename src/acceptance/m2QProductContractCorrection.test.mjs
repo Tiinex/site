@@ -80,14 +80,14 @@ assert.equal(new Set(broadPlusExplicit.records.map((record) => record.snapshot?.
 
 // D. Reading-contract recovery follows declared truth, never schema-name guessing.
 const absoluteRecord = {
-  id: 'feedback', path: '.topics/feedback.trace.md', schemaId: 'tiinex.decision.v1',
-  markdown: '# Continuity Context\n\n- Current\n  - Current Schema: [tiinex.decision.v1](https://github.com/Tiinex/docs/blob/main/.topics/.schemas/tiinex.decision.v1.schema.md)\n\n---\n\n# Feedback',
+  id: 'feedback', path: '.topics/feedback.trace.md', schemaId: 'tiinex.topic.v1',
+  markdown: '# Continuity Context\n\n- Current\n  - Current Schema: [tiinex.topic.v1](https://github.com/Tiinex/docs/blob/main/.topics/.schemas/tiinex.topic.v1.schema.md)\n\n---\n\n# Feedback',
   source: { id: 'github:socials', adapterId: 'github', repo: 'Tiinusen/socials', ref: 'personal' }
 };
-const absoluteTarget = declaredSchemaRecoveryTarget(absoluteRecord, 'tiinex.decision.v1');
+const absoluteTarget = declaredSchemaRecoveryTarget(absoluteRecord, 'tiinex.topic.v1');
 assert.equal(absoluteTarget.ok, true);
 assert.equal(absoluteTarget.repo, 'Tiinex/docs', 'absolute declared schema link, not artifact origin repo, owns recovery target');
-assert.equal(absoluteTarget.fetchUrl, 'https://raw.githubusercontent.com/Tiinex/docs/main/.topics/.schemas/tiinex.decision.v1.schema.md');
+assert.equal(absoluteTarget.fetchUrl, 'https://raw.githubusercontent.com/Tiinex/docs/main/.topics/.schemas/tiinex.topic.v1.schema.md');
 const localUnknown = declaredSchemaRecoveryTarget({ path: 'local.md', schemaId: 'tiinex.unknown.v1', markdown: '# Continuity Context\n\n- Current\n  - Current Schema: [tiinex.unknown.v1](tiinex.unknown.v1.schema.md)', source: { adapterId: 'local' } }, 'tiinex.unknown.v1');
 assert.equal(localUnknown.ok, false, 'relative schema link without verified source context must not guess GitHub provenance');
 
@@ -97,7 +97,7 @@ schemaWorkspace.records = [absoluteRecord];
 const recoveredSchema = await openSchemaForRecordCommand({
   state: schemaState, workspace: schemaWorkspace, record: absoluteRecord,
   catalog: {}, loadSchemaMarkdown: async () => null,
-  fetchImpl: async (url) => ({ ok: String(url) === absoluteTarget.fetchUrl, status: 200, text: async () => '# Tiinex Decision v1 Schema\n\nReading contract.' }),
+  fetchImpl: async (url) => ({ ok: String(url) === absoluteTarget.fetchUrl, status: 200, text: async () => readFileSync(new URL('../schemas/core/topic/tiinex.topic.v1.schema.md', import.meta.url), 'utf8') }),
   clock: () => '2026-08-13T00:00:00.000Z'
 });
 assert.equal(recoveredSchema.ok, true, 'explicit declared schema target can recover a missing reading contract');
@@ -107,9 +107,9 @@ assert.equal(recoveredSchema.record.schemaNavigation.source, 'declared-reading-c
 const targetedSchemaSource = lifecycle.activeWorkspace(recoveredSchema.state).sources.find((source) => source.adapterId === 'github' && source.repo === 'Tiinex/docs');
 assert(targetedSchemaSource, 'targeted schema recovery keeps truthful configured GitHub provenance on the workspace boundary');
 assert.equal(targetedSchemaSource.repoDiscovery, false, 'targeted schema recovery must not enable broad repo discovery');
-assert(targetedSchemaSource.explicitFileRefs.includes('.topics/.schemas/tiinex.decision.v1.schema.md'), 'targeted schema path is durable exact-source configuration');
+assert(targetedSchemaSource.explicitFileRefs.includes('.topics/.schemas/tiinex.topic.v1.schema.md'), 'targeted schema path is durable exact-source configuration');
 assert.equal(recoveredSchema.record.source.id, targetedSchemaSource.id, 'schema record points at the shared configured source owner');
-assert.match(recoveredSchema.record.sourceTarget?.browseUrl || '', /tiinex\.decision\.v1\.schema\.md$/, 'schema record retains exact Open source provenance');
+assert.match(recoveredSchema.record.sourceTarget?.browseUrl || '', /tiinex\.topic\.v1\.schema\.md$/, 'schema record retains exact Open source provenance');
 
 // C/F. Product routing and dialog hierarchy are guarded at the actual source files.
 const recordActionSource = readFileSync(new URL('../actions/record.actions.js', import.meta.url), 'utf8');

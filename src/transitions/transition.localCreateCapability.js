@@ -35,7 +35,7 @@ function recordLocalCreateCapability({ result, availability, creation, currentPa
   if (relations.length) reasons.push('relation-effects-not-supported');
   if (!supportedLocalPlacement(placements, destinations, output)) reasons.push('unsupported-placement-capability');
   if (creation.state !== 'qualified' || creation.schemaId !== outputSchemaId) reasons.push('creation-authority-unavailable');
-  if (!materializer || materializer.schemaId !== outputSchemaId || !materializer.continuityModes?.includes?.('parent')) reasons.push('local-materializer-unavailable');
+  if (!materializer || materializer.schemaId !== outputSchemaId) reasons.push('local-materializer-unavailable');
   if (!String(workspaceId || '').trim()) reasons.push('workspace-destination-unavailable');
   if (parent.state !== 'qualified' || !inputSchemaId || parent.schemaId !== inputSchemaId) reasons.push(parent.reason || 'parent-recovery-unavailable');
   const uniqueReasons = unique(reasons);
@@ -63,7 +63,7 @@ function workspaceRootCreateCapability({ result, availability, creation, workspa
   if (relations.length !== 0) reasons.push('relation-effects-not-supported');
   if (!supportedLocalPlacement(placements, destinations, output)) reasons.push('unsupported-placement-capability');
   if (creation.state !== 'qualified' || creation.schemaId !== outputSchemaId) reasons.push('creation-authority-unavailable');
-  if (!materializer || materializer.schemaId !== outputSchemaId || !materializer.continuityModes?.includes?.('root')) reasons.push('root-local-materializer-unavailable');
+  if (!materializer || materializer.schemaId !== outputSchemaId) reasons.push('root-local-materializer-unavailable');
   if (!String(workspaceId || '').trim()) reasons.push('workspace-destination-unavailable');
   const uniqueReasons = unique(reasons);
   return freeze({ state: uniqueReasons.length ? 'unavailable' : 'qualified', reasons: freeze(uniqueReasons), remoteWrite: false, sourceMutation: false, relationMaterialization: false, concretePath: null, executablePattern: uniqueReasons.length === 0, scope: 'workspace', continuityMode: 'root' });

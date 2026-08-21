@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { openSchemaForRecordCommand } from '../app/schemaNavigationCommand.js';
 import { loadFullLineageCommand } from '../app/lineageCommand.js';
@@ -16,7 +17,7 @@ let b = lifecycle.createWorkspace(state, { name: 'B' }); state = b.state;
 const workspaceA = state.workspaces.find((workspace) => workspace.id === a.workspace.id);
 const workspaceB = state.workspaces.find((workspace) => workspace.id === b.workspace.id);
 workspaceA.records = [localArtifact('a-topic', 'A topic', 'tiinex.topic.v1')];
-const schemaTargets = ['tiinex.discovery.finding.v1', 'tiinex.decision.v1', 'tiinex.topic.v1'];
+const schemaTargets = ['tiinex.topic.v1', 'tiinex.task.v1', 'tiinex.evidence.v1'];
 workspaceB.records = schemaTargets.map((schemaId, index) => schemaDeclaringArtifact(`b-${index}`, `B ${index}`, schemaId));
 state.activeWorkspaceId = workspaceA.id;
 state.view = { universe: 'column', workspaceVerse: 'feed', query: 'a-query', selectedRecordId: 'a-topic', layoutMode: 'expanded' };
@@ -140,7 +141,16 @@ function schemaDeclaringArtifact(id, title, schemaId) {
   const href = `https://github.com/Tiinex/docs/blob/main/.topics/.schemas/${schemaId}.schema.md`;
   return Object.assign(createRecordFromMarkdown(`# Continuity Context\n\n- Current\n  - Current Schema: [${schemaId}](${href})\n  - Summary: ${title}\n\n---\n\n# ${title}`, { path: `.topics/${id}.trace.md`, sourceMode: 'source-backed' }), { id, title, source: { id: 'github:other/repo', adapterId: 'github', sourceKind: 'github.repo', repo: 'other/repo', ref: 'main', rootPath: '.topics', sourceBacked: true } });
 }
-function schemaMarkdown(schemaId) { return `# Continuity Context\n\n- Current\n  - Current Schema: [tiinex.schema.v1](tiinex.schema.v1.schema.md)\n  - Summary: ${schemaId}\n\n---\n\n# ${schemaId} Schema`; }
+function schemaMarkdown(schemaId) {
+  const paths = {
+    'tiinex.topic.v1': '../schemas/core/topic/tiinex.topic.v1.schema.md',
+    'tiinex.task.v1': '../schemas/core/task/tiinex.task.v1.schema.md',
+    'tiinex.evidence.v1': '../schemas/core/evidence/tiinex.evidence.v1.schema.md'
+  };
+  const relative = paths[schemaId];
+  if (!relative) return '';
+  return readFileSync(new URL(relative, import.meta.url), 'utf8');
+}
 function lineageArtifact({ id, title, path, trace = '', source = {}, sourceMode = '', sourceTarget = {}, snapshot = {} }) {
   const parent = trace ? `- Parent\n  - Parent Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)\n  - Trace: [Parent](${trace})\n` : '';
   const markdown = `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)\n${parent}- Current\n  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)\n  - Summary: ${title}\n\n---\n\n# ${title}`;

@@ -3,6 +3,11 @@ import { rootValidate } from './tiinex.root.v1.validate.js';
 import { resolveSchemaCapabilities, CapabilityStatus } from './capability.registry.js';
 import { schemaRegistry } from './registry.js';
 import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';
+import { executeArtifactCreationCapability, qualifyArtifactCreationCapability } from './creation.capability.js';
+import { canonicalC14nV2SelfState } from '../integrity/integrity.c14nV2.js';
+import { validatePortableContractInstance } from '../tooling/portable/schema/contract.validate.js';
+import { qualifyRootCreationRepresentation } from './creation.representation.js';
+import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
 
 export const ARTIFACT_CREATION_CONTRACT_SCHEMA_ID = 'tiinex.artifact.creation.contract.v1';
 export const ARTIFACT_CREATION_RESULT_VALIDATION_SCHEMA_ID = 'tiinex.artifact.creation.result.validation.v1';
@@ -18,18 +23,31 @@ export function listCreatableArtifactSchemas(registry = schemaRegistry) {
 
 export function buildArtifactCreationContract(input = {}, options = {}) {
   const schemaId = String(input.schemaId || input.id || input.module?.id || '').trim();
-  const resolution = resolveSchemaCapabilities({ schemaId });
-  const descriptor = input.module ? describeModuleThroughResolution(input.module) : resolution.descriptor;
-  const createCapability = descriptor?.actions?.create;
+  const resolution = input.module ? { module: input.module, fallbackUsed: false, descriptor: describeModuleThroughResolution(input.module) } : resolveSchemaCapabilities({ schemaId });
+  const descriptor = input.module ? resolution.descriptor : resolution.descriptor;
+  const module = input.module || resolveRegisteredSchemaModule({ schemaId })?.module || null;
+  const schemaReferences = schemaReferenceAuthoritiesForCreation(module);
   const fallbackUsed = Boolean(resolution.fallbackUsed && !input.module);
   const transitionType = String(input.transitionType || options.transitionType || 'create-artifact').trim();
-  const renderer = schemaCreationRendererFor(schemaId, transitionType);
-  const isCreatable = createCapability?.status === CapabilityStatus.implemented && renderer.status === 'implemented' && !fallbackUsed;
+  const creationCapability = qualifyArtifactCreationCapability(module, transitionType);
+  const creationAuthority = creationCapability.authority?.compiledContract?.creation || {};
+  const creation = Object.freeze({
+    requiredInputs: Object.freeze([...(creationAuthority.requiredInputs || [])]),
+    optionalInputs: Object.freeze([...(creationAuthority.optionalInputs || [])]),
+    requiredSections: Object.freeze([...(creationAuthority.requiredSections || [])]),
+    toolingConfigurationFields: Object.freeze([...(creationAuthority.toolingConfigurationFields || [])]),
+    inputBindings: Object.freeze([...(creationAuthority.inputBindings || [])]),
+    requiredShape: Object.freeze([...(creationAuthority.requiredShape || [])])
+  });
+  const renderer = creationCapability.implementation?.state === 'implemented'
+    ? { status: CapabilityStatus.implemented, ...(creationCapability.implementation.renderer || {}) }
+    : { status: CapabilityStatus.unavailable, id: '', scope: transitionType };
+  const isCreatable = creationCapability.authority?.state === 'qualified' && renderer.status === CapabilityStatus.implemented && !fallbackUsed;
   const findings = [];
 
   if (!schemaId) findings.push(error('creation.schema.required', 'Creation contract requires a target schema id.'));
   if (fallbackUsed) findings.push(error('creation.schema.fallback-blocked', `Cannot create ${schemaId || 'unknown schema'} through Root fallback; choose an implemented schema module.`));
-  if (createCapability?.status !== CapabilityStatus.implemented) findings.push(error('creation.capability.missing', `${schemaId || 'target schema'} does not declare an implemented create capability.`));
+  if (creationCapability.authority?.state !== 'qualified') findings.push(error('creation.authority.missing', `${schemaId || 'target schema'} does not expose an exact Artifact Creation Contract authority.`));
   if (renderer.status !== 'implemented') findings.push(error('creation.renderer.missing', `${schemaId || 'target schema'} does not have an implemented creation renderer for ${transitionType}.`));
   if (!descriptor?.binding?.schemaId) findings.push(error('creation.binding.schemaId.missing', `${schemaId || 'target schema'} is missing schema binding.`));
 
@@ -54,6 +72,8 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
         sourceCommit: descriptor?.binding?.sourceCommit || ''
       })
     }),
+    creation,
+    executionQualification: creationCapability.implementation?.executionQualification || null,
     resultBoundary: Object.freeze({
       mode: 'browser-local-draft',
       sourceMutation: 'none',
@@ -63,13 +83,16 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
     }),
     requiredEnvelope: Object.freeze({
       envelopeSchemaId: ROOT_SCHEMA_ID,
-      parentFields: Object.freeze(['Parent Schema', 'Trace', 'Boundary']),
+      parentMode: 'forbidden-for-root-required-when-parent-supplied',
+      parentFieldsWhenPresent: Object.freeze(['Parent Schema', 'Trace', 'Boundary']),
       parentOrigin: 'required-when-parent-path-known',
-      currentFields: Object.freeze(['Current Schema', 'Created At', 'Summary', 'Status', 'Why']),
+      currentFields: Object.freeze(['Current Schema', 'Created At', 'Summary']),
       integrityFooter: 'required'
     }),
+    schemaReferences,
     capabilities: Object.freeze({
-      create: isCreatable ? CapabilityStatus.implemented : (createCapability?.status || CapabilityStatus.unavailable),
+      create: isCreatable ? CapabilityStatus.implemented : CapabilityStatus.unavailable,
+      semanticCreationAuthority: creationCapability.authority?.state || 'unavailable',
       createRenderer: renderer.status,
       fallback: descriptor?.actions?.fallback?.status || CapabilityStatus.unavailable,
       validate: descriptor?.actions?.validate?.status || CapabilityStatus.unavailable,
@@ -81,42 +104,17 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
 }
 
 export function createArtifactDraftMarkdown(contract = {}, input = {}) {
-  const parentRecord = input.parentRecord || {};
-  const currentSchemaId = String(input.currentSchemaId || contract.target?.schemaId || '').trim();
-  const createdAt = String(input.createdAt || new Date().toISOString()).trim();
-  const title = normalizeTitle(input.title || `${contract.target?.label || labelFromSchemaId(currentSchemaId)} Draft`);
-  const summary = normalizeSummary(input.summary || `${contract.target?.label || labelFromSchemaId(currentSchemaId)} draft created in Tiinex.`);
-  const status = String(input.status || 'draft/local').trim();
-  const why = normalizeSummary(input.why || 'Created as a browser-local draft. No source provenance is inferred.');
-  const bodyMarkdown = String(input.bodyMarkdown || defaultBodyMarkdown({ title, label: contract.target?.label, summary })).trim();
-
-  return [
-    '# Continuity Context',
-    '',
-    `- Envelope Schema: [${ROOT_SCHEMA_ID}](${ROOT_SCHEMA_ID}.schema.md)`,
-    '- Parent',
-    `  - Parent Schema: [${parentSchemaForRecord(parentRecord)}](${parentSchemaForRecord(parentRecord)}.schema.md)`,
-    `  - Created At: ${parentRecord.createdAt || 'unknown'}`,
-    `  - Trace: ${parentRecord.continuationTrace || (parentRecord.id ? `record:${parentRecord.id}` : 'record:unassigned')}`,
-    parentRecord.path ? `  - Origin: ${parentRecord.path}` : '',
-    `  - Boundary: ${boundaryForRecord(parentRecord)}`,
-    '- Current',
-    `  - Current Schema: [${currentSchemaId}](${currentSchemaId}.schema.md)`,
-    `  - Created At: ${createdAt}`,
-    `  - Summary: ${summary}`,
-    `  - Status: ${status}`,
-    `  - Why: ${why}`,
-    '',
-    '---',
-    '',
-    bodyMarkdown,
-    '',
-    '# Continuity Integrity',
-    '',
-    '- Draft Local Integrity',
-    '  - Method: browser-local-draft',
-    '  - Value: pending-publication-or-export'
-  ].filter(Boolean).join('\n');
+  if (contract?.status !== 'ready') return '';
+  const schemaId = String(contract?.target?.schemaId || '').trim();
+  const transitionType = String(contract?.transitionType || 'create-artifact').trim();
+  const resolution = resolveRegisteredSchemaModule({ schemaId });
+  const module = resolution?.fallbackUsed ? null : resolution?.module || null;
+  if (!module) return '';
+  const executed = executeArtifactCreationCapability(module, transitionType, contract, input);
+  if (executed.state !== 'rendered') return '';
+  if (transitionType !== 'create-artifact') return executed.markdown;
+  const validation = validateArtifactCreationResult({ schemaId, status: 'local', sourceMode: 'local-create', markdown: executed.markdown }, {}, { contract });
+  return validation.ok ? executed.markdown : '';
 }
 
 export function validateArtifactCreationContract(contract = {}) {
@@ -133,20 +131,31 @@ export function validateArtifactCreationContract(contract = {}) {
 }
 
 export function validateArtifactCreationResult(draft = {}, parentRecord = {}, options = {}) {
-  const contract = options.contract || draft.creationContract || buildArtifactCreationContract({ schemaId: draft.kind || draft.targetSchemaId || '' });
+  const contract = options.contract || draft.creationContract || buildArtifactCreationContract({ schemaId: draft.schemaId || draft.targetSchemaId || '' });
   const parsed = parseArtifactMarkdown(draft.markdown || '');
   const findings = [];
   findings.push(...validateArtifactCreationContract(contract).findings);
   findings.push(...validateTargetSchema(parsed, contract));
+  if (String(contract?.transitionType || 'create-artifact') === 'create-artifact') {
+    findings.push(...validateRootCreationRepresentation(draft.markdown || '', contract));
+    findings.push(...validateCreationSchemaReferences(draft.markdown || '', contract));
+    findings.push(...validatePortableRootTargetCreationResult(draft.markdown || '', contract));
+  }
 
   const currentSchemaId = parsed.envelope?.current?.schema?.id || '';
-  const expectedSchemaId = contract.target?.schemaId || draft.kind || '';
+  const expectedSchemaId = contract.target?.schemaId || draft.schemaId || draft.targetSchemaId || '';
   const parent = parsed.envelope?.parent || {};
   const expectedTrace = parentRecord?.id ? `record:${parentRecord.id}` : '';
 
+  const rootCreation = String(contract?.transitionType || 'create-artifact') === 'create-artifact';
+  const suppliedParent = parentRecordHasAnyValue(parentRecord);
+  const parentExpected = !rootCreation && suppliedParent;
+  const parentObserved = parsedParentHasAnyValue(parent);
   if (expectedSchemaId && currentSchemaId !== expectedSchemaId) findings.push(error('creation.current.schema.mismatch', `Creation result Current Schema must be ${expectedSchemaId}.`));
-  if (expectedTrace && parent.trace !== expectedTrace) findings.push(error('creation.parent.trace.mismatch', `Creation result Parent Trace must preserve ${expectedTrace}.`));
-  if (!parent.boundary) findings.push(error('creation.parent.boundary.required', 'Creation result must preserve parent boundary.'));
+  if (rootCreation && suppliedParent) findings.push(error('creation.parent.input.unexpected', 'Standalone/root creation must not accept a Continuity Parent input.'));
+  if (!parentExpected && parentObserved) findings.push(error('creation.parent.unexpected', 'Standalone/root creation must not invent Continuity Parent truth.'));
+  if (parentExpected && expectedTrace && parent.trace !== expectedTrace) findings.push(error('creation.parent.trace.mismatch', `Creation result Parent Trace must preserve ${expectedTrace}.`));
+  if (parentExpected && !parent.boundary) findings.push(error('creation.parent.boundary.required', 'Continuation creation must preserve parent boundary.'));
   if (parentRecord?.path && !parent.origin) findings.push(warning('creation.parent.origin.missing', 'Parent path exists but creation result Origin is missing.'));
   if (parentRecord?.path && parent.origin && !originMatchesPath(parent.origin, parentRecord.path)) findings.push(warning('creation.parent.origin.unexpected', 'Creation result Origin does not end with the parent canonical path.'));
   if (draft.status !== 'local') findings.push(error('creation.result.status.not-local', 'Creation result must stay local until explicit publication/export.'));
@@ -165,6 +174,39 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
 }
 
 
+
+function validateRootCreationRepresentation(markdown = '', contract = {}) {
+  const qualification = qualifyRootCreationRepresentation(markdown, contract);
+  return (qualification.findings || []).map((message, index) => error(`creation.representation.multiplicity.${index + 1}`, message));
+}
+
+function validateCreationSchemaReferences(markdown = '', contract = {}) {
+  const qualification = qualifyCreationSchemaReferences(markdown, contract);
+  return (qualification.findings || []).map((message, index) => error(`creation.schema-reference.${index + 1}`, message));
+}
+
+function validatePortableRootTargetCreationResult(markdown = '', contract = {}) {
+  const targetSchemaId = String(contract?.target?.schemaId || '').trim();
+  const resolution = resolveRegisteredSchemaModule({ schemaId: targetSchemaId });
+  const module = resolution?.fallbackUsed ? null : resolution?.module || null;
+  const validationContract = module?.schemaSource?.qualify?.()?.compiledContract?.validationContract || null;
+  const findings = [];
+  if (!validationContract) return [error('creation.portable-contract.unavailable', `Portable Root + ${targetSchemaId || 'target'} structural validation projection is unavailable.`)];
+  try {
+    const result = validatePortableContractInstance({ markdown, compiledContract: validationContract });
+    for (const item of result.findings || []) {
+      if (item?.severity === 'error') findings.push(error(`creation.portable-contract.${item.code || 'invalid'}`, item.message || 'Portable contract validation failed.'));
+      else if (item?.severity === 'warning') findings.push(warning(`creation.portable-contract.${item.code || 'warning'}`, item.message || 'Portable contract validation is degraded.'));
+    }
+    if (result.status !== 'valid' && !findings.some((item) => item.severity === 'error')) findings.push(error('creation.portable-contract.not-valid', `Portable Root + target structural validation is ${result.status}.`));
+  } catch (exception) {
+    findings.push(error('creation.portable-contract.failed', String(exception?.message || exception || 'Portable contract validation failed.')));
+  }
+  const integrity = canonicalC14nV2SelfState(markdown);
+  if (integrity.state !== 'verified') findings.push(error('creation.integrity.self.not-verified', `Created artifact self-integrity is not verified: ${integrity.reason || integrity.state}.`));
+  return findings;
+}
+
 function validateTargetSchema(parsed = {}, contract = {}) {
   const targetSchemaId = contract.target?.schemaId || parsed.envelope?.current?.schema?.id || '';
   const resolution = resolveRegisteredSchemaModule({ schemaId: targetSchemaId });
@@ -181,21 +223,6 @@ function validateTargetSchema(parsed = {}, contract = {}) {
   return module.validate(parsed).map(normalizeFinding);
 }
 
-function schemaCreationRendererFor(schemaId = '', transitionType = '') {
-  const id = String(schemaId || '').trim();
-  const transition = String(transitionType || '').trim();
-  if (id === 'tiinex.topic.v1' && (transition === 'continue-from-record' || transition === 'create-artifact')) {
-    return { status: CapabilityStatus.implemented, id: 'tiinex.topic.v1.continue-renderer', scope: 'topic-continuation' };
-  }
-  if (id === 'tiinex.task.v1' && (transition === 'continue-from-record' || transition === 'create-artifact')) {
-    return { status: CapabilityStatus.implemented, id: 'tiinex.task.v1.continue-renderer', scope: 'task-continuation' };
-  }
-  if (id === 'tiinex.evidence.v1' && (transition === 'reference-record' || transition === 'create-artifact')) {
-    return { status: CapabilityStatus.implemented, id: 'tiinex.evidence.v1.reference-renderer', scope: 'evidence-reference' };
-  }
-  return { status: CapabilityStatus.unavailable, id: '', scope: transition || 'create-artifact' };
-}
-
 function describeModuleThroughResolution(module = {}) {
   return {
     moduleId: module.id || '',
@@ -210,7 +237,7 @@ function describeModuleThroughResolution(module = {}) {
       sourceCommit: module.binding?.sourceCommit || ''
     },
     actions: {
-      create: { status: module.capabilities?.canCreateArtifact === true ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
+      create: { status: qualifyArtifactCreationCapability(module, 'create-artifact').ready ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
       fallback: { status: module.capabilities?.canRenderFallback === true ? CapabilityStatus.implemented : CapabilityStatus.fallback },
       validate: { status: typeof module.validate === 'function' ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
       present: { status: typeof module.present === 'function' ? CapabilityStatus.implemented : CapabilityStatus.unavailable }
@@ -232,21 +259,10 @@ function countFindings(findings = []) {
   }, { errors: 0, warnings: 0, info: 0 });
 }
 
-function defaultBodyMarkdown({ title, label, summary }) {
-  return [`# ${title}`, '', `## ${label || 'Artifact'} Draft`, '', summary].join('\n');
-}
-
 function stableContractId(schemaId, transitionType) { return `creation:${transitionType || 'create'}:${schemaId || 'unknown'}`; }
-function normalizeTitle(value) { return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 96) || 'Untitled draft'; }
-function normalizeSummary(value) { return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 280) || 'Draft created in Tiinex.'; }
-function parentSchemaForRecord(record = {}) { return record.kind && String(record.kind).includes('.') ? String(record.kind) : ROOT_SCHEMA_ID; }
 function labelFromSchemaId(id = '') { const tail = String(id || '').split('.').filter(Boolean).slice(-2, -1)[0] || String(id || 'artifact'); return tail.charAt(0).toUpperCase() + tail.slice(1); }
-function boundaryForRecord(record = {}) {
-  const source = record.source || {};
-  if (source.adapterId === 'github') return 'source-backed github material';
-  if (source.adapterId === 'local' || source.kind === 'local-session' || record.sourceMode?.startsWith?.('local')) return 'browser-local session material; no GitHub provenance inferred';
-  return 'explicit record boundary';
-}
+function parentRecordHasAnyValue(record = {}) { return Boolean(record?.id || record?.path || record?.schemaId || record?.currentSchemaId || record?.continuationTrace); }
+function parsedParentHasAnyValue(parent = {}) { return Boolean(parent?.schema?.id || parent?.trace || parent?.origin || parent?.boundary || parent?.createdAt); }
 function originMatchesPath(origin = '', path = '') { return normalizePath(origin).endsWith(normalizePath(path)); }
 function normalizePath(value = '') { return String(value || '').replace(/^https?:\/\/github\.com\/[^/]+\/[^/]+\/blob\/[^/]+\//, '').replace(/^https?:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//, '').replace(/^\/+/, '').replace(/\\/g, '/'); }
 function normalizeFinding(finding = {}) { return { severity: finding.severity || 'info', code: finding.code || 'creation.finding', message: finding.message || '', source: finding.source || ARTIFACT_CREATION_CONTRACT_SCHEMA_ID }; }

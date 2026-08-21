@@ -1,9 +1,10 @@
-import { createArtifactDraftMarkdown, buildArtifactCreationContract } from '../../../schemas/creation.contracts.js';
+import { buildArtifactCreationContract } from '../../../schemas/creation.contracts.js';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { findSchemaMaterial } from '../input/portable.input.js';
 import { buildPortableSchemaGuide, planPortableArtifact } from '../schema/schema.guide.js';
 import { parsePortableSchemaDocument } from '../schema/schema.contract.js';
 import { validatePortableDraft } from './draft.operations.js';
+import { normalizePortableParentRecord, qualifyPortableExactParent, renderQualifiedPortableExactDraft } from './draft.exact.js';
 
 export const PORTABLE_DRAFT_CREATION_SCHEMA_ID = 'tiinex.portable.draft-creation.v1';
 export const PORTABLE_STAGED_ARTIFACT_SCHEMA_ID = 'tiinex.portable.staged-artifact.v1';
@@ -17,19 +18,24 @@ export function createPortableLocalDraft(input = {}, options = {}) {
   const findings = [...(planResult.findings || []), ...(guideResult.findings || [])];
   const schemaMaterial = findSchemaMaterial(schemaId, input.materials || input);
   const document = schemaMaterial?.markdown ? parsePortableSchemaDocument(schemaMaterial.markdown) : null;
-  const exactContract = buildArtifactCreationContract({ schemaId, transitionType: input.transitionType || options.transitionType || 'create-artifact' });
-  const parentRecord = normalizeParent(input.parentRecord || input.parent || {});
+  const transitionType = String(input.transitionType || options.transitionType || 'create-artifact').trim() || 'create-artifact';
+  const exactContract = buildArtifactCreationContract({ schemaId, transitionType });
+  const parentRecord = normalizePortableParentRecord(input.parentRecord || input.parent || {});
   const hasDeclaredParent = parentRecordHasAnyValue(parentRecord);
   const hasCompleteParent = parentRecordIsComplete(parentRecord);
-  const exactRendererParentCompatible = parentRecordSupportsExactRenderer(parentRecord);
-  const exactRendererApplied = exactContract.status === 'ready' && exactRendererParentCompatible;
+  const exactParentQualification = qualifyPortableExactParent(parentRecord, transitionType);
+  const qualifiedParentRecord = exactParentQualification.state === 'qualified' ? exactParentQualification.snapshot : null;
+  const genericParentRecord = transitionType === 'create-artifact' ? parentRecord : qualifiedParentRecord;
+  const exactRendererParentCompatible = exactParentQualification.state === 'qualified';
+  const exactRendererEligible = exactContract.status === 'ready' && exactRendererParentCompatible;
 
   if (!schemaId) findings.push(portableFinding('error', 'portable.draft-create.schema.required', 'Local draft creation requires a target schema id.'));
-  if (hasDeclaredParent && !hasCompleteParent) findings.push(portableFinding('error', 'portable.draft-create.parent.incomplete', 'A declared Parent must provide Parent Schema, Trace (or an explicit parent id), and a recoverable Origin path. Omit Parent entirely to create a local lineage root.', {
-    hasParentSchema: Boolean(parentRecord.schemaId),
+  if (hasDeclaredParent && !hasCompleteParent) findings.push(portableFinding('error', 'portable.draft-create.parent.incomplete', 'A declared Parent must provide explicit Parent Schema authority, Trace (or an explicit parent id), and a recoverable Origin path. A kind label is not Parent Schema authority.', {
+    hasParentSchema: Boolean(parentRecord.schemaId || parentRecord.currentSchemaId),
     hasTrace: Boolean(parentRecord.continuationTrace || parentRecord.id),
     hasOrigin: Boolean(parentRecord.path)
   }));
+  if ((exactContract.status === 'ready' || (hasDeclaredParent && transitionType !== 'create-artifact')) && !exactRendererParentCompatible) findings.push(portableFinding('error', `portable.draft-create.parent.${exactParentQualification.reason || 'unqualified'}`, 'Exact creation requires one coherent Parent identity for the requested continuity mode; portable tooling will not rewrite or synthesize Parent authority.', exactParentQualification.evidence || {}));
   if (!schemaMaterial && exactContract.status !== 'ready') findings.push(portableFinding('error', 'portable.draft-create.schema-material.required', 'Readable child schema material or exact creation tooling is required; schema meaning will not be guessed.', { schemaId }));
   if (planResult.plan.missingInputs.length && !allowIncomplete) {
     findings.push(portableFinding('error', 'portable.draft-create.inputs.blocked', 'Draft creation is blocked until required authoring inputs are supplied or allowIncomplete is explicitly enabled.', {
@@ -46,34 +52,50 @@ export function createPortableLocalDraft(input = {}, options = {}) {
       draft: null,
       plan: planResult.plan,
       guide: guideResult.guide,
-      qualification: creationQualification({ schemaId, exactContract, exactRendererApplied, exactRendererParentCompatible, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation: null, allowIncomplete, blocked: true }),
+      qualification: creationQualification({ schemaId, exactContract, exactRendererApplied: false, exactRendererParentCompatible, exactResultQualification: null, exactParentQualification, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation: null, allowIncomplete, blocked: true }),
       findings: Object.freeze(findings),
       findingSummary: summary
     });
   }
 
-  const title = cleanSingleLine(input.title || values.Title || values.title || `${schemaLabel(schemaId)} Draft`, 120);
-  const summary = cleanSingleLine(input.summary || values.Summary || values.summary || `${schemaLabel(schemaId)} local draft.`, 360);
+  const title = cleanSingleLine(input.title || values.Title || values.title || values.Summary || values.summary || `${schemaLabel(schemaId)} Draft`, 120);
+  const summary = cleanSingleLine(input.summary || values.Summary || values.summary || title || `${schemaLabel(schemaId)} local draft.`, 360);
   const createdAt = normalizeArtifactTimestamp(input.createdAt || options.createdAt || new Date());
-  const bodyMarkdown = String(input.bodyMarkdown || renderBody({
-    title,
-    plan: planResult.plan,
-    document,
+  const explicitBodyMarkdown = typeof input.bodyMarkdown === 'string' && input.bodyMarkdown.trim() ? input.bodyMarkdown.trim() : '';
+  const exactRendererInput = {
     values,
-    sections: input.sections || {},
-    allowIncomplete
-  })).trim();
-  const markdown = exactRendererApplied
-    ? createArtifactDraftMarkdown(exactContract, {
-      parentRecord,
-      currentSchemaId: schemaId,
-      createdAt,
+    createdAt,
+    status: input.currentStatus || 'draft/local',
+    why: input.why || 'Created as an explicit portable local draft. No source provenance is inferred.',
+    ...(Object.prototype.hasOwnProperty.call(input, 'title') ? { title: input.title } : {}),
+    ...(Object.prototype.hasOwnProperty.call(input, 'summary') ? { summary: input.summary } : {}),
+    ...(typeof input.bodyMarkdown === 'string' && input.bodyMarkdown.trim() ? { bodyMarkdown: input.bodyMarkdown } : {})
+  };
+  const exactResult = exactRendererEligible
+    ? renderQualifiedPortableExactDraft({ contract: exactContract, schemaId, transitionType, parentSnapshot: exactParentQualification.snapshot, rendererInput: exactRendererInput })
+    : null;
+  const exactRendererApplied = exactResult?.state === 'qualified';
+  if (exactRendererEligible && !exactRendererApplied) {
+    findings.push(portableFinding('error', 'portable.draft-create.exact-result.unqualified', 'Exact Site creation tooling did not produce a qualified concrete artifact; portable tooling will not claim exact creation or fall back to rewritten bytes.', { reason: exactResult?.reason || 'unknown' }));
+    const blockedSummary = summarizePortableFindings(findings);
+    return Object.freeze({
+      schema: PORTABLE_DRAFT_CREATION_SCHEMA_ID, status: 'blocked', schemaId, draft: null, plan: planResult.plan, guide: guideResult.guide,
+      qualification: creationQualification({ schemaId, exactContract, exactRendererApplied: false, exactRendererParentCompatible, exactResultQualification: exactResult, exactParentQualification, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation: null, allowIncomplete, blocked: true }),
+      findings: Object.freeze(findings), findingSummary: blockedSummary
+    });
+  }
+  const bodyMarkdown = exactRendererApplied
+    ? explicitBodyMarkdown
+    : String(explicitBodyMarkdown || renderBody({
       title,
-      summary,
-      status: input.currentStatus || 'draft/local',
-      why: input.why || 'Created as an explicit portable local draft. No source provenance is inferred.',
-      bodyMarkdown
-    })
+      plan: planResult.plan,
+      document,
+      values,
+      sections: input.sections || {},
+      allowIncomplete
+    })).trim();
+  const markdown = exactRendererApplied
+    ? exactResult.markdown
     : renderGenericDraft({
       schemaId,
       title,
@@ -81,7 +103,7 @@ export function createPortableLocalDraft(input = {}, options = {}) {
       createdAt,
       why: input.why,
       currentStatus: input.currentStatus,
-      parentRecord: hasCompleteParent ? parentRecord : {},
+      parentRecord: hasCompleteParent && genericParentRecord ? genericParentRecord : {},
       bodyMarkdown
     });
   const path = normalizeDraftPath(input.path || `drafts/${slug(title)}.md`);
@@ -109,7 +131,7 @@ export function createPortableLocalDraft(input = {}, options = {}) {
     plan: planResult.plan,
     guide: guideResult.guide,
     validation,
-    qualification: creationQualification({ schemaId, exactContract, exactRendererApplied, exactRendererParentCompatible, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation, allowIncomplete, blocked: false }),
+    qualification: creationQualification({ schemaId, exactContract, exactRendererApplied, exactRendererParentCompatible, exactResultQualification: exactResult, exactParentQualification, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation, allowIncomplete, blocked: false }),
     findings: Object.freeze(findings),
     findingSummary: summaryResult
   });
@@ -247,13 +269,16 @@ function renderGenericDraft({ schemaId, title, summary, createdAt, why, currentS
   return lines.join('\n');
 }
 
-function creationQualification({ exactContract, exactRendererApplied, exactRendererParentCompatible, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation, allowIncomplete, blocked }) {
+function creationQualification({ exactContract, exactRendererApplied, exactRendererParentCompatible, exactResultQualification, exactParentQualification, hasDeclaredParent, hasCompleteParent, schemaMaterial, validation, allowIncomplete, blocked }) {
   const exactAvailable = exactContract.status === 'ready';
   return Object.freeze({
     blocked,
     exactCreateTooling: Boolean(exactRendererApplied),
     exactCreateToolingAvailable: exactAvailable,
     exactCreateToolingApplied: Boolean(exactRendererApplied),
+    exactCreationResultQualification: String(exactResultQualification?.state || (exactRendererApplied ? 'qualified' : 'not-run')),
+    parentAuthorityQualification: String(exactParentQualification?.state || 'unqualified'),
+    parentAuthorityReason: String(exactParentQualification?.reason || ''),
     readableChildSchema: Boolean(schemaMaterial),
     creationMode: exactRendererApplied
       ? 'exact-site-creation-contract'
@@ -267,8 +292,8 @@ function creationQualification({ exactContract, exactRendererApplied, exactRende
     sourceMutation: false,
     limitations: Object.freeze([
       ...(!exactAvailable ? ['Exact child creation renderer is unavailable; the draft was rendered from readable schema structure and remains partially qualified.'] : []),
-      ...(exactAvailable && !exactRendererApplied && !hasDeclaredParent ? ['The exact shared renderer requires a real continuity parent. A root draft was rendered from canonical readable schema material instead of inventing a Parent.'] : []),
-      ...(exactAvailable && hasCompleteParent && !exactRendererParentCompatible ? ['The supplied Parent is semantically complete, but the exact shared renderer requires an explicit parent record id. Portable tooling used the readable-schema writer rather than inventing one.'] : []),
+      ...(exactAvailable && !exactRendererApplied && !hasDeclaredParent ? ['The exact shared renderer was available but could not be applied at the requested continuity mode; portable tooling did not invent a Parent or alternate creation semantics.'] : []),
+      ...(exactAvailable && !exactRendererParentCompatible && hasDeclaredParent ? [`The supplied Parent is not qualified for exact continuation (${exactParentQualification?.reason || 'parent-unqualified'}); portable tooling did not rewrite or synthesize Parent identity.`] : []),
       ...(hasDeclaredParent && !hasCompleteParent ? ['The supplied Parent declaration was incomplete and draft creation was blocked rather than inventing missing continuity or provenance fields.'] : []),
       ...(validation?.qualification?.limitations || []),
       ...(allowIncomplete ? ['Incomplete placeholders may remain and must not be treated as a qualified artifact.'] : [])
@@ -278,16 +303,13 @@ function creationQualification({ exactContract, exactRendererApplied, exactRende
 
 
 function parentRecordHasAnyValue(parent = {}) {
-  return Boolean(parent.id || parent.path || parent.schemaId || parent.continuationTrace || parent.createdAt || parent.boundary || parent.sourceMode || parent.source);
+  return Boolean(parent.id || parent.path || parent.kind || parent.schemaId || parent.currentSchemaId || parent.continuationTrace || parent.currentCreatedAt || parent.createdAt || parent.boundary || parent.sourceMode || parent.source);
 }
 
 function parentRecordIsComplete(parent = {}) {
-  return Boolean(parent.schemaId && (parent.continuationTrace || parent.id) && parent.path);
+  return Boolean((parent.schemaId || parent.currentSchemaId) && (parent.continuationTrace || parent.id) && parent.path);
 }
 
-function parentRecordSupportsExactRenderer(parent = {}) {
-  return Boolean(parent.schemaId && parent.id && parent.path);
-}
 
 function normalizeArtifactTimestamp(value) {
   const text = String(value instanceof Date ? value.toISOString() : value || '').trim();
@@ -305,19 +327,6 @@ function mergeSchemaFiles(input, schemaMaterial) {
   return files;
 }
 
-function normalizeParent(parent = {}) {
-  return Object.freeze({
-    id: String(parent.id || ''),
-    path: String(parent.path || ''),
-    kind: String(parent.kind || parent.schemaId || ''),
-    schemaId: String(parent.schemaId || parent.kind || ''),
-    createdAt: String(parent.createdAt || ''),
-    continuationTrace: String(parent.continuationTrace || ''),
-    boundary: String(parent.boundary || parent.source?.boundary || ''),
-    sourceMode: String(parent.sourceMode || ''),
-    source: parent.source || null
-  });
-}
 
 function normalizeDraftInput(draft = {}) {
   return Object.freeze({

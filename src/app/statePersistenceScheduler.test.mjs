@@ -31,42 +31,21 @@ assert.equal(calls.length, 1, 'cancel prevents stale scheduled route writes');
 
 const canonicalWrites = [];
 let rendered = null;
+let migrationCalls = 0;
 const canonicalRuntime = () => ({
   persistence: {
-    normalizeLegacyWorkspaceCandidateState(state) {
-      return {
-        ...state,
-        workspaces: (state.workspaces || []).map((workspace) => {
-          const canonical = {
-            ...workspace,
-            records: [
-              ...(workspace.records || []),
-              ...(workspace.workspaceMergeCandidates || []).map((candidate) => ({
-                id: candidate.id,
-                path: candidate.path,
-                workspaceArtifactRole: {
-                  schema: 'tiinex.workspace.artifact.role.v1',
-                  openEligible: true,
-                  mergeEligible: true,
-                  migratedFromLegacyCandidate: true
-                }
-              }))
-            ]
-          };
-          delete canonical.workspaceMergeCandidates;
-          return canonical;
-        })
-      };
-    },
+    normalizeLegacyWorkspaceCandidateState() { migrationCalls += 1; throw new Error('ordinary runtime commit must not invoke persistence migration'); },
     writeState(state) { canonicalWrites.push(state); },
     clearState() {}
   }
 });
-const legacyProductState = { workspaces: [{ id: 'w', records: [], workspaceMergeCandidates: [{ id: 'legacy-workspace', path: 'legacy.workspace.md' }] }] };
-const committed = commitStateWithPersistence({ nextState: legacyProductState, sourceState: {}, setState: (state) => { rendered = state; }, runtime: canonicalRuntime, scheduler: { cancel() {} } });
-assert.equal(Object.prototype.hasOwnProperty.call(committed.workspaces[0], 'workspaceMergeCandidates'), false, 'product commit must consume legacy candidate shape before UI/runtime state');
-assert.equal(Object.prototype.hasOwnProperty.call(rendered.workspaces[0], 'workspaceMergeCandidates'), false, 'candidate compatibility must not reach rendered product state');
-assert.equal(committed.workspaces[0].records[0].workspaceArtifactRole.schema, 'tiinex.workspace.artifact.role.v1', 'product commit produces canonical Workspace Artifact role');
+const currentProductState = { workspaces: [{ id: 'w', records: [{ id: 'current', path: 'current.trace.md' }], assets: [], sources: [] }], activeWorkspaceId: 'w', view: { workspaceVerse: 'feed' } };
+const committed = commitStateWithPersistence({ nextState: currentProductState, sourceState: {}, setState: (state) => { rendered = state; }, runtime: canonicalRuntime, scheduler: { cancel() {} } });
+assert.equal(migrationCalls, 0, 'ordinary product commit never invokes legacy persistence migration');
+assert.equal(committed.workspaces[0], currentProductState.workspaces[0], 'workspace identity is preserved across ordinary product commit');
+assert.equal(committed.workspaces[0].records, currentProductState.workspaces[0].records, 'record collection identity is preserved across ordinary product commit');
+assert.equal(rendered.workspaces[0], currentProductState.workspaces[0], 'rendered product state retains current workspace identity');
+assert.throws(() => commitStateWithPersistence({ nextState: { workspaces: [{ id: 'legacy', workspaceMergeCandidates: [] }] }, sourceState: {}, setState: () => {}, runtime: canonicalRuntime, scheduler: { cancel() {} } }), /workspace\.runtime-candidate-leak:commit:legacy/, 'legacy compatibility is rejected if it leaks into current product commits');
 
 const clearCalls = [];
 const publicOwnership = { writePolicy: () => ({ routeKind: 'public-target', preserveUrl: true, durableLocalPolicy: 'preserve-existing' }) };

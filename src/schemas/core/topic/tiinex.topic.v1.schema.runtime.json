@@ -1,0 +1,373 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.topic.v1",
+  "sourceChecksum": "d5fb337e126a1953967161b240dd18e8395bd9197f1f3c8f1b9b7c5b26ce77d4",
+  "sourceBytes": 5901,
+  "bindingChecksum": "d5fb337e126a1953967161b240dd18e8395bd9197f1f3c8f1b9b7c5b26ce77d4",
+  "validationContract": {
+    "schema": "tiinex.site.compact-portable-validation-contract.v1",
+    "schemaId": "tiinex.topic.v1",
+    "lineage": [
+      "tiinex.root.v1",
+      "tiinex.topic.v1"
+    ],
+    "lineageQualification": {
+      "state": "valid",
+      "complete": true,
+      "lineage": [
+        "tiinex.root.v1",
+        "tiinex.topic.v1"
+      ],
+      "findings": []
+    },
+    "validation": {
+      "groups": [
+        {
+          "name": "Runtime Required Fields",
+          "requiredWhen": [],
+          "categories": [
+            {
+              "name": "Required Fields",
+              "items": [
+                "Envelope Schema",
+                "Current",
+                "Current Schema",
+                "Created At"
+              ]
+            }
+          ]
+        }
+      ],
+      "requiredSections": [
+        "Continuity Context",
+        "Continuity Integrity"
+      ],
+      "requiredHeadings": [],
+      "requiredEntries": [
+        {
+          "group": "Continuity Integrity Footer",
+          "entries": [
+            "Method Entry"
+          ],
+          "targetHeadings": [
+            "Continuity Integrity"
+          ]
+        }
+      ],
+      "ordinaryGroups": []
+    },
+    "declarations": [
+      {
+        "group": "Named Declaration",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each named declaration is represented as one first-level hyphen list item.",
+          "The first-level list item text is the declaration name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Declaration names must be unique within the same contract group.",
+          "Duplicate declaration names are invalid unless a descendant schema explicitly defines override semantics."
+        ]
+      },
+      {
+        "group": "Contract Category Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each contract category extension uses the `Named Declaration` shape.",
+          "The declaration name is the new contract category label.",
+          "A descendant schema must not redeclare an already inherited category label here unless it explicitly defines override semantics.",
+          "A descendant schema must declare a new category label in `Contract Category Extension` before using it in its own contract.",
+          "Declared category labels extend the known category label set for that schema and its descendants.",
+          "Validators that do not understand a declared category label should preserve it and may warn.",
+          "Strict validators may fail on undeclared category labels when the full schema lineage is available."
+        ]
+      },
+      {
+        "group": "Contract Category Override",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Replacement Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Replacement Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each contract category override uses the `Named Declaration` shape.",
+          "The declaration name identifies the inherited contract category label being replaced.",
+          "`Replacement Interpretation` describes how the descendant schema now interprets that inherited label.",
+          "A descendant schema must not rely on an override unless it declares it here.",
+          "Validators must not guess contract category overrides that are not declared here."
+        ]
+      },
+      {
+        "group": "Repairs",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [],
+        "optionalFields": [
+          "Target",
+          "Note",
+          "Reason"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Repairs` records known repairs, corrections, or trust-impacting changes to the artifact.",
+          "A repair entry should state what was repaired and why.",
+          "A repair entry may refer to lineage, parent, origin, current metadata, body claims, schema references, integrity, or another readable target.",
+          "Structured repair entries should expose `Target`, `Note`, and `Reason` as nested fields.",
+          "Free-text repair entries are allowed and must be preserved, but structured entries are preferred for tooling.",
+          "`Repairs` must not silently replace `Parent`, `Trace`, `Origin`, `Current`, or `Continuity Integrity` semantics.",
+          "`Repairs` does not automatically invalidate the artifact or lineage.",
+          "Validators may warn when a repair entry is too vague to support audit or update tooling.",
+          "Tools that update descendants because of a repair should preserve the repair note or point to the artifact that contains it."
+        ]
+      },
+      {
+        "group": "Envelope Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Target Block",
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Target Block",
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each envelope extension uses the `Named Declaration` shape.",
+          "The declaration name is the added envelope field name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Descendant schemas may add machine-readable envelope fields.",
+          "Added envelope fields must declare which envelope block they extend.",
+          "Root validators should preserve unknown envelope fields even when they cannot validate them.",
+          "Strict validators may warn or fail on undeclared envelope fields when the full schema lineage is available."
+        ]
+      },
+      {
+        "group": "Method Entry",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Towards",
+          "Value"
+        ],
+        "optionalFields": [],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [
+          "Plain Method Identifier",
+          "Markdown Link Method Label"
+        ],
+        "targetHeadings": [
+          "Continuity Integrity"
+        ],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Method Entry` is represented by a first-level hyphen list item under `Continuity Integrity`.",
+          "The `Method Entry` label names the integrity method.",
+          "The `Method Entry` label may be a plain canonical method identifier or a markdown link to a validation method artifact.",
+          "A markdown-link method label must use the canonical method identifier as link text.",
+          "When a maintained validation method artifact has an available commit-pinned `browse + git` permalink, the markdown-link method label must use that permalink as its link target.",
+          "`Towards` identifies the validated target.",
+          "`Value` carries the method output.",
+          "For hash-based continuity methods, the validated target is hashed without the `# Continuity Integrity` section and everything after it.",
+          "When `Towards` is not `self`, `Value` must be computed from the validated target identified by `Towards`, not from the current artifact body.",
+          "`self` is allowed only when the method validates the current artifact itself.",
+          "When a maintained schema artifact has an available commit-pinned `browse + git` permalink for its validated target, `Towards` should use that permalink instead of a relative local path."
+        ]
+      },
+      {
+        "group": "Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each extension uses the `Named Declaration` shape.",
+          "The declaration name is the extension name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Root defines how extensions are introduced.",
+          "Root does not define all future extensions."
+        ]
+      }
+    ],
+    "constraints": []
+  },
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Prompt Fields",
+      "Template Body"
+    ],
+    "requiredInputs": [
+      "Summary",
+      "Current Read",
+      "Design Direction",
+      "Next Artifacts"
+    ],
+    "optionalInputs": [],
+    "requiredSections": [
+      "Current Read",
+      "Design Direction",
+      "Next Artifacts"
+    ],
+    "toolingConfigurationFields": [
+      "version",
+      "createTitle",
+      "summaryPrompt",
+      "summaryPlaceholder",
+      "whyPrompt",
+      "whyPlaceholder"
+    ],
+    "inputBindings": [
+      {
+        "input": "Summary",
+        "kind": "root-current-summary-body-title",
+        "section": ""
+      },
+      {
+        "input": "Current Read",
+        "kind": "section-body",
+        "section": "Current Read"
+      },
+      {
+        "input": "Design Direction",
+        "kind": "section-body",
+        "section": "Design Direction"
+      },
+      {
+        "input": "Next Artifacts",
+        "kind": "section-body",
+        "section": "Next Artifacts"
+      }
+    ],
+    "requiredShape": [
+      {
+        "id": "tiinex.topic.v1#artifact-creation/Template Body/required-shape/172",
+        "sourceSchemaId": "tiinex.topic.v1",
+        "group": "Template Body",
+        "category": "Required Shape",
+        "line": 172,
+        "sourceText": "first heading uses `# {{summary}}`",
+        "primitive": {
+          "kind": "body-title-summary",
+          "input": "Summary"
+        }
+      },
+      {
+        "id": "tiinex.topic.v1#artifact-creation/Template Body/required-shape/173",
+        "sourceSchemaId": "tiinex.topic.v1",
+        "group": "Template Body",
+        "category": "Required Shape",
+        "line": 173,
+        "sourceText": "summary sentence placeholder below the title",
+        "primitive": {
+          "kind": "residual"
+        }
+      },
+      {
+        "id": "tiinex.topic.v1#artifact-creation/Template Body/required-shape/174",
+        "sourceSchemaId": "tiinex.topic.v1",
+        "group": "Template Body",
+        "category": "Required Shape",
+        "line": 174,
+        "sourceText": "`## Current Read` section",
+        "primitive": {
+          "kind": "section-body",
+          "section": "Current Read",
+          "input": "Current Read"
+        }
+      },
+      {
+        "id": "tiinex.topic.v1#artifact-creation/Template Body/required-shape/175",
+        "sourceSchemaId": "tiinex.topic.v1",
+        "group": "Template Body",
+        "category": "Required Shape",
+        "line": 175,
+        "sourceText": "`## Design Direction` section",
+        "primitive": {
+          "kind": "section-body",
+          "section": "Design Direction",
+          "input": "Design Direction"
+        }
+      },
+      {
+        "id": "tiinex.topic.v1#artifact-creation/Template Body/required-shape/176",
+        "sourceSchemaId": "tiinex.topic.v1",
+        "group": "Template Body",
+        "category": "Required Shape",
+        "line": 176,
+        "sourceText": "`## Next Artifacts` section",
+        "primitive": {
+          "kind": "section-body",
+          "section": "Next Artifacts",
+          "input": "Next Artifacts"
+        }
+      }
+    ]
+  }
+}

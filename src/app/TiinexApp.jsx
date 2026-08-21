@@ -31,10 +31,11 @@ import { createPersistenceOwnershipPolicy, DurableLocalAuthority } from './persi
 import { durableLocalAuthorityForRoute, markCurrentHistoryDurableAuthority } from './historyAuthority.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
 import { runLocalDraftDiscardCommand, runLocalDraftUpdateCommand } from './localDraftMutationCommand.js';
-import { executeCanonicalTransitionLocalCreate } from './canonicalTransitionLocalCreateCommand.js';
-import { executeCanonicalReferenceLocalCreate } from './canonicalReferenceLocalCreateCommand.js';
-import { canonicalReferenceTargetOptions } from './canonicalReferenceTargets.js';
-import { BUNDLED_CANONICAL_TRANSITION_DEFINITIONS, BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE } from '../transitions/canonicalTransition.productDefaults.js';
+import { useWorkspaceSelectionProductController } from './useWorkspaceSelectionProductController.jsx';
+import { createCanonicalCreationProductController } from './canonicalCreationProductController.js';
+import { useCanonicalReferenceSelectionOptions } from './useCanonicalReferenceSelectionOptions.js';
+import { useCanonicalPlacementSelectionOptions } from './useCanonicalPlacementSelectionOptions.js';
+import { captureWorkspaceSelectionOriginContext, restoreWorkspaceSelectionOriginContext } from './workspaceSelectionOriginContext.js';
 import { transitionProductActionsForWorkspace } from '../transitions/transition.productPresentation.browser.js';
 import { RecordActionKind } from '../actions/record.actions.js';
 import { ensureUniqueTransitionPath } from '../transitions/record.transitions.js';
@@ -94,10 +95,12 @@ export function TiinexApp() {
   const activeWorkspaceConfig = active?.workspaceConfig || workspaceConfig;
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
+  const selection = useWorkspaceSelectionProductController({ setNotice, captureOriginContext: () => captureWorkspaceSelectionOriginContext(latestStateRef.current || state), restoreOriginContext: (context) => commit(restoreWorkspaceSelectionOriginContext(latestStateRef.current || state, context), 'replace', { deferPersistence: true, persistenceReason: 'workspace-selection-origin-restore' }) });
+  const canonicalCreation = createCanonicalCreationProductController({ getState: () => latestStateRef.current || state, getLifecycle: () => runtime().lifecycle, getPersistenceOwnership: () => persistenceOwnershipRef.current, getRecordAction: () => recordAction, getDialogWorkspaceId: () => dialogWorkspaceId, resetSelection: selection.reset, setDialog, setDialogWorkspaceId, setRecordAction, setActiveRecordId, setActiveAssetId, setNotice, commitSemanticNavigation, viewportWidth });
   const workspaceWindow = useMemo(() => workspaceWindowFor(state, { viewportWidth, activeWorkspaceId: active?.id || state.activeWorkspaceId }), [state, viewportWidth, active]);
   const pagerVisible = shouldPageWorkspaces(state.workspaces.length, viewportWidth);
   const visibleWorkspaceItems = useMemo(() => visibleWorkspaceItemsFor(state, { active, activeUi, viewportWidth }), [state, active, activeUi, viewportWidth]);
-  const workspaceGridColumns = useMemo(() => visibleWorkspaceItems.map((item) => item.layoutMode === 'compact' ? 'minmax(4.5rem, 5.75rem)' : 'minmax(0, 1fr)').join(' '), [visibleWorkspaceItems]);
+  const workspaceGridColumns = useMemo(() => visibleWorkspaceItems.map((item) => selection.session ? 'minmax(16rem, 1fr)' : (item.layoutMode === 'compact' ? 'minmax(4.5rem, 5.75rem)' : 'minmax(0, 1fr)')).join(' '), [visibleWorkspaceItems, selection.session]);
   useEffect(() => {
     const onRoute = () => {
       const { lifecycle, route, persistence } = runtime();
@@ -334,6 +337,7 @@ export function TiinexApp() {
     setDialog(name);
   }
   function dismissDialog() {
+    selection.reset();
     setDialog(null);
     setDialogWorkspaceId('');
     setSourceContinuationId('');
@@ -384,11 +388,13 @@ export function TiinexApp() {
       setNotice: guarded(setNotice),
       setDialog: guarded(setDialog),
       setGithubRequestPending: guarded(setGithubRequestPending),
-      commit: guarded(options.semanticNavigation
-        ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation })
-        : options.semanticNavigationEstablished
-          ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation, navigationEstablished: true })
-          : commit),
+      commit: guarded(options.bufferProductState
+        ? () => {}
+        : options.semanticNavigation
+          ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation })
+          : options.semanticNavigationEstablished
+            ? createSemanticOperationHistoryCommit({ commit, commitSemanticNavigation, navigationEstablished: true })
+            : commit),
       getLatestState: () => latestStateRef.current || state,
       fetchImpl: fetch,
       AbortControllerImpl: typeof AbortController !== 'undefined' ? AbortController : undefined
@@ -471,9 +477,9 @@ export function TiinexApp() {
     if (action?.id === RecordActionKind.workspaceMerge) return mergeWorkspaceRecord(record, originWorkspaceId);
     if (action?.id === RecordActionKind.deleteLocal) return deleteLocalDraftRecord(record, originWorkspaceId);
     if (originWorkspaceId) focusWorkspaceForInteraction(originWorkspaceId);
-    setActiveRecordId(''); setActiveAssetId(''); setRecordAction({ recordId: record?.id || '', workspaceId: originWorkspaceId || state.activeWorkspaceId || active?.id || '', action });
+    selection.reset(); setActiveRecordId(''); setActiveAssetId(''); setRecordAction({ recordId: record?.id || '', workspaceId: originWorkspaceId || state.activeWorkspaceId || active?.id || '', action });
   }
-  function dismissRecordAction() { setRecordAction(null); }
+  function dismissRecordAction() { selection.reset(); setRecordAction(null); }
   function deleteLocalDraftRecord(record = {}, originWorkspaceId = '') {
     const currentState = latestStateRef.current || state, workspaceId = originWorkspaceId || currentState.activeWorkspaceId || active?.id;
     const result = runLocalDraftDiscardCommand({ lifecycle: runtime().lifecycle, state: currentState, workspaceId, recordId: record?.id || '', persistenceOwnership: persistenceOwnershipRef.current });
@@ -485,46 +491,6 @@ export function TiinexApp() {
     const result = runLocalDraftUpdateCommand({ lifecycle: runtime().lifecycle, state: currentState, workspaceId, recordId: record?.id || '', candidate: { markdown }, persistenceOwnership: persistenceOwnershipRef.current });
     if (!result?.ok) { setNotice(result?.notice || 'Could not update local draft.'); return result; }
     setRecordAction(null); setNotice(result.notice); commit(result.state, 'replace', { persistenceReason: 'local-draft-edit' });
-    return result;
-  }
-  function createCanonicalTransitionRecord(parentRecord, action, values) {
-    const sourceState = latestStateRef.current || state;
-    const workspaceId = sourceState.activeWorkspaceId || active?.id || '';
-    const result = executeCanonicalTransitionLocalCreate({
-      lifecycle: runtime().lifecycle,
-      state: sourceState,
-      workspaceId,
-      currentRecordId: parentRecord?.id || '',
-      definitionKey: action?.definitionKey || '',
-      values,
-      schemaCache: BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE,
-      bundledDefinitions: BUNDLED_CANONICAL_TRANSITION_DEFINITIONS,
-      persistenceOwnership: persistenceOwnershipRef.current
-    });
-    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical local artifact.'); return result; }
-    setRecordAction(null); setActiveRecordId(''); setActiveAssetId(''); setNotice(result.notice);
-    commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || workspaceId, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
-    return result;
-  }
-
-  function createCanonicalReferenceRecord(subjectRecord, action, targetOption) {
-    const sourceState = latestStateRef.current || state;
-    const workspaceId = recordAction?.workspaceId || sourceState.activeWorkspaceId || active?.id || '';
-    const result = executeCanonicalReferenceLocalCreate({
-      lifecycle: runtime().lifecycle,
-      state: sourceState,
-      workspaceId,
-      currentRecordId: subjectRecord?.id || '',
-      targetWorkspaceId: targetOption?.workspaceId || '',
-      targetRecordId: targetOption?.id || '',
-      definitionKey: action?.definitionKey || '',
-      schemaCache: BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE,
-      bundledDefinitions: BUNDLED_CANONICAL_TRANSITION_DEFINITIONS,
-      persistenceOwnership: persistenceOwnershipRef.current
-    });
-    if (!result?.ok) { setNotice(result?.notice || 'Could not create canonical Reference Relation.'); return result; }
-    setRecordAction(null); setActiveRecordId(''); setActiveAssetId(''); setNotice(result.notice);
-    commitSemanticNavigation(stateWithWorkspaceViewPatch(result.state, result.workspace?.id || workspaceId, { workspaceVerse: 'lineage', selectedRecordId: result.record?.id || '', lineageQuery: '', lineageLoadReport: null, lineageAuditReport: null }), 'push');
     return result;
   }
 
@@ -717,12 +683,11 @@ export function TiinexApp() {
   const actionWorkspace = recordAction?.workspaceId ? workspaceById(state, recordAction.workspaceId) : active;
   const actionWorkspaceUi = hydrateUiWorkspace(actionWorkspace);
   const actionRecord = recordAction?.recordId && actionWorkspaceUi?.records ? hydrateUiRecord(actionWorkspaceUi.records.find((record) => record.id === recordAction.recordId)) : null;
-  const referenceTargetSet = useMemo(() => (actionRecord && recordAction?.action?.referenceCapability?.state === 'qualified'
-    ? canonicalReferenceTargetOptions({ state, subjectWorkspaceId: actionWorkspace?.id || '', subjectRecord: actionRecord, targetSchemaId: recordAction.action.referenceCapability.targetSchemaId })
-    : null), [state, actionRecord, actionWorkspace, recordAction]);
   const dialogWorkspace = workspaceById(state, dialogWorkspaceId || state.activeWorkspaceId) || active;
   const dialogWorkspaceUi = hydrateUiWorkspace(dialogWorkspace);
   const dialogWorkspaceView = activeWorkspaceViewFor(state, dialogWorkspace?.id || '');
+  const referenceSelectionOptions = useCanonicalReferenceSelectionOptions({ state, actionRecord, recordAction, actionWorkspace });
+  const placementSelectionOptions = useCanonicalPlacementSelectionOptions({ state, actionRecord, recordAction, actionWorkspace, dialog, dialogWorkspace });
   const workspaceCreateActions = useMemo(() => dialog === 'create-artifact' && dialogWorkspace?.id
     ? transitionProductActionsForWorkspace({ workspaceId: dialogWorkspace.id })
     : Object.freeze([]), [dialog, dialogWorkspace?.id]);
@@ -738,6 +703,7 @@ export function TiinexApp() {
     'tx-shell-route-grounded',
     'tx-shell-command-portable',
     'tx-shell-scroll-owned',
+    'tx-shell-footer-row-owned',
     'tx-schema-companion-runtime',
     active ? 'tx-workspace-mode' : 'tx-empty-stage-mode'
   ].join(' ');
@@ -772,12 +738,15 @@ export function TiinexApp() {
             const historicalWorkspace = historicalResolved && itemReadModel ? historicalWorkspaceForReadModel(workspace, itemReadModel) : null;
             const presentedWorkspace = historicalResolved ? (historicalWorkspace || Object.assign({}, ui || workspace, { records: [], assets: [], sources: [], sourceOrder: [], historicalReview: true, historicalSnapshot: itemTemporal.snapshot })) : (ui || workspace);
             return (
-            <div key={workspace.id} className={`tx-workspace-frame ${itemActive ? 'tx-workspace-frame-active' : 'tx-workspace-frame-inactive'} ${layoutMode === 'compact' ? 'tx-workspace-frame-compact' : 'tx-workspace-frame-expanded'}`} onMouseDownCapture={() => { if (!itemActive) activateWorkspace(workspace.id); }}>
+            <div key={workspace.id} className={`tx-workspace-frame ${itemActive ? 'tx-workspace-frame-active' : 'tx-workspace-frame-inactive'} ${layoutMode === 'compact' ? 'tx-workspace-frame-compact' : 'tx-workspace-frame-expanded'}`} onMouseDownCapture={() => { if (!selection.session && !itemActive) activateWorkspace(workspace.id); }}>
               <WorkspaceColumnSurface
                 workspace={presentedWorkspace}
                 state={surfaceState || state}
                 referenceRecords={referenceParticipantRecords}
-                layoutMode={layoutMode}
+                layoutMode={selection.session ? 'expanded' : layoutMode}
+                selectionSession={selection.session}
+                onSelectionChoose={selection.choose}
+                onSelectionCancel={selection.cancel}
                 onLayoutMode={(mode) => setWorkspaceLayoutMode(workspace.id, mode)}
                 onClose={() => openWorkspaceDialog('close-workspace', workspace.id)}
                 onRenameWorkspace={() => openWorkspaceDialog('rename-workspace', workspace.id)}
@@ -823,12 +792,12 @@ export function TiinexApp() {
       {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
-      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} onDismiss={dismissDialog} onCreate={createCanonicalTransitionRecord} /> : null}
+      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}
       {dialog === 'rename-workspace' && dialogWorkspace ? <RenameWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
-      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceRecords={actionWorkspace?.records || []} referenceTargets={referenceTargetSet?.options || []} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord, actionWorkspace?.id || '')} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={createCanonicalTransitionRecord} onCreateCanonicalReference={createCanonicalReferenceRecord} onUpdateLocalDraft={updateLocalDraftRecord} /> : null}
+      {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceId={actionWorkspace?.id || ''} workspaceRecords={actionWorkspace?.records || []} referenceTargets={referenceSelectionOptions?.options || []} placementTargets={placementSelectionOptions.action?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord, actionWorkspace?.id || '')} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={canonicalCreation.createTransitionRecord} onCreateCanonicalReference={canonicalCreation.createReferenceRecord} onUpdateLocalDraft={updateLocalDraftRecord} /> : null}
       {dialog === 'display-options' && dialogWorkspace ? <DisplayOptionsDialog options={dialogWorkspaceView?.displayOptions} counts={buildDisplayOptionCounts(dialogWorkspaceUi || dialogWorkspace)} scope={dialogWorkspaceView?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} timePortal={timePortalViewFor(dialogWorkspaceView)} onResolveTimePortal={(intent) => openTimePortalResolver(intent, dialogWorkspace.id)} onReturnLatest={() => returnTimePortalToLatest(dialogWorkspace.id)} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}
       {dialog === 'time-portal-resolve' && dialogWorkspace ? <TimePortalResolveDialog timePortal={timePortalViewFor(dialogWorkspaceView)} sources={timePortalGithubSources(dialogWorkspace)} busy={timePortalBusy} error={timePortalError} onResolve={resolveTimePortalFromDialog} onDismiss={dismissDialog} /> : null}
       {dialog === 'export-workspace' && dialogWorkspace ? <WorkspaceExportDialogController workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onExecute={executeWorkspaceExport} onPublicationResult={persistWorkspacePublicationResult} /> : null}

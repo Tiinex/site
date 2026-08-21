@@ -43,7 +43,7 @@ export function referenceCreateCapability(input = {}) {
   if (exactRepresentations.transition?.state !== 'qualified'
     || exactRepresentations.generation?.state !== 'qualified'
     || exactRepresentations.generation?.reference !== generationQualification?.resolution?.target) reasons.push('reference-exact-authority-representation-unqualified');
-  if (!materializer || materializer.schemaId !== outputSchemaId || !materializer.continuityModes?.includes?.('root')) reasons.push('reference-local-materializer-unavailable');
+  if (!materializer || materializer.schemaId !== outputSchemaId) reasons.push('reference-local-materializer-unavailable');
   if (!token(workspaceId)) reasons.push('workspace-destination-unavailable');
 
   const uniqueReasons = unique(reasons);

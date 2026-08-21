@@ -1,0 +1,96 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.interpretation.v1",
+  "sourceChecksum": "977a46d67eb4e3e8ce383f7f33efbf10798122cc3f94e5b948c084a9af311017",
+  "sourceBytes": 9908,
+  "bindingChecksum": "977a46d67eb4e3e8ce383f7f33efbf10798122cc3f94e5b948c084a9af311017",
+  "validationContract": null,
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Fields",
+      "Creation Rules"
+    ],
+    "requiredInputs": [
+      "Source Target",
+      "Source Role",
+      "Target Role",
+      "Interpretation Action",
+      "Rationale",
+      "Observed Basis",
+      "Original Mutation Policy",
+      "Result Boundary",
+      "Uncertainty",
+      "Review Need",
+      "Does Not Prove",
+      "Must Not Be Treated As"
+    ],
+    "optionalInputs": [],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Source Target",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Source Role",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Target Role",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Interpretation Action",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Rationale",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Observed Basis",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Original Mutation Policy",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Result Boundary",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Uncertainty",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Review Need",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Does Not Prove",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Must Not Be Treated As",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

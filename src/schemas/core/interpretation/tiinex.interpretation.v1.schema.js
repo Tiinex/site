@@ -1,5 +1,8 @@
 import { defineSchemaModule } from '../../contracts.js';
+import { defineArtifactCreationCapability } from '../../creation.capability.js';
+import { interpretationLocalMaterialization } from './tiinex.interpretation.v1.localMaterialization.js';
 import binding from './tiinex.interpretation.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.interpretation.v1.schema.source.js';
 import { interpretationCapabilities } from './tiinex.interpretation.v1.capabilities.js';
 import { interpretationValidate } from './tiinex.interpretation.v1.validate.js';
 import { interpretationPresent } from './tiinex.interpretation.v1.presenter.js';
@@ -17,12 +20,15 @@ export const interpretationSchemaModule = defineSchemaModule({
   parentSchemaId: 'tiinex.root.v1',
   summary: 'Explicit bounded interpretation of another artifact or target without mutating the original.',
   binding,
+  schemaSource,
+  artifactCreation: defineArtifactCreationCapability(binding, null),
   capabilities: interpretationCapabilities,
   validate: interpretationValidate,
   present: interpretationPresent,
   read: Object.freeze({ label: 'Interpretation', sections: INTERPRETATION_REQUIRED_SECTIONS }),
   viewActions: Object.freeze({ lineage: Object.freeze(['record.open', 'record.markdown', 'record.source']) }),
   transitions: interpretationTransitions,
+  localMaterialization: interpretationLocalMaterialization,
   i18n: Object.freeze({ en: interpretationI18nEn, sv: interpretationI18nSv }),
   findings: interpretationFindings
 });

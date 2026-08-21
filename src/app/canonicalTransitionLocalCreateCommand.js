@@ -4,6 +4,8 @@ import { finalizeCanonicalParentReference, prepareCanonicalTransitionProductActi
 import { allocateContinuationPath, allocateRootArtifactPath } from '../transitions/record.transitions.js';
 import { localArtifactMaterializerForSchema } from '../transitions/transition.localArtifactMaterializers.js';
 import { durableLocalMutationDecision, DurableLocalMutationOperation } from './durableLocalMutationPolicy.js';
+import { canonicalAuthoringSubmissionValues } from './canonicalAuthoringValues.js';
+import { explicitPlacementPath } from './workspacePlacementOptions.js';
 
 export const CANONICAL_TRANSITION_LOCAL_CREATE_COMMAND_SCHEMA_ID = 'tiinex.site.canonical-transition-local-create-command.v1';
 
@@ -49,8 +51,7 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
   const placement = result.outputPlacements?.[0];
   const destination = result.destinationBindings?.[0];
   const sourceRole = parentEffect?.parentBinding?.resolvedName || '';
-  const fixedInputs = action.authoring?.fixedInputs || {};
-  const values = Object.freeze({ ...(input.values || {}), ...fixedInputs });
+  const values = canonicalAuthoringSubmissionValues(action, input.values || {});
   const outputTitle = canonicalOutputTitle(action, values, materializer.label);
   const packet = {
     inputRoles: continuityMode === 'parent'
@@ -90,9 +91,16 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
   const capability = executionCapability({ action, v423, workspace, outputSchemaId, materializer, continuityMode });
   if (!capability.ok) return refusal(capability.error, state, capability.notice, { bindingPlan, v423, capability });
 
-  const allocation = continuityMode === 'root'
+  const automaticAllocation = continuityMode === 'root'
     ? allocateRootArtifactPath({ targetId: outputSchemaId, targetLabel: materializer.label, title: outputTitle }, { workspaceRecords: workspace.records || [] })
     : allocateContinuationPath({ parentRecord: currentRecord, targetId: outputSchemaId, targetLabel: materializer.label, title: outputTitle }, { workspaceRecords: workspace.records || [] });
+  const placementFolder = String(input.placementFolder || '').trim();
+  const requestedPath = placementFolder ? explicitPlacementPath(automaticAllocation.path, placementFolder) : '';
+  const allocation = requestedPath
+    ? (continuityMode === 'root'
+      ? allocateRootArtifactPath({ targetId: outputSchemaId, targetLabel: materializer.label, title: outputTitle }, { workspaceRecords: workspace.records || [], path: requestedPath })
+      : allocateContinuationPath({ parentRecord: currentRecord, targetId: outputSchemaId, targetLabel: materializer.label, title: outputTitle }, { workspaceRecords: workspace.records || [], path: requestedPath }))
+    : automaticAllocation;
   const concretePath = allocation.path || '';
   if (!concretePath) return refusal('canonical-local-path-allocation-unavailable', state, `${materializer.label} cannot be created because its browser-local path could not be allocated.`, { bindingPlan, v423 });
 
@@ -118,7 +126,8 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
       sourceMutation: false,
       concretePath,
       continuityMode,
-      relationMaterialization: false
+      relationMaterialization: false,
+      placement: Object.freeze({ mode: placementFolder ? 'explicit-same-workspace-folder' : 'automatic', folder: placementFolder, path: concretePath })
     }
   });
   delete candidate.source;
@@ -152,6 +161,7 @@ export function executeCanonicalTransitionLocalCreate(input = {}) {
     concretePath,
     continuityMode,
     relationMaterialization: false,
+    placement: Object.freeze({ mode: placementFolder ? 'explicit-same-workspace-folder' : 'automatic', folder: placementFolder, path: concretePath }),
     notice: continuityMode === 'root'
       ? `Created standalone local ${materializer.label} in ${workspace.name || workspace.title || 'workspace'}.`
       : `Created local ${materializer.label} from ${currentRecord.title || 'selected artifact'}.`
@@ -170,7 +180,6 @@ function executionCapability({ action, v423, workspace, outputSchemaId, material
     && output?.effectiveParticipantKind === 'artifact'
     && output?.schemaConstraint === outputSchemaId
     && materializer?.schemaId === outputSchemaId
-    && materializer?.continuityModes?.includes?.(continuityMode)
     && output?.generation?.authority === 'target-schema'
     && output?.generation?.state === 'resolved'
     && lifecycle.requestedOperation === 'create'

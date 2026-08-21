@@ -145,7 +145,7 @@ function candidateSummary(record = {}, status = 'unknown', reason = '', audit = 
     path: record.path || '',
     status,
     reason,
-    schemaId: audit?.artifact?.schemaId || record.schemaId || record.kind || '',
+    schemaId: audit?.artifact?.schemaId || record.schemaId || record.currentSchemaId || '',
     auditStatus: audit?.status || '',
     sourceMode: record.sourceMode || ''
   });

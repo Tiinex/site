@@ -1,3 +1,5 @@
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
+
 export function recordLogicalPath(record = {}) {
   const stripPackageEnvelope = recordHasPackageEnvelopeContext(record);
   const explicit = firstNonEmpty(record.logicalPath, record.treePath, record.displayPath);
@@ -182,7 +184,7 @@ function issueMaterialFallbackFilename(record = {}, target = {}) {
 function issueMaterialExtension(filename = '', record = {}) {
   const clean = String(filename || '').toLowerCase();
   if (/\.workspace\.md$/i.test(clean)) return '.workspace.md';
-  const schema = String(record.schemaId || record.kind || record.rootFallback?.currentSchemaId || '').toLowerCase();
+  const schema = schemaIdForRecord(record).toLowerCase();
   if (schema === 'tiinex.workspace.v1' || schema.includes('.workspace.')) return '.workspace.md';
   return '.trace.md';
 }

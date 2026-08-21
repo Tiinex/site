@@ -62,10 +62,9 @@ async function applyResolved({ runtimeApi, state, storage, resolved, commit, mat
   });
   const augmentedState = runtimeApi.persistence?.augmentStartupStateWithLocalRecovery?.(prepared.state, storage, { restoreFocus: !resolved?.explicitQueryRequested }) || prepared.state;
   const workspace = (augmentedState.workspaces || []).find((item) => item.id === prepared.workspace?.id) || prepared.workspace;
-  commit?.(augmentedState, 'replace');
   let materialState = augmentedState;
   for (const sourceInput of prepared.sourceInputs || (prepared.sourceInput ? [prepared.sourceInput] : [])) {
-    const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || workspace?.id });
+    const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || workspace?.id, bufferProductState: true });
     if (loaded?.state) materialState = loaded.state;
   }
   const appliedConfig = applyMaterializedStartupWorkspaceConfig({ runtimeApi, state: materialState, resolved, discoveryWorkspaceId: workspace?.id || prepared.workspace?.id || '' });
@@ -73,13 +72,14 @@ async function applyResolved({ runtimeApi, state, storage, resolved, commit, mat
   if (appliedConfig.applied) {
     materialState = appliedConfig.state;
     for (const sourceInput of appliedConfig.sourceInputs || []) {
-      const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || appliedConfig.workspace?.id });
+      const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || appliedConfig.workspace?.id, bufferProductState: true });
       if (loaded?.state) materialState = loaded.state;
     }
     commit?.(materialState, 'replace');
     const appliedWorkspace = (materialState.workspaces || []).find((item) => item.id === appliedConfig.workspace?.id) || appliedConfig.workspace;
     return { ok: true, selected: `${resolved.startupClass || 'resolved-config'}-workspace-artifact-applied`, state: materialState, workspace: appliedWorkspace, workspaces: appliedConfig.workspaces || [appliedWorkspace].filter(Boolean), startupRecord: appliedConfig.startupRecord };
   }
+  commit?.(materialState, 'replace');
   return { ok: true, selected: resolved.startupClass || 'resolved-config', state: materialState, workspace, workspaces: prepared.workspaces || [workspace].filter(Boolean) };
 }
 
@@ -95,11 +95,11 @@ async function applyDefault({ runtimeApi, state, storage, workspaceConfig, commi
   setDiagnostics?.({ last: prepared.diagnostics });
   const augmentedState = runtimeApi.persistence?.augmentStartupStateWithLocalRecovery?.(prepared.state, storage) || prepared.state;
   const workspace = (augmentedState.workspaces || []).find((item) => item.id === prepared.workspace?.id) || prepared.workspace;
-  commit?.(augmentedState, 'replace');
   let materialState = augmentedState;
   for (const sourceInput of prepared.sourceInputs || (prepared.sourceInput ? [prepared.sourceInput] : [])) {
-    const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || workspace?.id });
+    const loaded = await materializeSource?.(sourceInput, { state: materialState, workspaceId: sourceInput.workspaceId || workspace?.id, bufferProductState: true });
     if (loaded?.state) materialState = loaded.state;
   }
+  commit?.(materialState, 'replace');
   return { ok: true, selected: 'embedded-default-workspace', state: materialState, workspace, workspaces: prepared.workspaces || [workspace].filter(Boolean) };
 }

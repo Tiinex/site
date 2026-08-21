@@ -9,7 +9,7 @@ export const ARTIFACT_VALIDATION_PIPELINE_ID = 'tiinex.artifact.validation.pipel
 
 export function validateArtifact(input = {}, options = {}) {
   const parsed = input.parsed || parseArtifactMarkdown(String(input.markdown || input.record?.markdown || ''));
-  const schemaId = parsed?.envelope?.current?.schema?.id || input.schemaId || input.record?.schemaId || input.record?.kind || '';
+  const schemaId = parsed?.envelope?.current?.schema?.id || input.schemaId || input.record?.schemaId || input.record?.currentSchemaId || '';
   const resolution = input.resolution || resolveSchemaModule({ schemaId, checksum: input.checksum });
   const rootFindings = normalizeFindings(rootValidate(parsed), { schemaId: 'tiinex.root.v1', qualification: 'root' });
   const integrityFindings = normalizeFindings(validateIntegrity(parsed, options.integrity), { schemaId: 'tiinex.root.v1', qualification: 'integrity' });

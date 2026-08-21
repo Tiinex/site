@@ -1,5 +1,6 @@
 import { addConfiguredSourceToWorkspace, findConfiguredSource, findWorkspaceForIncomingSource, sourceMaterializationCompleteEnough, sourceSignature } from './workspace.entrypoints.js';
 import { replaceNonDraftWorkspaceSet } from './workspace.openSemantics.js';
+import { stateWithWorkspaceEntrypointViewIntent } from './workspace.entrypointViewIntent.js';
 
 export function openWorkspaceEntrypointSet({
   lifecycle,
@@ -43,6 +44,7 @@ export function openWorkspaceEntrypointSet({
   if (!openedWorkspaceIds.length) return { ok: false, error: 'workspace.open.no-entrypoints', message: 'Workspace entrypoint has no usable workspace set.', state, entry, sourceInputs: [] };
   const replaced = replaceNonDraftWorkspaceSet(next, openedWorkspaceIds);
   next = replaced.state;
+  for (const prepared of preparedInputs) next = stateWithWorkspaceEntrypointViewIntent(next, prepared.workspaceId || '', prepared.workspaceEntrypoint || {});
   const preferredWorkspaceId = openedWorkspaceIds[0] || '';
   if (preferredWorkspaceId && (next.workspaces || []).some((workspace) => workspace.id === preferredWorkspaceId)) next.activeWorkspaceId = preferredWorkspaceId;
   const workspace = (next.workspaces || []).find((item) => item.id === preferredWorkspaceId)

@@ -1,5 +1,7 @@
 import { defineSchemaModule } from '../../contracts.js';
+import { defineArtifactCreationCapability } from '../../creation.capability.js';
 import binding from './tiinex.preservation.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.preservation.v1.schema.source.js';
 import { preservationCapabilities } from './tiinex.preservation.v1.capabilities.js';
 import { preservationValidate } from './tiinex.preservation.v1.validate.js';
 import { preservationPresent } from './tiinex.preservation.v1.presenter.js';
@@ -16,6 +18,8 @@ export const preservationSchemaModule = defineSchemaModule({
   parentSchemaId: "tiinex.root.v1",
   summary: 'Captured or preserved material made available for later judgment.',
   binding,
+  schemaSource,
+  artifactCreation: defineArtifactCreationCapability(binding, null),
   capabilities: preservationCapabilities,
   validate: preservationValidate,
   present: preservationPresent,

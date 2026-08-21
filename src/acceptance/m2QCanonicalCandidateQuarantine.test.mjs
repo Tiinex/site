@@ -53,7 +53,8 @@ const legacyState = {
   }]
 };
 
-const canonical = canonicalProductState(legacyState, recovery, 'v381-legacy-ingress');
+const migrated = recovery.normalizeLegacyWorkspaceCandidateState(legacyState);
+const canonical = canonicalProductState(migrated, recovery, 'v381-legacy-ingress');
 const workspace = canonical.workspaces[0];
 assert.equal(Object.prototype.hasOwnProperty.call(workspace, 'workspaceMergeCandidates'), false, 'legacy candidate shape is consumed at ingress and absent from canonical runtime');
 assert.equal(workspace.records.length, 2, 'legacy candidate inputs become canonical Workspace Artifact records exactly once');

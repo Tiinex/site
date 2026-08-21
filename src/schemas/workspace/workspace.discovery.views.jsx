@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AssetCard, MemoRecordCard as RecordCard } from './workspace.cards.views.jsx';
 import { discoveryInitialRecordWindowLimitForScroll, discoveryRecordWindowKey, discoveryRenderWindowProfile, discoveryWindowState, DISCOVERY_INITIAL_RECORD_WINDOW } from './workspace.discoveryRenderWindow.js';
 
-export function DiscoveryRecordList({ records = [], assets = [], auditById = new Map(), stageScrollTop = 0, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, onOpenAsset, readOnly = false }) {
+export function DiscoveryRecordList({ records = [], assets = [], auditById = new Map(), stageScrollTop = 0, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, onOpenAsset, readOnly = false, selectionActive = false, selectionCandidates = [], onSelectCandidate }) {
+  const selectionByRecordId = useMemo(() => new Map((Array.isArray(selectionCandidates) ? selectionCandidates : []).filter((item) => String(item?.workspaceId || '') === String(workspaceId) && item?.id).map((item) => [String(item.id), item])), [selectionCandidates, workspaceId]);
   const resetKey = useMemo(() => discoveryRecordWindowKey(records, assets), [records, assets]);
   const [viewport, setViewport] = useState(() => discoveryViewportSnapshot());
   const profile = useMemo(() => discoveryRenderWindowProfile(viewport), [viewport]);
@@ -42,7 +43,7 @@ export function DiscoveryRecordList({ records = [], assets = [], auditById = new
 
   return (
     <div className="tx-discovery-record-list tx-unified-record-list" aria-label="Discovery artifacts" data-record-window={visibleRecords.length < totalRecords ? 'partial' : 'complete'}>
-      {visibleRecords.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} actionStateKey={actionStateKey} workspaceRecords={workspaceRecords} workspaceId={workspaceId} transitionProductContext={transitionProductContext} readOnly={readOnly} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} onOpenSchema={onOpenSchema} />)}
+      {visibleRecords.map((record) => <RecordCard key={record.id} record={record} auditItem={auditById.get(record.id)} actionStateKey={actionStateKey} workspaceRecords={workspaceRecords} workspaceId={workspaceId} transitionProductContext={transitionProductContext} readOnly={readOnly} selectionActive={selectionActive} selectionCandidate={selectionByRecordId.get(String(record.id)) || null} onSelectCandidate={onSelectCandidate} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} onOpenSchema={onOpenSchema} />)}
       {remainingRecords ? (
         <div className="tx-discovery-window-sentinel" ref={sentinelRef} aria-live="polite">
           <span className="tx-discovery-window-summary">Showing {visibleRecords.length} of {totalRecords} matching artifacts. Search and filters already cover all loaded content.</span>

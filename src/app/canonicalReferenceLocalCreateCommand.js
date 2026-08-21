@@ -52,7 +52,7 @@ export function executeCanonicalReferenceLocalCreate(input = {}) {
   const output = result.outputRoles?.[0];
   const outputSchemaId = token(output?.schemaConstraint);
   const materializer = localArtifactMaterializerForSchema(outputSchemaId);
-  if (!materializer || outputSchemaId !== 'tiinex.relation.v1' || !materializer.continuityModes?.includes?.('root')) return refusal('canonical-reference-materializer-unavailable', state, 'Reference Relation materializer is unavailable or not root-qualified.');
+  if (!materializer || outputSchemaId !== 'tiinex.relation.v1') return refusal('canonical-reference-materializer-unavailable', state, 'Reference Relation materializer is unavailable for the exact qualified output schema.');
   const relation = action.referenceCapability.relationEffect || {};
   const placement = result.outputPlacements?.[0] || {};
   const destination = result.destinationBindings?.[0] || {};

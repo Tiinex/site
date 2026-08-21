@@ -1,5 +1,6 @@
 import { defineSchemaModule } from '../contracts.js';
 import binding from './tiinex.workspace.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.workspace.v1.schema.source.js';
 import { workspaceCapabilities } from './tiinex.workspace.v1.capabilities.js';
 import { workspaceValidate } from './tiinex.workspace.v1.validate.js';
 import { workspacePresent } from './tiinex.workspace.v1.presenter.js';
@@ -17,6 +18,7 @@ export const workspaceSchemaModule = defineSchemaModule({
   originTrustRole: 'viewer-extension',
   summary: 'Viewer-local workspace entrypoint schema and React surface companions.',
   binding,
+  schemaSource,
   capabilities: workspaceCapabilities,
   validate: workspaceValidate,
   present: workspacePresent,

@@ -1,4 +1,5 @@
 import { reconcileSourceRecordWithWorkspace } from './workspace.materialReconciliation.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export function addWorkspaceSourceRecordsWithReconciliation(state, workspaceId, sourceId, inputs = [], options = {}, runtime = {}) {
   const records = Array.isArray(inputs) ? inputs : [];
@@ -54,7 +55,7 @@ export function addWorkspaceSourceRecordsWithReconciliation(state, workspaceId, 
 }
 
 function isWorkspaceRecord(record = {}) {
-  const schema = String(record.schemaId || record.kind || record.rootFallback?.currentSchemaId || '').trim().toLowerCase();
+  const schema = schemaIdForRecord(record).toLowerCase();
   const path = String(record.path || record.sourceTarget?.sourceArtifactPath || '').trim().toLowerCase();
   return schema === 'tiinex.workspace.v1' || schema.includes('.workspace.') || /\.workspace\.md$/i.test(path);
 }

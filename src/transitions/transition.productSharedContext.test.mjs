@@ -45,7 +45,7 @@ const fresh = transitionProductActionsForRecord(differentRecords[0], { workspace
 assert.deepEqual(mismatch, fresh, 'context from a different record-set identity must fail closed to fresh preparation');
 
 const viewSource = fs.readFileSync('src/schemas/workspace/workspace.views.jsx', 'utf8');
-assert.ok(viewSource.includes("const transitionProductActionsVisible = !readOnlyHistorical && (verse === 'feed' || verse === 'lineage')"), 'workspace presentation scopes shared transition preparation to live card/action surfaces and disables it for historical review');
+assert.ok(viewSource.includes("const transitionProductActionsVisible = !selectionActive && !readOnlyHistorical && (verse === 'feed' || verse === 'lineage')"), 'workspace presentation scopes shared transition preparation to live card/action surfaces and disables it for historical review');
 assert.ok(viewSource.includes('? transitionProductContextForWorkspace({ workspaceRecords: allRecords, referenceRecords })'), 'Feed/Lineage builds shared transition preparation once per stable local+reference record-set');
 assert.ok(viewSource.includes(': null), [transitionProductActionsVisible, allRecords, referenceRecords])'), 'Tree/Audit do not pay workspace-wide transition preparation cost');
 assert.ok(viewSource.includes('transitionProductContext={transitionProductContext}'), 'shared context is passed to card surfaces');

@@ -27,7 +27,7 @@ export function canonicalReferenceTargetOptions(input = {}) {
     const key = token(participant.identity?.id);
     if (!key) continue;
     const previous = byParticipant.get(key);
-    if (!previous || preferOption(option, previous, subjectWorkspaceId)) byParticipant.set(key, Object.freeze({ ...option, participantId: key }));
+    if (!previous || preferOption(option, previous, subjectWorkspaceId)) byParticipant.set(key, Object.freeze({ ...option, key: `participant:${key}`, participantId: key }));
   }
   const options = [...byParticipant.values()].sort(compareOptions);
   return result(options, participantIndex, subjectParticipant, 'qualified');

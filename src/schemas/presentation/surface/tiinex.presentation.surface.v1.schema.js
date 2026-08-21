@@ -1,5 +1,6 @@
 import { defineSchemaModule } from '../../contracts.js';
 import binding from './tiinex.presentation.surface.v1.schema.json' with { type: 'json' };
+import { schemaSource } from './tiinex.presentation.surface.v1.schema.source.js';
 import { surfaceCapabilities } from './tiinex.presentation.surface.v1.capabilities.js';
 import { surfaceValidate } from './tiinex.presentation.surface.v1.validate.js';
 import { surfacePresent } from './tiinex.presentation.surface.v1.presenter.js';
@@ -16,6 +17,7 @@ export const surfaceSchemaModule = defineSchemaModule({
   parentSchemaId: "tiinex.root.v1",
   summary: 'Bounded implementation-neutral presentation or interaction surface.',
   binding,
+  schemaSource,
   capabilities: surfaceCapabilities,
   validate: surfaceValidate,
   present: surfacePresent,

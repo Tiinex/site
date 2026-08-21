@@ -379,7 +379,8 @@ function createDraftIntegrity() {
 }
 
 function parentSchemaForRecord(record = {}) {
-  return record.kind && String(record.kind).includes('.') ? String(record.kind) : ROOT_SCHEMA_ID;
+  const schemaId = String(record.schemaId || record.currentSchemaId || '').trim();
+  return schemaId || ROOT_SCHEMA_ID;
 }
 
 function boundaryForRecord(record = {}) {

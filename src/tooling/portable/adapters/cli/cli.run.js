@@ -154,7 +154,7 @@ async function commandInput(parsed, runtime = {}) {
   const schemaAwareOperations = new Set(['resolve-schema-material', 'resolve-schema-chain-material', 'describe-schema-chain', 'make-writer-brief', 'schema-guide', 'read-schema-section', 'plan-artifact', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'update-local-draft', 'validate-draft', 'stage-draft', 'materialize-durable-findings', 'process-live-turn', 'export-live-lineage']);
   const defaultSchemaTargets = schemaAwareOperations.has(parsed.command) ? normalizeRuntimePaths(runtime.defaultSchemaMaterialPaths) : [];
   const schemaTargets = defaultSchemaTargets.filter((target) => !explicitTargets.includes(target));
-  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
+  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
   if (!explicitTargets.length && !schemaTargets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
   const loadOptions = { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] };
   const explicitMaterial = explicitTargets.length ? await loadNodePortableInput(explicitTargets, loadOptions) : emptyMaterial();
@@ -255,9 +255,10 @@ async function commandInput(parsed, runtime = {}) {
       ...material,
       schemaId: flags.schema || '',
       path: flags.path || '',
-      title: flags.title || '',
-      summary: flags.summary || '',
-      why: flags.why || '',
+      ...(Object.prototype.hasOwnProperty.call(flags, 'title') ? { title: flags.title } : {}),
+      ...(Object.prototype.hasOwnProperty.call(flags, 'summary') ? { summary: flags.summary } : {}),
+      ...(Object.prototype.hasOwnProperty.call(flags, 'why') ? { why: flags.why } : {}),
+      ...(Object.prototype.hasOwnProperty.call(flags, 'created-at') ? { createdAt: flags['created-at'] } : {}),
       values: await readOptionalJson(flags.values),
       sections: await readOptionalJson(flags.sections),
       parent: await readOptionalJson(flags.parent),

@@ -1,0 +1,96 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.evidence.v1",
+  "sourceChecksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
+  "sourceBytes": 11464,
+  "bindingChecksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
+  "validationContract": null,
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Fields",
+      "Creation Rules"
+    ],
+    "requiredInputs": [
+      "Supported Claim Or Question",
+      "Evidence Role",
+      "Known Source",
+      "Preservation Basis",
+      "Provenance Limits",
+      "Material",
+      "Material Kind",
+      "Preservation State",
+      "Fidelity Notes",
+      "Known Losses",
+      "Does Not Prove",
+      "Must Not Be Treated As"
+    ],
+    "optionalInputs": [],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Supported Claim Or Question",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Evidence Role",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Known Source",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Preservation Basis",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Provenance Limits",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Material",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Material Kind",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Preservation State",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Fidelity Notes",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Known Losses",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Does Not Prove",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Must Not Be Treated As",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

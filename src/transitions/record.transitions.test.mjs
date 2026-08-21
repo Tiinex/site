@@ -17,6 +17,7 @@ const parent = {
   path: 'notes/example.md',
   markdown: '# Example artifact\n\nMaterial body',
   kind: 'tiinex.topic.v1',
+  schemaId: 'tiinex.topic.v1',
   createdAt: '2026-07-20',
   source: { adapterId: 'local', kind: 'local-session' },
   sourceMode: 'local-files'

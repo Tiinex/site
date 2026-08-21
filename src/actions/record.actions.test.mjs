@@ -117,10 +117,11 @@ const topicRecord = {
   source: { adapterId: 'github', repo: 'Tiinex/docs', ref: 'master' }
 };
 const topicAvailability = actionAvailabilityForRecord(topicRecord);
-assert.equal(topicAvailability.continue.enabled, true, 'Topic companion transition should make Continue semantically available');
+assert.equal(topicAvailability.continue.enabled, false, 'Companion transition metadata must not make canonical Continue semantically available');
 assert.equal(topicAvailability.reference.enabled, false, 'Topic has no Reference transition in the first slice');
 const topicActions = presentRecordActions(topicRecord);
-assert(topicActions.some((action) => action.id === RecordActionKind.continue), 'semantic Continue action remains available behind transition presentation');
+assert(!topicActions.some((action) => action.id === RecordActionKind.continue), 'generic record actions must not shadow canonical Transition-owned Continue availability');
+assert.equal(createRecordActionResult(topicRecord, RecordActionKind.continue).schema, RECORD_ACTION_RESULT_SCHEMA_ID, 'explicit legacy Continue result capsule remains available for compatibility-owned callers');
 const localTaskDraft = { id: 'draft-1', title: 'Task draft', path: '.topics/news/001-1-task.trace.md', status: 'local', schemaId: 'tiinex.task.v1', kind: 'tiinex.task.v1', sourceMode: 'local-transition', source: { adapterId: 'local', kind: 'local-session' } };
 assert.equal(isRemovableLocalDraftRecord(localTaskDraft), true, 'browser-local transition drafts can be removed from the session');
 const localTaskActions = presentRecordActions(localTaskDraft);

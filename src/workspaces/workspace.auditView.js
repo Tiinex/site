@@ -2,6 +2,7 @@ import { runAudit } from '../audit/audit.run.js';
 import { auditReport } from '../audit/audit.report.js';
 import { resolveAuditLineage } from '../audit/lineage/auditLineage.resolve.js';
 import { schemaReadPresentation } from '../schemas/companion.js';
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
 
 export const WORKSPACE_AUDIT_VIEW_SCHEMA_ID = 'tiinex.workspace.loadedAuditView.v1';
 
@@ -44,7 +45,7 @@ function auditRecord(record = {}) {
   } catch (error) {
     result = {
       status: 'invalid-or-incomplete',
-      artifact: { schemaId: record.schemaId || record.kind || '', moduleId: 'tiinex.root.v1', fallbackUsed: true },
+      artifact: { schemaId: schemaIdForRecord(record), moduleId: 'tiinex.root.v1', fallbackUsed: true },
       summary: { error: 1, warning: 0, info: 0, preserve: 0 },
       findings: [{ severity: 'error', code: 'audit.exception', message: error?.message || 'Audit failed.', source: 'tiinex.workspace.loadedAuditView.v1' }]
     };
@@ -58,7 +59,7 @@ function auditRecord(record = {}) {
     sourceLabel: record.source?.label || '',
     sourceBacked: Boolean(record.source?.adapterId && record.source.adapterId !== 'local'),
     status: result.status,
-    schemaId: report.schemaId || record.schemaId || record.kind || '',
+    schemaId: report.schemaId || schemaIdForRecord(record),
     moduleId: report.moduleId || '',
     fallbackUsed: Boolean(report.fallbackUsed || read.fallbackUsed),
     readState: read.readState || (report.fallbackUsed ? 'root-fallback' : 'schema-owned'),

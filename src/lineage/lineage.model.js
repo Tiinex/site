@@ -1,3 +1,5 @@
+import { schemaIdForRecord } from '../schemas/schema.identity.js';
+
 export const LINEAGE_VIEW_MODEL_SCHEMA_ID = 'tiinex.lineage.view.v1';
 
 export const LineageEdgeKind = Object.freeze({
@@ -22,7 +24,7 @@ export function createLineageNode(record = {}, index = 0) {
     id: record.id || record.path || `lineage-node-${index}`,
     title: record.title || record.path || 'Untitled artifact',
     path: record.path || '',
-    schemaId: record.schemaId || record.kind || '',
+    schemaId: schemaIdForRecord(record),
     sourceId: record.source?.id || '',
     sourceMode: record.sourceMode || '',
     boundary: record.boundary || record.source?.boundary || '',

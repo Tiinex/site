@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { canonicalCreationProductSettlementState } from './canonicalCreationProductSettlement.js';
+const A={id:'A',records:[{id:'subject'},{id:'relation-1'}]}; const B={id:'B',records:[{id:'target'}]};
+const current={activeWorkspaceId:'B',workspaces:[A,B],view:{workspaceVerse:'feed',query:'target'},workspaceViews:{A:{workspaceVerse:'tree',query:'origin',selectedRecordId:'subject'},B:{workspaceVerse:'feed',query:'target',selectedRecordId:'target'}},workspaceWindow:{schema:'tiinex.workspace.window.v1',offset:1}};
+const settled=canonicalCreationProductSettlementState({state:current,workspace:A,record:{id:'relation-1'}},'A',1400);
+assert.equal(settled.activeWorkspaceId,'A','Reference/creation settlement focuses subject/result workspace rather than incidental target workspace');
+assert.equal(settled.view.workspaceVerse,'lineage');
+assert.equal(settled.view.selectedRecordId,'relation-1');
+assert.equal(settled.workspaceViews.B.query,'target','target workspace presentation remains intact');
+console.log('canonicalCreationProductSettlement tests passed');

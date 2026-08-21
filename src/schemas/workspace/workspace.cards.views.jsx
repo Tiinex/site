@@ -31,13 +31,13 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
   );
 }, assetCardPropsEqual);
 
-export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded, readOnly = false }) {
+export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded, readOnly = false, selectionActive = false, selectionCandidate = null, onSelectCandidate }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
-  const transitionActions = readOnly ? [] : transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId, productContext: transitionProductContext });
+  const transitionActions = readOnly || selectionActive ? [] : transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId, productContext: transitionProductContext });
   const isWorkspaceArtifact = isWorkspaceRecord(record);
   const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
-  const baseActions = readOnly ? [{ id: RecordActionKind.open, label: 'Open', icon: 'open', enabled: true }] : presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
+  const baseActions = selectionActive ? [] : readOnly ? [{ id: RecordActionKind.open, label: 'Open', icon: 'open', enabled: true }] : presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
   const contextualActions = readOnly ? baseActions : lineageContext
     ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
     : baseActions.filter((action) => action.id !== RecordActionKind.lineage);
@@ -47,6 +47,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
   const schemaOpenable = recordSchemaCanOpen(record);
   const sourceBadge = recordSourceBadge(record);
   const primaryClick = () => {
+    if (selectionActive) return selectionCandidate ? onSelectCandidate?.(selectionCandidate) : undefined;
     if (readOnly) return onOpenRecord?.(record.id);
     if (lineageContext) return onToggleExpanded?.(record.id);
     return onFocusRecordLineage?.(record.id);
@@ -55,7 +56,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); primaryClick(); }
   };
   return (
-    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
+    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
       <div className="tx-card-badges tx-legacy-card-badges">
         {isWorkspaceArtifact ? <Badge>workspace</Badge> : null}
         {isWorkspaceArtifact ? <Badge>{workspaceActionModel.roleLabel}</Badge> : null}
@@ -75,8 +76,9 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
           <SchemaReadView record={record} compact maxSections={2} showHeader={false} lineClamp />
         </div>
       ) : null}
-      <footer className="tx-legacy-action-row tx-artifact-actions" aria-label="Artifact actions" onClick={(event) => event.stopPropagation()}>
-        {actions.map((action) => <RecordActionButton key={action.id} action={action} record={record} workspaceActionModel={workspaceActionModel} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />)}
+      <footer className="tx-legacy-action-row tx-artifact-actions" aria-label={selectionActive ? 'Selection action' : 'Artifact actions'} onClick={(event) => event.stopPropagation()}>
+        {selectionActive && selectionCandidate ? <Button variant="primary" icon="check" onClick={() => onSelectCandidate?.(selectionCandidate)}>Select</Button> : null}
+        {!selectionActive ? actions.map((action) => <RecordActionButton key={action.id} action={action} record={record} workspaceActionModel={workspaceActionModel} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onRecordAction={onRecordAction} />) : null}
       </footer>
     </article>
   );
@@ -105,11 +107,14 @@ export function recordCardPropsEqual(previous = {}, next = {}) {
     && previous.workspaceId === next.workspaceId
     && previous.transitionProductContext === next.transitionProductContext
     && previous.readOnly === next.readOnly
+    && previous.selectionActive === next.selectionActive
+    && previous.selectionCandidate === next.selectionCandidate
     && Boolean(previous.onOpenRecord) === Boolean(next.onOpenRecord)
     && Boolean(previous.onFocusRecordLineage) === Boolean(next.onFocusRecordLineage)
     && Boolean(previous.onShareRecord) === Boolean(next.onShareRecord)
     && Boolean(previous.onRecordAction) === Boolean(next.onRecordAction)
-    && Boolean(previous.onOpenSchema) === Boolean(next.onOpenSchema);
+    && Boolean(previous.onOpenSchema) === Boolean(next.onOpenSchema)
+    && Boolean(previous.onSelectCandidate) === Boolean(next.onSelectCandidate);
 }
 
 export function AssetDetailDialog({ asset, onDismiss }) {

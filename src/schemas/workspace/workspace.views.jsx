@@ -15,6 +15,7 @@ import { WorkspaceAuditState } from './workspace.audit.views.jsx';
 import { WorkspaceLineageState } from './workspace.lineage.views.jsx';
 import { transitionProductContextForWorkspace } from '../../transitions/transition.productPresentation.browser.js';
 import { TimePortalBanner, TimePortalCompactMarker } from './workspace.timePortal.views.jsx';
+import { WorkspaceSelectionSurface } from './workspace.selection.views.jsx';
 
 export { AssetDetailDialog } from './workspace.cards.views.jsx';
 export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
@@ -39,7 +40,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], selectionSession = null, onSelectionChoose, onSelectionCancel, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -50,10 +51,12 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
   }, [restoreKey, stageScrollTop]);
   const sources = Array.isArray(workspace.sources) ? workspace.sources : [];
   const requestedVerse = state.view?.workspaceVerse || 'feed';
-  const verse = readOnlyHistorical && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
+  const selectionActive = Boolean(selectionSession?.ok);
+  const selectionVerse = String(selectionSession?.presentation?.verse || '');
+  const verse = selectionActive && ['feed', 'tree'].includes(selectionVerse) ? selectionVerse : readOnlyHistorical && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const lineageVerse = verse === 'lineage';
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
-  const transitionProductActionsVisible = !readOnlyHistorical && (verse === 'feed' || verse === 'lineage');
+  const transitionProductActionsVisible = !selectionActive && !readOnlyHistorical && (verse === 'feed' || verse === 'lineage');
   const transitionProductContext = useMemo(() => (transitionProductActionsVisible
     ? transitionProductContextForWorkspace({ workspaceRecords: allRecords, referenceRecords })
     : null), [transitionProductActionsVisible, allRecords, referenceRecords]);
@@ -80,8 +83,10 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
     auditById,
     materialIndex
   }), [workspace, allRecords, allAssets, displayOptions, discoveryQuery, auditById, materialIndex]);
-  const records = discoveryView.records;
-  const assets = discoveryView.assets;
+  const selectionCandidates = useMemo(() => (Array.isArray(selectionSession?.candidates) ? selectionSession.candidates : []).filter((item) => item?.enabled !== false && String(item.workspaceId || '') === String(workspace?.id || '')), [selectionSession, workspace?.id]);
+  const selectionRecordIds = useMemo(() => new Set(selectionCandidates.filter((item) => item?.id).map((item) => String(item.id))), [selectionCandidates]);
+  const records = selectionActive && verse !== 'tree' ? allRecords.filter((record) => selectionRecordIds.has(String(record.id))) : discoveryView.records;
+  const assets = selectionActive ? [] : discoveryView.assets;
   const hasMaterial = Boolean(allRecords.length || allAssets.length);
   const isFilteredEmpty = Boolean(hasMaterial && !records.length && !assets.length);
   const presentation = useMemo(() => (verse === 'tree'
@@ -147,13 +152,14 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       </header>
       <TimePortalBanner timePortal={timePortal} readModel={historicalReadModel} onLoadSnapshot={onLoadHistoricalSnapshot} onReturnLatest={onReturnToLatest} />
       <SourceStrip readOnly={readOnlyHistorical} workspace={workspace} boundary={presentation.sourceBoundary} onCloseSource={onCloseSource} onOpenAddDialog={onOpenAddDialog} onSourceTransportRefresh={onSourceTransportRefresh} onOpenGovernance={onOpenGovernance} />
-      {!readOnlyHistorical ? <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} /> : null}
+      {selectionActive ? <WorkspaceSelectionSurface session={selectionSession} onCancel={onSelectionCancel} /> : null}
+      {!readOnlyHistorical && !selectionActive ? <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} /> : null}
       <WorkspaceMaterialSummary summary={materialSummary} />
       <ModeToolbar readOnly={readOnlyHistorical} state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
-          ? <WorkspaceTreeState workspace={workspace} query={query} records={records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnlyHistorical} />
+          ? <WorkspaceTreeState workspace={workspace} query={selectionActive ? '' : query} records={selectionActive ? allRecords : records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnlyHistorical || selectionActive} selectionActive={selectionActive} selectionCandidates={selectionCandidates} onSelectCandidate={onSelectionChoose} />
           : verse === 'lineage'
             ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} workspaceRecords={allRecords} workspaceId={workspace.id} transitionProductContext={transitionProductContext} />
           : verse === 'audit'
@@ -174,7 +180,10 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
                 onRecordAction={onRecordAction}
                 onOpenSchema={onOpenSchema}
                 onOpenAsset={onOpenAsset}
-                readOnly={readOnlyHistorical}
+                readOnly={readOnlyHistorical || selectionActive}
+                selectionActive={selectionActive}
+                selectionCandidates={selectionCandidates}
+                onSelectCandidate={onSelectionChoose}
               />
             : <EmptyWorkspaceState filtered={isFilteredEmpty} hasMaterial={hasMaterial} query={query} summary={materialSummary} progress={workspace.discoveryProgress} />}
       </section>
@@ -186,6 +195,7 @@ function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
   return previous.workspace === next.workspace
     && previous.state === next.state
     && previous.referenceRecords === next.referenceRecords
+    && previous.selectionSession === next.selectionSession
     && previous.expandedLineageRecordIds === next.expandedLineageRecordIds
     && previous.lineageAuditReport === next.lineageAuditReport
     && previous.lineageLoadReport === next.lineageLoadReport

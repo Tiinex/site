@@ -8,6 +8,7 @@ const localParent = {
   summary: 'Local summary',
   path: 'notes/parent.md',
   kind: 'tiinex.topic.v1',
+  schemaId: 'tiinex.topic.v1',
   markdown: '# Local parent',
   sourceMode: 'local-files',
   source: { adapterId: 'local', kind: 'local-session' }
@@ -27,6 +28,7 @@ const githubParent = {
   summary: 'GitHub summary',
   path: 'topics/parent.md',
   kind: 'tiinex.topic.v1',
+  schemaId: 'tiinex.topic.v1',
   markdown: '# GitHub parent',
   sourceMode: 'source-backed',
   source: { adapterId: 'github', kind: 'github-tree', sourceKind: 'github.repo', repo: 'Tiinex/docs', ref: 'master' }

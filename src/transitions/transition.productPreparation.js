@@ -5,7 +5,7 @@ import { CANONICAL_TRANSITION_SCHEMA_CACHE_MANIFEST, qualifyCanonicalTransitionS
 import { buildTransitionDefinitionRegistry } from './transition.definitionRegistry.js';
 import { buildCanonicalTransitionAvailabilityPlan } from './transition.availabilityPlanner.js';
 import { buildCanonicalTransitionResultPlan } from './transition.resultSemantics.js';
-import { localArtifactMaterializerAuthoringFixedInputs, localArtifactMaterializerForSchema } from './transition.localArtifactMaterializers.js';
+import { localArtifactMaterializerForSchema } from './transition.localArtifactMaterializers.js';
 import { localCreateCapability } from './transition.localCreateCapability.js';
 import { referenceCreateCapability } from './transition.referenceCreateCapability.js';
 import { qualifyPortableExplicitGenerationBinding } from '../tooling/portable/package/generation.binding.js';
@@ -211,7 +211,10 @@ function buildProductAction({ definition, availability, participantIndex, curren
   const creation = creationAuthorities?.[outputSchemaId] || unresolvedCreationAuthority(outputSchemaId);
   const parent = productScope === 'workspace' ? null : (currentParticipant ? recoverCanonicalParentReference(currentRecord || {}, currentParticipant) : unavailableCanonicalParentReference('current-artifact-not-resolved'));
   const materializer = localArtifactMaterializerForSchema(outputSchemaId);
-  const fixedInputs = materializer ? localArtifactMaterializerAuthoringFixedInputs(outputSchemaId, { parent, currentRecord, currentParticipant, definition, result }) : freeze({});
+  const invocationRepresentationBindings = freeze({ parentTarget: canonicalSourceTargetForParent(parent) });
+  const fixedInputs = materializer?.authoringInputsFromInvocationBindings
+    ? freeze({ ...(materializer.authoringInputsFromInvocationBindings(invocationRepresentationBindings) || {}) })
+    : freeze({});
   const identity = definition.transitionIdentity || {};
   const executionKey = definitionExecutionKey(definition);
   const explicitGeneration = explicitGenerationAuthorities?.[`${executionKey}\u0000${output?.name || ''}`] || null;
@@ -224,7 +227,7 @@ function buildProductAction({ definition, availability, participantIndex, curren
     id: `canonical-transition:${executionKey}`,
     canonicalIdentifier: String(identity['Canonical Identifier'] || ''),
     label: String(identity['Human Label'] || identity.Name || 'Transition'),
-    icon: 'create',
+    icon: canonicalTransitionProductIcon({ productScope, result, creation, referenceSupport, support }),
     kind: 'canonical-transition-product',
     productScope,
     description: String(definition.purposeAndScope?.Purpose || definition.purposeAndScope?.purpose || ''),
@@ -251,6 +254,14 @@ function buildProductAction({ definition, availability, participantIndex, curren
     capability: support,
     enabled: support.state === 'qualified'
   });
+}
+
+
+function canonicalTransitionProductIcon({ productScope = 'record', result = {}, creation = {}, referenceSupport = null, support = {} } = {}) {
+  if (referenceSupport || (result.relationEffects || []).length) return 'reference';
+  if (productScope === 'workspace' || support.continuityMode === 'root') return 'create';
+  if (support.continuityMode === 'parent' || (result.parentEffects || []).length) return 'continue';
+  return 'create';
 }
 
 
@@ -355,4 +366,12 @@ function definitionExecutionKey(definition = {}) {
 }
 function exactOne(values = []) { return values.length === 1 ? values[0] : null; }
 function markdownLabel(value) { return String(value || '').replace(/[\[\]\n\r]/g, ' ').trim() || 'Topic'; }
+function canonicalSourceTargetForParent(parent = {}) {
+  const traceTarget = token(parent?.traceTarget);
+  const originTarget = token(parent?.originTarget);
+  const kind = token(parent?.representationKind);
+  if ((kind === 'github-issue-embedded' || kind === 'github-comment-embedded') && traceTarget && originTarget) return `${traceTarget} @ ${originTarget}`;
+  return traceTarget || originTarget;
+}
+
 function token(value = '') { return String(value || '').trim(); }

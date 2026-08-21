@@ -29,7 +29,7 @@ export function buildLoadedAuditTraversalScope(records = [], options = {}) {
       depth: node.depth,
       role: node.role,
       status: result.report.status,
-      schemaId: result.report.schemaId || record.kind || '',
+      schemaId: result.report.schemaId || record.schemaId || record.currentSchemaId || '',
       fallbackUsed: Boolean(result.report.fallbackUsed),
       summary: result.report.summary || {},
       findings: Object.freeze(result.report.findings || [])
@@ -59,7 +59,7 @@ function safeRunAudit(record = {}) {
   } catch (error) {
     const report = {
       status: 'invalid-or-incomplete',
-      schemaId: record.kind || record.schemaId || '',
+      schemaId: record.schemaId || record.currentSchemaId || '',
       moduleId: 'tiinex.root.v1',
       fallbackUsed: true,
       summary: { error: 1, warning: 0, info: 0, preserve: 0 },

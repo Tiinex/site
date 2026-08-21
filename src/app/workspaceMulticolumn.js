@@ -2,6 +2,7 @@ import { hydrateUiWorkspace } from './recordUi.js';
 import { workspaceColumnCapacity, workspaceWindowFor } from './workspaceWindow.js';
 import { qualifiedSchemaFilterValue } from '../workspaces/workspace.displayFilters.js';
 import { normalizeTimePortalView } from '../workspaces/workspace.timePortal.js';
+import { resolveWorkspaceEntrypointViewIntent } from '../workspaces/workspace.entrypointViewIntent.js';
 
 const DEFAULT_WORKSPACE_VIEW = Object.freeze({ universe: 'column', workspaceVerse: 'feed', reader: 'scan', query: '', layoutMode: 'expanded' });
 
@@ -94,7 +95,7 @@ function stateWithWorkspaceView(state = {}, workspaceId = '', view = {}) {
 }
 
 function normalizeWorkspaceViewForWorkspace(view = {}, workspace = null) {
-  const next = normalizeWorkspaceView(view);
+  const next = resolveWorkspaceEntrypointViewIntent(normalizeWorkspaceView(view), workspace);
   if (!next.displayOptions || typeof next.displayOptions !== 'object' || Array.isArray(next.displayOptions)) return next;
   const schemaFilter = qualifiedSchemaFilterValue(next.displayOptions.schemaFilter, workspace?.records || []);
   if (schemaFilter === next.displayOptions.schemaFilter) return next;

@@ -60,7 +60,8 @@ assert.deepEqual(forbiddenPrimaryWorkspaceActionCopy(primaryUi), [], 'Workspace 
 const recordCardSource = readFileSync(new URL('../schemas/workspace/workspace.cards.views.jsx', import.meta.url), 'utf8');
 assert.equal(recordCardSource.includes('tx-workspace-artifact-primary-actions'), false, 'Workspace Artifact must not use a dedicated primary action renderer');
 assert.equal(recordCardSource.includes('tx-workspace-artifact-secondary-actions'), false, 'Workspace Artifact must not use a dedicated secondary action renderer');
-assert(recordCardSource.includes('aria-label="Artifact actions"'), 'all record artifacts share the ordinary Artifact actions rail');
+assert(recordCardSource.includes("aria-label={selectionActive ? 'Selection action' : 'Artifact actions'}"), 'all record artifacts retain the ordinary Artifact actions rail outside the temporary selection projection');
+assert(recordCardSource.includes("selectionActive ? 'Selection action' : 'Artifact actions'"), 'selection projection labels its temporary action rail without creating a Workspace Artifact-specific renderer');
 assert(recordCardSource.includes('data-workspace-artifact-action-model'), 'workspace artifacts may expose lifecycle metadata without owning a parallel renderer');
 assert.equal(recordCardSource.includes('Source/local states are roles'), false, 'primary workspace cards must not explain internal refactor architecture');
 assert.equal(recordCardSource.includes('workspaceCandidateRoles) && record.workspaceCandidateRoles.length'), false, 'record workspace capability must not be inferred from legacy candidate readmodel roles');

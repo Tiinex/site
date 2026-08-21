@@ -5,7 +5,7 @@ import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { recordLifecycleBadge } from './workspace.viewFormatting.js';
 
-export function WorkspaceTreeState({ workspace, query = '', records, assets = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
+export function WorkspaceTreeState({ workspace, query = '', records, assets = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false, selectionActive = false, selectionCandidates = [], onSelectCandidate }) {
   query = String(query || '').trim();
   const rootLabel = `Visible tree · ${workspace.title || workspace.name || 'workspace'}`;
   const tree = useMemo(() => buildWorkspacePathTree({
@@ -14,6 +14,8 @@ export function WorkspaceTreeState({ workspace, query = '', records, assets = []
     rootLabel,
     query
   }), [records, assets, rootLabel, query]);
+  const selectionByRecordId = useMemo(() => new Map((Array.isArray(selectionCandidates) ? selectionCandidates : []).filter((item) => String(item?.workspaceId || '') === String(workspace?.id || '') && item?.id).map((item) => [String(item.id), item])), [selectionCandidates, workspace?.id]);
+  const selectionByFolderPath = useMemo(() => new Map((Array.isArray(selectionCandidates) ? selectionCandidates : []).filter((item) => String(item?.workspaceId || '') === String(workspace?.id || '') && item?.kind === 'folder' && item?.path).map((item) => [String(item.path), item])), [selectionCandidates, workspace?.id]);
   const expandedSet = useMemo(() => new Set(Array.isArray(expandedFolders) ? expandedFolders : []), [expandedFolders]);
   return (
     <div className="tx-workspace-tree-state tx-path-tree-state" role="tree" aria-label="Workspace path tree">
@@ -22,37 +24,39 @@ export function WorkspaceTreeState({ workspace, query = '', records, assets = []
         <TreeCountBadges counts={tree.counts} />
       </div>
       {tree.folders.map((folder) => (
-        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} expandedSet={expandedSet} onToggleFolder={onToggleTreeFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
+        <TreeFolder key={folder.path || folder.name} folder={folder} query={query} expandedSet={expandedSet} onToggleFolder={onToggleTreeFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} selectionActive={selectionActive} selectionByRecordId={selectionByRecordId} selectionByFolderPath={selectionByFolderPath} onSelectCandidate={onSelectCandidate} />
       ))}
       {tree.items.map((item) => (
-        <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
+        <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} selectionActive={selectionActive} selectionCandidate={selectionByRecordId.get(String(item.source?.id || '')) || null} onSelectCandidate={onSelectCandidate} />
       ))}
       {tree.empty ? <p className="tx-tree-empty">No loaded artifacts or assets yet. Source and workspace boundaries remain visible.</p> : null}
     </div>
   );
 }
 
-function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
+function TreeFolder({ folder, query, expandedSet = new Set(), onToggleFolder, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false, selectionActive = false, selectionByRecordId = new Map(), selectionByFolderPath = new Map(), onSelectCandidate }) {
   const open = Boolean(query) || expandedSet.has(folder.path || folder.name || '');
+  const folderCandidate = selectionByFolderPath.get(String(folder.path || '')) || null;
   return (
     <details className="tx-tree-folder" open={open} role="group" data-tree-folder-path={folder.path || folder.name || ''} onToggle={(event) => { if (event.currentTarget === event.target && !query) onToggleFolder?.(folder.path || folder.name || '', event.currentTarget.open); }}>
       <summary className="tx-tree-folder-summary" role="treeitem" aria-label={`Folder ${folder.name}`}>
         <span className="tx-tree-folder-name"><Icon name="folderOpen" /> {folder.name}</span>
         <TreeCountBadges counts={folder.counts} />
       </summary>
+      {selectionActive && folderCandidate ? <button type="button" className="tx-tree-folder-select" onClick={() => onSelectCandidate?.(folderCandidate)}>Select folder</button> : null}
       <div className="tx-tree-folder-children">
         {folder.folders.map((child) => (
-          <TreeFolder key={child.path || child.name} folder={child} query={query} expandedSet={expandedSet} onToggleFolder={onToggleFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
+          <TreeFolder key={child.path || child.name} folder={child} query={query} expandedSet={expandedSet} onToggleFolder={onToggleFolder} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} selectionActive={selectionActive} selectionByRecordId={selectionByRecordId} selectionByFolderPath={selectionByFolderPath} onSelectCandidate={onSelectCandidate} />
         ))}
         {folder.items.map((item) => (
-          <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} />
+          <TreeLeafItem key={item.id || item.path} item={item} auditById={auditById} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnly} selectionActive={selectionActive} selectionCandidate={selectionByRecordId.get(String(item.source?.id || '')) || null} onSelectCandidate={onSelectCandidate} />
         ))}
       </div>
     </details>
   );
 }
 
-function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false }) {
+function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false, selectionActive = false, selectionCandidate = null, onSelectCandidate }) {
   if (item.type === 'asset') {
     return (
       <button type="button" className="tx-tree-record-row tx-tree-asset-row tx-tree-leaf-row" role="treeitem" onClick={() => onOpenAsset?.(item.source.id || item.source.path)} title={item.path || ''}>
@@ -64,13 +68,14 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecord
   const auditItem = auditById.get(item.source.id);
   return (
     <div className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" title={item.path || ''}>
-      <button type="button" className="tx-tree-row-main" onClick={() => readOnly ? onOpenRecord?.(item.source.id) : onFocusRecordLineage?.(item.source.id)} aria-label={`${readOnly ? 'Open' : 'Open lineage for'} ${item.name || item.title || 'artifact'}`}>
+      <button type="button" className="tx-tree-row-main" onClick={() => selectionActive ? (selectionCandidate ? onSelectCandidate?.(selectionCandidate) : undefined) : readOnly ? onOpenRecord?.(item.source.id) : onFocusRecordLineage?.(item.source.id)} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : readOnly ? 'Open' : 'Open lineage for'} ${item.name || item.title || 'artifact'}`}>
         <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
       </button>
       <span className="tx-tree-row-badges">
         <AuditStatusBadge record={item.source} item={auditItem} />
         {recordLifecycleBadge(item.source) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(item.source)}</Badge> : null}
         <Badge>{item.source.kind || item.kind || 'artifact'}</Badge>
+        {selectionActive && selectionCandidate ? <button type="button" className="tx-tree-record-select" onClick={() => onSelectCandidate?.(selectionCandidate)}>Select</button> : null}
       </span>
     </div>
   );

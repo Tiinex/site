@@ -59,6 +59,7 @@ const ICONS = {
   folderPlus: faFolderPlus,
   github: faCircleNodes,
   handPointer: faHandPointer,
+  interpret: faArrowRight,
   help: faQuestion,
   faQuoteRight,
   home: faHouse,
