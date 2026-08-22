@@ -1,18 +1,28 @@
 # Continuity Context
-- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Parent Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 15:58:00
-  - Trace: record:.topics/development/tooling/dogfood/001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md
-  - Origin: .topics/development/tooling/dogfood/001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md
-  - Boundary: Portable local material; no GitHub provenance inferred.
+  - Trace: [001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md](001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md)
+  - Origin:
+    - [relative](001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md)
+- Repairs:
+  - Historical canonical representation repair
+    - Target: [pre-repair published representation](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md)
+    - Note: Canonically repaired after v475-v478 qualified the authoring/validation/reference/integrity oracles; pre-repair Git blob df35458394c2a94040d63a0c699148ada631affe.
+    - Reason: Preserve original body/work-result meaning and historical Current Created At while replacing false-PASS envelope, schema-reference, continuity, and integrity representation.
 - Current
-  - Current Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 16:25:00
+  - Authors: Tooling
+  - Why: Record the source-qualified Tooling closure and exact-authoring dogfood evidence required by the controlling v472 task.
   - Summary: v472 portable exact authoring fidelity closure result
   - Status: draft/local
-  - Why: Record the source-qualified Tooling closure and exact-authoring dogfood evidence required by the controlling v472 task.
+
 ---
+
 # v472 portable exact authoring fidelity closure result
 
 ## Objective
@@ -30,7 +40,9 @@ Changed only portable exact authoring owners src/tooling/portable/draft/draft.cr
 ## Dependencies
 
 Controlling task: .topics/development/tooling/dogfood/001-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure.trace.md. Input workspace ZIP SHA256: 3243a33fcda6cc2e65dd2fb9c8fdf3b7e1d244b55e941e0220d8d6578281d7a3. Result evidence was produced with the Site-included portable CLI and shared Site creation-contract/result qualification. Final dogfood receipts: values-only create-local-draft is created-clean with exact Created At and preserved whitespace; result audit is clean; full-root resolve-lineage reports the controlling-task to result edge resolved; search-lineage returns exactly the v472 controlling task and result for the closure query. The supplied source-clean worktree has no installed react dependency, so browser/public-runtime claims are not upgraded beyond observed source receipts.
+
 # Continuity Integrity
-- Draft Local Integrity
-  - Method: browser-local-draft
-  - Value: pending-publication-or-export
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: AZsn-x2dND2HI0xCoJMRtKQWL3dxxtNBEqgZA84Ip-E

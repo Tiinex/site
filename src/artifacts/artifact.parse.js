@@ -32,13 +32,16 @@ export function parseContinuityEnvelope(envelopeText = '') {
       createdAt: extractListField(parentBlock, 'Created At'),
       trace: extractListField(parentBlock, 'Trace', { preferLinkTarget: true }),
       traceLabel: extractListField(parentBlock, 'Trace'),
+      traceRaw: extractListField(parentBlock, 'Trace', { preserveRaw: true }),
       origin: extractListField(parentBlock, 'Origin', { preferLinkTarget: true }),
+      originEntries: Object.freeze(extractNestedLinkEntries(parentBlock, 'Origin')),
       boundary: extractListField(parentBlock, 'Boundary')
     },
     current: {
       schema: extractSchemaField(currentBlock, 'Current Schema'),
       createdAt: extractListField(currentBlock, 'Created At'),
       summary: extractListField(currentBlock, 'Summary'),
+      authors: extractListField(currentBlock, 'Authors'),
       status: extractListField(currentBlock, 'Status'),
       why: extractListField(currentBlock, 'Why')
     },
@@ -143,6 +146,26 @@ function firstNestedListValue(lines, start, parentIndent) {
     return (labelled ? labelled[2] : raw).trim();
   }
   return '';
+}
+
+function extractNestedLinkEntries(text, label) {
+  const lines = String(text || '').split('\n');
+  const escaped = escapeRegExp(label);
+  const start = lines.findIndex((line) => line.match(new RegExp(`^(\\s*)-\\s*${escaped}:\\s*$`)));
+  if (start < 0) return [];
+  const parentIndent = leadingSpaces(lines[start]);
+  const out = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    const indent = leadingSpaces(line);
+    if (/^\s*-\s+\S/.test(line) && indent <= parentIndent) break;
+    const item = line.match(/^\s*-\s+(\[[^\]]+\]\([^)]+\))\s*$/);
+    if (!item) continue;
+    const link = markdownLink(item[1]);
+    if (!link) continue;
+    out.push(Object.freeze({ label: link.label, target: link.href, raw: item[1] }));
+  }
+  return out;
 }
 
 function normalizeFieldValue(value, options = {}) {

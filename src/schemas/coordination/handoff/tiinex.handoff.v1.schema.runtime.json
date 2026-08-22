@@ -1,0 +1,4082 @@
+{
+  "schema": "tiinex.site.schema-runtime-projection.v1",
+  "generator": "schema-runtime-projection-v1",
+  "schemaId": "tiinex.handoff.v1",
+  "sourceChecksum": "2b936616989fbab2bcc8d1e6e4175369546cea5adffd5c9c9db236bc2340ef06",
+  "sourceBlobSha": "2332023aecf690279805d34c7e512a9f9799c20d",
+  "sourceBytes": 28710,
+  "bindingChecksum": "2b936616989fbab2bcc8d1e6e4175369546cea5adffd5c9c9db236bc2340ef06",
+  "validationContract": {
+    "schema": "tiinex.site.compact-portable-validation-contract.v1",
+    "schemaId": "tiinex.handoff.v1",
+    "lineage": [
+      "tiinex.root.v1",
+      "tiinex.handoff.v1"
+    ],
+    "lineageQualification": {
+      "state": "valid",
+      "complete": true,
+      "lineage": [
+        "tiinex.root.v1",
+        "tiinex.handoff.v1"
+      ],
+      "findings": []
+    },
+    "validation": {
+      "groups": [
+        {
+          "name": "Runtime Required Fields",
+          "requiredWhen": [],
+          "categories": [
+            {
+              "name": "Required Fields",
+              "items": [
+                "Envelope Schema",
+                "Current",
+                "Current Schema",
+                "Created At"
+              ]
+            }
+          ]
+        }
+      ],
+      "requiredSections": [
+        "Continuity Context",
+        "Continuity Integrity",
+        "Handoff Parties",
+        "Transfers",
+        "Required Context",
+        "Reference Context",
+        "Retained Responsibilities",
+        "Exclusions And Dependencies",
+        "Completion Expectation",
+        "Interpretation Limits"
+      ],
+      "requiredHeadings": [
+        {
+          "level": 2,
+          "title": "Handoff Parties",
+          "source": "`## Handoff Parties` section"
+        },
+        {
+          "level": 2,
+          "title": "Transfers",
+          "source": "`## Transfers` section"
+        },
+        {
+          "level": 2,
+          "title": "Required Context",
+          "source": "`## Required Context` section"
+        },
+        {
+          "level": 2,
+          "title": "Reference Context",
+          "source": "`## Reference Context` section"
+        },
+        {
+          "level": 2,
+          "title": "Retained Responsibilities",
+          "source": "`## Retained Responsibilities` section"
+        },
+        {
+          "level": 2,
+          "title": "Exclusions And Dependencies",
+          "source": "`## Exclusions And Dependencies` section"
+        },
+        {
+          "level": 2,
+          "title": "Completion Expectation",
+          "source": "`## Completion Expectation` section"
+        },
+        {
+          "level": 2,
+          "title": "Interpretation Limits",
+          "source": "`## Interpretation Limits` section"
+        }
+      ],
+      "requiredEntries": [
+        {
+          "group": "Continuity Integrity Footer",
+          "entries": [
+            "Method Entry"
+          ],
+          "targetHeadings": [
+            "Continuity Integrity"
+          ]
+        }
+      ],
+      "ordinaryGroups": [
+        {
+          "group": "Handoff Parties",
+          "qualification": "valid",
+          "target": {
+            "heading": "## Handoff Parties",
+            "title": "Handoff Parties",
+            "level": 2,
+            "authority": "root-same-name-default",
+            "requiredness": "required",
+            "qualification": "valid",
+            "findings": []
+          },
+          "requiredFields": [
+            "Purpose",
+            "From",
+            "From Kind",
+            "To",
+            "To Kind"
+          ],
+          "optionalFields": [
+            "From Reference",
+            "From Capacity",
+            "From Capacity Reference",
+            "To Reference",
+            "To Capacity",
+            "To Capacity Reference",
+            "Notes"
+          ],
+          "contributors": [
+            {
+              "sourceSchemaId": "tiinex.handoff.v1",
+              "group": "Handoff Parties",
+              "requiredFields": [
+                "Purpose",
+                "From",
+                "From Kind",
+                "To",
+                "To Kind"
+              ],
+              "optionalFields": [
+                "From Reference",
+                "From Capacity",
+                "From Capacity Reference",
+                "To Reference",
+                "To Capacity",
+                "To Capacity Reference",
+                "Notes"
+              ],
+              "target": {
+                "heading": "## Handoff Parties",
+                "title": "Handoff Parties",
+                "level": 2,
+                "authority": "root-same-name-default",
+                "qualification": "valid"
+              }
+            }
+          ]
+        },
+        {
+          "group": "Completion Expectation",
+          "qualification": "valid",
+          "target": {
+            "heading": "## Completion Expectation",
+            "title": "Completion Expectation",
+            "level": 2,
+            "authority": "root-same-name-default",
+            "requiredness": "required",
+            "qualification": "valid",
+            "findings": []
+          },
+          "requiredFields": [
+            "Signal Kind",
+            "Signal Meaning"
+          ],
+          "optionalFields": [
+            "Return To",
+            "Return To Reference",
+            "Expected Result Reference",
+            "Notes"
+          ],
+          "contributors": [
+            {
+              "sourceSchemaId": "tiinex.handoff.v1",
+              "group": "Completion Expectation",
+              "requiredFields": [
+                "Signal Kind",
+                "Signal Meaning"
+              ],
+              "optionalFields": [
+                "Return To",
+                "Return To Reference",
+                "Expected Result Reference",
+                "Notes"
+              ],
+              "target": {
+                "heading": "## Completion Expectation",
+                "title": "Completion Expectation",
+                "level": 2,
+                "authority": "root-same-name-default",
+                "qualification": "valid"
+              }
+            }
+          ]
+        },
+        {
+          "group": "Interpretation Limits",
+          "qualification": "valid",
+          "target": {
+            "heading": "## Interpretation Limits",
+            "title": "Interpretation Limits",
+            "level": 2,
+            "authority": "root-same-name-default",
+            "requiredness": "required",
+            "qualification": "valid",
+            "findings": []
+          },
+          "requiredFields": [
+            "Does Not Mean",
+            "Must Not Be Used To Claim"
+          ],
+          "optionalFields": [
+            "Authority Limits",
+            "Transport Limits",
+            "Review Notes"
+          ],
+          "contributors": [
+            {
+              "sourceSchemaId": "tiinex.handoff.v1",
+              "group": "Interpretation Limits",
+              "requiredFields": [
+                "Does Not Mean",
+                "Must Not Be Used To Claim"
+              ],
+              "optionalFields": [
+                "Authority Limits",
+                "Transport Limits",
+                "Review Notes"
+              ],
+              "target": {
+                "heading": "## Interpretation Limits",
+                "title": "Interpretation Limits",
+                "level": 2,
+                "authority": "root-same-name-default",
+                "qualification": "valid"
+              }
+            }
+          ]
+        }
+      ],
+      "conditionalRequirements": [
+        {
+          "name": "Contract Category Extension",
+          "requiredWhen": [
+            "A descendant schema introduces a contract category label."
+          ],
+          "requiredSections": [],
+          "requiredFields": [],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [
+            "Named Declaration"
+          ],
+          "ordering": []
+        },
+        {
+          "name": "Contract Category Override",
+          "requiredWhen": [
+            "A descendant schema replaces the interpretation of an inherited contract category label."
+          ],
+          "requiredSections": [],
+          "requiredFields": [],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [
+            "Named Declaration"
+          ],
+          "ordering": []
+        },
+        {
+          "name": "Repairs",
+          "requiredWhen": [
+            "Repairs exists"
+          ],
+          "requiredSections": [],
+          "requiredFields": [],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [
+            "First-Level Hyphen List Item"
+          ],
+          "ordering": []
+        },
+        {
+          "name": "Parent",
+          "requiredWhen": [
+            "Parent exists"
+          ],
+          "requiredSections": [],
+          "requiredFields": [
+            "Parent Schema",
+            "Trace",
+            "Origin"
+          ],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [],
+          "ordering": []
+        },
+        {
+          "name": "Parent Origin",
+          "requiredWhen": [
+            "Parent exists"
+          ],
+          "requiredSections": [],
+          "requiredFields": [
+            "browse + git"
+          ],
+          "requiredEntries": [],
+          "allowedLabels": [
+            "relative",
+            "absolute",
+            "browse + git"
+          ],
+          "entryShapes": [
+            "Markdown Link"
+          ],
+          "ordering": [
+            "relative",
+            "absolute",
+            "browse + git"
+          ]
+        },
+        {
+          "name": "Envelope Extension",
+          "requiredWhen": [
+            "A descendant schema adds envelope fields."
+          ],
+          "requiredSections": [],
+          "requiredFields": [],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [
+            "Named Declaration"
+          ],
+          "ordering": []
+        },
+        {
+          "name": "Extension",
+          "requiredWhen": [
+            "A descendant schema introduces an extension."
+          ],
+          "requiredSections": [],
+          "requiredFields": [],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [
+            "Named Declaration"
+          ],
+          "ordering": []
+        }
+      ],
+      "fieldShapes": [
+        {
+          "kind": "field-shape",
+          "sourceSchemaId": "tiinex.root.v1",
+          "group": "Schema Reference Fields",
+          "field": "Envelope Schema",
+          "allowedShapes": [
+            "Markdown Link",
+            "Plain Schema Id"
+          ],
+          "allowedShapeAuthorities": [
+            {
+              "shapeLabel": "Markdown Link",
+              "qualification": "evaluable",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": {
+                "kind": "machine-shape-definition",
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  " markdown-link = \"[\" label \"](\" target \")\"",
+                  " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+                ],
+                "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                "qualificationSupport": "available",
+                "definitionQualification": "valid",
+                "definitionFindings": [],
+                "declarationStructure": {
+                  "value": "Markdown Link",
+                  "children": [
+                    {
+                      "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                      "children": []
+                    },
+                    {
+                      "value": "Start Rule: markdown-link",
+                      "children": []
+                    }
+                  ]
+                },
+                "compiledGrammar": {
+                  "profile": "tiinex.lexical.shape.v1",
+                  "qualification": "valid",
+                  "startRule": "markdown-link",
+                  "grammarRules": [
+                    {
+                      "name": "markdown-link",
+                      "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                      "expression": {
+                        "type": "concatenation",
+                        "parts": [
+                          {
+                            "type": "literal",
+                            "value": "["
+                          },
+                          {
+                            "type": "reference",
+                            "name": "label"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "]("
+                          },
+                          {
+                            "type": "reference",
+                            "name": "target"
+                          },
+                          {
+                            "type": "literal",
+                            "value": ")"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "label",
+                      "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            "]",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            ")",
+                            " ",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "findings": []
+                }
+              },
+              "resolvedDefinitionProvenance": {
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                }
+              },
+              "visibleDefinitions": [
+                {
+                  "shapeLabel": "Markdown Link",
+                  "sourceSchemaId": "tiinex.root.v1",
+                  "sourceGroup": "Machine Shape Authority",
+                  "declarationSource": {
+                    "line": 357
+                  },
+                  "grammarProfile": "tiinex.lexical.shape.v1",
+                  "definitionQualification": "valid",
+                  "qualificationSupport": "available"
+                }
+              ],
+              "findings": []
+            },
+            {
+              "shapeLabel": "Plain Schema Id",
+              "qualification": "unresolved",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": null,
+              "resolvedDefinitionProvenance": null,
+              "visibleDefinitions": [],
+              "findings": [
+                "No visible Machine Shape Definition exists for exact label Plain Schema Id."
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "field-shape",
+          "sourceSchemaId": "tiinex.root.v1",
+          "group": "Schema Reference Fields",
+          "field": "Parent Schema",
+          "allowedShapes": [
+            "Markdown Link",
+            "Plain Schema Id"
+          ],
+          "allowedShapeAuthorities": [
+            {
+              "shapeLabel": "Markdown Link",
+              "qualification": "evaluable",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": {
+                "kind": "machine-shape-definition",
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  " markdown-link = \"[\" label \"](\" target \")\"",
+                  " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+                ],
+                "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                "qualificationSupport": "available",
+                "definitionQualification": "valid",
+                "definitionFindings": [],
+                "declarationStructure": {
+                  "value": "Markdown Link",
+                  "children": [
+                    {
+                      "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                      "children": []
+                    },
+                    {
+                      "value": "Start Rule: markdown-link",
+                      "children": []
+                    }
+                  ]
+                },
+                "compiledGrammar": {
+                  "profile": "tiinex.lexical.shape.v1",
+                  "qualification": "valid",
+                  "startRule": "markdown-link",
+                  "grammarRules": [
+                    {
+                      "name": "markdown-link",
+                      "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                      "expression": {
+                        "type": "concatenation",
+                        "parts": [
+                          {
+                            "type": "literal",
+                            "value": "["
+                          },
+                          {
+                            "type": "reference",
+                            "name": "label"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "]("
+                          },
+                          {
+                            "type": "reference",
+                            "name": "target"
+                          },
+                          {
+                            "type": "literal",
+                            "value": ")"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "label",
+                      "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            "]",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            ")",
+                            " ",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "findings": []
+                }
+              },
+              "resolvedDefinitionProvenance": {
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                }
+              },
+              "visibleDefinitions": [
+                {
+                  "shapeLabel": "Markdown Link",
+                  "sourceSchemaId": "tiinex.root.v1",
+                  "sourceGroup": "Machine Shape Authority",
+                  "declarationSource": {
+                    "line": 357
+                  },
+                  "grammarProfile": "tiinex.lexical.shape.v1",
+                  "definitionQualification": "valid",
+                  "qualificationSupport": "available"
+                }
+              ],
+              "findings": []
+            },
+            {
+              "shapeLabel": "Plain Schema Id",
+              "qualification": "unresolved",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": null,
+              "resolvedDefinitionProvenance": null,
+              "visibleDefinitions": [],
+              "findings": [
+                "No visible Machine Shape Definition exists for exact label Plain Schema Id."
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "field-shape",
+          "sourceSchemaId": "tiinex.root.v1",
+          "group": "Schema Reference Fields",
+          "field": "Current Schema",
+          "allowedShapes": [
+            "Markdown Link",
+            "Plain Schema Id"
+          ],
+          "allowedShapeAuthorities": [
+            {
+              "shapeLabel": "Markdown Link",
+              "qualification": "evaluable",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": {
+                "kind": "machine-shape-definition",
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  " markdown-link = \"[\" label \"](\" target \")\"",
+                  " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+                ],
+                "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                "qualificationSupport": "available",
+                "definitionQualification": "valid",
+                "definitionFindings": [],
+                "declarationStructure": {
+                  "value": "Markdown Link",
+                  "children": [
+                    {
+                      "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                      "children": []
+                    },
+                    {
+                      "value": "Start Rule: markdown-link",
+                      "children": []
+                    }
+                  ]
+                },
+                "compiledGrammar": {
+                  "profile": "tiinex.lexical.shape.v1",
+                  "qualification": "valid",
+                  "startRule": "markdown-link",
+                  "grammarRules": [
+                    {
+                      "name": "markdown-link",
+                      "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                      "expression": {
+                        "type": "concatenation",
+                        "parts": [
+                          {
+                            "type": "literal",
+                            "value": "["
+                          },
+                          {
+                            "type": "reference",
+                            "name": "label"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "]("
+                          },
+                          {
+                            "type": "reference",
+                            "name": "target"
+                          },
+                          {
+                            "type": "literal",
+                            "value": ")"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "label",
+                      "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            "]",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            ")",
+                            " ",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "findings": []
+                }
+              },
+              "resolvedDefinitionProvenance": {
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                }
+              },
+              "visibleDefinitions": [
+                {
+                  "shapeLabel": "Markdown Link",
+                  "sourceSchemaId": "tiinex.root.v1",
+                  "sourceGroup": "Machine Shape Authority",
+                  "declarationSource": {
+                    "line": 357
+                  },
+                  "grammarProfile": "tiinex.lexical.shape.v1",
+                  "definitionQualification": "valid",
+                  "qualificationSupport": "available"
+                }
+              ],
+              "findings": []
+            },
+            {
+              "shapeLabel": "Plain Schema Id",
+              "qualification": "unresolved",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": null,
+              "resolvedDefinitionProvenance": null,
+              "visibleDefinitions": [],
+              "findings": [
+                "No visible Machine Shape Definition exists for exact label Plain Schema Id."
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "field-shape",
+          "sourceSchemaId": "tiinex.root.v1",
+          "group": "Trace Field",
+          "field": "Trace",
+          "allowedShapes": [
+            "Markdown Link",
+            "Relative Path"
+          ],
+          "allowedShapeAuthorities": [
+            {
+              "shapeLabel": "Markdown Link",
+              "qualification": "evaluable",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": {
+                "kind": "machine-shape-definition",
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  " markdown-link = \"[\" label \"](\" target \")\"",
+                  " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+                ],
+                "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                "qualificationSupport": "available",
+                "definitionQualification": "valid",
+                "definitionFindings": [],
+                "declarationStructure": {
+                  "value": "Markdown Link",
+                  "children": [
+                    {
+                      "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                      "children": []
+                    },
+                    {
+                      "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "children": []
+                    },
+                    {
+                      "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                      "children": []
+                    },
+                    {
+                      "value": "Start Rule: markdown-link",
+                      "children": []
+                    }
+                  ]
+                },
+                "compiledGrammar": {
+                  "profile": "tiinex.lexical.shape.v1",
+                  "qualification": "valid",
+                  "startRule": "markdown-link",
+                  "grammarRules": [
+                    {
+                      "name": "markdown-link",
+                      "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                      "expression": {
+                        "type": "concatenation",
+                        "parts": [
+                          {
+                            "type": "literal",
+                            "value": "["
+                          },
+                          {
+                            "type": "reference",
+                            "name": "label"
+                          },
+                          {
+                            "type": "literal",
+                            "value": "]("
+                          },
+                          {
+                            "type": "reference",
+                            "name": "target"
+                          },
+                          {
+                            "type": "literal",
+                            "value": ")"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "name": "label",
+                      "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            "]",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "name": "target",
+                      "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                      "expression": {
+                        "type": "repeat",
+                        "quantifier": "+",
+                        "expression": {
+                          "type": "any-except",
+                          "exclusions": [
+                            ")",
+                            " ",
+                            "\t",
+                            "\r",
+                            "\n"
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  "findings": []
+                }
+              },
+              "resolvedDefinitionProvenance": {
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                }
+              },
+              "visibleDefinitions": [
+                {
+                  "shapeLabel": "Markdown Link",
+                  "sourceSchemaId": "tiinex.root.v1",
+                  "sourceGroup": "Machine Shape Authority",
+                  "declarationSource": {
+                    "line": 357
+                  },
+                  "grammarProfile": "tiinex.lexical.shape.v1",
+                  "definitionQualification": "valid",
+                  "qualificationSupport": "available"
+                }
+              ],
+              "findings": []
+            },
+            {
+              "shapeLabel": "Relative Path",
+              "qualification": "unresolved",
+              "useSourceSchemaId": "tiinex.root.v1",
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "visibleSchemaIds": [
+                "tiinex.root.v1"
+              ],
+              "definition": null,
+              "resolvedDefinitionProvenance": null,
+              "visibleDefinitions": [],
+              "findings": [
+                "No visible Machine Shape Definition exists for exact label Relative Path."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "declarations": [
+      {
+        "group": "Field Value Constraints",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Allowed Value",
+          "Allowed Shape",
+          "Domain Policy"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Allowed Value",
+          "Allowed Shape",
+          "Domain Policy"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "A `Field Value Constraints` declaration binds value-domain authority to one exact contract field.",
+          "The declaration name is the exact case-sensitive field label being constrained.",
+          "When the declaring contract group declares that field under `Required Fields` or `Optional Fields`, the constraint targets that local field only, even when that group has an `Applies To` category for another semantic purpose.",
+          "When the declaring contract group does not declare that field, the group may share the constraint through `Applies To` only when every `Applies To` entry resolves unambiguously to a contract group that declares the exact field under `Required Fields` or `Optional Fields`; otherwise target authority is unresolved/error and validators must not choose a partial subset or guess a target.",
+          "This field-domain targeting rule does not reinterpret or broaden Root's generic `Fields` category.",
+          "`Allowed Value` and `Allowed Shape` may repeat inside one declaration; their order is not semantic.",
+          "Exactly one `Domain Policy` is required per declaration.",
+          "`Domain Policy` must be `closed` or `extension-authorized`.",
+          "Every declaration must contain at least one `Allowed Value` or `Allowed Shape`.",
+          "`Allowed Value` compares the extracted scalar value exactly and case-sensitively to the declared literal; validators must not normalize aliases, spelling, punctuation, case, separators, or typos.",
+          "`Allowed Shape` must name a machine-defined shape available under the active contract. This category does not create a new shape registry. An unknown, unavailable, or unresolved shape authority must remain unresolved and validators must not infer a matcher from the shape's English name.",
+          "A value satisfies one constraint contribution when it matches an `Allowed Value` exactly or satisfies one declared `Allowed Shape`.",
+          "Shape qualification and reference-target resolution are separate truths. Satisfying a reference shape does not by itself prove that the reference target resolves or is semantically suitable.",
+          "Under `closed`, a value that satisfies no declared value or shape is invalid for that contribution.",
+          "Under `extension-authorized`, a value that satisfies no declared value or shape is an unresolved extension candidate, not an accepted core value; separate authority must qualify the extension before a validator or runtime may treat it as an accepted extension.",
+          "The literal `unknown` is a Tiinex uncertainty sentinel, not an extension-name escape hatch. If `unknown` is not explicitly declared as an `Allowed Value`, it is invalid for that contribution and must not be reclassified as an extension candidate merely because `Domain Policy` is `extension-authorized`.",
+          "`unknown` has no global validity. It is permitted only when explicitly declared as an `Allowed Value` by every applicable constraint contribution.",
+          "Absence of `Field Value Constraints` for a field is valid and means no closed value domain or shape is inferred for that field from `Allowed Labels`, prose, field name, list position, neighboring fields, or UI/runtime behavior.",
+          "Multiple applicable field-value constraint contributions are additive obligations. A concrete value must satisfy every applicable contribution unless separately defined explicit override authority validly replaces an inherited obligation.",
+          "A descendant may narrow an inherited field domain by adding a stricter compatible contribution.",
+          "A wider descendant contribution does not widen inherited acceptance. This contract introduces no generic field-value-constraint override selector or widening operator; validators must not guess one. Any future replacement/widening authority must separately identify the inherited obligation being replaced.",
+          "Contradictory applicable constraints must be reported as a contract conflict and must not be silently unioned, source-ordered, or resolved by child-wins precedence.",
+          "Compiled field-value authority must retain source schema, contract group, exact target field, whether targeting is local or shared through `Applies To`, declared values and shapes, policy, and inherited contribution provenance.",
+          "Existing `Allowed Labels` semantics remain unchanged. `Allowed Labels` is group-level vocabulary/readability authority and is not field-domain closure."
+        ]
+      },
+      {
+        "group": "Machine Shape Authority",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Grammar Profile",
+          "Start Rule",
+          "Grammar Rule",
+          "Human Meaning"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Grammar Profile",
+          "Start Rule",
+          "Grammar Rule",
+          "Human Meaning"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Machine Shape Definitions` declares exact machine-readable lexical shape authorities available to `Allowed Shape` and to any future contract surface that explicitly delegates to this authority.",
+          "Each first-level entry under `Machine Shape Definitions` is one named machine-shape declaration. The declaration name is the exact case-sensitive shape label.",
+          "Every machine-shape declaration must contain exactly one `Grammar Profile`, exactly one `Start Rule`, one or more `Grammar Rule` fields, and exactly one `Human Meaning`.",
+          "`Grammar Rule` may repeat and its ordering is not semantic. Other single-cardinality declaration fields must not repeat.",
+          "Machine-shape definitions are resolved by lineage prefix at the source point of the shape use: ancestor schema definitions and definitions from the same source schema are visible; definitions introduced only by later descendants are not visible to an ancestor contribution.",
+          "Source order inside one schema is not semantic. A same-schema definition may qualify a same-schema shape use regardless of whether the declaration text appears before or after the use.",
+          "A descendant may add a new distinct shape label. That definition is visible to uses in the descendant source and its later descendants, but not to ancestor or sibling-branch uses that do not inherit it.",
+          "For one exact shape label within the active lineage prefix, zero active definitions means shape authority is unresolved; exactly one valid definition is usable when its grammar profile is supported; more than one active definition is a contract/authority conflict and consumers of that label are unresolved.",
+          "Duplicate exact-label definitions are not deduplicated even when their text is identical. No source-order, descendant-wins, first-definition, or hidden-registry precedence exists.",
+          "This contract introduces no generic inherited machine-shape replacement operator. A future replacement authority may be defined only when it can explicitly identify the inherited definition being replaced.",
+          "Compiled machine-shape authority must preserve the exact shape label, source schema, source contract group, declaration source, lineage/source-point visibility, grammar profile, start rule, grammar rules, human meaning, and qualification-support state.",
+          "A consumer of machine-shape authority must retain the source schema, contract group, exact field/use, requested shape label, resolved definition provenance, and qualification result `match`, `no-match`, or `unresolved`.",
+          "`Human Meaning` is explanatory readability authority only. Machine lexical acceptance is owned by `Grammar Profile`, `Start Rule`, and `Grammar Rule`; validators must not infer a matcher from `Human Meaning`.",
+          "`tiinex.lexical.shape.v1` is the Root-owned generic lexical grammar profile defined by this group. It is interpreter semantics and is not itself resolved through another Machine Shape Definition.",
+          "Under `tiinex.lexical.shape.v1`, grammar-source meta-whitespace is exactly ASCII SPACE U+0020 and TAB U+0009. It may appear before the first grammar token, between grammar tokens where token boundaries permit, and after the last grammar token, and is ignored as grammar-source separation. It must not split an identifier or alter a quoted literal. CR, LF, and every non-ASCII whitespace character are not grammar-source meta-whitespace. Implementations must not derive grammar-source whitespace from a host-language class such as `\\s`.",
+          "After ignoring permitted grammar-source meta-whitespace, each `Grammar Rule` has the form `identifier = expression`. Rule identifiers are case-sensitive, begin with an ASCII letter, and continue with ASCII letters, ASCII digits, or hyphen. Rule identifiers must be unique inside one shape declaration. `Start Rule` must name exactly one declared `Grammar Rule` identifier.",
+          "Reserved identifier tokens are exactly `SPACE`, `TAB`, `CR`, `LF`, `DIGIT`, `ASCII-LETTER`, `ANY`, and `ANY-EXCEPT`. Reserved punctuation/operator tokens are exactly `?`, `*`, `+`, `|`, `(`, `)`, `,`, and `=`. A declared Grammar Rule identifier must not use a reserved identifier token.",
+          "The normative expression productions are `grammar-rule = identifier \"=\" expression`, `expression = concatenation (\"|\" concatenation)*`, `concatenation = postfix-expression+`, `postfix-expression = atom (\"?\" | \"*\" | \"+\")?`, and `atom = quoted-literal | builtin | rule-reference | any-except | \"(\" expression \")\"`. These productions, rather than host-language parser precedence, define `tiinex.lexical.shape.v1`.",
+          "The productions make postfix `?`, `*`, or `+` highest precedence and permit at most one postfix quantifier per postfix-expression; concatenation/adjacency binds next; alternation `|` binds lowest; parentheses explicitly group an expression. Concatenation is evaluated left-to-right. Alternation is a left-to-right list of alternatives whose acceptance is their union, so alternative ordering does not create precedence.",
+          "Under `tiinex.lexical.shape.v1`, postfix operators define accepted lexical languages rather than regex-engine execution strategy. For an atom or grouped expression `x`, `x?` accepts zero or one consecutive occurrence of a scalar sequence accepted by `x`; `x*` accepts the union of all finite concatenations of zero or more consecutive occurrences accepted by `x`; and `x+` accepts the union of all finite concatenations of one or more consecutive occurrences accepted by `x`.",
+          "Postfix repetition has no greedy, lazy, capture, or backtracking semantics. An implementation may use any evaluation strategy that preserves the same accepted language.",
+          "Repetition remains well-defined when `x` can accept the empty scalar. Such repetition is not a grammar error: its meaning remains the finite-concatenation language above, and implementations must avoid nontermination without inventing a different acceptance rule or enumerating infinitely many equivalent empty derivations.",
+          "Whole-value shape qualification succeeds when at least one finite derivation of the `Start Rule` consumes the complete extracted scalar. No particular derivation is preferred merely because another implementation would call it greedy, lazy, earlier, or later.",
+          "An expression, each side of `|`, and a parenthesized expression must be non-empty. Therefore an empty expression, an empty left or right alternative, empty parentheses, `\"x\"??`, `\"x\"*+`, and every other repeated postfix sequence are grammar errors. Parentheses may be used to group an expression before applying one postfix quantifier to that grouped atom.",
+          "A non-reserved identifier used as an expression atom is a same-definition `Grammar Rule` reference. It must resolve to exactly one declared rule identifier in the same machine-shape declaration. Undefined rule references are grammar errors under the known profile. Cross-shape rule references do not exist in `tiinex.lexical.shape.v1`.",
+          "A quoted literal denotes the exact Unicode scalar sequence between double quotes. The only quoted-literal escapes are `\\\"`, `\\\\`, `\\t`, `\\r`, and `\\n`; any other escape is grammar error. Grammar-source meta-whitespace inside a quoted literal is literal content, not token separation.",
+          "Builtins are exact and case-sensitive: `SPACE` is U+0020, `TAB` is U+0009, `CR` is U+000D, `LF` is U+000A, `DIGIT` is ASCII `0` through `9`, `ASCII-LETTER` is ASCII `A` through `Z` or `a` through `z`, and `ANY` matches exactly one Unicode scalar value.",
+          "`ANY-EXCEPT(...)` matches exactly one Unicode scalar value not matched by its exclusions. It requires one or more exclusion terms separated by the reserved comma token. Permitted ASCII grammar-source meta-whitespace may appear around commas and exclusion terms. Each exclusion term must be a quoted literal containing exactly one Unicode scalar value or one of `SPACE`, `TAB`, `CR`, or `LF`.",
+          "Supported expression forms are quoted literal, same-definition rule reference, builtin, `ANY-EXCEPT(...)`, parenthesized expression, alternation `|`, adjacency/concatenation, and one optional postfix `?`, `*`, or `+` per postfix-expression. No other operator, builtin, import, capture, backreference, lookaround, implementation-language regex feature, or cross-shape rule reference exists in `tiinex.lexical.shape.v1`.",
+          "Matching consumes the complete extracted scalar. There is no implicit trimming, substring matching, case folding, Unicode normalization, URL decoding, Markdown escape processing, or target/reference resolution.",
+          "For a definition using the known `tiinex.lexical.shape.v1` profile, missing required declaration fields, duplicate single-cardinality declaration fields, zero `Grammar Rule` fields, duplicate grammar-rule identifiers, a missing `Start Rule` target, cyclic rule references, an unknown builtin or operator, malformed expression, invalid quoted escape, invalid `ANY-EXCEPT` exclusions, or another grammar violation is a schema contract `error`; a consumer depending on that invalid definition has unresolved machine-shape authority and must fail closed.",
+          "A structurally valid declaration naming an unknown or unsupported `Grammar Profile` is preserved as declared authority, but qualification support is unavailable and consumers of that definition remain unresolved. Validators must not reinterpret its grammar or infer a matcher from the profile name or `Human Meaning`.",
+          "Shape syntax qualification is distinct from existence, reference resolution, reachability, schema suitability, semantic suitability, truth, or authorization of any referenced target.",
+          "When a consuming contract explicitly offers multiple machine-shape alternatives, any resolved matching alternative is a shape match; if no resolved alternative matches and at least one requested shape authority is unresolved, the shape result is `unresolved`; only when every requested shape authority is resolved/evaluable and none matches is the shape result `no-match`.",
+          "Existing `Allowed Shapes`, `Required Shape`, `Entry Shape`, and `Towards Allowed Shapes` semantics remain unchanged; this category does not reinterpret those historical surfaces as a global registry.",
+          "The `Markdown Link` definition intentionally defines a bounded Tiinex lexical profile, not all CommonMark links. It accepts exactly one complete `[label](target)` scalar with non-empty label and target, permits ASCII space inside the label, forbids raw `]`, TAB, CR, and LF in the label, and forbids raw `)`, SPACE, TAB, CR, and LF in the target."
+        ]
+      },
+      {
+        "group": "Named Declaration",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each named declaration is represented as one first-level hyphen list item.",
+          "The first-level list item text is the declaration name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Declaration names must be unique within the same contract group.",
+          "Duplicate declaration names are invalid unless a descendant schema explicitly defines override semantics."
+        ]
+      },
+      {
+        "group": "Contract Category Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each contract category extension uses the `Named Declaration` shape.",
+          "The declaration name is the new contract category label.",
+          "A descendant schema must not redeclare an already inherited category label here unless it explicitly defines override semantics.",
+          "A descendant schema must declare a new category label in `Contract Category Extension` before using it in its own contract.",
+          "Declared category labels extend the known category label set for that schema and its descendants.",
+          "Validators that do not understand a declared category label should preserve it and may warn.",
+          "Strict validators may fail on undeclared category labels when the full schema lineage is available."
+        ]
+      },
+      {
+        "group": "Contract Category Override",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Replacement Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Replacement Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each contract category override uses the `Named Declaration` shape.",
+          "The declaration name identifies the inherited contract category label being replaced.",
+          "`Replacement Interpretation` describes how the descendant schema now interprets that inherited label.",
+          "A descendant schema must not rely on an override unless it declares it here.",
+          "Validators must not guess contract category overrides that are not declared here."
+        ]
+      },
+      {
+        "group": "Repairs",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [],
+        "optionalFields": [
+          "Target",
+          "Note",
+          "Reason"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Repairs` records known repairs, corrections, or trust-impacting changes to the artifact.",
+          "A repair entry should state what was repaired and why.",
+          "A repair entry may refer to lineage, parent, origin, current metadata, body claims, schema references, integrity, or another readable target.",
+          "Structured repair entries should expose `Target`, `Note`, and `Reason` as nested fields.",
+          "Free-text repair entries are allowed and must be preserved, but structured entries are preferred for tooling.",
+          "`Repairs` must not silently replace `Parent`, `Trace`, `Origin`, `Current`, or `Continuity Integrity` semantics.",
+          "`Repairs` does not automatically invalidate the artifact or lineage.",
+          "Validators may warn when a repair entry is too vague to support audit or update tooling.",
+          "Tools that update descendants because of a repair should preserve the repair note or point to the artifact that contains it."
+        ]
+      },
+      {
+        "group": "Envelope Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Target Block",
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Target Block",
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each envelope extension uses the `Named Declaration` shape.",
+          "The declaration name is the added envelope field name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Descendant schemas may add machine-readable envelope fields.",
+          "Added envelope fields must declare which envelope block they extend.",
+          "Root validators should preserve unknown envelope fields even when they cannot validate them.",
+          "Strict validators may warn or fail on undeclared envelope fields when the full schema lineage is available."
+        ]
+      },
+      {
+        "group": "Method Entry",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Towards",
+          "Value"
+        ],
+        "optionalFields": [],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [
+          "Plain Method Identifier",
+          "Markdown Link Method Label"
+        ],
+        "targetHeadings": [
+          "Continuity Integrity"
+        ],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Method Entry` is represented by a first-level hyphen list item under `Continuity Integrity`.",
+          "The `Method Entry` label names the integrity method.",
+          "The `Method Entry` label may be a plain canonical method identifier or a markdown link to a validation method artifact.",
+          "A markdown-link method label must use the canonical method identifier as link text.",
+          "When a maintained validation method artifact has an available commit-pinned `browse + git` permalink, the markdown-link method label must use that permalink as its link target.",
+          "`Towards` identifies the validated target.",
+          "`Value` carries the method output.",
+          "An integrity value identifies or verifies the representation or declared continuity target covered by the named method.",
+          "For content-derived self methods, changing covered content normally changes the integrity value.",
+          "An integrity value does not by itself prove immutable logical artifact identity across revisions or materializations.",
+          "Equal or different integrity values must not by themselves be treated as proof of equal or different logical artifact subjects unless another declared identity contract provides that authority.",
+          "For hash-based continuity methods, the validated target is hashed without the `# Continuity Integrity` section and everything after it.",
+          "When `Towards` is not `self`, `Value` must be computed from the validated target identified by `Towards`, not from the current artifact body.",
+          "`self` is allowed only when the method validates the current artifact itself.",
+          "When a maintained schema artifact has an available commit-pinned `browse + git` permalink for its validated target, `Towards` should use that permalink instead of a relative local path."
+        ]
+      },
+      {
+        "group": "Extension",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "optionalFields": [],
+        "declarationFields": [
+          "Base Concept",
+          "Interpretation"
+        ],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "Each extension uses the `Named Declaration` shape.",
+          "The declaration name is the extension name.",
+          "Declaration fields are represented as nested hyphen list items under the declaration entry.",
+          "Root defines how extensions are introduced.",
+          "Root does not define all future extensions."
+        ]
+      },
+      {
+        "group": "Transfers",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Transfer Kind",
+          "Description"
+        ],
+        "optionalFields": [
+          "Controlling Artifact",
+          "Boundary",
+          "Notes"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [
+          "## Transfers"
+        ],
+        "allowLiteralNone": false,
+        "rules": [
+          "Entries under `## Transfers` are repeated named transfer declarations.",
+          "The declaration name is a local readability handle only and is not responsibility identity.",
+          "`work` transfers a bounded execution/work obligation without by itself asserting a broader ongoing responsibility transfer.",
+          "`responsibility` transfers the responsibility described by the declaration without by itself creating an executable Task.",
+          "`work-and-responsibility` transfers both the described work and responsibility for that bounded work.",
+          "Every transfer declaration is interpreted from the Handoff `From` endpoint to the Handoff `To` endpoint.",
+          "`Controlling Artifact`, when present, identifies the durable artifact that controls or defines the transferred work/responsibility; linking that artifact does not transfer responsibility for every artifact it references.",
+          "`Boundary` should state important limits when the transferred description could otherwise be over-read.",
+          "Only items explicitly declared in `## Transfers` are transferred by this Handoff.",
+          "Presence in the same workspace, package, ZIP, directory, source tree, or transport does not create a transfer declaration.",
+          "A Handoff transfer declaration does not by itself prove that `From` possessed delegation authority or that `To` accepted the transfer; separate Decision, Party/Role, Instrument, Evidence, Attestation, or other authority may support those claims when needed."
+        ]
+      },
+      {
+        "group": "Required Context",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Material",
+          "Purpose",
+          "Availability"
+        ],
+        "optionalFields": [
+          "Material Reference",
+          "Notes"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [
+          "## Required Context"
+        ],
+        "allowLiteralNone": true,
+        "rules": [
+          "Entries under `## Required Context` are repeated named declarations for material required to understand, execute, review, or complete the declared transfer.",
+          "The declaration name is a local readability handle only and is not material identity.",
+          "`Material` describes the required context item.",
+          "`Purpose` explains why the item is required for this handoff.",
+          "`Availability` preserves whether the required context is currently available, unavailable, unresolved, or unknown.",
+          "`Material Reference`, when present, is a resolution aid and does not transfer responsibility for the referenced artifact.",
+          "Required context may be referenced rather than physically packaged when the reference remains usable.",
+          "`Availability: unavailable`, `unresolved`, or `unknown` is an explicit handoff fact and must not be replaced by repository-global search, filename guessing, package guessing, or fabricated source.",
+          "Explicitly unavailable required material does not make the Handoff artifact unreadable or invalid merely because execution readiness may remain blocked or unresolved.",
+          "The literal entry `none` is allowed only as the sole `## Required Context` entry and is exempt from declaration fields."
+        ]
+      },
+      {
+        "group": "Reference Context",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Material",
+          "Purpose",
+          "Availability"
+        ],
+        "optionalFields": [
+          "Material Reference",
+          "Notes"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [
+          "## Reference Context"
+        ],
+        "allowLiteralNone": true,
+        "rules": [
+          "Entries under `## Reference Context` are repeated named declarations for useful supporting material that is not required for the declared transfer to be understood or attempted.",
+          "The declaration name is a local readability handle only and is not material identity.",
+          "`Material` describes the reference-only context item.",
+          "`Purpose` explains why the item may help.",
+          "`Availability` preserves current availability without promoting the item into required context.",
+          "`Material Reference`, when present, is a resolution aid only.",
+          "Reference-only context must not be interpreted as transferred work, transferred responsibility, a required dependency, or proof that the recipient reviewed it.",
+          "The literal entry `none` is allowed only as the sole `## Reference Context` entry and is exempt from declaration fields."
+        ]
+      },
+      {
+        "group": "Retained Responsibilities",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Retained By",
+          "Responsibility"
+        ],
+        "optionalFields": [
+          "Retained By Reference",
+          "Boundary",
+          "Notes"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [
+          "## Retained Responsibilities"
+        ],
+        "allowLiteralNone": true,
+        "rules": [
+          "Entries under `## Retained Responsibilities` are repeated named declarations for relevant responsibility that remains outside the handoff transfer.",
+          "The declaration name is a local readability handle only and is not responsibility identity.",
+          "`Retained By` explicitly identifies the party or role that keeps the declared responsibility; it may be the Handoff `From` endpoint or another prior responsible party/role.",
+          "`Retained By Reference`, when present, is an optional resolution aid and does not prove holder authority.",
+          "`Boundary` should clarify partial retention when the same broad domain contains both transferred and retained work.",
+          "A responsibility declared here must not be treated as transferred to `To`.",
+          "Responsibility not listed under `## Transfers` is not silently transferred merely because it is absent from this section.",
+          "The literal entry `none` is allowed only as the sole `## Retained Responsibilities` entry and means only that no relevant retained-responsibility declaration is recorded for this bounded Handoff scope; it does not mean all possible responsibility has transferred."
+        ]
+      },
+      {
+        "group": "Exclusions And Dependencies",
+        "entryShape": [
+          "First-Level Hyphen List Item"
+        ],
+        "requiredFields": [
+          "Kind",
+          "Description"
+        ],
+        "optionalFields": [
+          "Reference",
+          "Responsible Party Or Role",
+          "Notes"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [
+          "## Exclusions And Dependencies"
+        ],
+        "allowLiteralNone": true,
+        "rules": [
+          "Entries under `## Exclusions And Dependencies` are repeated named declarations for explicit out-of-scope boundaries or unresolved dependencies that materially affect the handoff.",
+          "`Kind: excluded-scope` records work, responsibility, authority, or material explicitly excluded from the transfer.",
+          "`Kind: unresolved-dependency` records a dependency whose resolution is not currently established.",
+          "`Responsible Party Or Role`, when present, is readable coordination context and does not by itself create or transfer that responsibility.",
+          "Required material that is unavailable, unresolved, or unknown should preserve that truth primarily in its `## Required Context` declaration through `Availability`; this section may describe the dependency consequence without duplicating material identity authority.",
+          "Exclusions and unresolved dependencies must not be silently filled from package membership, nearby files, repository-global search, or UI defaults.",
+          "The literal entry `none` is allowed only as the sole `## Exclusions And Dependencies` entry and is exempt from declaration fields."
+        ]
+      }
+    ],
+    "constraints": [
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "From Kind",
+        "allowedValues": [
+          "party",
+          "role",
+          "unknown"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 104,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "To Kind",
+        "allowedValues": [
+          "party",
+          "role",
+          "unknown"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 110,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "From Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 116,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "To Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 120,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "From Capacity Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 124,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Handoff Parties",
+        "field": "To Capacity Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 128,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Handoff Parties",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Transfers",
+        "field": "Transfer Kind",
+        "allowedValues": [
+          "work",
+          "responsibility",
+          "work-and-responsibility"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 170,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Transfers",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Transfers",
+        "field": "Controlling Artifact",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 176,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Transfers",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Required Context",
+        "field": "Availability",
+        "allowedValues": [
+          "available",
+          "unavailable",
+          "unresolved",
+          "unknown"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 213,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Required Context",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Required Context",
+        "field": "Material Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 220,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Required Context",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Reference Context",
+        "field": "Availability",
+        "allowedValues": [
+          "available",
+          "unavailable",
+          "unresolved",
+          "unknown"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 256,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Reference Context",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Reference Context",
+        "field": "Material Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 263,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Reference Context",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Retained Responsibilities",
+        "field": "Retained By Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 297,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Retained Responsibilities",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Exclusions And Dependencies",
+        "field": "Kind",
+        "allowedValues": [
+          "excluded-scope",
+          "unresolved-dependency"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 331,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Exclusions And Dependencies",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Exclusions And Dependencies",
+        "field": "Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 336,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Exclusions And Dependencies",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Completion Expectation",
+        "field": "Signal Kind",
+        "allowedValues": [
+          "acknowledgement",
+          "result",
+          "disposition",
+          "return",
+          "none",
+          "custom",
+          "unknown"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 366,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Completion Expectation",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Completion Expectation",
+        "field": "Return To Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 376,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Completion Expectation",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.handoff.v1",
+        "sourceGroup": "Completion Expectation",
+        "field": "Expected Result Reference",
+        "allowedValues": [],
+        "allowedShapes": [
+          "Markdown Link"
+        ],
+        "domainPolicy": "closed",
+        "declarationLine": 380,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.handoff.v1"
+        ],
+        "targetGroup": "Completion Expectation",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": [
+          {
+            "shapeLabel": "Markdown Link",
+            "qualification": "evaluable",
+            "useSourceSchemaId": "tiinex.handoff.v1",
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "visibleSchemaIds": [
+              "tiinex.root.v1",
+              "tiinex.handoff.v1"
+            ],
+            "definition": {
+              "kind": "machine-shape-definition",
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                " markdown-link = \"[\" label \"](\" target \")\"",
+                " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+              ],
+              "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+              "qualificationSupport": "available",
+              "definitionQualification": "valid",
+              "definitionFindings": [],
+              "declarationStructure": {
+                "value": "Markdown Link",
+                "children": [
+                  {
+                    "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                    "children": []
+                  },
+                  {
+                    "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "children": []
+                  },
+                  {
+                    "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                    "children": []
+                  },
+                  {
+                    "value": "Start Rule: markdown-link",
+                    "children": []
+                  }
+                ]
+              },
+              "compiledGrammar": {
+                "profile": "tiinex.lexical.shape.v1",
+                "qualification": "valid",
+                "startRule": "markdown-link",
+                "grammarRules": [
+                  {
+                    "name": "markdown-link",
+                    "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                    "expression": {
+                      "type": "concatenation",
+                      "parts": [
+                        {
+                          "type": "literal",
+                          "value": "["
+                        },
+                        {
+                          "type": "reference",
+                          "name": "label"
+                        },
+                        {
+                          "type": "literal",
+                          "value": "]("
+                        },
+                        {
+                          "type": "reference",
+                          "name": "target"
+                        },
+                        {
+                          "type": "literal",
+                          "value": ")"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "name": "label",
+                    "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          "]",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "target",
+                    "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                    "expression": {
+                      "type": "repeat",
+                      "quantifier": "+",
+                      "expression": {
+                        "type": "any-except",
+                        "exclusions": [
+                          ")",
+                          " ",
+                          "\t",
+                          "\r",
+                          "\n"
+                        ]
+                      }
+                    }
+                  }
+                ],
+                "findings": []
+              }
+            },
+            "resolvedDefinitionProvenance": {
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              }
+            },
+            "visibleDefinitions": [
+              {
+                "shapeLabel": "Markdown Link",
+                "sourceSchemaId": "tiinex.root.v1",
+                "sourceGroup": "Machine Shape Authority",
+                "declarationSource": {
+                  "line": 357
+                },
+                "grammarProfile": "tiinex.lexical.shape.v1",
+                "definitionQualification": "valid",
+                "qualificationSupport": "available"
+              }
+            ],
+            "findings": []
+          }
+        ]
+      }
+    ],
+    "machineShapes": {
+      "schema": "tiinex.portable.machine-shape-authority.v1",
+      "definitions": [
+        {
+          "kind": "machine-shape-definition",
+          "shapeLabel": "Markdown Link",
+          "sourceSchemaId": "tiinex.root.v1",
+          "sourceGroup": "Machine Shape Authority",
+          "declarationSource": {
+            "line": 357
+          },
+          "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+          "grammarProfile": "tiinex.lexical.shape.v1",
+          "startRule": "markdown-link",
+          "grammarRules": [
+            " markdown-link = \"[\" label \"](\" target \")\"",
+            " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+            " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+          ],
+          "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+          "qualificationSupport": "available",
+          "definitionQualification": "valid",
+          "definitionFindings": [],
+          "declarationStructure": {
+            "value": "Markdown Link",
+            "children": [
+              {
+                "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                "children": []
+              },
+              {
+                "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                "children": []
+              },
+              {
+                "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                "children": []
+              },
+              {
+                "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                "children": []
+              },
+              {
+                "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                "children": []
+              },
+              {
+                "value": "Start Rule: markdown-link",
+                "children": []
+              }
+            ]
+          },
+          "compiledGrammar": {
+            "profile": "tiinex.lexical.shape.v1",
+            "qualification": "valid",
+            "startRule": "markdown-link",
+            "grammarRules": [
+              {
+                "name": "markdown-link",
+                "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                "expression": {
+                  "type": "concatenation",
+                  "parts": [
+                    {
+                      "type": "literal",
+                      "value": "["
+                    },
+                    {
+                      "type": "reference",
+                      "name": "label"
+                    },
+                    {
+                      "type": "literal",
+                      "value": "]("
+                    },
+                    {
+                      "type": "reference",
+                      "name": "target"
+                    },
+                    {
+                      "type": "literal",
+                      "value": ")"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "label",
+                "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                "expression": {
+                  "type": "repeat",
+                  "quantifier": "+",
+                  "expression": {
+                    "type": "any-except",
+                    "exclusions": [
+                      "]",
+                      "\t",
+                      "\r",
+                      "\n"
+                    ]
+                  }
+                }
+              },
+              {
+                "name": "target",
+                "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                "expression": {
+                  "type": "repeat",
+                  "quantifier": "+",
+                  "expression": {
+                    "type": "any-except",
+                    "exclusions": [
+                      ")",
+                      " ",
+                      "\t",
+                      "\r",
+                      "\n"
+                    ]
+                  }
+                }
+              }
+            ],
+            "findings": []
+          }
+        }
+      ],
+      "active": [
+        {
+          "shapeLabel": "Markdown Link",
+          "qualification": "evaluable",
+          "useSourceSchemaId": "tiinex.handoff.v1",
+          "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+          "visibleSchemaIds": [
+            "tiinex.root.v1",
+            "tiinex.handoff.v1"
+          ],
+          "definition": {
+            "kind": "machine-shape-definition",
+            "shapeLabel": "Markdown Link",
+            "sourceSchemaId": "tiinex.root.v1",
+            "sourceGroup": "Machine Shape Authority",
+            "declarationSource": {
+              "line": 357
+            },
+            "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
+            "grammarProfile": "tiinex.lexical.shape.v1",
+            "startRule": "markdown-link",
+            "grammarRules": [
+              " markdown-link = \"[\" label \"](\" target \")\"",
+              " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+              " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+"
+            ],
+            "humanMeaning": "Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+            "qualificationSupport": "available",
+            "definitionQualification": "valid",
+            "definitionFindings": [],
+            "declarationStructure": {
+              "value": "Markdown Link",
+              "children": [
+                {
+                  "value": "Grammar Profile: tiinex.lexical.shape.v1",
+                  "children": []
+                },
+                {
+                  "value": "Grammar Rule: label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  "children": []
+                },
+                {
+                  "value": "Grammar Rule: markdown-link = \"[\" label \"](\" target \")\"",
+                  "children": []
+                },
+                {
+                  "value": "Grammar Rule: target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                  "children": []
+                },
+                {
+                  "value": "Human Meaning: Exactly one complete inline Tiinex Markdown link with a non-empty single-line label and non-empty target. ASCII space is allowed in the label; ASCII space, tab, CR, and LF are forbidden in the target.",
+                  "children": []
+                },
+                {
+                  "value": "Start Rule: markdown-link",
+                  "children": []
+                }
+              ]
+            },
+            "compiledGrammar": {
+              "profile": "tiinex.lexical.shape.v1",
+              "qualification": "valid",
+              "startRule": "markdown-link",
+              "grammarRules": [
+                {
+                  "name": "markdown-link",
+                  "source": " markdown-link = \"[\" label \"](\" target \")\"",
+                  "expression": {
+                    "type": "concatenation",
+                    "parts": [
+                      {
+                        "type": "literal",
+                        "value": "["
+                      },
+                      {
+                        "type": "reference",
+                        "name": "label"
+                      },
+                      {
+                        "type": "literal",
+                        "value": "]("
+                      },
+                      {
+                        "type": "reference",
+                        "name": "target"
+                      },
+                      {
+                        "type": "literal",
+                        "value": ")"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "label",
+                  "source": " label = ANY-EXCEPT(\"]\", TAB, CR, LF)+",
+                  "expression": {
+                    "type": "repeat",
+                    "quantifier": "+",
+                    "expression": {
+                      "type": "any-except",
+                      "exclusions": [
+                        "]",
+                        "\t",
+                        "\r",
+                        "\n"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "name": "target",
+                  "source": " target = ANY-EXCEPT(\")\", SPACE, TAB, CR, LF)+",
+                  "expression": {
+                    "type": "repeat",
+                    "quantifier": "+",
+                    "expression": {
+                      "type": "any-except",
+                      "exclusions": [
+                        ")",
+                        " ",
+                        "\t",
+                        "\r",
+                        "\n"
+                      ]
+                    }
+                  }
+                }
+              ],
+              "findings": []
+            }
+          },
+          "resolvedDefinitionProvenance": {
+            "sourceSchemaId": "tiinex.root.v1",
+            "sourceGroup": "Machine Shape Authority",
+            "declarationSource": {
+              "line": 357
+            }
+          },
+          "visibleDefinitions": [
+            {
+              "shapeLabel": "Markdown Link",
+              "sourceSchemaId": "tiinex.root.v1",
+              "sourceGroup": "Machine Shape Authority",
+              "declarationSource": {
+                "line": 357
+              },
+              "grammarProfile": "tiinex.lexical.shape.v1",
+              "definitionQualification": "valid",
+              "qualificationSupport": "available"
+            }
+          ],
+          "findings": []
+        }
+      ],
+      "findings": []
+    }
+  },
+  "creation": {
+    "declared": true,
+    "groupNames": [
+      "Creation Scope",
+      "Required Inputs",
+      "Generation Rules"
+    ],
+    "requiredInputs": [
+      "Purpose",
+      "From",
+      "From Kind",
+      "To",
+      "To Kind",
+      "Transfers",
+      "Required Context",
+      "Reference Context",
+      "Retained Responsibilities",
+      "Exclusions And Dependencies",
+      "Completion Expectation",
+      "Interpretation Limits"
+    ],
+    "optionalInputs": [],
+    "requiredSections": [],
+    "toolingConfigurationFields": [],
+    "inputBindings": [
+      {
+        "input": "Purpose",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "From",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "From Kind",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "To",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "To Kind",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Transfers",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Required Context",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Reference Context",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Retained Responsibilities",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Exclusions And Dependencies",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Completion Expectation",
+        "kind": "unmapped",
+        "section": ""
+      },
+      {
+        "input": "Interpretation Limits",
+        "kind": "unmapped",
+        "section": ""
+      }
+    ],
+    "requiredShape": []
+  }
+}

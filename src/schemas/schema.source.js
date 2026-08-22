@@ -3,6 +3,7 @@ import { qualifyGithubSchemaSourceProvider } from './schema.githubSourceTarget.j
 
 export const BUNDLED_SCHEMA_SOURCE_SCHEMA_ID = 'tiinex.site.bundled-schema-source.v1';
 export const SCHEMA_RUNTIME_PROJECTION_SCHEMA_ID = 'tiinex.site.schema-runtime-projection.v1';
+export const SCHEMA_MATERIAL_IDENTITY_SCHEMA_ID = 'tiinex.site.schema-material-identity.v1';
 
 export function defineBundledSchemaSource(binding = {}, projection = {}, options = {}) {
   const schemaId = String(binding?.schemaId || '').trim();
@@ -32,6 +33,21 @@ export function defineBundledSchemaSource(binding = {}, projection = {}, options
       && runtimeProjection.sourceChecksum === expectedChecksum
       && runtimeProjection.bindingChecksum === expectedChecksum
     );
+    const bindingBlobSha = String(binding?.sourceBlobSha || '').trim().toLowerCase();
+    const loadedBlobSha = String(runtimeProjection.sourceBlobSha || '').trim().toLowerCase();
+    const snapshotCompleteness = String(binding?.snapshotCompleteness || '').trim();
+    const bindingMaterialCoherence = Object.freeze({
+      state: projectionExact && snapshotCompleteness === 'exact-canonical-docs-snapshot' && bindingBlobSha && bindingBlobSha === loadedBlobSha ? 'qualified' : 'unavailable',
+      bindingBlobSha,
+      loadedBlobSha,
+      snapshotCompleteness,
+      findings: Object.freeze([
+        ...(bindingBlobSha && loadedBlobSha && bindingBlobSha !== loadedBlobSha ? ['Binding sourceBlobSha does not match the Git-blob identity computed from the loaded schema bytes.'] : []),
+        ...(snapshotCompleteness !== 'exact-canonical-docs-snapshot' ? [`Binding snapshotCompleteness is ${snapshotCompleteness || 'unavailable'}; the external source target is not independently qualified as an exact canonical snapshot.`] : []),
+        ...(!bindingBlobSha ? ['Binding does not declare a sourceBlobSha that can be checked against the loaded schema bytes.'] : []),
+        ...(!loadedBlobSha ? ['Loaded schema Git-blob identity is unavailable from the runtime projection.'] : [])
+      ])
+    });
     const validationContract = projectionExact && runtimeProjection.validationContract?.schemaId === schemaId && runtimeProjection.validationContract?.lineageQualification?.state === 'valid'
       ? runtimeProjection.validationContract
       : null;
@@ -48,12 +64,25 @@ export function defineBundledSchemaSource(binding = {}, projection = {}, options
         requiredShape: runtimeProjection.creation.requiredShape
       })
     }) : null;
+    const materialIdentity = Object.freeze({
+      schema: SCHEMA_MATERIAL_IDENTITY_SCHEMA_ID,
+      state: projectionExact ? 'qualified' : 'unavailable',
+      schemaId,
+      sha256: String(runtimeProjection.sourceChecksum || ''),
+      bytes: Number(runtimeProjection.sourceBytes || 0),
+      sourceRepository: String(authority.repository || ''),
+      sourceCommit: String(authority.commit || ''),
+      sourcePath: String(authority.path || ''),
+      sourceBlobSha: loadedBlobSha
+    });
     cached = Object.freeze({
       state: projectionExact ? 'qualified' : 'unavailable',
       schemaId,
       checksum: runtimeProjection.sourceChecksum || '',
       expectedChecksum,
       authority,
+      bindingMaterialCoherence,
+      materialIdentity,
       compiledContract,
       projection: runtimeProjection,
       findings: Object.freeze([
@@ -154,6 +183,7 @@ function normalizeRuntimeProjection(value = {}) {
     generator: String(value?.generator || ''),
     schemaId: String(value?.schemaId || '').trim(),
     sourceChecksum: String(value?.sourceChecksum || '').trim(),
+    sourceBlobSha: String(value?.sourceBlobSha || '').trim(),
     sourceBytes: Number(value?.sourceBytes || 0),
     bindingChecksum: String(value?.bindingChecksum || '').trim(),
     validationContract: freezeRuntimeValidationContract(value?.validationContract || {}),
@@ -179,7 +209,8 @@ function freezeRuntimeValidationContract(value = {}) {
     lineageQualification: value?.lineageQualification || {},
     validation: value?.validation || {},
     declarations: Array.isArray(value?.declarations) ? value.declarations : [],
-    constraints: Array.isArray(value?.constraints) ? value.constraints : []
+    constraints: Array.isArray(value?.constraints) ? value.constraints : [],
+    machineShapes: value?.machineShapes || {}
   });
 }
 

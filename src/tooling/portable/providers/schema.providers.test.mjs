@@ -78,7 +78,7 @@ const providerResponse = await resolvePortableSchemaMaterial({
       content: topicMarkdown,
       source: {
         repository: 'Tiinex/docs',
-        commit: '52ecdea0a75893882ce282214d155f70e1309c2a',
+        commit: '053d46ce082d4ec261b82abc44ecca403d61e240',
         path: '.topics/.schemas/core/topic/tiinex.topic.v1.schema.md',
         authority: 'canonical-core'
       }

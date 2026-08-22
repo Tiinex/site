@@ -43,7 +43,7 @@ for (const [label, mutate] of [
   assert.equal(validation.ok, false, `${label} must fail closed after correct reseal`);
 }
 
-const duplicatedIntegrity = taskMarkdown.replace(/(- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: [^\n]+)/, '$1\n$1');
+const duplicatedIntegrity = taskMarkdown.replace(/(- (?:\[sha256-base64url-c14n-v2\]\([^)]+\)|sha256-base64url-c14n-v2)\n  - Towards: self\n  - Value: [^\n]+)/, '$1\n$1');
 assert.equal(validateArtifactCreationResult({ schemaId: taskModule.id, status: 'local', sourceMode: 'local-create', markdown: duplicatedIntegrity }, {}, { contract: task }).ok, false, 'duplicate active self-integrity entries must fail closed');
 
 // Per-execution boundary must return no bytes for a correctly resealed duplicate section.

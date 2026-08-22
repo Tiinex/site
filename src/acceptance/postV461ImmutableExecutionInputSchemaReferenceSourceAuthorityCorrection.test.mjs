@@ -87,7 +87,7 @@ const mutableModule = Object.freeze({ ...topicModule, binding: Object.freeze({ .
 assert.notEqual(schemaReferenceAuthoritiesForCreation(mutableModule).current.preferredTarget, mutableModule.binding.permalink, 'mutable binding alias must not become exact target authority');
 assert.match(schemaReferenceAuthoritiesForCreation(mutableModule).current.preferredTarget, /\/blob\/[0-9a-f]{40}\//, 'qualified schema-source authority may independently derive a canonical exact target');
 const taskRefs = schemaReferenceAuthoritiesForCreation(taskModule);
-assert.equal(taskRefs.current.preferredTarget, '', 'non-GitHub/viewer-local schema without exact target authority remains Plain Schema Id');
+assert.equal(taskRefs.current.preferredTarget, 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md', 'v476 byte-binds Task creation to its current qualified Tiinex/docs source authority');
 
 console.log('post-v461 immutable execution input + schema-reference source authority correction: PASS');
 

@@ -34,7 +34,7 @@ export function createContinuationDraft(parentRecord = {}, target = {}, input = 
   const path = allocation.path;
   const createdAt = nowIso(options);
   const creationContract = buildArtifactCreationContract({ schemaId: targetId, transitionType: 'continue-from-record' });
-  const markdown = createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract });
+  const markdown = createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract, childPath: path });
   const envelopeMetadata = draftEnvelopeMetadata(markdown, targetId);
   const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
@@ -91,15 +91,21 @@ export function createReferenceDraft(parentRecord = {}, input = {}, options = {}
   const path = `references/${slugify(parentTitle)}.md`;
   const createdAt = nowIso(options);
   const creationContract = buildArtifactCreationContract({ schemaId: 'tiinex.evidence.v1', transitionType: 'reference-record' });
-  const markdown = createArtifactDraftMarkdown(creationContract, {
+  const referenceBody = createEvidenceReferenceBody({ parentRecord, title, summary });
+  const exactMarkdown = exactCreationParentEligible(parentRecord) ? createArtifactDraftMarkdown(creationContract, {
     parentRecord,
+    childPath: path,
     title,
     summary,
     createdAt,
     status: 'draft/local',
     why: 'Created as a browser-local reference draft from an existing Tiinex record.',
-    bodyMarkdown: createEvidenceReferenceBody({ parentRecord, title, summary })
-  });
+    bodyMarkdown: referenceBody
+  }) : '';
+  const markdown = exactMarkdown || [
+    createRootEnvelope({ parentRecord, currentSchemaId: 'tiinex.evidence.v1', createdAt, summary, status: 'draft/local', why: 'Created as a browser-local reference draft from an existing Tiinex record.' }),
+    '', '---', '', referenceBody, '', createDraftIntegrity()
+  ].join('\n');
   const envelopeMetadata = draftEnvelopeMetadata(markdown, 'tiinex.evidence.v1');
   const draft = {
     schema: RECORD_TRANSITION_RESULT_SCHEMA_ID,
@@ -314,37 +320,59 @@ function createEvidenceReferenceBody({ parentRecord = {}, title = 'Reference', s
   ].filter(Boolean).join('\n');
 }
 
-function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract }) {
-  return createArtifactDraftMarkdown(creationContract, {
+
+function exactCreationParentEligible(record = {}) {
+  const published = record.publishedReference || record.browseGitReference || record.browseGit || null;
+  const publishedTarget = typeof published === 'string' ? published : String(published?.target || published?.url || '');
+  const publishedState = typeof published === 'string' ? 'unresolved' : String(published?.state || published?.resolutionState || 'unresolved');
+  const schemaReference = record.schemaReferenceAuthority || record.parentSchemaReferenceAuthority || null;
+  const schemaTarget = typeof schemaReference === 'string' ? schemaReference : String(schemaReference?.preferredTarget || schemaReference?.target || '');
+  const schemaState = typeof schemaReference === 'string' ? 'unresolved' : String(schemaReference?.resolutionState || schemaReference?.state || 'unresolved');
+  return Boolean(publishedTarget && publishedState === 'qualified' && schemaTarget && schemaState === 'qualified');
+}
+
+function createContinuationMarkdown({ parentRecord, targetId, targetLabel, title, summary, createdAt, creationContract, childPath = '' }) {
+  const bodyMarkdown = [
+    `# ${title}`,
+    '',
+    `## ${targetLabel} Draft`,
+    '',
+    summary,
+    '',
+    '## Source Boundary',
+    '',
+    `- ${boundaryForRecord(parentRecord)}`,
+    parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
+    parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
+    '',
+    '## Next Step',
+    '',
+    '- Review and refine this task draft before export/publication.',
+    '',
+    '## Source Excerpt',
+    '',
+    truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._'
+  ].filter(Boolean).join('\n');
+  const exact = exactCreationParentEligible(parentRecord) ? createArtifactDraftMarkdown(creationContract, {
     parentRecord,
+    childPath,
     currentSchemaId: targetId,
     title,
     summary,
     createdAt,
     status: 'draft/local',
     why: 'Created as a browser-local continuation draft. No source provenance is inferred.',
-    bodyMarkdown: [
-      `# ${title}`,
-      '',
-      `## ${targetLabel} Draft`,
-      '',
-      summary,
-      '',
-      '## Source Boundary',
-      '',
-      `- ${boundaryForRecord(parentRecord)}`,
-      parentRecord.path ? `- Parent path: ${parentRecord.path}` : '',
-      parentRecord.source?.label ? `- Parent source: ${parentRecord.source.label}` : '',
-      '',
-      '## Next Step',
-      '',
-      '- Review and refine this task draft before export/publication.',
-      '',
-      '## Source Excerpt',
-      '',
-      truncate(String(parentRecord.markdown || parentRecord.summary || '').trim(), 1800) || '_No embedded source material was available._'
-    ].filter(Boolean).join('\n')
-  });
+    bodyMarkdown
+  }) : '';
+  if (exact) return exact;
+  // Preserve the pre-existing Site transition draft as explicitly non-exact
+  // local material when no qualified published Parent representation exists.
+  // v475 exact creation validation rejects this legacy envelope/footer; this
+  // compatibility path never upgrades it to canonical authority.
+  return [
+    createRootEnvelope({ parentRecord, currentSchemaId: targetId, createdAt, summary, status: 'draft/local', why: 'Created as a browser-local continuation draft. No source provenance is inferred.' }),
+    '', '---', '', bodyMarkdown, '', createDraftIntegrity()
+  ].join('\n');
 }
 
 function createRootEnvelope({ parentRecord, currentSchemaId, createdAt, summary, status, why }) {

@@ -1,7 +1,9 @@
 import { buildArtifactCreationContract } from '../../../schemas/creation.contracts.js';
+import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { createPortableLocalDraft } from '../draft/draft.create.js';
 import { portableFinding } from '../findings.js';
 import { projectPortableLoadedParentRecord, resolvePortableLoadedParentReference } from '../materialization/loaded.parent.js';
+import { allocateContinuationPath, allocateRootArtifactPath } from '../../../transitions/record.transitions.js';
 
 export function materializeLiveArtifact({ current, change, material, artifacts, findings, input, options }) {
   if (Object.prototype.hasOwnProperty.call(change, 'bodyMarkdown') && String(change.bodyMarkdown || '').trim()) {
@@ -20,7 +22,25 @@ export function materializeLiveArtifact({ current, change, material, artifacts, 
     return null;
   }
 
-  const requestedPath = change.path || current?.path || defaultArtifactPath(change.id, change.title || current?.title);
+  const parentRef = exact(change.parentRef !== undefined ? change.parentRef : current?.parentRef || '');
+  if (current && parentRef !== current.parentRef) {
+    findings.push(portableFinding('error', 'live-lineage.parent-change.blocked', 'Parent cannot change; create a child or repair continuity.', { artifactId: change.id, before: current.parentRef, after: parentRef }));
+    return null;
+  }
+  const parentRecord = resolveParentRecord(parentRef, material, artifacts, findings);
+  if (parentRef && !parentRecord) return null;
+
+  const explicitOrCurrentPath = change.path || current?.path || '';
+  const allocationOptions = Object.freeze({
+    existingPaths: Object.freeze([
+      ...(material.records || []).map((record) => String(record?.path || '')),
+      ...[...artifacts.values()].map((artifact) => String(artifact?.path || ''))
+    ].filter(Boolean))
+  });
+  const allocatedPath = explicitOrCurrentPath || (parentRecord
+    ? allocateContinuationPath({ parentRecord, targetId: schemaId, targetLabel: schemaId, title: change.title || current?.title || change.id }, allocationOptions).path
+    : allocateRootArtifactPath({ targetId: schemaId, targetLabel: schemaId, title: change.title || current?.title || change.id }, allocationOptions).path);
+  const requestedPath = explicitOrCurrentPath || allocatedPath;
   const pathValue = normalizeArtifactPath(requestedPath);
   if (!pathValue) {
     findings.push(portableFinding('error', 'live-lineage.path.reserved-or-invalid', 'Artifact path is invalid or transport-reserved.', { artifactId: change.id, path: String(requestedPath || '') }));
@@ -30,14 +50,6 @@ export function materializeLiveArtifact({ current, change, material, artifacts, 
     findings.push(portableFinding('error', 'live-lineage.path-change.blocked', 'Path is immutable.', { artifactId: change.id, before: current.path, after: pathValue }));
     return null;
   }
-  const parentRef = exact(change.parentRef !== undefined ? change.parentRef : current?.parentRef || '');
-  if (current && parentRef !== current.parentRef) {
-    findings.push(portableFinding('error', 'live-lineage.parent-change.blocked', 'Parent cannot change; create a child or repair continuity.', { artifactId: change.id, before: current.parentRef, after: parentRef }));
-    return null;
-  }
-
-  const parentRecord = resolveParentRecord(parentRef, material, artifacts, findings);
-  if (parentRef && !parentRecord) return null;
   const evidenceRefs = mergeStrings(current?.evidenceRefs, change.evidenceRefs);
   const knownEvidence = new Set([
     ...(input.state?.evidence || []).map((entry) => entry.id),
@@ -68,15 +80,21 @@ export function materializeLiveArtifact({ current, change, material, artifacts, 
     values,
     sections,
     createdAt,
+    schemaReferences: change.schemaReferences || input.schemaReferences || null,
     transitionType: contract.transitionType || transitionType,
     parentRecord: parentRecord || {},
     allowIncomplete: change.allowIncomplete !== false
   }, options);
-  findings.push(...(result.findings || []).filter((finding) => finding.severity === 'error').map((finding) => portableFinding(finding.severity, finding.code, finding.message, { ...finding, artifactId: change.id })));
-  if (!result.draft) return null;
+  const creationErrors = (result.findings || []).filter((finding) => finding.severity === 'error');
+  if (!result.draft) {
+    findings.push(...creationErrors.map((finding) => portableFinding(finding.severity, finding.code, finding.message, { ...finding, artifactId: change.id })));
+    return null;
+  }
+  const retainedLocalContinuity = result.status === 'created-local-continuity' && result.qualification?.localContinuityUsable === true;
+  if (!retainedLocalContinuity) findings.push(...creationErrors.map((finding) => portableFinding(finding.severity, finding.code, finding.message, { ...finding, artifactId: change.id })));
 
   const revision = current ? current.revision + 1 : 1;
-  const exportReady = result.validation?.status === 'clean';
+  const exportReady = result.status === 'created-clean' && result.qualification?.exactRuntimeValidation === true;
   return freezeArtifact({
     id: change.id,
     schemaId,
@@ -111,12 +129,21 @@ function resolveParentRecord(parentRef, material, artifacts, findings) {
       findings.push(portableFinding('error', 'live-lineage.parent.live-missing', 'Declared live Parent does not exist.', { parentRef }));
       return null;
     }
+    const parsed = safeParse(parent.draft?.markdown || '');
+    const currentSchema = parsed?.envelope?.current?.schema || {};
     return Object.freeze({
       id: parent.id,
       path: parent.path,
       schemaId: parent.schemaId,
       createdAt: parent.draft?.createdAt || parent.createdAt,
-      continuationTrace: `record:${parent.id}`,
+      continuationTrace: '',
+      schemaReferenceAuthority: currentSchema.target ? Object.freeze({
+        schemaId: currentSchema.id || parent.schemaId,
+        preferredTarget: currentSchema.target,
+        exactTargets: Object.freeze([currentSchema.target]),
+        resolutionState: 'qualified',
+        evidence: Object.freeze({ source: 'live-parent-rendered-current-schema-reference' })
+      }) : null,
       boundary: 'portable local artifact; no remote provenance',
       sourceMode: 'local-portable-live',
       source: null
@@ -133,6 +160,11 @@ function resolveParentRecord(parentRef, material, artifacts, findings) {
   }
   findings.push(portableFinding('error', 'live-lineage.parent.ref-invalid', 'Use live:<id> or loaded:<exact-path-or-id> for Parent.', { parentRef }));
   return null;
+}
+
+function safeParse(markdown = '') {
+  try { return parseArtifactMarkdown(markdown); }
+  catch { return null; }
 }
 
 function freezeArtifact(value = {}) {

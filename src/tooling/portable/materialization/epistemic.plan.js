@@ -4,6 +4,7 @@ import { normalizePortableInput } from '../input/portable.input.js';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { planPortableArtifact } from '../schema/schema.guide.js';
 import { indexPortableLoadedParentRecords, projectPortableLoadedParentRecord, resolvePortableLoadedParentReference } from './loaded.parent.js';
+import { allocateContinuationPath, allocateRootArtifactPath } from '../../../transitions/record.transitions.js';
 
 export const PORTABLE_EPISTEMIC_PLAN_SCHEMA_ID = 'tiinex.portable.epistemic-materialization-plan.v1';
 
@@ -39,15 +40,19 @@ export function prepareEpistemicMaterialization(input = {}, options = {}) {
     });
   }
 
-  const planned = proposals.map((proposal, index) => planProposal({
-    proposal,
-    index,
-    proposals,
-    proposalIds,
-    loadedIndex,
-    material,
-    options
-  }));
+  const planned = [];
+  const plannedById = new Map();
+  const occupiedPaths = new Set([
+    ...(material.records || []).map((record) => clean(record?.path || '')),
+    ...(material.files || []).map((file) => clean(file?.path || ''))
+  ].filter(Boolean));
+  for (let index = 0; index < proposals.length; index += 1) {
+    const proposal = proposals[index];
+    const entry = planProposal({ proposal, index, proposals, proposalIds, loadedIndex, material, options, plannedById, occupiedPaths });
+    planned.push(entry);
+    plannedById.set(entry.id, entry);
+    if (entry.path) occupiedPaths.add(entry.path);
+  }
   findings.push(...planned.flatMap((entry) => entry.findings));
   const clarificationNeeds = planned.flatMap((entry) => entry.clarificationNeeds.map((need) => ({ proposalId: entry.id, ...need })));
   const status = planned.some((entry) => entry.status === 'blocked')
@@ -59,12 +64,23 @@ export function prepareEpistemicMaterialization(input = {}, options = {}) {
   return finalize({ status, material: { ...material, records: artifactRecords }, proposals: planned, candidateSchemas, parentCandidates, lineage, findings, clarificationNeeds });
 }
 
-function planProposal({ proposal, index, proposals, proposalIds, loadedIndex, material, options }) {
+function planProposal({ proposal, index, proposals, proposalIds, loadedIndex, material, options, plannedById, occupiedPaths }) {
   const findings = [];
   const clarificationNeeds = [];
   const contract = buildArtifactCreationContract({ schemaId: proposal.schemaId, transitionType: proposal.parentRef ? 'continue-from-record' : 'create-artifact' });
   const artifactPlan = planPortableArtifact({ ...material, schemaId: proposal.schemaId, task: proposal.parentRef ? 'continue' : 'create', values: proposal.values || {}, inputs: proposal.values || {} }, options);
   const parent = resolveParentReference(proposal.parentRef, { loadedIndex, proposalIds, proposalIndex: index, proposals });
+  const parentForAllocation = parent.status === 'resolved'
+    ? parent.kind === 'proposal'
+      ? plannedParentRecord(plannedById.get(parent.parent?.proposalId || ''))
+      : parent.parent
+    : null;
+  const allocationOptions = Object.freeze({ existingPaths: Object.freeze([...occupiedPaths]), path: proposal.path || '' });
+  const allocated = proposal.parentRef && parentForAllocation
+    ? allocateContinuationPath({ parentRecord: parentForAllocation, targetId: proposal.schemaId, targetLabel: proposal.schemaId, title: proposal.title || proposal.summary || proposal.id }, allocationOptions)
+    : !proposal.parentRef
+      ? allocateRootArtifactPath({ targetId: proposal.schemaId, targetLabel: proposal.schemaId, title: proposal.title || proposal.summary || proposal.id }, allocationOptions)
+      : Object.freeze({ path: proposal.path || '', policy: Object.freeze({}) });
 
   if (!proposal.schemaId) {
     findings.push(portableFinding('error', 'portable.materialization.schema.required', 'Each proposal must declare an implemented schema id; schema meaning is never inferred by the writer.', { proposalId: proposal.id }));
@@ -102,13 +118,14 @@ function planProposal({ proposal, index, proposals, proposalIds, loadedIndex, ma
     status: blocking ? 'blocked' : clarificationNeeds.length ? 'needs-clarification' : 'ready',
     mode: proposal.parentRef ? 'continue-lineage' : 'new-lineage-root',
     schemaId: proposal.schemaId,
-    path: proposal.path,
+    path: allocated.path || proposal.path,
     title: proposal.title,
     summary: proposal.summary,
     why: proposal.why,
     values: proposal.values,
     sections: proposal.sections,
     bodyMarkdown: proposal.bodyMarkdown,
+    schemaReferences: proposal.schemaReferences,
     createdAt: proposal.createdAt,
     rationale: proposal.rationale,
     evidenceRefs: proposal.evidenceRefs,
@@ -131,18 +148,24 @@ function normalizeProposals(value) {
       mode: clean(raw.mode || ''),
       schemaId: clean(raw.schemaId || raw.schema || ''),
       parentRef: exact(raw.parentRef ?? raw.parent ?? ''),
-      path: clean(raw.path || `lineage/${String(index + 1).padStart(3, '0')}-${slug(id)}.trace.md`),
+      path: clean(raw.path || ''),
       title: clean(raw.title || ''),
       summary: clean(raw.summary || ''),
       why: clean(raw.why || raw.rationale || ''),
       values: clone(raw.values || {}),
       sections: clone(raw.sections || {}),
       bodyMarkdown: String(raw.bodyMarkdown || ''),
+      schemaReferences: raw.schemaReferences && typeof raw.schemaReferences === 'object' ? Object.freeze(clone(raw.schemaReferences)) : null,
       createdAt: clean(raw.createdAt || ''),
       rationale: clean(raw.rationale || ''),
       evidenceRefs: Object.freeze(normalizeStrings(raw.evidenceRefs || raw.evidence || []))
     });
   }));
+}
+
+function plannedParentRecord(entry = null) {
+  if (!entry?.path) return null;
+  return Object.freeze({ id: entry.id || '', path: entry.path, schemaId: entry.schemaId || '', title: entry.title || entry.summary || entry.id || '' });
 }
 
 function resolveParentReference(ref, { loadedIndex, proposalIds, proposalIndex, proposals }) {

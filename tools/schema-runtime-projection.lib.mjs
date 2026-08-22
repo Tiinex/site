@@ -12,21 +12,24 @@ export function runtimeProjectionForFiles(markdownPath, bindingPath) {
   const binding = JSON.parse(fs.readFileSync(bindingPath, 'utf8'));
   const document = parsePortableSchemaDocument(markdown);
   const compiled = compilePortableSchemaContract(document);
-  const sourceChecksum = crypto.createHash('sha256').update(Buffer.from(markdown, 'utf8')).digest('hex');
+  const sourceBytes = Buffer.from(markdown, 'utf8');
+  const sourceChecksum = crypto.createHash('sha256').update(sourceBytes).digest('hex');
+  const sourceBlobSha = crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${sourceBytes.length}\0`, 'utf8'), sourceBytes])).digest('hex');
   const creation = compiled?.creation || {};
   const inputBindings = Object.freeze(creationInputBindings(document, creation));
   const requiredShape = Object.freeze(creationRequiredShapeItems(document, creation, inputBindings));
-  const exactResultProjectionNeeded = Boolean((creation.groups || []).length) && (creation.requiredInputs || []).every((name) => {
-    const binding = inputBindings.find((item) => String(item?.input || '') === String(name || ''));
-    return binding && ['section-body', 'root-current-summary-body-title'].includes(String(binding.kind || ''));
-  });
-  const validationContract = exactResultProjectionNeeded ? runtimeValidationContractForSchema(markdownPath, bindingPath) : null;
+  // Validation authority is independent of whether ordinary creation inputs can be
+  // represented by the exact renderer. Every installed readable schema with a
+  // complete bundled lineage gets a compact validation projection; creation
+  // representability remains separately qualified by inputBindings below.
+  const validationContract = runtimeValidationContractForSchema(markdownPath, bindingPath);
   return Object.freeze({
     schema: SCHEMA_RUNTIME_PROJECTION_ID,
     generator: SCHEMA_RUNTIME_PROJECTION_GENERATOR,
     schemaId: String(compiled?.schemaId || ''),
     sourceChecksum,
-    sourceBytes: Buffer.byteLength(markdown, 'utf8'),
+    sourceBlobSha,
+    sourceBytes: sourceBytes.length,
     bindingChecksum: String(binding?.checksum?.value || binding?.checksum || ''),
     validationContract,
     creation: Object.freeze({
@@ -119,10 +122,13 @@ function compactValidationContract(compiled = {}) {
       requiredSections: Object.freeze([...(compiled?.validation?.requiredSections || [])]),
       requiredHeadings: Object.freeze([...(compiled?.validation?.requiredHeadings || [])]),
       requiredEntries: Object.freeze([...(compiled?.validation?.requiredEntries || [])]),
-      ordinaryGroups: Object.freeze([...(ordinaryGroups || [])])
+      ordinaryGroups: Object.freeze([...(ordinaryGroups || [])]),
+      conditionalRequirements: Object.freeze([...(compiled?.validation?.conditionalRequirements || [])]),
+      fieldShapes: Object.freeze([...(compiled?.validation?.fieldShapes || [])])
     }),
     declarations: Object.freeze([...(declarations || [])]),
-    constraints: Object.freeze([...(compiled?.constraints || [])])
+    constraints: Object.freeze([...(compiled?.constraints || [])]),
+    machineShapes: compiled?.machineShapes || Object.freeze({ schema: '', definitions: Object.freeze([]), active: Object.freeze([]), findings: Object.freeze([]) })
   });
 }
 

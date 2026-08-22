@@ -32,19 +32,17 @@ const created = createPortableLocalDraft({
   },
   createdAt: '2026-07-23T00:00:00.000Z'
 });
-assert.equal(created.status, 'created-clean');
+assert.equal(created.status, 'created-invalid', 'legacy readable-schema Parent representation remains materialized but is not semantic-clean under the unified Root contract');
 assert.equal(created.draft.sourceMode, 'local-portable-draft');
 assert.equal(created.draft.source, null);
 assert.equal(created.draft.markdown.includes('## Evidence Material'), true);
 assert.equal(created.draft.markdown.includes('- Material: A user reported mobile overflow.'), true);
-assert.equal(created.validation.qualification.exactRuntimeValidation, true);
+assert.equal(created.validation.qualification.exactRuntimeValidation, false, 'legacy/readable-schema draft is not exact canonical Root validation');
 assert.equal(created.qualification.remoteWrite, false);
 
 const staged = stagePortableDraft({ draft: created.draft, files: [{ path: 'schemas/tiinex.evidence.v1.schema.md', content: evidenceSchema }], schemaId: 'tiinex.evidence.v1' }, { stagedAt: '2026-07-23T00:01:00.000Z' });
-assert.equal(staged.status, 'staged');
-assert.equal(staged.stagedArtifact.state, 'staged-local');
-assert.equal(staged.stagedArtifact.source, null);
-assert.equal(staged.stagedArtifact.qualification.exportReady, true);
+assert.equal(staged.status, 'blocked', 'semantic-invalid legacy draft must not be silently staged as clean');
+assert.equal(staged.stagedArtifact, null);
 
 const blocked = createPortableLocalDraft({
   files: [{ path: 'schemas/tiinex.evidence.v1.schema.md', content: evidenceSchema }],

@@ -1,15 +1,15 @@
 # Continuity Context
 
-- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/tiinex.root.v1.schema.md)
+- Envelope Schema: [tiinex.root.v1](../../tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.root.v1](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/tiinex.root.v1.schema.md)
+  - Parent Schema: [tiinex.root.v1](../../tiinex.root.v1.schema.md)
   - Created At: 2026-06-14 00:00:00
   - Trace: [tiinex.root.v1.schema.md](../../tiinex.root.v1.schema.md)
   - Origin:
     - [relative](../../tiinex.root.v1.schema.md)
-    - [browse + git](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/tiinex.root.v1.schema.md)
+    - [browse + git](https://github.com/Tiinex/docs/blob/00adbcc5b0319410cf16752a54dcbf4813173040/.topics/.schemas/tiinex.root.v1.schema.md)
 - Current
-  - Current Schema: [tiinex.preservation.v1](https://github.com/Tiinex/site/blob/cce27295e9c0d052feae6e2b0c3594100d9e515d/src/schemas/core/preservation/tiinex.preservation.v1.schema.md)
+  - Current Schema: [tiinex.preservation.v1](tiinex.preservation.v1.schema.md)
   - Created At: 2026-06-30 00:00:00
   - Summary: Schema for material that has been captured, copied, archived, photographed, transcribed, exported, taken into custody, or otherwise made available for later judgment.
 
@@ -304,9 +304,9 @@ The body headings required for artifacts using this schema are: `## Preserved Ma
 # Continuity Integrity
 
 - sha256-base64url-c14n-v1
-  - Towards: [tiinex.root.v1.schema.md](https://github.com/Tiinex/site/blob/43a36a40fb76297310d809d52a8ee4024048ae78/src/schemas/tiinex.root.v1.schema.md)
+  - Towards: [tiinex.root.v1.schema.md](https://github.com/Tiinex/docs/blob/00adbcc5b0319410cf16752a54dcbf4813173040/.topics/.schemas/tiinex.root.v1.schema.md)
   - Value: BFWYft1v0Ue0gUoO236DGScvnixS7_MIEwO6mhJhkNw
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: FjK8Kc5A7PBLtgp-rYtItkrFH53oIoKQJjLEvhrY4-U
+  - Value: -q95qSqFk3AJ0jyU4dsOsRkY5KVWIbsa7ubzqxa3hhE

@@ -15,7 +15,9 @@ import {
 import { compileNamedDeclarationContracts, declarationTargetKey } from './named.declarations.js';
 import { compileOrdinaryFieldAuthority, compileOrdinaryInstanceFieldGroups, mergeOrdinaryFieldAuthorities } from './ordinary.contract.js';
 import { compileFieldValueConstraints, resolveFieldDomainConstraintsAcrossChain } from './contract.field-domain.compile.js';
-import { compileMachineShapeDefinitions, resolveFieldDomainShapeAuthoritiesAcrossChain, summarizeMachineShapeAuthority } from './contract.machine-shape.js';
+import { compileMachineShapeDefinitions as compileShapes, resolveFieldDomainShapeAuthoritiesAcrossChain as resolveShapeAuthorities, summarizeMachineShapeAuthority as summarizeShapeAuthority } from './contract.machine-shape.js';
+import { compileFieldShapeRequirements, resolveFieldShapeRequirements } from './contract.field-shape.compile.js';
+import { dedupeConstraints } from './contract.compile.utils.js';
 
 export const PORTABLE_COMPILED_CONTRACT_SCHEMA_ID = 'tiinex.portable.compiled-schema-contract.v1';
 
@@ -26,7 +28,8 @@ export function compilePortableSchemaContract(input = '') {
   const declarations = bindRequiredEntryTargets(compileNamedDeclarationContracts(document?.validation || {}), requiredEntries);
   const bodyRequiredFields = schemaFieldsByContractOwner(document, declarations, 'Required Fields', { unconditionalOnly: true });
   const bodyOptionalFields = schemaFieldsByContractOwner(document, declarations, 'Optional Fields');
-  const machineShapeDefinitions = compileMachineShapeDefinitions(document);
+  const machineShapeDefinitions = compileShapes(document);
+  const rawFieldShapes = compileFieldShapeRequirements(document);
   const rawConstraints = [
     ...compileFieldValueConstraints(document),
     ...compileContractConstraints(document, declarations)
@@ -35,7 +38,8 @@ export function compilePortableSchemaContract(input = '') {
     schemaId: sourceSchemaId,
     machineShapes: Object.freeze({ definitions: machineShapeDefinitions })
   })];
-  const constraints = resolveFieldDomainShapeAuthoritiesAcrossChain(rawConstraints, shapeLineage);
+  const constraints = resolveShapeAuthorities(rawConstraints, shapeLineage);
+  const fieldShapes = resolveFieldShapeRequirements(rawFieldShapes, shapeLineage);
   const compiledRuleKeys = new Set(constraints.flatMap((constraint) => constraint.rule ? [constraint.rule] : []));
   return Object.freeze({
     schema: PORTABLE_COMPILED_CONTRACT_SCHEMA_ID,
@@ -51,7 +55,8 @@ export function compilePortableSchemaContract(input = '') {
       optionalFields: Object.freeze(bodyOptionalFields),
       requiredEntries,
       conditionalRequirements: conditionalContractGroups(document?.validation || {}),
-      ordinaryFieldAuthority: compileOrdinaryFieldAuthority(document)
+      ordinaryFieldAuthority: compileOrdinaryFieldAuthority(document),
+      fieldShapes
     }),
     creation: Object.freeze({
       groups: summarizeGroups(document?.creation || {}, sourceSchemaId),
@@ -104,8 +109,9 @@ export function compilePortableSchemaContractChain(inputs = []) {
     mergedValidationGroups,
     composition
   );
-  const constraints = resolveFieldDomainShapeAuthoritiesAcrossChain(ownedConstraints, composition);
-  const machineShapes = summarizeMachineShapeAuthority(composition);
+  const constraints = resolveShapeAuthorities(ownedConstraints, composition);
+  const machineShapes = summarizeShapeAuthority(composition);
+  const fieldShapes = Object.freeze(composition.flatMap((item) => item.validation.fieldShapes || []));
   return Object.freeze({
     schema: 'tiinex.portable.compiled-schema-contract-chain.v1',
     schemaId: leaf.schemaId,
@@ -122,7 +128,8 @@ export function compilePortableSchemaContractChain(inputs = []) {
       requiredEntries: mergeRequiredEntryRequirements(composition.flatMap((item) => item.validation.requiredEntries || [])),
       conditionalRequirements: Object.freeze(composition.flatMap((item) => item.validation.conditionalRequirements || [])),
       ordinaryFieldAuthority,
-      ordinaryGroups
+      ordinaryGroups,
+      fieldShapes
     }),
     creation: mergeCreationContracts(composition),
     declarations,
@@ -138,7 +145,6 @@ export function compilePortableSchemaContractChain(inputs = []) {
     ])
   });
 }
-
 
 function qualifyContractChain(compiled = []) {
   const supplied = compiled.map((item) => item.schemaId).filter(Boolean);
@@ -473,12 +479,3 @@ function cleanToken(value = '') { return String(value || '').trim().replace(/^`|
 function exactToken(value = '') { return String(value || '').trim(); }
 function normalizeKey(value = '') { return String(value || '').toLowerCase().replace(/[`*_#]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
 function unique(values = []) { return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))]; }
-function dedupeConstraints(values = []) {
-  const seen = new Set();
-  return values.filter((value) => {
-    const key = JSON.stringify(value);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}

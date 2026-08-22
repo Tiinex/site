@@ -6,6 +6,7 @@ import { qualifyRootCreationRepresentation } from './creation.representation.js'
 import { canonicalRootCreatedAt } from './creation.rootMetadata.js';
 import { snapshotOrdinaryCreationExecutionInput } from './creation.executionSnapshot.js';
 import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
+import { C14N_V2_METHOD_ID, integrityMethodReferenceAuthorityForCreation } from '../integrity/integrity.methodReference.js';
 
 export const ARTIFACT_CREATION_AUTHORITY_SECTION = 'Artifact Creation Contract';
 const executionQualificationCache = new WeakMap();
@@ -104,6 +105,7 @@ function probeOrdinaryCreationExecution(module = {}, authority = {}, implementat
     transitionType: 'create-artifact',
     target: Object.freeze({ schemaId, label: String(module?.label || schemaId || 'Artifact') }),
     schemaReferences: schemaReferenceAuthoritiesForCreation(module),
+    integrityMethodReferences: Object.freeze({ primarySelf: integrityMethodReferenceAuthorityForCreation(C14N_V2_METHOD_ID) }),
     creation: Object.freeze({
       requiredInputs,
       optionalInputs: Object.freeze([...(creation.optionalInputs || [])]),

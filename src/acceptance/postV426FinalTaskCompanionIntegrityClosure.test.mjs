@@ -34,7 +34,7 @@ assert.equal(canonicalC14nV2SelfState(renderedA.markdown).state, 'verified');
 
 const validationA = validateArtifact({ markdown: renderedA.markdown });
 assert.equal(validationA.validation.state, 'exact-schema-validated');
-assert.equal(validationA.validation.coverage, 'exact-companion');
+assert.equal(validationA.validation.coverage, 'compiled-machine-contract+schema-companion');
 assert.equal(validationA.findings.some((finding) => finding.code === 'task.nextStep.missing'), false, 'canonical Task has no stale Next Step warning');
 assert.equal(validationA.findings.some((finding) => finding.code === 'task.body.canonical'), true, 'canonical Task shape is recognized');
 assert.equal(validationA.findings.some((finding) => finding.code === 'integrity.c14n-v2.verified'), true, 'ordinary runtime validation verifies the self digest');
@@ -83,7 +83,7 @@ assert.equal(missingDoneValidation.findings.some((finding) => finding.code === '
 const legacyUnsigned = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.task.v1\n  - Created At: 2026-08-18 08:00:00\n  - Summary: Legacy Task\n\n---\n\n# Legacy Task\n\n## Task Draft\n\nOld browser draft.\n\n## Next Step\n\nKeep going.\n\n## Source Boundary\n\nLocal.\n\n## Source Excerpt\n\nOld excerpt.\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: pending\n`;
 const legacyTask = sealC14nV2Self(legacyUnsigned).markdown;
 const legacyValidation = validateArtifact({ markdown: legacyTask });
-assert.equal(legacyValidation.validation.coverage, 'exact-companion', 'legacy artifact still reaches the exact Task companion because its Current Schema declares Task');
+assert.equal(legacyValidation.validation.coverage, 'compiled-machine-contract+schema-companion', 'legacy artifact still reaches the exact Task companion because its Current Schema declares Task');
 assert.equal(legacyValidation.findings.some((finding) => finding.code === 'task.legacyShape.observed'), true, 'legacy browser-draft shape is explicitly distinguished from current canonical Task shape');
 for (const code of ['task.objective.missing', 'task.doneCriteria.missing', 'task.scope.missing', 'task.dependencies.missing']) {
   assert.equal(legacyValidation.findings.some((finding) => finding.code === code && finding.severity === 'error'), true, `legacy shape cannot gain exact current Task authority: ${code}`);

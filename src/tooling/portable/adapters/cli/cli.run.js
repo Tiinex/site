@@ -1,3 +1,4 @@
+import { markPortableBootstrapCanonicalSource } from '../../providers/schema.bootstrap.provenance.js';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadNodePortableInput } from '../../input/node.input.js';
@@ -254,11 +255,14 @@ async function commandInput(parsed, runtime = {}) {
     input: {
       ...material,
       schemaId: flags.schema || '',
+      transitionType: flags.transition || 'create-artifact',
       path: flags.path || '',
       ...(Object.prototype.hasOwnProperty.call(flags, 'title') ? { title: flags.title } : {}),
       ...(Object.prototype.hasOwnProperty.call(flags, 'summary') ? { summary: flags.summary } : {}),
       ...(Object.prototype.hasOwnProperty.call(flags, 'why') ? { why: flags.why } : {}),
+      ...(Object.prototype.hasOwnProperty.call(flags, 'authors') ? { authors: flags.authors } : {}),
       ...(Object.prototype.hasOwnProperty.call(flags, 'created-at') ? { createdAt: flags['created-at'] } : {}),
+      schemaReferences: await readOptionalJson(flags.references || flags['schema-references']),
       values: await readOptionalJson(flags.values),
       sections: await readOptionalJson(flags.sections),
       parent: await readOptionalJson(flags.parent),
@@ -371,7 +375,7 @@ function decorateDefaultSchemaMaterial(material = {}, source = {}) {
     files: (material.files || []).map((file) => ({
       ...file,
       sourceMode: 'portable-bootstrap-canonical-schema',
-      source: {
+      source: markPortableBootstrapCanonicalSource({
         providerId: 'bootstrap-canonical-schema-pack',
         repository,
         ref: commit,
@@ -381,7 +385,7 @@ function decorateDefaultSchemaMaterial(material = {}, source = {}) {
         qualification: 'bundled-byte-bound-canonical-snapshot',
         remoteFetch: false,
         cached: false
-      }
+      })
     }))
   };
 }

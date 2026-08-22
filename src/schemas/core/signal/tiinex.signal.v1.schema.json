@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.signal.v1",
+  "kind": "concrete",
+  "role": "core-signal-artifact",
+  "module": "./tiinex.signal.v1.schema.js",
+  "snapshot": "./tiinex.signal.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/core/signal/tiinex.signal.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/signal/tiinex.signal.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/signal/tiinex.signal.v1.schema.md",
+  "sourcePath": ".topics/.schemas/core/signal/tiinex.signal.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+  "sourceBlobSha": "d2c88bd0d1695efc828a3f718429d772aba4c9ca",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "60adb2b2c3e3a10d63b024f51b39f662b46e356b10a5f5c5232636cc8313d41b"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-e713557f",
+  "originTrustRole": "canonical-core"
+}

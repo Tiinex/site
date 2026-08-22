@@ -14,7 +14,7 @@ export function validatePortableDraft(input = {}, options = {}) {
   const findings = [];
   if (!markdown) findings.push(portableFinding('error', 'portable.draft.markdown.required', 'Draft validation requires Markdown content.', { ref: path }));
   const record = createRecordFromMarkdown(markdown, { path, name: path, sourceMode: 'portable-local-draft', lifecycleStatus: 'draft' });
-  const audit = runAudit({ record, markdown });
+  const audit = runAudit({ record, markdown, schemaReferenceAuthorities: input.schemaReferenceAuthorities || null });
   const parsed = safeParse(markdown);
   const declaredSchema = String(parsed.envelope?.current?.schema?.id || record.schemaId || '').trim();
   if (requestedSchema && declaredSchema !== requestedSchema) findings.push(portableFinding('error', 'portable.draft.schema.mismatch', 'Draft Current Schema does not match the requested schema.', { requestedSchema, declaredSchema, ref: path }));
@@ -26,7 +26,9 @@ export function validatePortableDraft(input = {}, options = {}) {
   for (const quirk of sharedParserQuirks) findings.push(portableFinding('info', quirk.code, quirk.message, { ref: path, suppressedCodes: quirk.suppressedCodes, owner: quirk.owner }));
   const schemaMaterial = findSchemaMaterial(requestedSchema || declaredSchema, input.materials || input);
   let structural = null;
-  if (schemaMaterial?.markdown) {
+  if (audit.contractValidation?.available) {
+    structural = sharedContractValidationReceipt(audit.contractValidation, path);
+  } else if (schemaMaterial?.markdown) {
     structural = validateContractStructure(markdown, schemaMaterial.markdown, requestedSchema || declaredSchema, path);
     findings.push(...structural.findings);
     if (structural.conditionalRequirements.length) findings.push(portableFinding('info', 'portable.draft.conditional-review.required', 'The readable schema contains conditional requirements that require trigger-aware review; they were not treated as unconditional failures.', {
@@ -37,8 +39,10 @@ export function validatePortableDraft(input = {}, options = {}) {
   } else {
     findings.push(portableFinding('info', 'portable.draft.contract-structure.unavailable', 'Readable child schema material was not supplied, so contract-driven structural validation was not run.', { schemaId: requestedSchema || declaredSchema, ref: path }));
   }
+  const exactCreationValidation = input.exactCreationValidation || null;
   const exactRuntimeValidation = Boolean(
-    !audit.resolution?.fallbackUsed
+    exactCreationValidation?.ok === true
+    && !audit.resolution?.fallbackUsed
     && typeof audit.resolution?.module?.validate === 'function'
     && audit.status === 'readable'
     && !findings.some((finding) => finding.code === 'audit.validator.unavailable')
@@ -61,7 +65,8 @@ export function validatePortableDraft(input = {}, options = {}) {
       limitations: Object.freeze([
         ...(audit.resolution?.fallbackUsed ? ['Runtime audit used Root fallback and does not prove child-schema validity.'] : []),
         ...(sharedParserQuirks.length ? ['The shared parser currently leaks Current.CreatedAt into Parent when no Parent block exists; raw audit findings are preserved, but parser-induced parent repair findings are excluded from portable repair guidance.'] : []),
-        ...(structural ? ['Contract-driven checks cover explicit required sections/fields, not all prose semantics.'] : ['Readable schema contract was unavailable.'])
+        ...(audit.contractValidation?.available ? ['Semantic contract validity was evaluated from the qualified current Root/descendant compiled machine-contract projection.'] : structural ? ['Only supplied readable-schema structural checks were available; complete current Root/descendant compiled contract authority was unavailable.'] : ['Readable schema contract was unavailable.']),
+        ...(!exactCreationValidation ? ['Exact canonical creation/reference/integrity validation evidence was not supplied; exactRuntimeValidation remains false.'] : [])
       ])
     }),
     findings: Object.freeze(findings),
@@ -174,7 +179,23 @@ function sanitizeAudit(audit = {}) {
       unresolvedSchemaId: audit.resolution?.unresolvedSchemaId || ''
     }),
     summary: audit.summary || null,
+    validation: audit.validation || null,
     findings: Object.freeze((audit.findings || []).map((finding) => normalizePortableFinding(finding)))
+  });
+}
+
+function sharedContractValidationReceipt(contractValidation = {}, path = '') {
+  const result = contractValidation.result || {};
+  return Object.freeze({
+    schema: 'tiinex.portable.contract-structure-validation.v3',
+    schemaId: contractValidation.schemaId || '',
+    status: result.status || contractValidation.state || 'unresolved',
+    authority: 'qualified-current-root-descendant-compiled-contract',
+    lineage: Object.freeze([...(contractValidation.lineage || [])]),
+    missingSections: Object.freeze((result.findings || []).filter((finding) => finding.code === 'portable.contract.section.required.missing').map((finding) => finding.section || '')),
+    missingFields: Object.freeze((result.findings || []).filter((finding) => String(finding.code || '').includes('field.required.missing')).map((finding) => finding.field || '')),
+    conditionalRequirements: Object.freeze([...(contractValidation.conditionalRequirements || [])].map((entry) => Object.freeze({ ...entry, name: entry.name || entry.group || '' }))),
+    findings: Object.freeze((result.findings || []).map((finding) => normalizePortableFinding(finding, { ref: path })))
   });
 }
 

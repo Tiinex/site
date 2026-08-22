@@ -82,12 +82,13 @@ const materialized = await materializePortableDurableFindings({
     path: 'drafts/provider-outcome.md'
   }]
 }, { createdAt: '2026-07-23T01:10:00.000Z', stagedAt: '2026-07-23T01:11:00.000Z' });
-assert.equal(materialized.status, 'materialized');
+assert.equal(materialized.status, 'degraded', 'readable custom-schema materialization may be retained, but unified Root/reference validation prevents a false clean/staged claim');
 assert.equal(materialized.materialized.length, 1);
-assert.equal(materialized.materialized[0].stagedArtifact.path, 'drafts/provider-outcome.md');
+assert.equal(materialized.materialized[0].draft.path, 'drafts/provider-outcome.md');
+assert.equal(materialized.materialized[0].stagedArtifact, null, 'semantic-invalid readable custom draft is retained but not silently staged as clean');
 assert.equal(materialized.remainingFindings.length, 0);
 assert.equal(materialized.session.durableFindings.length, 0);
-assert.equal(materialized.session.stagedArtifacts.length, 1);
+assert.equal(materialized.session.stagedArtifacts.length, 0);
 assert.equal(materialized.boundary.remoteWrite, false);
 
 const operation = await runPortableOperation('materialize-durable-findings', {
@@ -108,4 +109,4 @@ const operation = await runPortableOperation('materialize-durable-findings', {
 assert.equal(operation.operation, 'materialize-durable-findings');
 assert.equal(operation.resultSchema, PORTABLE_DURABLE_MATERIALIZATION_RESULT_SCHEMA_ID);
 
-console.log('✓ portable durable finding materialization requires explicit schema and stages local artifacts passed');
+console.log('✓ portable durable finding materialization requires explicit schema and preserves invalid custom drafts without false clean staging');

@@ -77,7 +77,8 @@ assert.equal(reference.hasIntegrity, true, 'reference must include draft integri
 assert.equal(reference.validation.ok, true, 'reference must pass transition validation');
 assert(reference.markdown.includes('## Reference'), 'reference draft must contain reference section');
 assert(reference.markdown.includes('## Supported Claim Or Question'), 'reference draft must satisfy Evidence body contract');
-assert(reference.creationValidation.ok, true, 'reference must pass target Evidence validator');
+assert.equal(reference.creationValidation.ok, false, 'legacy Site reference draft must not be upgraded to exact canonical creation under v475');
+assert(reference.creationValidation.findings.some((finding) => finding.code.startsWith('creation.continuation-representation.')), 'exact creation validation must expose canonical Parent/footer representation drift');
 assert(reference.markdown.includes('Current Schema: [tiinex.evidence.v1]'), 'reference draft must declare evidence current schema');
 assert(reference.path.startsWith('references/'), 'reference path must be deterministic local reference path');
 const parsedReference = parseArtifactMarkdown(reference.markdown);

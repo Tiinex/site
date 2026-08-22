@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.feedback.v1",
+  "kind": "concrete",
+  "role": "workflow-feedback-artifact",
+  "module": "./tiinex.feedback.v1.schema.js",
+  "snapshot": "./tiinex.feedback.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/core/feedback/tiinex.feedback.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/feedback/tiinex.feedback.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/feedback/tiinex.feedback.v1.schema.md",
+  "sourcePath": ".topics/.schemas/core/feedback/tiinex.feedback.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+  "sourceBlobSha": "7337a482400557ddece16c65a8ec60df441af22b",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "d878817850d433ce1f07451598729c49ce6f9ffc9e7c1b9ad00c6c7e60fee90d"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-e713557f",
+  "originTrustRole": "canonical-core"
+}

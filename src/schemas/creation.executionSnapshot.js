@@ -23,6 +23,9 @@ export function snapshotOrdinaryCreationExecutionInput(contract = {}, input = {}
     createdAt,
     ...(input.title !== undefined ? { title: scalar(input.title) } : {}),
     ...(input.summary !== undefined ? { summary: scalar(input.summary) } : {}),
+    ...(input.authors !== undefined ? { authors: scalar(input.authors) } : {}),
+    ...(input.why !== undefined ? { why: scalar(input.why) } : {}),
+    ...(input.status !== undefined ? { status: scalar(input.status) } : {}),
     ...(input.bodyMarkdown !== undefined ? { bodyMarkdown: scalar(input.bodyMarkdown) } : {})
   });
   return Object.freeze({ authority, implementationInput });

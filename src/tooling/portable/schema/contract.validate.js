@@ -4,6 +4,7 @@ import { compilePortableSchemaContract } from './contract.compile.js';
 import { resolveClassificationAgreement, resolveSchemaAuthority } from './contract.semantic-resolution.js';
 import { resolveOrdinaryFieldInstances } from './ordinary.fields.js';
 import { validatePortableFieldDomains } from './contract.field-domain.js';
+import { validatePortableEnvelopeContract } from './contract.envelope.validate.js';
 
 export const PORTABLE_CONTRACT_VALIDATION_SCHEMA_ID = 'tiinex.portable.compiled-contract-validation.v1';
 
@@ -21,6 +22,7 @@ export function validatePortableContractInstance(input = {}, options = {}) {
   const fields = parseFieldSet(markdown, { excludedHeadings: uniqueExact([...declarationTargetHeadings, ...ordinaryTargetHeadings]) });
   const parsedDeclarations = parseDeclarationsAgainstContract(markdown, compiled.declarations);
   const ordinary = resolveOrdinaryFieldInstances(markdown, compiled, { parsedDeclarations });
+  const envelopeValidation = validatePortableEnvelopeContract(markdown, compiled);
   const legacyRequiredFields = requiredFieldsOutsideStructuredOwners(compiled);
   for (const section of compiled.validation.requiredSections || []) {
     if (!headings.has(section)) findings.push(finding('error', 'portable.contract.section.required.missing', `Required section is missing: ${section}.`, 'incomplete', { section }));
@@ -34,6 +36,7 @@ export function validatePortableContractInstance(input = {}, options = {}) {
   }
 
   validateOrdinaryFieldInstances(ordinary, findings);
+  findings.push(...envelopeValidation.findings);
 
   validateRequiredEntries(compiled.validation.requiredEntries || [], parsedDeclarations, findings);
   const declarationIndex = buildDeclarationIndex(parsedDeclarations, compiled.constraints || []);
@@ -83,6 +86,7 @@ export function validatePortableContractInstance(input = {}, options = {}) {
     states,
     declarations: Object.freeze(parsedDeclarations),
     ordinaryGroups: ordinary.groups,
+    conditional: envelopeValidation.summary,
     fieldDomains,
     findings: Object.freeze(findings)
   });

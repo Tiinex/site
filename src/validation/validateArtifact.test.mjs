@@ -25,7 +25,8 @@ const topicMarkdown = [
 ].join('\n');
 
 const result = validateArtifact({ markdown: topicMarkdown });
-assert.equal(result.validation.rootValidator, 'run', 'Root validation must run through the shared pipeline');
+assert.equal(result.validation.rootValidator, 'diagnostic', 'rootValidate remains a readability diagnostic while compiled Root/descendant contract owns semantic validity');
+assert.equal(result.contractValidation.available, true, 'qualified compiled Root/descendant contract must run through the shared pipeline');
 assert.equal(result.validation.childValidator, 'run', 'exact Topic validator must run after Root');
 assert(result.findings.some((finding) => finding.code === 'root.parent.absent'), 'Root findings must be present');
 assert(result.findings.some((finding) => finding.code === 'topic.body.thin'), 'Topic-specific findings must be present');

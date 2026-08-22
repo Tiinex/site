@@ -27,7 +27,7 @@ export function portableCliHelpText(commandPrefix = '') {
     `${command} export-live-lineage [state.json] [--material workspace.zip] --bundle artifacts.zip [--require-interleaved]`,
     `${command} prepare-materialization [artifact-dir|zip] --proposals proposals.json`,
     `${command} create-local-artifact-set [artifact-dir|zip] --proposals proposals.json --output-dir <dir> [--bundle artifacts.zip]`,
-    `${command} create-local-draft [schema-dir|zip] --schema <schema-id> --values inputs.json [--sections sections.json] --output artifact.md [--qualified-package artifact-evidence.zip --transfer-manifest manifest.json --bootstrap-manifest bootstrap/manifest.json --transfer-verification transfer.verify.json --bootstrap-verification bootstrap.verify.json --task-request task/request.md] [--created-at <iso>] [--overwrite]`,
+    `${command} create-local-draft [schema-dir|zip] --schema <schema-id> --values inputs.json [--sections sections.json] --output artifact.md [--qualified-package artifact-evidence.zip --transfer-manifest manifest.json --bootstrap-manifest bootstrap/manifest.json --transfer-verification transfer.verify.json --bootstrap-verification bootstrap.verify.json --task-request task/request.md] [--created-at <iso>] [--authors <value>] [--references schema-references.json] [--overwrite]`,
     `${command} update-local-draft <draft.md> [schema-dir|zip] --replacement updated.md --schema <schema-id>`,
     `${command} delete-local-draft <draft.md> --confirm <draft-id-or-path> [--reason <text>]`,
     `${command} validate-draft <draft.md> [schema-dir|zip] --schema <schema-id>`,

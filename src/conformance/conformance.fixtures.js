@@ -74,6 +74,7 @@ export const conformanceFixtures = Object.freeze({
       markdown: artifactMarkdown({
         title: 'Unknown Schema Artifact',
         currentSchema: 'tiinex.experimental.custom.v1',
+        envelopeSchemaTarget: 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md',
         createdAt: '2026-07-21T00:40:00.000Z',
         summary: 'Unknown child schema that must remain Root-readable.',
         body: '## Custom payload\n\nUnknown schema-specific fields are preserved, not interpreted.'
@@ -126,7 +127,7 @@ function artifactMarkdown(input = {}) {
   return [
     '# Continuity Context',
     '',
-    '- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)',
+    `- Envelope Schema: [tiinex.root.v1](${input.envelopeSchemaTarget || 'tiinex.root.v1.schema.md'})`,
     ...parentLines,
     '- Current',
     `  - Current Schema: [${input.currentSchema || 'tiinex.topic.v1'}](${input.currentSchema || 'tiinex.topic.v1'}.schema.md)`,

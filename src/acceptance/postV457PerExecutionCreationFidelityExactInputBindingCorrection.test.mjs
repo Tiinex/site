@@ -54,7 +54,7 @@ assert.equal(whitespaceExecution.qualification.integrity.state, 'verified');
 const dropSection = taskWithImplementation((contract, input) => {
   const markdown = genericArtifactCreationImplementation.execute(contract, input);
   if (isRepresentativeProbe(input)) return markdown;
-  const mutated = markdown.replace(/\n## Dependencies\n\n[^\n]*(?=\n# Continuity Integrity)/, '');
+  const mutated = markdown.replace(/\n## Dependencies\n\n[^\n]*(?=\n\n# Continuity Integrity)/, '');
   return sealC14nV2Self(mutated).markdown;
 });
 const dropContract = buildArtifactCreationContract({ schemaId: dropSection.id, module: dropSection });

@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.discovery.v1",
+  "kind": "concrete",
+  "role": "workflow-discovery-artifact",
+  "module": "./tiinex.discovery.v1.schema.js",
+  "snapshot": "./tiinex.discovery.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/discovery/tiinex.discovery.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/discovery/tiinex.discovery.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/discovery/tiinex.discovery.v1.schema.md",
+  "sourcePath": ".topics/.schemas/discovery/tiinex.discovery.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+  "sourceBlobSha": "1e18d78521c6298d243f1c87a84155be040f032c",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "3f5746d8982594ceaf542b6e4e4095f1687ba4b05256eebe77c06831ffb4a4f2"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-e713557f",
+  "originTrustRole": "canonical-core"
+}

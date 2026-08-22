@@ -44,8 +44,8 @@ assert.equal(refs.current.targetAuthority, 'exact-source-target');
 assert.deepEqual(refs.current.exactTargets, [canonical.blobUrl, canonical.rawUrl]);
 for (const target of negatives) assert.equal(refs.current.exactTargets.includes(target), false);
 
-const viewerLocal = schemaRegistry.modules.find((item) => item.id === 'tiinex.task.v1');
-assert.equal(schemaReferenceAuthoritiesForCreation(viewerLocal).current.preferredTarget, '');
-assert.equal(schemaReferenceAuthoritiesForCreation(viewerLocal).current.targetAuthority, 'schema-id-only');
+const reboundTask = schemaRegistry.modules.find((item) => item.id === 'tiinex.task.v1');
+assert.equal(schemaReferenceAuthoritiesForCreation(reboundTask).current.preferredTarget, 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md');
+assert.equal(schemaReferenceAuthoritiesForCreation(reboundTask).current.targetAuthority, 'exact-source-target');
 
 console.log('post-v462 exact schema-reference lexical/source-target authority correction: PASS');

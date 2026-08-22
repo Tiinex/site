@@ -11,7 +11,7 @@ import { loadViewerSchemaMarkdown } from '../app/schemaNavigationRuntimeCatalog.
 import { schemaCatalogEntryForId } from '../schemas/schemaMarkdownCatalog.js';
 
 // A — every built-in ordinary Create reported ready must execute and validate at the target boundary.
-const expectedReady = new Set(['tiinex.topic.v1', 'tiinex.task.v1']);
+const expectedReady = new Set(['tiinex.topic.v1', 'tiinex.task.v1', 'tiinex.signal.v1']);
 for (const module of schemaRegistry.modules) {
   const contract = buildArtifactCreationContract({ schemaId: module.id, module, transitionType: 'create-artifact' });
   if (contract.status !== 'ready') continue;
@@ -57,7 +57,7 @@ assert.equal(qualifyArtifactCreationCapability(future, 'create-artifact').implem
 // B — runtime schema source is compact/generated; readable Markdown remains lazy and exact.
 const sourceCompanions = findFiles('src/schemas', (file) => file.endsWith('.schema.source.js'));
 const eagerSourceBytes = sourceCompanions.reduce((sum, file) => sum + fs.statSync(file).size, 0);
-assert.equal(sourceCompanions.length, 10);
+assert.equal(sourceCompanions.length, schemaRegistry.modules.length, 'every registered built-in module keeps one lazy schema source companion');
 assert(eagerSourceBytes < 10000, `schema source companions must remain compact; observed ${eagerSourceBytes} bytes`);
 for (const file of sourceCompanions) {
   const text = fs.readFileSync(file, 'utf8');

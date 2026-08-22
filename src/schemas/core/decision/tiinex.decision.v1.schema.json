@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.decision.v1",
+  "kind": "concrete",
+  "role": "workflow-decision-artifact",
+  "module": "./tiinex.decision.v1.schema.js",
+  "snapshot": "./tiinex.decision.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/core/decision/tiinex.decision.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/decision/tiinex.decision.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/decision/tiinex.decision.v1.schema.md",
+  "sourcePath": ".topics/.schemas/core/decision/tiinex.decision.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+  "sourceBlobSha": "866ed2d1f2d213d13e68866fd51b5faad155a15c",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "5d28c0425d19d8d18038ced26d3af70d46ea52ecca194e9faf13aa22f4579638"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-e713557f",
+  "originTrustRole": "canonical-core"
+}

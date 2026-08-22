@@ -33,10 +33,12 @@ export function projectPortableLoadedParentRecord(record = {}) {
     currentSchemaId: exact(record.currentSchemaId || ''),
     currentCreatedAt: exact(record.currentCreatedAt || ''),
     createdAt: exact(record.createdAt || ''),
-    continuationTrace: id ? `record:${id}` : '',
+    continuationTrace: '',
     boundary: exact(record.boundary || record.source?.boundary || 'loaded material boundary'),
     sourceMode: exact(record.sourceMode || ''),
     source: record.source || null,
+    publishedReference: record.publishedReference || null,
+    schemaReferenceAuthority: record.schemaReferenceAuthority || null,
     title: exact(record.title || ''),
     summary: exact(record.summary || '')
   });

@@ -58,7 +58,7 @@ export function describeSchemaCapabilities(module = {}, context = {}) {
   const surfaces = makeSurfaceCapabilityMap(module, capabilityInput);
   const actions = makeActionCapabilityMap(module, capabilityInput);
   const implementation = {
-    validate: typeof module.validate === 'function',
+    validate: typeof module.validate === 'function' || hasQualifiedCompiledValidation(module),
     present: typeof module.present === 'function',
     transitions: Boolean(module.transitions && (typeof module.transitions === 'function' || Object.keys(module.transitions || {}).length)),
     findings: Boolean(module.findings),
@@ -119,6 +119,12 @@ function normalizeRegistryModules(registry = {}) {
   return Array.from(registry.byId?.values?.() || []);
 }
 
+
+function hasQualifiedCompiledValidation(module = {}) {
+  const qualification = typeof module?.schemaSource?.qualify === 'function' ? module.schemaSource.qualify() : null;
+  return Boolean(qualification?.state === 'qualified' && qualification?.compiledContract?.validationContract?.lineageQualification?.state === 'valid');
+}
+
 function makeSurfaceCapabilityMap(module = {}, capabilities = {}) {
   const explicit = new Set([
     ...normalizeStringList(capabilities.supportedSurfaces),
@@ -138,7 +144,7 @@ function makeActionCapabilityMap(module = {}, capabilities = {}) {
   const declaredActions = new Set(normalizeStringList(capabilities.actions));
   const actions = {};
   actions.read = capability('read', Boolean(module.id && module.binding), 'registered module with binding');
-  actions.validate = capability('validate', typeof module.validate === 'function', 'validation implementation');
+  actions.validate = capability('validate', typeof module.validate === 'function' || hasQualifiedCompiledValidation(module), typeof module.validate === 'function' ? 'schema-specific validation implementation' : 'qualified compiled schema validation contract');
   actions.present = capability('present', typeof module.present === 'function', 'presentation implementation');
   const creation = qualifyArtifactCreationCapability(module, 'create-artifact');
   actions.create = capability('create', creation.ready || declaredActions.has('create-workspace'), creation.ready ? 'qualified schema creation authority + installed implementation' : 'ordinary creation requires semantic authority and implementation capability');

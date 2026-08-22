@@ -14,6 +14,7 @@ const values = Object.freeze({
 const childCreatedAt = '2026-08-21T17:30:00.000Z';
 const canonicalCreatedAt = '2026-08-21 16:34:00';
 const alternateCreatedAt = '2026-08-21 16:35:00';
+const withAuthority = (record = {}) => ({ ...record, publishedReference: { target: 'https://archive.example.test/exact/loaded-parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: record.schemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/loaded-parent.schema.md', resolutionState: 'qualified' } });
 const taskPath = '.topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md';
 const resultPath = '.topics/development/tooling/dogfood/001-1-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure-result.trace.md';
 
@@ -36,14 +37,18 @@ function proposal(parentRef, id = 'loaded-child') {
 // must not index the result under the task's identity and make exact task selection ambiguous.
 const realFiles = await Promise.all([taskPath, resultPath].map(async (path) => ({ path, content: await readFile(path, 'utf8') })));
 const realSet = createPortableLocalArtifactSet({ files: realFiles, proposals: [proposal(taskPath, 'real-v473-child')] });
-assert.equal(realSet.status, 'created-clean');
+assert.equal(realSet.status, 'created-local-continuity', 'historical unpublished v473 Parent remains usable for exact relative local continuity without fabricated publication');
 assert.equal(realSet.plan.proposals[0].parentKind, 'loaded-record');
 assert.equal(realSet.plan.proposals[0].parent.id, taskPath);
 assert.equal(realSet.plan.proposals[0].parent.path, taskPath);
 assert.equal(realSet.plan.proposals[0].parent.currentCreatedAt, canonicalCreatedAt);
 assert.equal(realSet.plan.proposals[0].parent.createdAt, '');
-assert.equal(realSet.artifacts[0].qualification.parentAuthorityQualification, 'qualified');
-assert.equal(realSet.artifacts[0].qualification.exactRuntimeValidation, true);
+assert.equal(realSet.artifacts[0].qualification.parentAuthorityQualification, 'qualified-local-continuity');
+assert.equal(realSet.artifacts[0].qualification.parentAuthorityReason, 'continuation-parent-schema-reference-unqualified');
+assert.equal(realSet.artifacts[0].qualification.localContinuityUsable, true);
+assert.equal(realSet.artifacts[0].qualification.exactRuntimeValidation, false);
+assert(realSet.findings.some((finding) => finding.code === 'portable.draft-create.parent.continuation-parent-schema-reference-unqualified'));
+assert.equal(realSet.artifacts[0].draft.markdown.includes('[browse + git]'), false, 'historical local Parent must not gain fabricated publication authority');
 assert(!realSet.findings.some((finding) => finding.code === 'portable.materialization.parent.ambiguous'));
 
 // Exact loaded id/path identity: internal or surrounding whitespace in the caller reference
@@ -76,10 +81,10 @@ for (const near of ['parent A', ' parent  A', 'parent  A ', '.topics/a b.trace.m
 // candidates fail exact Parent qualification; one candidate or exactly equal candidates qualify.
 function loadedTemporalSet(record) {
   return createPortableLocalArtifactSet({
-    records: [{
+    records: [withAuthority({
       id: 'temporal-parent', path: '.topics/temporal-parent.trace.md', schemaId: 'tiinex.topic.v1', hasContinuityContext: true,
       ...record
-    }],
+    })],
     proposals: [proposal('temporal-parent', 'temporal-child')]
   });
 }
@@ -117,10 +122,10 @@ function liveLoaded(record, parentRef = 'loaded:live-parent') {
       parentRef,
       values
     },
-    material: { records: [{
+    material: { records: [withAuthority({
       id: 'live-parent', path: '.topics/live  parent.trace.md', schemaId: 'tiinex.topic.v1', hasContinuityContext: true,
       ...record
-    }], files: [] },
+    })], files: [] },
     artifacts: new Map(),
     findings,
     input: { state: { evidence: [] }, turn: {}, runtimeObservedAt: '2026-08-21T17:31:00.000Z' },
@@ -132,9 +137,8 @@ const liveContradictory = liveLoaded({ currentCreatedAt: canonicalCreatedAt, cre
 assert.equal(liveContradictory.artifact, null);
 assert(liveContradictory.findings.some((finding) => finding.code === 'portable.draft-create.parent.continuation-parent-created-at-contradictory'));
 const liveEqual = liveLoaded({ currentCreatedAt: canonicalCreatedAt, createdAt: canonicalCreatedAt });
-assert(liveEqual.artifact);
-assert.equal(liveEqual.artifact.qualification.parentAuthorityQualification, 'qualified');
-assert.equal(liveEqual.artifact.parentRef, 'loaded:live-parent');
+assert.equal(liveEqual.artifact, null, 'a Parent path containing raw spaces cannot be encoded as Root Markdown-link Origin without changing identity');
+assert(liveEqual.findings.some((finding) => finding.code === 'portable.draft-create.exact-result.unqualified'));
 const liveNear = liveLoaded({ currentCreatedAt: canonicalCreatedAt }, 'loaded: live-parent');
 assert.equal(liveNear.artifact, null);
 assert(liveNear.findings.some((finding) => finding.code === 'live-lineage.parent.loaded-missing'));

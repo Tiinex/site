@@ -2,6 +2,8 @@ import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { schemaRegistry } from '../../../schemas/registry.js';
 import { portableFinding } from '../findings.js';
 import { discoverPortableHostCapabilities } from '../host/host.capabilities.js';
+import { qualifyPortableSchemaMaterial } from './schema.provider.qualification.js';
+import { hasPortableBootstrapCanonicalProvenance } from './schema.bootstrap.provenance.js';
 
 export const PORTABLE_PROVIDER_CATALOG_SCHEMA_ID = 'tiinex.portable.provider-catalog.v1';
 export const PORTABLE_SCHEMA_MATERIAL_RESOLUTION_SCHEMA_ID = 'tiinex.portable.schema-material-resolution.v1';
@@ -44,11 +46,10 @@ export async function resolvePortableSchemaMaterial(input = {}, options = {}) {
   }
 
   const candidates = collectSchemaCandidates(input);
-  for (const candidate of candidates) {
-    const inspected = inspectSchemaCandidate(candidate, schemaId);
-    findings.push(...inspected.findings);
-    if (inspected.material) return resolutionResult(schemaId, inspected.material, providerCatalog, findings, null);
-  }
+  const localSelection = selectSchemaCandidate(candidates, schemaId);
+  findings.push(...localSelection.findings);
+  if (localSelection.status === 'ambiguous') return resolutionResult(schemaId, null, providerCatalog, findings, null, 'ambiguous');
+  if (localSelection.material) return resolutionResult(schemaId, localSelection.material, providerCatalog, findings, null);
 
   const runtimeProviders = normalizeRuntimeProviders(options.providers || []);
   for (const provider of runtimeProviders.sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0))) {
@@ -68,11 +69,10 @@ export async function resolvePortableSchemaMaterial(input = {}, options = {}) {
       }));
       continue;
     }
-    for (const candidate of normalizeProviderResponse(response, provider)) {
-      const inspected = inspectSchemaCandidate(candidate, schemaId);
-      findings.push(...inspected.findings);
-      if (inspected.material) return resolutionResult(schemaId, inspected.material, providerCatalog, findings, null);
-    }
+    const providerSelection = selectSchemaCandidate(normalizeProviderResponse(response, provider), schemaId);
+    findings.push(...providerSelection.findings);
+    if (providerSelection.status === 'ambiguous') return resolutionResult(schemaId, null, providerCatalog, findings, null, 'ambiguous');
+    if (providerSelection.material) return resolutionResult(schemaId, providerSelection.material, providerCatalog, findings, null);
   }
 
   const request = buildProviderRequest(schemaId, providerCatalog, input, options);
@@ -111,7 +111,7 @@ export async function resolvePortableSchemaChainMaterial(input = {}, options = {
     findings.push(...(resolution.findings || []));
     if (!resolution.material) {
       pendingRequest = resolution.providerRequest || null;
-      status = 'provider-action-required';
+      status = resolution.status === 'provider-action-required' ? 'provider-action-required' : resolution.status || 'unresolved';
       break;
     }
     nodes.push(Object.freeze({
@@ -171,6 +171,35 @@ function collectSchemaCandidates(input = {}) {
   return out;
 }
 
+function selectSchemaCandidate(candidates = [], schemaId = '') {
+  const findings = [];
+  const materials = [];
+  for (const candidateValue of candidates) {
+    const inspected = inspectSchemaCandidate(candidateValue, schemaId);
+    findings.push(...inspected.findings);
+    if (inspected.material) materials.push(inspected.material);
+  }
+  if (!materials.length) return Object.freeze({ status: 'unresolved', material: null, findings: Object.freeze(findings) });
+  const ranked = materials.map((material) => Object.freeze({ material, rank: materialAuthorityRank(material.qualification), digest: stableHash(material.markdown || '') }));
+  const topRank = Math.max(...ranked.map((entry) => entry.rank));
+  const top = ranked.filter((entry) => entry.rank === topRank);
+  const distinct = new Map();
+  for (const entry of top) if (!distinct.has(entry.digest)) distinct.set(entry.digest, entry.material);
+  if (distinct.size > 1) {
+    findings.push(portableFinding('error', 'portable.schema-provider.material.ambiguous', 'Multiple equally qualified schema representations disagree on bytes; resolution failed closed.', { schemaId, authorityRank: topRank, candidates: [...distinct.values()].map((material) => ({ path: material.path, providerId: material.providerId, authority: material.qualification.authority })) }));
+    return Object.freeze({ status: 'ambiguous', material: null, findings: Object.freeze(findings) });
+  }
+  return Object.freeze({ status: 'resolved', material: top[0].material, findings: Object.freeze(findings) });
+}
+
+function materialAuthorityRank(qualification = {}) {
+  if (qualification.bindingMatch) return 400;
+  if (qualification.authority === 'bundled-canonical-self-verified' && qualification.sourceQualified) return 350;
+  if (qualification.authority === 'provider-declared-canonical-unverified') return 250;
+  if (qualification.authority === 'cache-preserved-source-qualification') return 200;
+  return 100;
+}
+
 function inspectSchemaCandidate(candidateValue, schemaId) {
   const findings = [];
   const file = candidateValue.file || {};
@@ -196,7 +225,7 @@ function inspectSchemaCandidate(candidateValue, schemaId) {
   }
   const source = normalizeSource(file.source || {}, candidateValue.providerId, candidateValue.remoteFetch, candidateValue.cached);
   const binding = schemaRegistry.byId.get(schemaId)?.binding || null;
-  const qualification = qualifyMaterial({ schemaId, path, source, binding, checksum: file.checksum || source.checksum || '' });
+  const qualification = qualifyPortableSchemaMaterial({ path, source, binding, checksum: file.checksum || source.checksum || '', markdown, runtimeBootstrapProvenance: candidateValue.runtimeBootstrapProvenance });
   const material = Object.freeze({
     schema: PORTABLE_SCHEMA_MATERIAL_RESOLUTION_SCHEMA_ID,
     schemaId,
@@ -211,48 +240,15 @@ function inspectSchemaCandidate(candidateValue, schemaId) {
   return { material, findings };
 }
 
-function resolutionResult(schemaId, material, providerCatalog, findings, providerRequest) {
+function resolutionResult(schemaId, material, providerCatalog, findings, providerRequest, statusOverride = '') {
   return Object.freeze({
     schema: PORTABLE_SCHEMA_MATERIAL_RESOLUTION_SCHEMA_ID,
     requestedSchema: schemaId,
-    status: material ? 'resolved' : providerRequest ? 'provider-action-required' : 'unresolved',
+    status: statusOverride || (material ? 'resolved' : providerRequest ? 'provider-action-required' : 'unresolved'),
     material,
     providerCatalog,
     providerRequest,
     findings: Object.freeze(findings)
-  });
-}
-
-function qualifyMaterial({ schemaId, path, source, binding, checksum }) {
-  const repositoryMatch = Boolean(binding?.sourceRepository && source.repository && binding.sourceRepository === source.repository);
-  const pathMatch = Boolean(binding?.sourcePath && normalizePath(binding.sourcePath) === normalizePath(path));
-  const commitMatch = Boolean(binding?.sourceCommit && source.commit && binding.sourceCommit === source.commit);
-  const expectedChecksum = String(binding?.checksum?.value || binding?.checksum || '');
-  const checksumMatch = Boolean(expectedChecksum && checksum && expectedChecksum === checksum);
-  const bindingMatch = Boolean(binding && repositoryMatch && pathMatch && commitMatch && (!checksum || checksumMatch));
-  const authority = bindingMatch
-    ? 'canonical-binding-match'
-    : source.authority === 'canonical-core'
-      ? 'provider-declared-canonical-unverified'
-      : source.cached
-        ? 'cache-preserved-source-qualification'
-        : 'supplied-unverified';
-  const limitations = [];
-  if (!bindingMatch && binding) limitations.push('Registered binding was not fully matched by explicit repository, commit, path, and optional checksum metadata.');
-  if (!binding) limitations.push('Schema is not registered in the current site runtime; readable schema material is available but executable child tooling may be unavailable.');
-  if (!source.repository && source.remoteFetch) limitations.push('Remote material lacks explicit repository identity.');
-  return Object.freeze({
-    exactSchemaIdentity: true,
-    authority,
-    bindingMatch,
-    registered: Boolean(binding),
-    repositoryMatch,
-    pathMatch,
-    commitMatch,
-    checksumMatch,
-    remoteFetch: Boolean(source.remoteFetch),
-    cached: Boolean(source.cached),
-    limitations: Object.freeze(limitations)
   });
 }
 
@@ -350,7 +346,7 @@ function providerDescriptor(id, kind, available, priority, description, remoteFe
 }
 
 function candidate(file, providerId, priority, remoteFetch, cached) {
-  return { file, providerId, priority, remoteFetch, cached };
+  return { file, providerId, priority, remoteFetch, cached, runtimeBootstrapProvenance: hasPortableBootstrapCanonicalProvenance(file?.source) };
 }
 
 function normalizeSource(source = {}, providerId = '', remoteFetch = false, cached = false) {

@@ -28,7 +28,7 @@ const ready = buildPublicationPreflight({
   records: [{ id: 'draft-1', title: 'Draft', path: 'drafts/draft.md', markdown: validDraftMarkdown, source: { adapterId: 'local' }, sourceMode: 'local-transition' }],
   assets: []
 });
-assert.equal(ready.status, 'degraded');
+assert.equal(ready.status, 'ready');
 assert.equal(ready.counts.publishableLocalDrafts, 1);
 assert.equal(ready.counts.errors, 0);
 assert.equal(ready.counts.sourceReferences, 0);

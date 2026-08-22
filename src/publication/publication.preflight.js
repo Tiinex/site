@@ -85,12 +85,15 @@ function assessLocalPublishCandidate(record = {}) {
   }
   const auditErrors = Number(audit.summary?.error || 0);
   const auditWarnings = Number(audit.summary?.warning || 0);
+  // v477: semantic contract validity is disclosed but is not itself publication/export readiness.
+  // Publication may preserve/re-home readable local bytes even when reopened semantic validation is incomplete.
+  // Envelope/readability failures remain blocking through the explicit publication checks above.
   if (auditErrors) {
-    findings.push(finding('error', 'publication.local-record.audit-errors', `Local draft has ${auditErrors} audit error${auditErrors === 1 ? '' : 's'}.`, { recordId: id, path: record.path || '' }));
+    findings.push(finding('info', 'publication.local-record.semantic-contract-invalid', `Local draft currently has ${auditErrors} semantic/audit error${auditErrors === 1 ? '' : 's'}; publication readiness is assessed separately and does not upgrade contract validity.`, { recordId: id, path: record.path || '' }));
   } else if (auditWarnings) {
-    findings.push(finding('warning', 'publication.local-record.audit-warnings', `Local draft has ${auditWarnings} audit warning${auditWarnings === 1 ? '' : 's'}.`, { recordId: id, path: record.path || '' }));
+    findings.push(finding('info', 'publication.local-record.semantic-contract-degraded', `Local draft currently has ${auditWarnings} semantic/audit warning${auditWarnings === 1 ? '' : 's'}; publication readiness is assessed separately.`, { recordId: id, path: record.path || '' }));
   }
-  const publishable = !missing.length && !auditErrors;
+  const publishable = !missing.length;
   return {
     publishable,
     record: candidateSummary(record, publishable ? 'ready' : 'blocked', publishable ? 'schema-envelope-ready' : 'audit-or-envelope-failed', audit),

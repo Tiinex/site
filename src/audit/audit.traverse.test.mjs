@@ -43,12 +43,12 @@ assert.equal(result.counts.auditedNodes, 3, 'audit traversal audits all loaded v
 assert(result.audited.some((item) => item.id === 'root'), 'root was audited');
 assert(result.audited.some((item) => item.id === 'child'), 'child was audited');
 assert(result.audited.some((item) => item.id === 'invalid' && Number(item.summary.warning || 0) >= 1), 'missing-integrity node contributes warnings at current root severity');
-assert.equal(result.status, 'degraded', 'warnings produce degraded audit traversal status');
+assert.equal(result.status, 'invalid-or-incomplete', 'legacy record/scalar-Origin fixture remains traversable but is semantically invalid under the unified Root contract');
 
 const missingResult = buildLoadedAuditTraversalScope([root, child, invalid, missing], { startId: 'missing', direction: 'ancestors', maxDepth: 4 });
 assert.equal(missingResult.counts.unavailableTargets, 1, 'missing lineage target is counted as unavailable');
 assert(missingResult.findings.some((finding) => finding.code === 'audit.traversal.unavailableTarget'), 'unavailable target finding is emitted');
-assert.equal(missingResult.status, 'degraded', 'missing target degrades traversal audit');
+assert.equal(missingResult.status, 'invalid-or-incomplete', 'missing-target legacy fixture remains traversable evidence but is semantically invalid under the unified Root contract');
 
 const missingStart = buildLoadedAuditTraversalScope([root], { startId: 'not-loaded', direction: 'ancestors' });
 assert.equal(missingStart.counts.auditedNodes, 0, 'missing start audits no records');

@@ -1,19 +1,28 @@
 # Continuity Context
-- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Parent Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 16:25:00
-  - Trace: record:.topics/development/tooling/dogfood/001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md
-  - Origin: .topics/development/tooling/dogfood/001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md
-  - Boundary: Portable local material; no GitHub provenance inferred.
+  - Trace: [001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md](001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md)
+  - Origin:
+    - [relative](001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-1-site-tooling-v472-portable-exact-authoring-fidelity-closure-result.trace.md)
+- Repairs:
+  - Historical canonical representation repair
+    - Target: [pre-repair published representation](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md)
+    - Note: Canonically repaired after v475-v478 qualified the authoring/validation/reference/integrity oracles; pre-repair Git blob 6e7e54c75d4a4547befe45ed9ec3870d621e660e.
+    - Reason: Preserve original body/work-result meaning and historical Current Created At while replacing false-PASS envelope, schema-reference, continuity, and integrity representation.
 - Current
-  - Current Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 16:34:00
-  - Summary: v473 portable parent authority coherence and metadata fidelity closure
   - Authors: Architect
-  - Status: draft/local
   - Why: Architect adversarial audit found remaining Parent authority and metadata-fidelity false-PASS after the v472 portable exact-authoring closure.
+  - Summary: v473 portable parent authority coherence and metadata fidelity closure
+  - Status: draft/local
+
 ---
+
 # v473 portable parent authority coherence and metadata fidelity closure
 
 ## Objective
@@ -31,7 +40,9 @@ Primary owner remains src/tooling/portable/** in the exact draft/continuation se
 ## Dependencies
 
 Input is the v472 Tooling result in this same worktree. Architect independently verified the v471 and v472 focused regressions and portable aggregate suite. Adversarial reproduction A: continue-from-record with Parent {id:"p", path:".topics/p.trace.md", schemaId:"tiinex.topic.v1", currentSchemaId:"tiinex.task.v1"} returns created-clean with exactCreateToolingApplied=true and exactRuntimeValidation=true, silently choosing schemaId. Reproduction B: the same continuation with Parent Created At "not-a-date" or "2026-01-01 00:00:00\nX" also returns created-clean/exactRuntimeValidation=true and renders the malformed value into Parent. Root declares Created At shape YYYY-MM-DD hh:mm:ss. These are same-seam authority/representation false-PASS defects. Q remains HOLD and the pending Dev correction stays deferred until portable handoff authoring is trustworthy enough for the next dogfood stage.
+
 # Continuity Integrity
-- Draft Local Integrity
-  - Method: browser-local-draft
-  - Value: pending-publication-or-export
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: QMzz4snF4cmTPy5JhwnwwmwpimagHNchXZ8PlrCCiZw

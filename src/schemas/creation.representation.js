@@ -1,4 +1,5 @@
-import { C14N_V2_METHOD_ID } from '../integrity/integrity.c14nV2.js';
+import { C14N_V2_METHOD_ID, qualifyIntegrityMethodReferenceValue } from '../integrity/integrity.methodReference.js';
+import { isMarkdownLink, isRelativePath } from './reference.shapes.js';
 
 export function inspectCreationRepresentation(markdown = '', options = {}) {
   const text = String(markdown || '').replace(/\r\n?/g, '\n');
@@ -29,6 +30,7 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
     bodyH2: Object.freeze(bodyH2),
     sectionBodies: Object.freeze(sectionBodies),
     integrityHeadings: integrityHeadingIndexes.length,
+    integrityEntries: integrityEntryCount(lines, integrityHeadingIndexes),
     selfIntegrityEntries: Object.freeze(selfEntries)
   });
 }
@@ -48,9 +50,20 @@ export function qualifyRootCreationRepresentation(markdown = '', contract = {}) 
   if (summaryBound) expectCount(findings, 'Current Summary field', observed.summary.length, 1);
   expectCount(findings, 'body H1 title', observed.bodyH1.length, 1);
   expectCount(findings, 'Continuity Integrity heading', observed.integrityHeadings, 1);
+  expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 1);
   expectCount(findings, `${C14N_V2_METHOD_ID} Towards:self entry`, observed.selfIntegrityEntries.length, 1);
+  qualifyPrimarySelfMethodReference(findings, observed, contract);
   for (const section of sections) expectCount(findings, `bound section ${section}`, observed.sectionBodies[section]?.length || 0, 1);
   return Object.freeze({ state: findings.length ? 'ambiguous' : 'qualified', findings: Object.freeze(findings), observed });
+}
+
+
+function qualifyPrimarySelfMethodReference(findings, observed, contract) {
+  if (observed.selfIntegrityEntries.length !== 1) return;
+  const authority = contract?.integrityMethodReferences?.primarySelf || null;
+  if (!authority) return;
+  const qualification = qualifyIntegrityMethodReferenceValue(observed.selfIntegrityEntries[0].methodRaw || observed.selfIntegrityEntries[0].method || '', authority);
+  for (const finding of qualification.findings || []) findings.push(finding);
 }
 
 function expectCount(findings, label, count, expected) {
@@ -104,6 +117,15 @@ function exactSectionBodies(lines, section) {
   }
   return out;
 }
+function integrityEntryCount(lines, integrityHeadingIndexes) {
+  let count = 0;
+  for (const headingIndex of integrityHeadingIndexes) {
+    const end = nextTopLevelHeading(lines, headingIndex + 1);
+    for (let i = headingIndex + 1; i < end; i += 1) if (/^-\s+\S/.test(lines[i])) count += 1;
+  }
+  return count;
+}
+
 function integritySelfEntries(lines, integrityHeadingIndexes) {
   const out = [];
   for (const headingIndex of integrityHeadingIndexes) {
@@ -113,7 +135,7 @@ function integritySelfEntries(lines, integrityHeadingIndexes) {
       const top = lines[i].match(/^-\s+(.+?)\s*$/);
       if (top) {
         if (current && isSelf(current)) out.push(Object.freeze(current));
-        current = { method: stripLink(top[1]), towards: '', valueCount: 0 };
+        current = { methodRaw: top[1], method: stripLink(top[1]), towards: '', valueCount: 0 };
         continue;
       }
       if (!current) continue;
@@ -128,3 +150,72 @@ function isSelf(entry) { return entry.method === C14N_V2_METHOD_ID && entry.towa
 function nextTopLevelHeading(lines, start) { for (let i = start; i < lines.length; i += 1) if (/^#\s+/.test(lines[i])) return i; return lines.length; }
 function stripLink(value = '') { const text = String(value || '').trim(); const link = text.match(/^\[([^\]]+)\]\([^)]+\)$/); return (link ? link[1] : text).trim(); }
 function escapeRegExp(value = '') { return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+export function qualifyContinuationCreationRepresentation(markdown = '', contract = {}, parentRecord = {}, options = {}) {
+  const creation = contract?.creation || {};
+  const sections = [...new Set([...(creation.requiredSections || []), ...(creation.inputBindings || []).filter((item) => item?.kind === 'section-body').map((item) => item.section).filter(Boolean)])];
+  const observed = inspectCreationRepresentation(markdown, { boundSections: sections });
+  const findings = [];
+  expectCount(findings, 'Continuity Context heading', observed.continuityContextHeadings, 1);
+  expectCount(findings, 'Envelope Schema field', observed.envelopeSchema.length, 1);
+  expectCount(findings, 'Current block', observed.currentBlocks, 1);
+  expectCount(findings, 'Parent block', observed.parentBlocks, 1);
+  expectCount(findings, 'Current Schema field', observed.currentSchema.length, 1);
+  expectCount(findings, 'Created At field', observed.createdAt.length, 1);
+  expectCount(findings, 'body H1 title', observed.bodyH1.length, 1);
+  expectCount(findings, 'Continuity Integrity heading', observed.integrityHeadings, 1);
+  expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 1);
+  expectCount(findings, `${C14N_V2_METHOD_ID} Towards:self entry`, observed.selfIntegrityEntries.length, 1);
+  qualifyPrimarySelfMethodReference(findings, observed, contract);
+  for (const section of sections) expectCount(findings, `bound section ${section}`, observed.sectionBodies[section]?.length || 0, 1);
+
+  const text = String(markdown || '').replace(/\r\n?/g, '\n');
+  const parentBlock = exactTopLevelBlock(text, 'Parent');
+  if (!parentBlock) findings.push('Parent block is required.');
+  else {
+    const traceLines = exactNestedFieldLines(parentBlock, 'Trace');
+    const originHeader = exactNestedFieldLines(parentBlock, 'Origin', { allowEmpty: true });
+    const boundaryLines = exactNestedFieldLines(parentBlock, 'Boundary');
+    expectCount(findings, 'Parent Trace field', traceLines.length, 1);
+    expectCount(findings, 'Parent Origin block', originHeader.length, 1);
+    expectCount(findings, 'undeclared Parent Boundary field', boundaryLines.length, 0);
+    const trace = traceLines[0]?.value || '';
+    if (trace && !isMarkdownLink(trace) && !isRelativePath(trace)) findings.push('Parent Trace must be one Markdown link or one relative path; synthetic record tokens are not Root Trace authority.');
+    if (trace.startsWith('record:')) findings.push('Parent Trace must not use a record: synthetic token.');
+    const origins = originHeader.length ? nestedOriginLinks(parentBlock, originHeader[0].index) : [];
+    const relative = origins.filter((entry) => entry.label === 'relative');
+    const browse = origins.filter((entry) => entry.label === 'browse + git');
+    if (origins.length !== 2 || relative.length !== 1 || browse.length !== 1) findings.push('Parent Origin must contain exactly one [relative](...) and one [browse + git](...) entry for exact portable continuation.');
+    if (relative[0]?.target !== String(options.relativeReference || '')) findings.push(`Parent relative Origin must be exactly ${options.relativeReference || '(unavailable)'}.`);
+    if (browse[0]?.target !== String(parentRecord?.publishedReference?.target || '')) findings.push('Parent browse + git Origin must preserve the exact qualified published Parent representation.');
+  }
+  return Object.freeze({ state: findings.length ? 'ambiguous' : 'qualified', findings: Object.freeze(findings), observed });
+}
+
+function exactTopLevelBlock(text, label) {
+  const lines = String(text || '').split('\n');
+  const start = lines.findIndex((line) => line === `- ${label}`);
+  if (start < 0) return null;
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i += 1) if (/^-\s+\S/.test(lines[i])) { end = i; break; }
+  return Object.freeze({ lines: Object.freeze(lines.slice(start + 1, end)) });
+}
+function exactNestedFieldLines(block, label, options = {}) {
+  const escaped = escapeRegExp(label); const out = [];
+  for (let i = 0; i < (block?.lines || []).length; i += 1) {
+    const match = block.lines[i].match(new RegExp(`^  - ${escaped}:\\s*(.*)$`));
+    if (!match) continue;
+    if (match[1] || options.allowEmpty) out.push(Object.freeze({ index: i, value: match[1] }));
+  }
+  return out;
+}
+function nestedOriginLinks(block, originIndex) {
+  const out = [];
+  for (let i = originIndex + 1; i < (block?.lines || []).length; i += 1) {
+    const line = block.lines[i];
+    if (/^  - \S/.test(line)) break;
+    const match = line.match(/^    - \[([^\]]+)\]\(([^)]+)\)$/);
+    if (match) out.push(Object.freeze({ label: match[1], target: match[2] }));
+  }
+  return out;
+}

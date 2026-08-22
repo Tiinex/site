@@ -13,6 +13,10 @@ const topicValues = {
   'Design Direction': 'Preserve  caller  bytes.',
   'Next Artifacts': 'Continue without synthesized convenience values.'
 };
+const PARENT_SCHEMA_REFERENCE = 'https://archive.example.test/schemas/tiinex.topic.v1.schema.md';
+const PARENT_PUBLISHED_REFERENCE = 'https://archive.example.test/artifacts/p.trace.md';
+const qualifiedParent = (extra = {}) => ({ id: 'parent-A', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1', publishedReference: { target: PARENT_PUBLISHED_REFERENCE, state: 'qualified' }, schemaReferenceAuthority: { schemaId: 'tiinex.topic.v1', preferredTarget: PARENT_SCHEMA_REFERENCE, resolutionState: 'qualified' }, ...extra });
+
 const taskValues = {
   Summary: 'Exact  task   values',
   Objective: 'Preserve  exact   objective text.',
@@ -61,7 +65,7 @@ const contradictory = createPortableLocalDraft({
 assert.equal(contradictory.status, 'blocked');
 assert.equal(contradictory.draft, null);
 assert.equal(contradictory.qualification.exactCreateToolingApplied, false);
-assert(contradictory.findings.some((finding) => finding.code === 'portable.draft-create.parent.continuation-parent-trace-contradictory'));
+assert(contradictory.findings.some((finding) => finding.code === 'portable.draft-create.parent.continuation-parent-legacy-trace-not-authority')); 
 
 const kindOnly = createPortableLocalDraft({
   schemaId: 'tiinex.task.v1', transitionType: 'continue-from-record', values: taskValues, title: taskValues.Summary, summary: taskValues.Summary,
@@ -75,15 +79,16 @@ assert(kindOnly.findings.some((finding) => finding.code === 'portable.draft-crea
 
 const coherent = createPortableLocalDraft({
   schemaId: 'tiinex.task.v1', transitionType: 'continue-from-record', values: taskValues,
-  parentRecord: { id: 'parent-A', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1' },
+  parentRecord: qualifiedParent(),
   createdAt: '2026-08-21T16:25:00.000Z'
 });
 assert.equal(coherent.status, 'created-clean');
 assert.equal(coherent.qualification.exactCreateToolingApplied, true);
 const parsedChild = parseArtifactMarkdown(coherent.draft.markdown);
-assert.equal(parsedChild.envelope.parent.trace, 'record:parent-A');
+assert.equal(parsedChild.envelope.parent.trace.startsWith('record:'), false);
 assert.equal(parsedChild.envelope.parent.schema.id, 'tiinex.topic.v1');
-assert.equal(parsedChild.envelope.parent.origin, '.topics/p.trace.md');
+assert.equal(parsedChild.envelope.parent.schema.target, PARENT_SCHEMA_REFERENCE);
+assert(parsedChild.envelope.parent.originEntries.some((entry) => entry.label === 'browse + git' && entry.target === PARENT_PUBLISHED_REFERENCE));
 
 const tmp = await mkdtemp(path.join(os.tmpdir(), 'tiinex-v472-exact-authoring-'));
 try {

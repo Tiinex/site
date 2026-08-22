@@ -124,10 +124,24 @@ try {
   const parentPath = path.join(root, 'parent.json');
   await writeFile(parentPath, JSON.stringify({ id: 'parent-record', path: 'parent.md', schemaId: 'tiinex.preservation.v1', boundary: 'portable local material; no GitHub provenance inferred' }), 'utf8');
   const createOutput = [];
-  assert.equal(await runPortableCli(['create-local-draft', schemaDir, '--schema', 'tiinex.evidence.v1', '--values', valuesPath, '--parent', parentPath, '--title', 'CLI Evidence'], { log(value) { createOutput.push(value); }, error() {} }), 0);
+  assert.equal(await runPortableCli(['create-local-draft', schemaDir, '--schema', 'tiinex.evidence.v1', '--values', valuesPath, '--parent', parentPath, '--title', 'CLI Evidence'], { log(value) { createOutput.push(value); }, error() {} }), 2, 'legacy readable-schema parent draft must remain materialized but semantic validation errors make the CLI nonzero');
   const createdDraft = JSON.parse(createOutput[0]);
-  assert.equal(createdDraft.status, 'created-clean');
+  assert.equal(createdDraft.status, 'created-invalid');
+  assert.equal(createdDraft.qualification.exactRuntimeValidation, false);
   assert.equal(createdDraft.draft.markdown.includes('## Evidence Material'), true);
+
+  const packageValuesPath = path.join(root, 'package-topic-values.json');
+  await writeFile(packageValuesPath, JSON.stringify({
+    Summary: 'CLI package topic',
+    'Current Read': 'Portable package fixture.',
+    'Design Direction': 'Exercise package transport with a contract-valid local root.',
+    'Next Artifacts': 'None.'
+  }), 'utf8');
+  const packageDraftOutput = [];
+  assert.equal(await runPortableCli(['create-local-draft', schemaDir, '--schema', 'tiinex.topic.v1', '--values', packageValuesPath, '--title', 'CLI package topic'], { log(value) { packageDraftOutput.push(value); }, error() {} }), 0);
+  const packageDraft = JSON.parse(packageDraftOutput[0]);
+  assert.equal(packageDraft.status, 'created-clean');
+  const packageStaged = { ...packageDraft.draft, qualification: packageDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
 
   const sessionPath = path.join(root, 'session.json');
   const staged = { ...createdDraft.draft, qualification: createdDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
@@ -144,7 +158,7 @@ try {
   assert.equal(JSON.parse(restoreCheckpointOutput[0]).status, 'restored');
 
   const stagedPath = path.join(root, 'staged.json');
-  await writeFile(stagedPath, JSON.stringify([staged]), 'utf8');
+  await writeFile(stagedPath, JSON.stringify([packageStaged]), 'utf8');
   const packageOutput = [];
   assert.equal(await runPortableCli(['build-runtime-package', '--staged', stagedPath, '--title', 'CLI package'], { log(value) { packageOutput.push(value); }, error() {} }), 0);
   const runtimePackage = JSON.parse(packageOutput[0]);

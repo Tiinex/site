@@ -55,16 +55,27 @@ assert.equal(hasParent(rootParsed.envelope.parent), false);
 assert.equal(rootMarkdown.includes('\n- Parent\n'), false);
 assert.equal(validateArtifactCreationResult({ schemaId: 'tiinex.topic.v1', status: 'local', sourceMode: 'local-create', markdown: rootMarkdown }, {}, { contract: topicRoot }).ok, true);
 
-const parent = Object.freeze({ id: 'parent-455', path: '.topics/parent-455.trace.md', schemaId: 'tiinex.topic.v1', createdAt: '2026-08-20T00:00:00.000Z', sourceMode: 'local-test' });
+const parent = Object.freeze({ id: 'parent-455', path: '.topics/parent-455.trace.md', schemaId: 'tiinex.topic.v1', currentSchemaId: 'tiinex.topic.v1', createdAt: '2026-08-20 00:00:00', currentCreatedAt: '2026-08-20 00:00:00', sourceMode: 'local-test' });
 assert.equal(createArtifactDraftMarkdown(topicRoot, { parentRecord: parent, values: topicValues }), '', 'ordinary root Create must refuse supplied Parent input');
 const continuation = buildArtifactCreationContract({ schemaId: 'tiinex.topic.v1', transitionType: 'continue-from-record' });
-const continuationMarkdown = createArtifactDraftMarkdown(continuation, { parentRecord: parent, title: 'Continuation', summary: 'Continuation', createdAt: '2026-08-20T00:00:00.000Z', bodyMarkdown: '# Continuation\n\n## Current Read\n\nread\n\n## Design Direction\n\ndirection\n\n## Next Artifacts\n\nnext' });
+const unpublishedContinuation = createArtifactDraftMarkdown(continuation, { parentRecord: parent, title: 'Continuation', summary: 'Continuation', createdAt: '2026-08-20T00:00:00.000Z', bodyMarkdown: '# Continuation\n\n## Current Read\n\nread\n\n## Design Direction\n\ndirection\n\n## Next Artifacts\n\nnext', childPath: '.topics/children/continuation.trace.md' });
+assert.equal(unpublishedContinuation, '', 'exact continuation must fail closed when the local Parent has no qualified published/recovery authority');
+const qualifiedParent = Object.freeze({
+  ...parent,
+  publishedReference: Object.freeze({ target: 'https://archive.example.test/v455/parent-455.trace.md', state: 'qualified' }),
+  schemaReferenceAuthority: Object.freeze({ ...continuation.schemaReferences.current, resolutionState: 'qualified' })
+});
+const continuationPath = '.topics/children/continuation.trace.md';
+const continuationMarkdown = createArtifactDraftMarkdown(continuation, { parentRecord: qualifiedParent, title: 'Continuation', summary: 'Continuation', createdAt: '2026-08-20T00:00:00.000Z', bodyMarkdown: '# Continuation\n\n## Current Read\n\nread\n\n## Design Direction\n\ndirection\n\n## Next Artifacts\n\nnext', childPath: continuationPath });
 const continuationParsed = parseArtifactMarkdown(continuationMarkdown);
-assert.equal(continuationParsed.envelope.parent.schema.id, parent.schemaId);
-assert.equal(continuationParsed.envelope.parent.trace, `record:${parent.id}`);
-assert.equal(continuationParsed.envelope.parent.origin, parent.path);
-assert.equal(validateArtifactCreationResult({ schemaId: 'tiinex.topic.v1', status: 'local', sourceMode: 'local-create', markdown: continuationMarkdown }, parent, { contract: continuation }).ok, true);
-const rootAgainstParentBytes = validateArtifactCreationResult({ schemaId: 'tiinex.topic.v1', status: 'local', sourceMode: 'local-create', markdown: continuationMarkdown }, {}, { contract: topicRoot });
+assert.equal(continuationParsed.envelope.parent.schema.id, qualifiedParent.schemaId);
+assert.equal(continuationParsed.envelope.parent.trace, '../parent-455.trace.md');
+assert.deepEqual(continuationParsed.envelope.parent.originEntries.map(({ label, target }) => ({ label, target })), [
+  { label: 'relative', target: '../parent-455.trace.md' },
+  { label: 'browse + git', target: qualifiedParent.publishedReference.target }
+]);
+assert.equal(validateArtifactCreationResult({ schemaId: 'tiinex.topic.v1', status: 'local', sourceMode: 'local-create', markdown: continuationMarkdown, path: continuationPath }, qualifiedParent, { contract: continuation, childPath: continuationPath }).ok, true);
+const rootAgainstParentBytes = validateArtifactCreationResult({ schemaId: 'tiinex.topic.v1', status: 'local', sourceMode: 'local-create', markdown: continuationMarkdown, path: continuationPath }, {}, { contract: topicRoot });
 assert.equal(rootAgainstParentBytes.ok, false);
 assert(rootAgainstParentBytes.findings.some((finding) => finding.code === 'creation.parent.unexpected'));
 

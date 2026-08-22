@@ -17,14 +17,16 @@ const values = Object.freeze({
   Dependencies: 'Qualified explicit Parent metadata.'
 });
 const createdAt = '2026-08-21T16:40:00.000Z';
+const withAuthority = (parent = {}) => ({ ...parent, publishedReference: { target: 'https://archive.example.test/exact/parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: parent.schemaId || parent.currentSchemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/parent.schema.md', resolutionState: 'qualified' } });
 
 async function continueTask(parentRecord) {
   return runPortableOperation('create-local-draft', {
     schemaId: 'tiinex.task.v1',
     transitionType: 'continue-from-record',
     values,
+    path: '.topics/child.trace.md',
     createdAt,
-    parentRecord
+    parentRecord: withAuthority(parentRecord)
   });
 }
 
@@ -54,12 +56,12 @@ for (const parentRecord of [
 }
 
 const canonicalCreatedAt = '2026-01-01 00:00:00';
-const canonicalParent = { id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1', createdAt: canonicalCreatedAt };
+const canonicalParent = withAuthority({ id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1', createdAt: canonicalCreatedAt });
 const canonical = await continueTask(canonicalParent);
 assert.equal(canonical.status, 'created-clean');
 assert.equal(canonical.qualification.exactCreateToolingApplied, true);
 assert.equal(canonical.qualification.exactRuntimeValidation, true);
-assert(canonical.draft.markdown.includes(`  - Created At: ${canonicalCreatedAt}\n  - Trace: record:p`));
+assert(canonical.draft.markdown.includes(`  - Created At: ${canonicalCreatedAt}\n  - Trace: [p.trace.md](p.trace.md)`));
 assert.equal(parseArtifactMarkdown(canonical.draft.markdown).envelope.parent.createdAt, canonicalCreatedAt);
 
 const omitted = await continueTask({ id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1' });
@@ -90,21 +92,21 @@ for (const invalidCreatedAt of [
 
 const snapshotQualification = qualifyPortableExactParent(normalizePortableParentRecord(canonicalParent), 'continue-from-record');
 assert.equal(snapshotQualification.state, 'qualified');
-assert.equal(qualifyPortableRenderedParentRepresentation(canonical.draft.markdown, snapshotQualification.snapshot, 'continue-from-record').state, 'qualified');
+assert.equal(qualifyPortableRenderedParentRepresentation(canonical.draft.markdown, snapshotQualification.snapshot, 'continue-from-record', '.topics/child.trace.md').state, 'qualified');
 const driftedTimestamp = canonical.draft.markdown.replace(
-  `  - Created At: ${canonicalCreatedAt}\n  - Trace: record:p`,
-  `  - Created At: ${canonicalCreatedAt} \n  - Trace: record:p`
+  `  - Created At: ${canonicalCreatedAt}\n  - Trace: [p.trace.md](p.trace.md)`,
+  `  - Created At: ${canonicalCreatedAt} \n  - Trace: [p.trace.md](p.trace.md)`
 );
-const driftQualification = qualifyPortableRenderedParentRepresentation(driftedTimestamp, snapshotQualification.snapshot, 'continue-from-record');
+const driftQualification = qualifyPortableRenderedParentRepresentation(driftedTimestamp, snapshotQualification.snapshot, 'continue-from-record', '.topics/child.trace.md');
 assert.equal(driftQualification.state, 'invalid');
-assert.equal(driftQualification.reason, 'exact-result-parent-created-at-mismatch');
+assert.equal(driftQualification.reason, 'exact-result-parent-representation-mismatch');
 
-const omittedSnapshot = qualifyPortableExactParent(normalizePortableParentRecord({ id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1' }), 'continue-from-record');
+const omittedSnapshot = qualifyPortableExactParent(normalizePortableParentRecord(withAuthority({ id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1' })), 'continue-from-record');
 assert.equal(omittedSnapshot.state, 'qualified');
-const inventedTimestamp = omitted.draft.markdown.replace('  - Trace: record:p', `  - Created At: ${canonicalCreatedAt}\n  - Trace: record:p`);
-const inventedQualification = qualifyPortableRenderedParentRepresentation(inventedTimestamp, omittedSnapshot.snapshot, 'continue-from-record');
+const inventedTimestamp = omitted.draft.markdown.replace('  - Trace: [p.trace.md](p.trace.md)', `  - Created At: ${canonicalCreatedAt}\n  - Trace: [p.trace.md](p.trace.md)`);
+const inventedQualification = qualifyPortableRenderedParentRepresentation(inventedTimestamp, omittedSnapshot.snapshot, 'continue-from-record', '.topics/child.trace.md');
 assert.equal(inventedQualification.state, 'invalid');
-assert.equal(inventedQualification.reason, 'exact-result-parent-created-at-mismatch');
+assert.equal(inventedQualification.reason, 'exact-result-parent-representation-mismatch');
 
 const directContradiction = createPortableLocalDraft({
   schemaId: 'tiinex.task.v1', transitionType: 'continue-from-record', values, createdAt,
@@ -115,7 +117,7 @@ assert.equal(directContradiction.qualification.parentAuthorityQualification, 'in
 
 function loadedParentSet(parentRecord) {
   return createPortableLocalArtifactSet({
-    records: [{ ...parentRecord, id: 'loaded-p', path: '.topics/loaded-p.trace.md', hasContinuityContext: true }],
+    records: [{ ...withAuthority(parentRecord), id: 'loaded-p', path: '.topics/loaded-p.trace.md', hasContinuityContext: true }],
     proposals: [{
       id: 'loaded-child', schemaId: 'tiinex.task.v1', parentRef: 'loaded-p', path: '.topics/loaded-child.trace.md',
       rationale: 'Pressure loaded Parent projection without rewriting authority-bearing metadata.', evidenceRefs: ['loaded-p'], values, createdAt

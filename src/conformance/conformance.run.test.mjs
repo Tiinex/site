@@ -40,7 +40,9 @@ assert.equal(result.invariants.schemaCapabilityUnknownUsesRootFallback, true, 'u
 assert.equal(result.invariants.artifactCreationContractsPresent, true, 'artifact creation contracts must be part of conformance spine');
 assert.equal(result.invariants.artifactCreationContractReady, true, 'topic creation contract must validate as ready');
 assert.equal(result.invariants.artifactCreationUnknownBlocked, true, 'unknown schema creation must be blocked instead of created through fallback');
-assert.equal(result.invariants.artifactCreationResultValidates, true, 'contract-created continuation draft must validate');
+assert.equal(result.invariants.artifactCreationResultValidates, false, 'legacy local transition draft must not be upgraded to exact creation validity without canonical Parent/reference/integrity authority');
+assert(result.creationContracts.continuationCreationValidation.findings.some((finding) => finding.code === 'creation.continuation-representation.10'), 'legacy record: Trace must remain visible as an exact-creation rejection');
+assert(result.creationContracts.continuationCreationValidation.findings.some((finding) => finding.code === 'creation.parent-browse-git.unresolved'), 'legacy local transition draft must remain non-exact without published Parent browse + git authority');
 assert.equal(result.invariants.artifactCreationResultLocalOnly, true, 'artifact creation result must stay local and source-free');
 assert.equal(result.invariants.publicationPreflightPresent, true, 'publication preflight must be part of conformance spine');
 assert.equal(result.invariants.publicationPreflightProtectsNonDrafts, true, 'publication preflight must block non-envelope local material');

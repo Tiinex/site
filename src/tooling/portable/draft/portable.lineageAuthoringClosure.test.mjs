@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
-import { createRecordFromMarkdown } from '../../../artifacts/artifact.record.js';
-import { resolveLineage } from '../../../lineage/lineage.resolve.js';
 import { createPortableLocalDraft } from './draft.create.js';
 import { createPortableLocalArtifactSet } from './draft.set.js';
 import { processPortableLiveTurn } from '../live/live.lineage.js';
+
+const ROOT_SCHEMA_REFERENCE = 'https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/tiinex.root.v1.schema.md';
+const TASK_SCHEMA_REFERENCE = 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md';
+const taskSchemaReferences = Object.freeze({
+  envelope: Object.freeze({ schemaId: 'tiinex.root.v1', preferredTarget: ROOT_SCHEMA_REFERENCE, resolutionState: 'qualified' }),
+  current: Object.freeze({ schemaId: 'tiinex.task.v1', preferredTarget: TASK_SCHEMA_REFERENCE, resolutionState: 'qualified' })
+});
 
 const rootValues = {
   Summary: 'Portable lineage authoring root',
@@ -79,32 +83,32 @@ const proposals = [
     rationale: 'Exercise exact continue-from-record semantics in the same portable artifact set.',
     evidenceRefs: ['task:v471-portable-lineage-authoring-closure'],
     createdAt: '2026-08-21T15:32:00.000Z',
+    schemaReferences: taskSchemaReferences,
     values: taskValues
   }
 ];
 const set = createPortableLocalArtifactSet({ proposals }, { createdAt: '2026-08-21T15:32:00.000Z' });
-assert.equal(set.status, 'created-clean');
+assert.equal(set.status, 'created-local-continuity', 'unpublished local Parent must carry relative continuity without forcing publication');
 assert.equal(set.artifacts.length, 2);
 const [setRoot, setChild] = set.artifacts;
 assert.equal(setRoot.draft.id, 'dogfood-root-topic');
 assert.equal(setRoot.draft.path, rootPath);
 assert.notEqual(setRoot.draft.id, setRoot.draft.path, 'logical id must not be replaced by repository path');
 assert.equal(setRoot.draft.creationMode, 'exact-site-creation-contract');
-assert.equal(setChild.draft.creationMode, 'exact-site-creation-contract');
-assert.equal(setChild.validation.status, 'clean');
-assert(Buffer.byteLength(setChild.draft.markdown) > 0, 'child Markdown must be non-empty');
-const parsedChild = parseArtifactMarkdown(setChild.draft.markdown);
-assert.equal(parsedChild.envelope.parent.trace, 'record:dogfood-root-topic');
-assert.equal(parsedChild.envelope.parent.origin, rootPath);
-assert.notEqual(parsedChild.envelope.parent.trace, '../dogfood-root-topic.trace.md');
-assert(set.lineageClosure.edges.some((edge) => edge.childPath === childPath && edge.parentPath === rootPath && edge.parentKind === 'created-in-set'), 'artifact set must expose the created lineage edge');
-
-const lineageRecords = [setRoot.draft, setChild.draft].map((draft) => Object.assign(
-  createRecordFromMarkdown(draft.markdown, { path: draft.path }),
-  { id: draft.id, path: draft.path, sourceMode: draft.sourceMode }
-));
-const lineage = resolveLineage(lineageRecords, { depth: 'v471-portable-authoring-closure' });
-assert(lineage.edges.some((edge) => edge.from === 'dogfood-root-topic' && edge.to === 'dogfood-child-task' && edge.kind === 'parent'), 'shared lineage resolver must resolve the logical record:<id> edge');
+assert.equal(setRoot.validation.status, 'clean');
+assert(setChild.draft, 'unpublished local Parent must remain authorable through exact relative continuity representation');
+assert.equal(setChild.qualification?.parentAuthorityQualification, 'qualified-local-continuity');
+assert.equal(setChild.qualification?.parentAuthorityReason, 'continuation-parent-browse-git-root-contract-conflict');
+assert.equal(setChild.qualification?.localContinuityUsable, true);
+assert.equal(setChild.qualification?.exactCreateToolingApplied, false);
+assert.equal(setChild.qualification?.exactRuntimeValidation, false);
+assert(setChild.draft.markdown.includes(`  - Current Schema: [tiinex.task.v1](${TASK_SCHEMA_REFERENCE})`), 'local continuity preserves the caller-qualified external child schema reference');
+assert(setChild.draft.markdown.includes('  - Trace: [dogfood-root-topic.trace.md](dogfood-root-topic.trace.md)'), 'local continuity uses a real relative Parent Trace');
+assert(setChild.draft.markdown.includes('  - Origin:\n    - [relative](dogfood-root-topic.trace.md)'), 'local continuity keeps a labelled relative Origin');
+assert.equal(setChild.draft.markdown.includes('[browse + git]'), false, 'unpublished local Parent must not fabricate browse + git authority');
+assert(set.findings.some((finding) => finding.code === 'portable.draft-create.parent.root-browse-git-authority-conflict'), 'set must expose the Root browse + git exactness conflict without forcing publication');
+assert.equal(JSON.stringify(set).includes('record:dogfood-root-topic'), false, 'v475 must not restore record:<id> as Root Trace authority');
+assert.equal(JSON.stringify(set).includes('github.com/Tiinex/site/blob/'), false, 'v475 must not fabricate a browse + git permalink for the unpublished local Parent');
 
 const userMessage = 'Create a portable Topic root and a Task child in one live lineage turn.';
 const live = processPortableLiveTurn({
@@ -138,20 +142,21 @@ const live = processPortableLiveTurn({
       summary: 'Live portable child',
       evidenceRefs: ['dialogue:v471-live-1'],
       allowIncomplete: false,
+      schemaReferences: taskSchemaReferences,
       values: { ...taskValues, Summary: 'Live portable child' }
     }
   ]
 }, { clock: () => '2026-08-21T15:40:00.000Z' });
 assert.equal(live.status, 'processed-with-artifact-change');
-assert.equal(live.findings.some((finding) => finding.severity === 'error'), false);
-const liveRoot = live.state.artifacts.find((artifact) => artifact.id === 'live-root');
+assert.equal(live.state.artifacts.length, 2, 'same-turn local lineage may retain root and child without a publication interlock');
 const liveChild = live.state.artifacts.find((artifact) => artifact.id === 'live-child');
-assert.equal(liveRoot?.draft?.creationMode, 'exact-site-creation-contract');
-assert.equal(liveRoot?.draft?.markdown?.includes('- Parent\n'), false);
-assert.equal(liveChild?.draft?.creationMode, 'exact-site-creation-contract');
-assert.equal(liveChild?.exportReady, true);
-const parsedLiveChild = parseArtifactMarkdown(liveChild?.draft?.markdown || '');
-assert.equal(parsedLiveChild.envelope.parent.trace, 'record:live-root');
-assert.equal(parsedLiveChild.envelope.parent.origin, '.topics/development/tooling/dogfood/generated/live-root.trace.md');
+assert(liveChild?.draft?.markdown.includes('  - Trace: [live-root.trace.md](live-root.trace.md)'), 'live child must preserve a real relative Parent Trace');
+assert(liveChild?.draft?.markdown.includes('  - Origin:\n    - [relative](live-root.trace.md)'), 'live child must preserve labelled relative Origin');
+assert.equal(liveChild?.draft?.markdown.includes('[browse + git]'), false, 'live child must not fabricate publication authority');
+assert.equal(liveChild?.qualification?.localContinuityUsable, true);
+assert.equal(liveChild?.qualification?.exactRuntimeValidation, false, 'Root browse + git conflict prevents exact qualification even though local continuity is usable');
+assert.equal(liveChild?.exportReady, false, 'authority-conflicted local continuity must not be export-ready as an exact artifact');
+assert.equal(JSON.stringify(live).includes('record:live-root'), false, 'live path must not synthesize record:<id> Trace authority');
+assert.equal(JSON.stringify(live).includes('github.com/Tiinex/site/blob/'), false, 'live path must not synthesize a browse + git Parent authority');
 
-console.log('✓ v471 portable lineage authoring closure: exact root, child continuation, logical identity, lineage resolution, live lineage, and custom-schema fail-closed passed');
+console.log('✓ v471 portable lineage authoring closure preserved under v475 acceptance correction: unpublished same-set/live Parents carry relative continuity without fabricated publication, while exact Root qualification remains false');

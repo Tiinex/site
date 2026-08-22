@@ -25,14 +25,14 @@ export function qualifySchemaReadingContractMarkdown(markdown = '', requestedSch
 
   let artifactValidation = null;
   if (exactModule && identityExact && checksumExact && !parseException) {
-    artifactValidation = validateArtifact({ markdown: text, parsed, resolution });
+    artifactValidation = validateArtifact({ markdown: text, parsed, resolution, schemaReferenceAuthorities: sourceQualifiedSchemaReferenceContext(parsed) });
   }
   const validationState = String(artifactValidation?.validation?.state || '');
   const validationExact = requested === 'tiinex.root.v1'
     ? validationState === 'root-validated'
     : validationState === 'exact-schema-validated';
   const validationErrors = Array.isArray(artifactValidation?.findings)
-    ? artifactValidation.findings.filter((finding) => String(finding?.severity || '').toLowerCase() === 'error')
+    ? artifactValidation.findings.filter((finding) => String(finding?.severity || '').toLowerCase() === 'error' && !['machine-contract', 'integrity'].includes(String(finding?.qualification || '')))
     : [];
 
   if (!requested) findings.push('Requested schema identifier authority is unavailable.');
@@ -71,4 +71,21 @@ export function qualifySchemaReadingContractMarkdown(markdown = '', requestedSch
     moduleAuthorityState: exactModule ? 'qualified' : 'unavailable',
     findings: Object.freeze(findings)
   });
+}
+
+
+function sourceQualifiedSchemaReferenceContext(parsed = {}) {
+  const parent = parsed?.envelope?.parent || {};
+  return Object.freeze({
+    envelope: declaredReferenceAuthority(parsed?.envelope?.envelopeSchema),
+    current: declaredReferenceAuthority(parsed?.envelope?.current?.schema),
+    parent: declaredReferenceAuthority(parent?.schema)
+  });
+}
+
+function declaredReferenceAuthority(reference = {}) {
+  const schemaId = String(reference?.id || '').trim();
+  const target = String(reference?.target || '').trim();
+  if (!schemaId) return null;
+  return Object.freeze({ schemaId, exactTargets: Object.freeze(target ? [target] : []), preferredTarget: target, resolutionState: 'qualified', evidence: Object.freeze({ source: 'exact-installed-schema-source-checksum' }) });
 }

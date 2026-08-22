@@ -3,6 +3,7 @@ import { prepareEpistemicMaterialization } from '../materialization/epistemic.pl
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { resolveLineage } from '../../../lineage/lineage.resolve.js';
+import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 
 export const PORTABLE_ARTIFACT_SET_CREATION_SCHEMA_ID = 'tiinex.portable.artifact-set-creation.v1';
 
@@ -40,6 +41,7 @@ export function createPortableLocalArtifactSet(input = {}, options = {}) {
       sections: proposal.sections,
       bodyMarkdown: proposal.bodyMarkdown,
       createdAt: proposal.createdAt || input.createdAt || options.createdAt,
+      schemaReferences: proposal.schemaReferences || input.schemaReferences || null,
       transitionType: proposal.creationContract?.transitionType || (proposal.parentKind ? 'continue-from-record' : 'create-artifact'),
       parentRecord
     }, options);
@@ -52,13 +54,15 @@ export function createPortableLocalArtifactSet(input = {}, options = {}) {
     });
     created.push(entry);
     byProposal.set(proposal.id, entry);
-    if (result.status !== 'created-clean') {
+    if (!usableCreation(result)) {
       findings.push(portableFinding('error', 'portable.artifact-set.creation.not-clean', 'Artifact-set creation stopped because one proposal did not produce a clean local artifact.', { proposalId: proposal.id, status: result.status }));
       break;
     }
   }
 
-  const status = created.length === planResult.proposals.length && created.every((entry) => entry.result.status === 'created-clean') ? 'created-clean' : 'blocked';
+  const complete = created.length === planResult.proposals.length && created.every((entry) => usableCreation(entry.result));
+  const localContinuity = complete && created.some((entry) => entry.result.qualification?.localContinuityUsable === true);
+  const status = complete ? localContinuity ? 'created-local-continuity' : 'created-clean' : 'blocked';
   return finalize(status, planResult, created, findings, buildLineageClosure(input, planResult, created));
 }
 
@@ -92,13 +96,22 @@ function finalize(status, plan, created, findings, lineageClosure) {
 
 function createdParent(entry, childPath = '', proposalId = '') {
   const draft = entry?.result?.draft;
-  if (!draft || entry.result.status !== 'created-clean') return {};
+  if (!draft || !usableCreation(entry.result)) return {};
+  const parsed = safeParse(draft.markdown);
+  const currentSchema = parsed?.envelope?.current?.schema || {};
   return parentForChild({
     id: draft.id || proposalId,
     path: draft.path,
     kind: draft.schemaId,
     schemaId: draft.schemaId,
     createdAt: draft.createdAt,
+    schemaReferenceAuthority: currentSchema.target ? {
+      schemaId: currentSchema.id || draft.schemaId,
+      preferredTarget: currentSchema.target,
+      exactTargets: [currentSchema.target],
+      resolutionState: 'qualified',
+      evidence: { source: 'earlier-proposal-rendered-current-schema-reference' }
+    } : null,
     boundary: 'portable local artifact set; no remote source provenance inferred',
     sourceMode: draft.sourceMode,
     source: null
@@ -107,8 +120,16 @@ function createdParent(entry, childPath = '', proposalId = '') {
 
 function parentForChild(parent = {}, childPath = '') {
   void childPath;
-  const id = String(parent.id || '').trim();
-  return Object.freeze({ ...parent, continuationTrace: id ? `record:${id}` : '' });
+  return Object.freeze({ ...parent, continuationTrace: '' });
+}
+
+function usableCreation(result = {}) {
+  return Boolean(result?.draft && (result.status === 'created-clean' || result.qualification?.localContinuityUsable === true));
+}
+
+function safeParse(markdown = '') {
+  try { return parseArtifactMarkdown(markdown); }
+  catch { return null; }
 }
 
 

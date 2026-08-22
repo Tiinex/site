@@ -6,8 +6,10 @@ import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver
 import { executeArtifactCreationCapability, qualifyArtifactCreationCapability } from './creation.capability.js';
 import { canonicalC14nV2SelfState } from '../integrity/integrity.c14nV2.js';
 import { validatePortableContractInstance } from '../tooling/portable/schema/contract.validate.js';
-import { qualifyRootCreationRepresentation } from './creation.representation.js';
+import { qualifyRootCreationRepresentation, qualifyContinuationCreationRepresentation } from './creation.representation.js';
 import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
+import { qualifySchemaReferenceValue } from './schema.reference.js';
+import { C14N_V2_METHOD_ID, integrityMethodReferenceAuthorityForCreation } from '../integrity/integrity.methodReference.js';
 
 export const ARTIFACT_CREATION_CONTRACT_SCHEMA_ID = 'tiinex.artifact.creation.contract.v1';
 export const ARTIFACT_CREATION_RESULT_VALIDATION_SCHEMA_ID = 'tiinex.artifact.creation.result.validation.v1';
@@ -26,7 +28,13 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
   const resolution = input.module ? { module: input.module, fallbackUsed: false, descriptor: describeModuleThroughResolution(input.module) } : resolveSchemaCapabilities({ schemaId });
   const descriptor = input.module ? resolution.descriptor : resolution.descriptor;
   const module = input.module || resolveRegisteredSchemaModule({ schemaId })?.module || null;
-  const schemaReferences = schemaReferenceAuthoritiesForCreation(module);
+  const schemaReferences = schemaReferenceAuthoritiesForCreation(module, input.schemaReferences || options.schemaReferences || null);
+  const integrityMethodReferences = Object.freeze({
+    primarySelf: integrityMethodReferenceAuthorityForCreation(
+      C14N_V2_METHOD_ID,
+      Object.prototype.hasOwnProperty.call(input, 'integrityMethodReference') ? input.integrityMethodReference : options.integrityMethodReference
+    )
+  });
   const fallbackUsed = Boolean(resolution.fallbackUsed && !input.module);
   const transitionType = String(input.transitionType || options.transitionType || 'create-artifact').trim();
   const creationCapability = qualifyArtifactCreationCapability(module, transitionType);
@@ -84,12 +92,13 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
     requiredEnvelope: Object.freeze({
       envelopeSchemaId: ROOT_SCHEMA_ID,
       parentMode: 'forbidden-for-root-required-when-parent-supplied',
-      parentFieldsWhenPresent: Object.freeze(['Parent Schema', 'Trace', 'Boundary']),
-      parentOrigin: 'required-when-parent-path-known',
+      parentFieldsWhenPresent: Object.freeze(['Parent Schema', 'Trace', 'Origin']),
+      parentOrigin: 'required-and-labelled-when-parent-present',
       currentFields: Object.freeze(['Current Schema', 'Created At', 'Summary']),
       integrityFooter: 'required'
     }),
     schemaReferences,
+    integrityMethodReferences,
     capabilities: Object.freeze({
       create: isCreatable ? CapabilityStatus.implemented : CapabilityStatus.unavailable,
       semanticCreationAuthority: creationCapability.authority?.state || 'unavailable',
@@ -103,7 +112,7 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
   });
 }
 
-export function createArtifactDraftMarkdown(contract = {}, input = {}) {
+export function renderArtifactCreationCandidateMarkdown(contract = {}, input = {}) {
   if (contract?.status !== 'ready') return '';
   const schemaId = String(contract?.target?.schemaId || '').trim();
   const transitionType = String(contract?.transitionType || 'create-artifact').trim();
@@ -111,10 +120,20 @@ export function createArtifactDraftMarkdown(contract = {}, input = {}) {
   const module = resolution?.fallbackUsed ? null : resolution?.module || null;
   if (!module) return '';
   const executed = executeArtifactCreationCapability(module, transitionType, contract, input);
-  if (executed.state !== 'rendered') return '';
-  if (transitionType !== 'create-artifact') return executed.markdown;
-  const validation = validateArtifactCreationResult({ schemaId, status: 'local', sourceMode: 'local-create', markdown: executed.markdown }, {}, { contract });
-  return validation.ok ? executed.markdown : '';
+  return executed.state === 'rendered' ? executed.markdown : '';
+}
+
+export function createArtifactDraftMarkdown(contract = {}, input = {}) {
+  const schemaId = String(contract?.target?.schemaId || '').trim();
+  const markdown = renderArtifactCreationCandidateMarkdown(contract, input);
+  if (!markdown) return '';
+  const parentRecord = input.parentRecord || {};
+  const validation = validateArtifactCreationResult({ schemaId, status: 'local', sourceMode: 'local-create', path: input.childPath || '', markdown }, parentRecord, {
+    contract,
+    childPath: input.childPath || '',
+    ...(Object.prototype.hasOwnProperty.call(input, 'authors') ? { expectedAuthors: input.authors } : {})
+  });
+  return validation.ok ? markdown : '';
 }
 
 export function validateArtifactCreationContract(contract = {}) {
@@ -136,28 +155,33 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
   const findings = [];
   findings.push(...validateArtifactCreationContract(contract).findings);
   findings.push(...validateTargetSchema(parsed, contract));
-  if (String(contract?.transitionType || 'create-artifact') === 'create-artifact') {
-    findings.push(...validateRootCreationRepresentation(draft.markdown || '', contract));
-    findings.push(...validateCreationSchemaReferences(draft.markdown || '', contract));
-    findings.push(...validatePortableRootTargetCreationResult(draft.markdown || '', contract));
-  }
+  findings.push(...validateCreationSchemaReferences(draft.markdown || '', contract));
+  findings.push(...validatePortableRootTargetCreationResult(draft.markdown || '', contract));
 
+  const rootCreation = String(contract?.transitionType || 'create-artifact') === 'create-artifact';
   const currentSchemaId = parsed.envelope?.current?.schema?.id || '';
   const expectedSchemaId = contract.target?.schemaId || draft.schemaId || draft.targetSchemaId || '';
   const parent = parsed.envelope?.parent || {};
-  const expectedTrace = parentRecord?.id ? `record:${parentRecord.id}` : '';
-
-  const rootCreation = String(contract?.transitionType || 'create-artifact') === 'create-artifact';
   const suppliedParent = parentRecordHasAnyValue(parentRecord);
   const parentExpected = !rootCreation && suppliedParent;
   const parentObserved = parsedParentHasAnyValue(parent);
   if (expectedSchemaId && currentSchemaId !== expectedSchemaId) findings.push(error('creation.current.schema.mismatch', `Creation result Current Schema must be ${expectedSchemaId}.`));
+  if (options.expectedAuthors !== undefined && String(parsed.envelope?.current?.authors || '') !== String(options.expectedAuthors)) findings.push(error('creation.current.authors.mismatch', 'Creation result Current Authors must preserve the caller-supplied exact value.'));
   if (rootCreation && suppliedParent) findings.push(error('creation.parent.input.unexpected', 'Standalone/root creation must not accept a Continuity Parent input.'));
   if (!parentExpected && parentObserved) findings.push(error('creation.parent.unexpected', 'Standalone/root creation must not invent Continuity Parent truth.'));
-  if (parentExpected && expectedTrace && parent.trace !== expectedTrace) findings.push(error('creation.parent.trace.mismatch', `Creation result Parent Trace must preserve ${expectedTrace}.`));
-  if (parentExpected && !parent.boundary) findings.push(error('creation.parent.boundary.required', 'Continuation creation must preserve parent boundary.'));
-  if (parentRecord?.path && !parent.origin) findings.push(warning('creation.parent.origin.missing', 'Parent path exists but creation result Origin is missing.'));
-  if (parentRecord?.path && parent.origin && !originMatchesPath(parent.origin, parentRecord.path)) findings.push(warning('creation.parent.origin.unexpected', 'Creation result Origin does not end with the parent canonical path.'));
+
+  if (rootCreation) findings.push(...validateRootCreationRepresentation(draft.markdown || '', contract));
+  else if (parentExpected) {
+    const relativeReference = relativePath(dirname(options.childPath || draft.path || ''), parentRecord.path || '');
+    const representation = qualifyContinuationCreationRepresentation(draft.markdown || '', contract, parentRecord, { relativeReference });
+    findings.push(...(representation.findings || []).map((message, index) => error(`creation.continuation-representation.${index + 1}`, message)));
+    const parentSchemaAuthority = parentRecord.schemaReferenceAuthority || {};
+    const parentSchemaReference = qualifySchemaReferenceValue(parent.schema?.raw || '', parentSchemaAuthority);
+    for (const [index, message] of (parentSchemaReference.findings || []).entries()) findings.push(error(`creation.parent-schema-reference.${index + 1}`, message));
+    if (parentSchemaAuthority.resolutionState !== 'qualified') findings.push(error('creation.parent-schema-reference.unresolved', 'Exact continuation requires the declared Parent Schema reference authority to be resolver-qualified.'));
+    if (!parentRecord.publishedReference?.target || parentRecord.publishedReference?.state !== 'qualified') findings.push(error('creation.parent-browse-git.unresolved', 'Exact continuation requires one qualified published Parent browse + git representation.'));
+  } else if (!rootCreation) findings.push(error('creation.parent.required', 'Continuation creation requires an exact supplied Parent authority.'));
+
   if (draft.status !== 'local') findings.push(error('creation.result.status.not-local', 'Creation result must stay local until explicit publication/export.'));
   if (!String(draft.sourceMode || '').startsWith('local-')) findings.push(error('creation.result.sourceMode.not-local', 'Creation result must use a browser-local sourceMode.'));
   if (draft.source?.adapterId) findings.push(error('creation.result.source.inherited', 'Creation result must not inherit source object from its parent.'));
@@ -168,11 +192,9 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
     currentSchemaId,
     parentTrace: parent.trace || '',
     parentOrigin: parent.origin || '',
-    parentBoundary: parent.boundary || '',
     contractId: contract.id || ''
   });
 }
-
 
 
 function validateRootCreationRepresentation(markdown = '', contract = {}) {
@@ -216,11 +238,15 @@ function validateTargetSchema(parsed = {}, contract = {}) {
     findings.push(error('creation.validator.root-fallback', `Cannot validate ${targetSchemaId || 'unknown schema'} with a target module; root fallback would be used.`));
     return findings.concat(rootValidate(parsed).map(normalizeFinding));
   }
-  if (typeof module?.validate !== 'function') {
-    findings.push(error('creation.validator.unavailable', `${targetSchemaId || 'target schema'} has no validation implementation.`));
-    return findings.concat(rootValidate(parsed).map(normalizeFinding));
-  }
-  return module.validate(parsed).map(normalizeFinding);
+  if (typeof module?.validate === 'function') return module.validate(parsed).map(normalizeFinding);
+  if (hasQualifiedCompiledValidation(module)) return [];
+  findings.push(error('creation.validator.unavailable', `${targetSchemaId || 'target schema'} has neither a schema-specific validator nor a qualified compiled validation contract.`));
+  return findings.concat(rootValidate(parsed).map(normalizeFinding));
+}
+
+function hasQualifiedCompiledValidation(module = {}) {
+  const qualification = typeof module?.schemaSource?.qualify === 'function' ? module.schemaSource.qualify() : null;
+  return Boolean(qualification?.state === 'qualified' && qualification?.compiledContract?.validationContract?.lineageQualification?.state === 'valid');
 }
 
 function describeModuleThroughResolution(module = {}) {
@@ -239,7 +265,7 @@ function describeModuleThroughResolution(module = {}) {
     actions: {
       create: { status: qualifyArtifactCreationCapability(module, 'create-artifact').ready ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
       fallback: { status: module.capabilities?.canRenderFallback === true ? CapabilityStatus.implemented : CapabilityStatus.fallback },
-      validate: { status: typeof module.validate === 'function' ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
+      validate: { status: typeof module.validate === 'function' || hasQualifiedCompiledValidation(module) ? CapabilityStatus.implemented : CapabilityStatus.unavailable },
       present: { status: typeof module.present === 'function' ? CapabilityStatus.implemented : CapabilityStatus.unavailable }
     }
   };
@@ -261,11 +287,15 @@ function countFindings(findings = []) {
 
 function stableContractId(schemaId, transitionType) { return `creation:${transitionType || 'create'}:${schemaId || 'unknown'}`; }
 function labelFromSchemaId(id = '') { const tail = String(id || '').split('.').filter(Boolean).slice(-2, -1)[0] || String(id || 'artifact'); return tail.charAt(0).toUpperCase() + tail.slice(1); }
-function parentRecordHasAnyValue(record = {}) { return Boolean(record?.id || record?.path || record?.schemaId || record?.currentSchemaId || record?.continuationTrace); }
-function parsedParentHasAnyValue(parent = {}) { return Boolean(parent?.schema?.id || parent?.trace || parent?.origin || parent?.boundary || parent?.createdAt); }
+function parentRecordHasAnyValue(record = {}) { return Boolean(record?.id || record?.path || record?.schemaId || record?.currentSchemaId || record?.continuationTrace || record?.publishedReference?.target || record?.schemaReferenceAuthority?.preferredTarget); }
+function parsedParentHasAnyValue(parent = {}) { return Boolean(parent?.schema?.id || parent?.trace || parent?.origin || parent?.boundary || parent?.createdAt || parent?.originEntries?.length); }
 function originMatchesPath(origin = '', path = '') { return normalizePath(origin).endsWith(normalizePath(path)); }
 function normalizePath(value = '') { return String(value || '').replace(/^https?:\/\/github\.com\/[^/]+\/[^/]+\/blob\/[^/]+\//, '').replace(/^https?:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//, '').replace(/^\/+/, '').replace(/\\/g, '/'); }
 function normalizeFinding(finding = {}) { return { severity: finding.severity || 'info', code: finding.code || 'creation.finding', message: finding.message || '', source: finding.source || ARTIFACT_CREATION_CONTRACT_SCHEMA_ID }; }
 function finding(severity, code, message) { return { severity, code, message, source: ARTIFACT_CREATION_CONTRACT_SCHEMA_ID }; }
 function error(code, message) { return finding('error', code, message); }
 function warning(code, message) { return finding('warning', code, message); }
+
+function canonicalPath(value='') { return String(value || '').replace(/\\/g,'/').replace(/^\.\//,'').replace(/^\/+|\/+$/g,''); }
+function dirname(value='') { const p=canonicalPath(value); const i=p.lastIndexOf('/'); return i<0?'':p.slice(0,i); }
+function relativePath(fromDir='', toPath='') { const from=canonicalPath(fromDir).split('/').filter(Boolean), to=canonicalPath(toPath).split('/').filter(Boolean); let i=0; while(i<from.length&&i<to.length&&from[i]===to[i])i++; return [...Array(from.length-i).fill('..'),...to.slice(i)].join('/') || (to.at(-1)||''); }

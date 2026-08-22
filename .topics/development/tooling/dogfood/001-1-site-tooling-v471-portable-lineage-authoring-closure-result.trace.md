@@ -1,18 +1,28 @@
 # Continuity Context
-- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Parent Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 15:23:00
-  - Trace: record:.topics/development/tooling/dogfood/001-site-tooling-v471-portable-lineage-authoring-closure.trace.md
-  - Origin: .topics/development/tooling/dogfood/001-site-tooling-v471-portable-lineage-authoring-closure.trace.md
-  - Boundary: Portable local material; no GitHub provenance inferred.
+  - Trace: [001-site-tooling-v471-portable-lineage-authoring-closure.trace.md](001-site-tooling-v471-portable-lineage-authoring-closure.trace.md)
+  - Origin:
+    - [relative](001-site-tooling-v471-portable-lineage-authoring-closure.trace.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-site-tooling-v471-portable-lineage-authoring-closure.trace.md)
+- Repairs:
+  - Historical canonical representation repair
+    - Target: [pre-repair published representation](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-site-tooling-v471-portable-lineage-authoring-closure-result.trace.md)
+    - Note: Canonically repaired after v475-v478 qualified the authoring/validation/reference/integrity oracles; pre-repair Git blob 154ff4b0c5020ca8c56cc97f7455b4f377afe671.
+    - Reason: Preserve original body/work-result meaning and historical Current Created At while replacing false-PASS envelope, schema-reference, continuity, and integrity representation.
 - Current
-  - Current Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 15:37:00
+  - Authors: Tooling
+  - Why: Record the source-qualified Tooling closure and concrete dogfood evidence required by the controlling v471 task.
   - Summary: v471 portable lineage authoring closure result
   - Status: draft/local
-  - Why: Record the source-qualified Tooling closure and concrete dogfood evidence required by the controlling v471 task.
+
 ---
+
 # v471 portable lineage authoring closure result
 
 ## Objective
@@ -30,7 +40,9 @@ Changed only portable authoring owners src/tooling/portable/draft/draft.create.j
 ## Dependencies
 
 Controlling task: .topics/development/tooling/dogfood/001-site-tooling-v471-portable-lineage-authoring-closure.trace.md. Input workspace SHA256: 6ebf5494a33602ea63599f073cacf65e7b1ffe83797f93bb33375d289dac1c5d. Dogfood receipts were produced by the included tools/tiinex-portable.mjs prepare-materialization, create-local-artifact-set, audit, resolve-lineage, and search-lineage operations. The supplied worktree has no node_modules, so dependency-bound React/typecheck/public-runtime claims are not upgraded beyond observed receipts.
+
 # Continuity Integrity
-- Draft Local Integrity
-  - Method: browser-local-draft
-  - Value: pending-publication-or-export
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: zvKLRYZGI6H4u5AKNviMItlqylupaBgymkQ9MFYb8FA

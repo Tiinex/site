@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.discovery.finding.v1",
+  "kind": "concrete",
+  "role": "workflow-discovery-finding-artifact",
+  "module": "./tiinex.discovery.finding.v1.schema.js",
+  "snapshot": "./tiinex.discovery.finding.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/discovery/finding/tiinex.discovery.finding.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/discovery/finding/tiinex.discovery.finding.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/discovery/finding/tiinex.discovery.finding.v1.schema.md",
+  "sourcePath": ".topics/.schemas/discovery/finding/tiinex.discovery.finding.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+  "sourceBlobSha": "e4f4b5caaf590ed3dc138b5bf2f25e2ece85e6b8",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "dafb380d7ee1b0cfe91bc1db3c5c18a40fc3826d2120bb71f54491b885d2b696"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-e713557f",
+  "originTrustRole": "canonical-core"
+}

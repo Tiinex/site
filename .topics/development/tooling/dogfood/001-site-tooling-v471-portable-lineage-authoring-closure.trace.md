@@ -1,10 +1,19 @@
 # Continuity Context
-- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/52ecdea0a75893882ce282214d155f70e1309c2a/.topics/.schemas/tiinex.root.v1.schema.md)
+
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md)
+- Repairs:
+  - Historical canonical representation repair
+    - Target: [pre-repair published representation](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-site-tooling-v471-portable-lineage-authoring-closure.trace.md)
+    - Note: Canonically repaired after v475-v478 qualified the authoring/validation/reference/integrity oracles; pre-repair Git blob 9c69c769a62a6990b3cd94ea0d39a79388a0770e.
+    - Reason: Preserve original body/work-result meaning and historical Current Created At while replacing false-PASS envelope, schema-reference, continuity, and integrity representation.
 - Current
-  - Current Schema: tiinex.task.v1
+  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 15:23:00
+  - Authors: Architect
   - Summary: v471 Portable dogfood lineage authoring closure
+
 ---
+
 # v471 Portable dogfood lineage authoring closure
 
 ## Objective
@@ -22,7 +31,9 @@ Primary owner is src/tooling/portable/**, especially draft/draft.create.js, draf
 ## Dependencies
 
 Exact product/source baseline is Tiinex Site v470, package version 0.2.289-v470, original 1158-file full-source SHA256 67f697c748786b70e8675866b058ee7aaf8958ebefc89e46d0e4c6556a1194e1 before this dogfood task artifact was appended. Architect reproduced the portable defect directly on that baseline: prepare-materialization for [root Topic, child Task] reports ready; create-local-artifact-set then blocks because the child draft Markdown is empty and Current Schema is absent. The root Topic also falls back from an available exact creation contract solely because no Parent exists. Direct shared Site creation proves a root Topic can render and validate without a Parent, and a continue-from-record Task validates when transitionType is preserved and Parent id remains the logical id with Trace record:<id>. The previously prepared Architect→Dev v471 Open Schema correction was not sent for execution and is deferred/reissued as the next Dev checkpoint after this portable dogfood prerequisite closes. Q remains HOLD.
+
 # Continuity Integrity
-- sha256-base64url-c14n-v2
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: _kKHFuzKJXWD_245-HyX54OURNnVey0q1_h1rhwOr0g
+  - Value: ladrl7va6SnRngeLSs5AaQnmFTELOUngXYeIM4wdlT0

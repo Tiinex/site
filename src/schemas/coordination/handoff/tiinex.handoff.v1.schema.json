@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.handoff.v1",
+  "kind": "concrete",
+  "role": "workflow-handoff-artifact",
+  "module": "./tiinex.handoff.v1.schema.js",
+  "snapshot": "./tiinex.handoff.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/coordination/handoff/tiinex.handoff.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md",
+  "sourcePath": ".topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+  "sourceBlobSha": "2332023aecf690279805d34c7e512a9f9799c20d",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "2b936616989fbab2bcc8d1e6e4175369546cea5adffd5c9c9db236bc2340ef06"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-39889512",
+  "originTrustRole": "canonical-core"
+}

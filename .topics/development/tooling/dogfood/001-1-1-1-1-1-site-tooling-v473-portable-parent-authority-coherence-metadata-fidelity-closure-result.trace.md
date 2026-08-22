@@ -1,18 +1,28 @@
 # Continuity Context
-- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/tiinex.root.v1.schema.md)
 - Parent
-  - Parent Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Parent Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 16:34:00
-  - Trace: record:.topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md
-  - Origin: .topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md
-  - Boundary: Portable local material; no GitHub provenance inferred.
+  - Trace: [001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md](001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md)
+  - Origin:
+    - [relative](001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md)
+- Repairs:
+  - Historical canonical representation repair
+    - Target: [pre-repair published representation](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/001-1-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure-result.trace.md)
+    - Note: Canonically repaired after v475-v478 qualified the authoring/validation/reference/integrity oracles; pre-repair Git blob 33e32e6553fbe5cc09653b6d65b97167c454460f.
+    - Reason: Preserve original body/work-result meaning and historical Current Created At while replacing false-PASS envelope, schema-reference, continuity, and integrity representation.
 - Current
-  - Current Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)
+  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-21 16:48:00
+  - Authors: Tooling
+  - Why: Append source-qualified Tooling closure evidence as an exact Task continuation of the controlling v473 task.
   - Summary: v473 portable parent authority coherence and metadata fidelity closure result
   - Status: draft/local
-  - Why: Append source-qualified Tooling closure evidence as an exact Task continuation of the controlling v473 task.
+
 ---
+
 # v473 portable parent authority coherence and metadata fidelity closure result
 
 ## Objective
@@ -30,7 +40,9 @@ Bounded portable continuation correction only. Modified src/tooling/portable/dra
 ## Dependencies
 
 Controlling task: .topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md. Input workspace ZIP SHA256: 046e83c84f3257ceca57d9cfea56a83bd1580da78a769f3d0d7de259123ac860. The Site-included tools/tiinex-portable.mjs was used for task inspection, lineage search, and the final create-local-artifact-set materialization. Final materialization is created-clean with exact-site-creation-contract, parentAuthorityQualification=qualified, exactRuntimeValidation=true, and exact Parent Created At 2026-08-21 16:34:00 preserved from the controlling task. Provider/source mutation remains false and Q/Dev product work remains outside this Tooling task.
+
 # Continuity Integrity
-- Draft Local Integrity
-  - Method: browser-local-draft
-  - Value: pending-publication-or-export
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: jIkXDwacEUDELwoP8gi0gU4F3WLfEmcdVwLe6Q9LLfk

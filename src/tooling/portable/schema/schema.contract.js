@@ -97,7 +97,10 @@ export function conditionalContractGroups(contract = {}) {
         ...groupCategoryItems(group, ['Required Shape']).flatMap(extractHeadingRequirements)
       ])),
       requiredFields: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Fields']).map(cleanContractToken))),
-      requiredEntries: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Entries']).map(cleanContractToken)))
+      requiredEntries: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Required Entries']).map(cleanContractToken))),
+      allowedLabels: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Allowed Labels']).map(cleanContractToken))),
+      entryShapes: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Entry Shape']).map(cleanContractToken))),
+      ordering: Object.freeze(uniqueStrings(groupCategoryItems(group, ['Ordering']).map(cleanContractToken)))
     })];
   }));
 }
@@ -339,7 +342,7 @@ function contractCategoryItemsExcludingToolingGroups(contract = {}, categoryName
   const names = new Set(normalizeSelectors(categoryNames).map(exactMachineToken));
   const items = [];
   for (const group of contract.groups || []) {
-    if (isToolingConfigurationGroup(group)) continue;
+    if (isToolingConfigurationGroup(group) || isCreationCriteriaGroup(group)) continue;
     if (options.unconditionalOnly && groupRequiredWhen(group).length) continue;
     for (const category of group.categories || []) {
       if (names.has(exactMachineToken(category.name))) items.push(...category.items);
@@ -354,6 +357,11 @@ function isToolingConfigurationGroup(group = {}) {
     || key.includes('tooling configuration')
     || key.includes('create surface configuration')
     || key.includes('ui configuration');
+}
+
+function isCreationCriteriaGroup(group = {}) {
+  const key = normalizeKey(group.name);
+  return key === 'creation scope' || key.endsWith(' creation scope') || key.includes('creation criteria');
 }
 
 function groupCategoryItems(group = {}, categoryNames = []) {
@@ -396,11 +404,11 @@ function extractHeadingRequirementObjects(value = '') {
 }
 
 function isTemplatePlaceholderHeading(value = '') {
-  return /^\{\{\s*[a-zA-Z0-9_.-]+\s*\}\}$/.test(String(value || '').trim());
+  return /^\{\{?\s*[a-zA-Z0-9_.-]+\s*\}\}?$/.test(String(value || '').trim());
 }
 
 function extractTemplatePlaceholders(value = '') {
-  return [...String(value || '').matchAll(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g)].map((match) => match[1]);
+  return [...String(value || '').matchAll(/\{\{?\s*([a-zA-Z0-9_.-]+)\s*\}\}?/g)].map((match) => match[1]);
 }
 
 function humanizeToken(value = '') {

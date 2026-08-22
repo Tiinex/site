@@ -68,7 +68,9 @@ export async function materializePortableDurableFindings(input = {}, options = {
     }, options);
     findings.push(...dedupeNewFindings(findings, draftResult.findings || []));
     let stageResult = null;
-    if (draftResult.draft && item.stage !== false) {
+    const unresolvedSchemaLocator = (draftResult.validation?.findings || []).some((finding) => finding.code === 'schema.reference.locator.unresolved');
+    if (unresolvedSchemaLocator) findings.push(portableFinding('error', 'portable.materialization.schema-reference.locator-unresolved', 'Durable materialization retained a readable local draft but will not stage it while a declared schema representation locator remains unresolved.', { materializationId: item.id, schemaId: item.schemaId }));
+    if (draftResult.draft && item.stage !== false && !unresolvedSchemaLocator) {
       stageResult = stagePortableDraft({
         draft: draftResult.draft,
         validation: draftResult.validation,

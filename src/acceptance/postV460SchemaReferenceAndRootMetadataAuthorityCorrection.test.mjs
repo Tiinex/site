@@ -36,9 +36,9 @@ assert(topic.schemaReferences.current.preferredTarget, 'Topic exact immutable bi
 assert(topicMarkdown.includes(`Current Schema: ${renderSchemaReference(topic.schemaReferences.current)}`), 'qualified exact Current Schema target is preserved');
 assert.equal(validate(topicMarkdown, topic), true);
 
-// B — no exact reference target means plain schema id; no schemaId-derived filename is invented.
-assert.equal(task.schemaReferences.current.preferredTarget, '', 'viewer-local Task binding is not an exact durable reference target');
-assert(baseline.includes('  - Current Schema: tiinex.task.v1'));
+// B — v476 rebinds Task to the proven current Tiinex/docs material; future unqualified origins still remain Plain Schema Id.
+assert.equal(task.schemaReferences.current.preferredTarget, 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md', 'Task exact creation is now byte-bound to current Tiinex/docs authority');
+assert(baseline.includes('  - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)'));
 assert.equal(baseline.includes('[tiinex.task.v1](tiinex.task.v1.schema.md)'), false);
 const futureAuthority = schemaReferenceAuthorityFromBinding('example.future.v1', {
   schemaId: 'example.future.v1',
