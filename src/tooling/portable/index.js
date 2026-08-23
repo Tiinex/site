@@ -44,3 +44,6 @@ export * from './package/generation.binding.js';
 export * from './conformance/checkpoint.qualification.js';
 
 export * from './transfer/transfer.plan.js';
+
+export * from './handoff/manufacture.js';
+export * from './handoff/toolingBootstrap.js';

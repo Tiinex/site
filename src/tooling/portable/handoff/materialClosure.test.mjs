@@ -655,6 +655,9 @@ const delegated = prepareRecipientRelativeWorkspaceHandoffExport({ handoff, work
 assert.equal(delegated.status, 'ready');
 assert.equal(delegated.executable, true);
 assert.equal(delegated.roundtrip.status, 'passed');
+assert.equal(delegated.companionInspection.status, 'valid');
+assert.equal(delegated.transportCompanion.schema, 'tiinex.portable.handoff-transport-companion-projection.v1');
+assert.equal(delegated.transportExecutable, false, 'package/material execution remains separate from minimal transport routing readiness when the fixture carries no qualified workspace/artifact tuple');
 assert.equal(delegated.boundary.includes('delegation'), true);
 
 console.log('✓ v481 recipient-relative Handoff material closure planner/package pressure passed');

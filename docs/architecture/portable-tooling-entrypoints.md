@@ -100,6 +100,8 @@ plan-durable-materialization
 materialize-durable-findings
 create-checkpoint
 restore-checkpoint
+manufacture-handoff-package
+project-handoff-carrier-output
 build-runtime-package
 inspect-runtime-package
 rehydrate-runtime-package
@@ -108,7 +110,7 @@ serialize-session
 restore-session
 ```
 
-The current surface is read-only, planning-only, explicit local draft/session/package state, or optional host-mediated schema reads. The portable operation catalog does not publish, mutate sources, authorize remote writes, claim a canonical handoff, or execute received code. The Node CLI may perform an explicit local filesystem write when `build-runtime-package --output <file.zip>` is requested.
+The current surface is read-only, planning-only, explicit local draft/session/package state, or optional host-mediated schema reads. The portable operation catalog does not publish, mutate sources, authorize remote writes, claim a canonical handoff, or execute received code. The Node CLI may perform an explicit local filesystem write when `build-runtime-package --output <file.zip>` or Handoff manufacturing is explicitly asked to write a package/optional transport-text fallback.
 
 ## Source Boundary
 
@@ -407,6 +409,26 @@ bundle inspection and import planning remain valid
 
 `rehydrate-runtime-package` reconstructs the runtime file map from explicitly supplied serialized package entries, such as the entries produced by the archive adapter. This allows an actual ZIP to be parsed, rehydrated, and passed through the same import/round-trip checks. The result always states that this is the current site runtime contract, not a locked canonical handoff/package schema. The Node-only `output/node.zip.js` adapter can serialize a valid in-memory bundle to a local ZIP when the caller explicitly supplies an output path.
 
+## Recipient-Relative Handoff Package Manufacturing
+
+`manufacture-handoff-package` is an operational facade over the existing recipient-relative Handoff closure/package owners. Its Node adapter accepts a workspace root plus an exact workspace-relative Handoff path, deterministically enumerates regular workspace files, records `tiinex.portable.workspace-completeness-evidence.v1`, resolves exact local relative Handoff material references against that enumeration, and supplies the resulting materialization to the shared package machinery. This removes caller-side and LLM-side per-file carrier construction without defining a second Handoff semantic model or package engine.
+
+Workspace routing remains recipient-relative: workspace entries are carried below `handoff.workspaces/<workspace-id>/` using their original workspace-relative paths. A relative Handoff material reference is resolved against the Handoff artifact directory only to select exact source bytes; that selection must not leak an extra carrier-relative prefix into the transported workspace path. Enumeration is bounded by an explicit file limit, skips symbolic links, and fails closed rather than calling a partial enumeration complete.
+
+Tooling bootstrap has a separate control manifest at `tiinex.bootstrap/manifest.json`. Embedded mode carries only manifest-declared exact runtime bytes under `tiinex.bootstrap/runtime/**`; inspection rejects missing, altered, or unlisted co-located bytes. Persistent mode carries no runtime bytes and requires a caller-supplied verified runtime representation identity that exactly matches the runtime manifest being packaged. These controls do not make ordinary workspace bytes bootstrap authority, do not turn the optional `tiinex.package/bootstrap.md` orientation material into Tooling bootstrap, and do not replace canonical schema-material source authority declared inside the portable schema bootstrap material.
+
+The manufacturing result is executable only when the existing package inspection, Handoff closure descriptor, carrier-projection inspection, package-local cold-consumer START correlation, transport companion correlation, optional/full round trip, and Tooling-bootstrap inspection remain valid. The Node ZIP writer serializes package bytes rather than text-only `content`, so binary workspace/bootstrap carriers remain byte-exact.
+
+`tiinex.package/handoff-carrier.json` is the non-authoritative human transport projection. It exposes qualified `workspaces[]`; each route binds an exact `workspaceId` to an exact workspace-relative Handoff artifact. Route-local filename projection derives the selected workspace slug from qualified package workspace identity, reads `From`/`To` from that exact packaged Handoff artifact, and treats a leading `NNN[-N...]` artifact filename segment only as local dimensional readability. It never infers Parent/Trace/Origin, completion, acceptance, role assignment, or package identity from that segment or from the generated filename. Exact filename collisions may add a transport-only `--N` suffix without mutating the projected Handoff dimension. The singular `workspace` member remains only as the ergonomic/default-workspace compatibility projection; route qualification and cold-consumer orientation use the plural binding.
+
+Single-route packages can project one human filename and minimal transport text directly. Shared-route packages may advertise multiple independently qualified Handoff paths across one or more qualified workspace materializations; route membership is `(workspaceId, workspace-relative path)`, not a path alone. Common workspace/material/bootstrap bytes remain single-copy. Shared human output requires an explicit qualified route selector, so prose or an outer filename cannot override package truth. Selecting another route regenerates only the disposable filename/text, using that route's workspace slug, and leaves the immutable package representation unchanged. The current Node/CLI manufacturer remains deliberately one-root by default; a bounded core fixture proves plural package/projection representation without pretending general multi-root filesystem authoring is already implemented.
+
+`tiinex.package/START.md` is the maintained cold-consumer entrypoint. It contains human orientation plus exactly one bounded fenced-JSON `tiinex.portable.handoff-cold-consumer-projection.v1` block with `workspaces[]`, routes, exact route-to-workspace binding, control-file locations, and selection policy. START is generated from carrier/package truth and is never authoritative. `orient-handoff-package <package.zip>` parses it without executing package code, independently recomputes carrier truth from closure/workspace bytes, and rejects missing, stale, tampered, ambiguous, or mismatched START projections.
+
+`manufacture-handoff-package --output-dir <dir> --route <path-or-route-id>` uses the selected route's deterministic projected filename. `--transport-text` optionally writes a small sidecar containing only selected-workspace orientation plus the exact controlling Handoff locator for device/conversation cold-start recovery; it is not a normal second deliverable. `project-handoff-carrier-output <package.zip> --route <path-or-route-id>` regenerates the same projection from serialized package bytes. Existing explicit single-route `--output <file.zip>` remains the safe Tooling 011 fallback if older Handoff material cannot qualify the newer human filename projection; explicit shared-route output still fails closed.
+
+CLI responses are deliberately reduced to verification, closure/carrier-disposition, enumeration/bootstrap evidence, selected human-output metadata, and write receipts. They do not JSON-reserialize the full bundle or nested roundtrip package, keeping control output bounded while the ZIP remains the transport carrier.
+
 ## Asset Index And Host Multimodal Handoff
 
 `inspect-assets` indexes asset path, MIME/media kind, size, references, content availability, and safe local/archive locators without interpreting binary content.
@@ -462,8 +484,8 @@ Editor and agent adapters may add transport and UX, but may not raise semantic q
 
 ## Known Limits
 
-- Local draft creation, staging, materialization, and checkpointing are in-memory/serializable. Only the explicit Node CLI package-output path writes a local file.
-- The current site runtime package is supported and round-trip tested, but no canonical handoff/package schema or package-format lock is claimed.
+- Local draft creation, staging, materialization, and checkpointing are in-memory/serializable. Only explicit Node CLI package-output paths write local package files.
+- The current site runtime package and recipient-relative operational Handoff manufacturing are supported and round-trip tested, but no canonical Handoff semantic authoring/validation, canonical package schema, or package-format lock is claimed.
 - Portable checkpoints are not canonical handoff artifacts.
 - No production MCP, LSP, or VS Code adapter.
 - Schema reads may be host-mediated, but artifact-parent/origin discovery remains explicit and separate.

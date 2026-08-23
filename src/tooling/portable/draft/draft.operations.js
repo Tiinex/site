@@ -2,7 +2,7 @@ import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { runAudit } from '../../../audit/audit.run.js';
 import { createRecordFromMarkdown } from '../../../artifacts/artifact.record.js';
 import { portableFinding, normalizePortableFinding, summarizePortableFindings } from '../findings.js';
-import { findSchemaMaterial } from '../input/portable.input.js';
+import { selectPortableLoadedSchemaMaterial } from '../providers/schema.providers.js';
 import { buildPortableSchemaGuide } from '../schema/schema.guide.js';
 import { compilePortableSchemaContract } from '../schema/contract.compile.js';
 import { validatePortableContractInstance } from '../schema/contract.validate.js';
@@ -24,7 +24,9 @@ export function validatePortableDraft(input = {}, options = {}) {
     .filter((finding) => !suppressedAuditCodes.has(finding.code))
     .map((finding) => normalizePortableFinding(finding, { ref: path })));
   for (const quirk of sharedParserQuirks) findings.push(portableFinding('info', quirk.code, quirk.message, { ref: path, suppressedCodes: quirk.suppressedCodes, owner: quirk.owner }));
-  const schemaMaterial = findSchemaMaterial(requestedSchema || declaredSchema, input.materials || input);
+  const schemaSelection = selectPortableLoadedSchemaMaterial(input.materials || input, { schemaId: requestedSchema || declaredSchema });
+  findings.push(...schemaSelection.findings);
+  const schemaMaterial = schemaSelection.material || null;
   let structural = null;
   if (audit.contractValidation?.available) {
     structural = sharedContractValidationReceipt(audit.contractValidation, path);

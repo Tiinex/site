@@ -2,7 +2,7 @@ import { resolveSchemaCapabilities } from '../../../schemas/capability.registry.
 import { buildArtifactCreationContract } from '../../../schemas/creation.contracts.js';
 import { schemaRegistry } from '../../../schemas/registry.js';
 import { portableFinding } from '../findings.js';
-import { findSchemaMaterial } from '../input/portable.input.js';
+import { selectPortableLoadedSchemaMaterial } from '../providers/schema.providers.js';
 import {
   conditionalContractGroups,
   conditionalCreationInputs,
@@ -20,7 +20,8 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
   const schemaId = String(input.schemaId || options.schemaId || '').trim();
   const task = normalizeTask(input.task || options.task || 'read');
   const detail = normalizeDetail(input.detail || options.detail || 'compact');
-  const schemaMaterial = findSchemaMaterial(schemaId, input.materials || input);
+  const schemaSelection = selectPortableLoadedSchemaMaterial(input.materials || input, { schemaId });
+  const schemaMaterial = schemaSelection.material || null;
   const module = schemaRegistry.byId.get(schemaId) || null;
   const binding = module?.binding || {};
   const markdown = schemaMaterial?.markdown || '';
@@ -31,6 +32,13 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
   const creationContract = task === 'create' || task === 'continue' ? buildArtifactCreationContract({ schemaId, transitionType: task === 'continue' ? 'continue' : 'create-artifact' }) : null;
   const companionResult = resolvePortableLlmCompanion({ schemaId, task, module, input, options });
   const companion = companionResult.companion;
+  const exactReadableContract = Boolean(
+    schemaMaterial?.markdown
+    && document?.schemaId === schemaId
+    && schemaMaterial.qualification?.exactSchemaIdentity === true
+    && schemaMaterial.qualification?.sourceQualified === true
+    && schemaMaterial.qualification?.representationIntegrity === 'verified'
+  );
   const creationRequested = task === 'create' || task === 'continue';
   const requiredSections = compiledContract ? uniqueStrings([
     ...compiledContract.validation.requiredSections,
@@ -51,7 +59,7 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
   const toolingConfiguration = creationRequested && compiledContract ? [...compiledContract.creation.toolingConfigurationFields] : [];
   const hardRules = prioritizeRules([...rules, ...creationRules], task, detail);
   const purpose = companion.purpose || document?.summary || module?.label || `Work with ${schemaId || 'an unknown Tiinex schema'}.`;
-  const findings = [...companionResult.findings];
+  const findings = [...schemaSelection.findings, ...companionResult.findings];
   if (!schemaId) findings.push(portableFinding('error', 'portable.schema-guide.schema.required', 'Schema guide generation requires a schema id.'));
   if (!schemaMaterial && !module) findings.push(portableFinding('error', 'portable.schema-guide.schema.unavailable', 'Neither readable schema material nor a registered schema module is available.', { schemaId }));
   if (!schemaMaterial) findings.push(portableFinding('info', 'portable.schema-guide.readable-schema.unavailable', 'The guide is limited to registered runtime metadata because readable schema Markdown was not supplied.', { schemaId }));
@@ -80,9 +88,12 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
     capability: Object.freeze({
       requested: capabilityName,
       exactModule: Boolean(resolution.descriptor?.moduleId === schemaId && !resolution.fallbackUsed),
-      status: resolution.capability?.status || '',
-      resolvedThrough: resolution.descriptor?.moduleId || 'tiinex.root.v1',
-      fallbackUsed: Boolean(resolution.fallbackUsed)
+      status: exactReadableContract ? 'readable-exact-contract' : (resolution.capability?.status || ''),
+      resolvedThrough: exactReadableContract ? schemaId : (resolution.descriptor?.moduleId || 'tiinex.root.v1'),
+      fallbackUsed: exactReadableContract ? false : Boolean(resolution.fallbackUsed),
+      runtimeStatus: resolution.capability?.status || '',
+      runtimeResolvedThrough: resolution.descriptor?.moduleId || 'tiinex.root.v1',
+      runtimeFallbackUsed: Boolean(resolution.fallbackUsed)
     }),
     requiredInputs: Object.freeze(limitList(requiredInputs, detail === 'compact' ? 18 : 80)),
     requiredStructure: Object.freeze(limitList(requiredSections, detail === 'compact' ? 14 : 80)),
@@ -121,11 +132,19 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
     }),
     authority: Object.freeze({
       readableSchemaAvailable: Boolean(schemaMaterial),
+      exactReadableContract,
       schemaPath: schemaMaterial?.path || binding.snapshot || '',
-      sourcePath: binding.sourcePath || '',
-      sourceRepository: binding.sourceRepository || '',
-      sourceCommit: binding.sourceCommit || '',
-      statement: schemaMaterial ? schemaMaterial.authority : 'Registered runtime metadata only; obtain readable canonical schema for prose-bound semantics.'
+      sourcePath: schemaMaterial?.source?.path || binding.sourcePath || '',
+      sourceRepository: schemaMaterial?.source?.repository || binding.sourceRepository || '',
+      sourceCommit: schemaMaterial?.source?.commit || binding.sourceCommit || '',
+      materialQualification: schemaMaterial?.qualification ? Object.freeze({
+        authority: schemaMaterial.qualification.authority,
+        sourceQualified: schemaMaterial.qualification.sourceQualified,
+        representationIntegrity: schemaMaterial.qualification.representationIntegrity,
+        runtimeBootstrapProvenance: schemaMaterial.qualification.runtimeBootstrapProvenance,
+        registered: schemaMaterial.qualification.registered
+      }) : null,
+      statement: schemaMaterial ? `resolved readable schema material (${schemaMaterial.qualification?.authority || 'unqualified'})` : 'Registered runtime metadata only; obtain readable canonical schema for prose-bound semantics.'
     })
   });
   return Object.freeze({ guide, findings: Object.freeze(findings) });
@@ -133,7 +152,8 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
 
 export function readPortableSchemaGuideSections(input = {}, options = {}) {
   const schemaId = String(input.schemaId || options.schemaId || '').trim();
-  const schemaMaterial = findSchemaMaterial(schemaId, input.materials || input);
+  const schemaSelection = selectPortableLoadedSchemaMaterial(input.materials || input, { schemaId });
+  const schemaMaterial = schemaSelection.material || null;
   if (!schemaMaterial) return Object.freeze({
     schema: 'tiinex.portable.schema-section.result.v1',
     schemaId,
@@ -144,7 +164,7 @@ export function readPortableSchemaGuideSections(input = {}, options = {}) {
   });
   const selectors = input.sections || input.section || options.sections || options.section || [];
   const result = readPortableSchemaSections(schemaMaterial.markdown, selectors, options);
-  return Object.freeze({ ...result, findings: Object.freeze([]), authority: schemaMaterial.authority, path: schemaMaterial.path });
+  return Object.freeze({ ...result, findings: Object.freeze(schemaSelection.findings), authority: schemaMaterial.qualification?.authority || '', path: schemaMaterial.path });
 }
 
 export function planPortableArtifact(input = {}, options = {}) {

@@ -16,5 +16,11 @@ assert.equal(bootstrap.includes(pointer.bootstrapPath), true);
 assert.equal(bootstrap.includes('do not execute package code'), true);
 assert.equal(bootstrap.includes('## Bind Capabilities To Concrete Host Tools'), true);
 assert.equal(bootstrap.includes('tiinex.portable.host-action-receipt.v1'), true);
+assert.equal(bootstrap.includes('## Manufacture Recipient-Relative Handoff Packages'), true);
+assert.equal(bootstrap.includes('manufacture-handoff-package'), true);
+assert.equal(bootstrap.includes('tiinex.package/START.md'), true);
+assert.equal(bootstrap.includes('orient-handoff-package'), true);
+assert.equal(bootstrap.includes('Filename or co-location under a bootstrap-like path does not grant bootstrap authority.'), true);
+assert.equal(bootstrap.includes('canonical Handoff semantic authoring/validation or a locked canonical package schema'), true);
 
 console.log('✓ portable bootstrap pointer and startup-mode contract passed');

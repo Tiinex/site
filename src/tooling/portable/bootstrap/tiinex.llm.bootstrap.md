@@ -564,6 +564,33 @@ node tools/tiinex-portable.mjs build-runtime-package --session session.json --ou
 
 This is a local filesystem write, not publication or source mutation.
 
+## Manufacture Recipient-Relative Handoff Packages
+
+The Node adapter can manufacture the existing recipient-relative Handoff transport contract from an ordinary workspace directory without asking an LLM to construct one carrier object per file:
+
+```bash
+node tools/tiinex-portable.mjs manufacture-handoff-package ./workspace \
+  --handoff .topics/development/handoff.trace.md \
+  --workspace-id recipient-workspace \
+  --output handoff-package.zip
+```
+
+The adapter deterministically enumerates regular files below the workspace root, skips configured repository/runtime internals and symbolic links, records bounded completeness evidence, binds exact workspace-relative `Material Reference` targets when they resolve inside the enumerated workspace, and passes those inputs to the existing recipient-relative closure/package owners. Requirements that cannot be resolved from an exact local relative reference still require explicit material bindings or recipient reference capability. The operation does not infer canonical Handoff meaning or mint completeness from an LLM-provided file list.
+
+Portable Tooling bootstrap delivery is separate from the optional transport-orientation bootstrap at `tiinex.package/bootstrap.md`, and from canonical schema-material authority inside `src/tooling/portable/schema/bootstrap/**`. `--tooling-bootstrap embedded` carries a manifest plus exact manifest-declared runtime bytes. `--tooling-bootstrap persistent` carries only the manifest and requires `--tooling-bootstrap-manifest <verified-bootstrap.json>` whose exact runtime representation identity matches the runtime being packaged. Filename or co-location under a bootstrap-like path does not grant bootstrap authority.
+
+The manufactured package is checked through package inspection, Handoff material closure, carrier projection inspection, cold-consumer START correlation, transport companion correlation, Tooling-bootstrap inspection, and by default the existing full package round trip. Node ZIP serialization preserves binary carrier bytes.
+
+Carrier projection is disposable and package-derived. For a qualified Handoff artifact with `Handoff Parties`, Tooling derives a rename-safe outer filename from the qualified workspace title, the local numeric dimension in the workspace-relative Handoff filename, and the Handoff's explicit `From`/`To` labels. The resulting `<workspace>-<dimension>-<from>-to-<to>.handoff-package.zip` filename never becomes Parent, assignment, acceptance, completion, or package identity. A filesystem collision may add `--2`, `--3`, and so on to the outer filename only.
+
+One package may explicitly advertise multiple qualified workspace-relative Handoff routes through `tiinex.package/handoff-carrier.json`. The projection now carries `workspaces[]`, and every route binds one exact `workspaceId` to one exact workspace-relative Handoff path. Every advertised route is requalified against that workspace carrier and its exact package byte/digest. In shared mode, each route also proves its own `Required Context` against exact carried workspace/material bytes; a missing required byte blocks the shared projection, while `Reference Context` remains non-blocking. Shared mode requires an explicit route selector before human output can be projected; Tooling does not guess from an outer filename or prior conversation. The package bytes remain unchanged when different recipients select different routes. The current Node manufacturing adapter intentionally retains its one-workspace ergonomic fast path; plural multi-root filesystem authoring is not implied by the plural package/projection contract.
+
+Every manufactured Handoff package also contains `tiinex.package/START.md`. A cold consumer should read this file without executing received package code. It contains one bounded fenced-JSON projection of `workspaces[]`, routes, route-to-workspace binding, and route-selection policy. The START projection has no semantic authority: `orient-handoff-package <package.zip>` rehydrates the package and independently correlates START against the carrier, closure, manifest, file map, and exact carried workspace bytes; missing, stale, tampered, ambiguous, or mismatched orientation fails closed.
+
+The human fast path is one package. `--output-dir <dir>` writes it using the selected route's workspace-local deterministic projected filename. `--transport-text` optionally writes a small disposable sidecar containing only that selected workspace's orientation and the exact `Continue from:` locator; this fallback is not emitted normally and has no semantic authority. `project-handoff-carrier-output <package.zip> --route <path-or-route-id>` can regenerate the same filename/text from package truth after a device or conversation cold start. A route id is the unambiguous selector when different workspaces expose the same workspace-relative Handoff path.
+
+When an explicit legacy `--output <file.zip>` is used for a single-route package whose newer human projection cannot be qualified, manufacturing remains available as the Tooling 011 safe fallback. Shared-route output still fails closed unless every advertised route qualifies and one route is explicitly selected. CLI responses remain bounded verification/receipt summaries rather than reserializing package or nested roundtrip carrier bytes.
+
 
 ## Assets And Multimodal Host Analysis
 
@@ -692,6 +719,9 @@ node tools/tiinex-portable.mjs plan-durable-materialization --session session.js
 node tools/tiinex-portable.mjs materialize-durable-findings ./schemas --session session.json --specs materializations.json
 node tools/tiinex-portable.mjs create-checkpoint session.json
 node tools/tiinex-portable.mjs restore-checkpoint checkpoint.json
+node tools/tiinex-portable.mjs manufacture-handoff-package ./workspace --handoff .topics/handoff.trace.md --workspace-id recipient-workspace --output handoff.zip
+node tools/tiinex-portable.mjs manufacture-handoff-package ./workspace --handoff .topics/handoff/004-anchor-to-loom.trace.md --handoff-routes .topics/handoff/004-anchor-to-loom.trace.md,.topics/handoff/004-anchor-to-axiom.trace.md,.topics/handoff/004-anchor-to-kodax.trace.md --route .topics/handoff/004-anchor-to-loom.trace.md --output-dir ./out --transport-text
+node tools/tiinex-portable.mjs project-handoff-carrier-output ./out/tiinex-site-004-anchor-to-loom.handoff-package.zip --route .topics/handoff/004-anchor-to-axiom.trace.md --collision-instance 2
 node tools/tiinex-portable.mjs build-runtime-package --session session.json --output runtime-package.zip
 node tools/tiinex-portable.mjs inspect-runtime-package bundle.json
 node tools/tiinex-portable.mjs rehydrate-runtime-package runtime-package.zip
@@ -719,8 +749,8 @@ When JavaScript cannot run:
 
 The portable surface does not yet provide:
 
-- automatic file writes or publication of created/staged local drafts; only explicit Node runtime-package ZIP output writes locally
-- canonical handoff generation or a locked canonical package schema
+- automatic file writes or publication of created/staged local drafts; only explicit Node package-output operations write locally
+- canonical Handoff semantic authoring/validation or a locked canonical package schema; recipient-relative operational Handoff package manufacturing is available without claiming either
 - source mutation or publication
 - automatic artifact-parent/origin discovery; schema discovery is explicit and host-mediated
 - semantic-parent capability execution

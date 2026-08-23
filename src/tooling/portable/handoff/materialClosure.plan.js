@@ -83,6 +83,7 @@ function qualifyWorkspaceMaterialization(item = {}, index = 0, findings = null) 
   if (qualification !== 'qualified' && findings) findings.push(finding('error', 'portable.handoff-material.workspace.complete-unproven', 'Workspace materialization claimed complete without qualified completeness evidence for the declared workspace boundary.', { workspaceId: item.id || item.workspaceId || `workspace-${index}` }));
   return deepFreeze({
     id: String(item.id || item.workspaceId || `workspace-${index}`),
+    title: String(item.title || item.name || item.workspaceTitle || item.id || item.workspaceId || `workspace-${index}`),
     source: Object.freeze({ ...(item.source || {}) }),
     materialization: requested === 'complete' && completeEvidence ? 'complete' : 'partial',
     qualification,

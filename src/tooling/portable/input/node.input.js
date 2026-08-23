@@ -7,6 +7,7 @@ const DEFAULT_MAX_FILES = 4000;
 const DEFAULT_MAX_TEXT_BYTES = 4 * 1024 * 1024;
 const DEFAULT_EXCLUDED_DIRECTORIES = Object.freeze(['.git', 'node_modules', '.site-publish']);
 const TEXT_RE = /\.(?:md|markdown|json|txt|yml|yaml|js|mjs|cjs|ts|tsx|jsx|html|css)$/i;
+const PACKAGE_CONTROL_JSON_RE = /^tiinex\.package\/[^/]+\.json$/i;
 
 export async function loadNodePortableInput(targets, options = {}) {
   const list = normalizeTargets(targets);
@@ -96,19 +97,24 @@ async function readZipFile(absolute, files, findings, options = {}) {
     const result = await zipBufferToImportEntries(buffer, { source: 'portable-node-zip', excludeRepositoryInternals: true });
     for (const entry of result.entries || []) {
       if (files.length >= positiveInteger(options.maxFiles, DEFAULT_MAX_FILES)) break;
-      const tooLargeText = typeof entry.content === 'string' && Number(entry.size || 0) > positiveInteger(options.maxTextBytes, DEFAULT_MAX_TEXT_BYTES);
+      const maxTextBytes = positiveInteger(options.maxTextBytes, DEFAULT_MAX_TEXT_BYTES);
+      const packageControlContent = typeof entry.content !== 'string' && PACKAGE_CONTROL_JSON_RE.test(String(entry.path || '')) && Number(entry.size || 0) <= maxTextBytes && entry.bytes
+        ? new TextDecoder().decode(entry.bytes)
+        : null;
+      const textContent = typeof entry.content === 'string' ? entry.content : packageControlContent;
+      const tooLargeText = Boolean((typeof entry.content === 'string' || PACKAGE_CONTROL_JSON_RE.test(String(entry.path || ''))) && Number(entry.size || 0) > maxTextBytes);
       if (tooLargeText) {
         files.push(Object.freeze({ path: entry.path, size: entry.size, type: entry.type, kind: 'asset', sourceMode: 'portable-node-zip', locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) }));
         findings.push(portableFinding('warning', 'portable.node.zip-text-too-large', 'Zip text material exceeded the configured text limit and was retained as metadata only.', { ref: entry.path, size: entry.size }));
       } else {
         files.push(Object.freeze({
           path: entry.path,
-          ...(typeof entry.content === 'string' ? { content: entry.content } : {}),
+          ...(typeof textContent === 'string' ? { content: textContent } : {}),
           size: entry.size,
           type: entry.type,
           kind: entry.kind,
           sourceMode: 'portable-node-zip',
-          ...(typeof entry.content === 'string' ? {} : { locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) })
+          ...(typeof textContent === 'string' ? {} : { locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) })
         }));
       }
     }

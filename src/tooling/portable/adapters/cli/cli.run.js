@@ -6,6 +6,7 @@ import { listPortableOperations, runPortableOperation } from '../../operation.ca
 import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
 import { materializeCliArtifactSetResult, materializeCliLocalDraftResult } from './cli.local-output.js';
 import { portableCliHelpText } from './cli.help.js';
+import { materializeHandoffManufactureCliOutput, prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
 
 export async function runPortableCli(argv = process.argv.slice(2), io = console, runtime = {}) {
   const parsed = parseArgs(argv);
@@ -20,7 +21,9 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
   try {
     const { input, options } = await commandInput(parsed, runtime);
     const result = await runPortableOperation(parsed.command, input, options);
-    if (parsed.command === 'build-runtime-package' && parsed.flags.output) {
+    if (parsed.command === 'manufacture-handoff-package' && (parsed.flags.output || parsed.flags['output-dir'])) {
+      writeJson(io, await materializeHandoffManufactureCliOutput(result, parsed.flags), parsed.flags.compact !== true);
+    } else if (parsed.command === 'build-runtime-package' && parsed.flags.output) {
       const receipt = await writePortableRuntimePackageZip(result.bundle, parsed.flags.output);
       writeJson(io, Object.freeze({ ...result, bundle: undefined, writeReceipt: receipt }), parsed.flags.compact !== true);
     } else if (parsed.command === 'create-local-draft' && (parsed.flags.output || parsed.flags['qualified-package'] || parsed.flags['result-package'])) {
@@ -143,6 +146,9 @@ async function commandInput(parsed, runtime = {}) {
     return { input: { plan: plan.result || plan, receipt: receipt.result || receipt }, options: {} };
   }
 
+  if (parsed.command === 'manufacture-handoff-package') {
+    return prepareHandoffManufactureCliCommand(parsed, runtime);
+  }
   if (parsed.command === 'describe-checkpoint-gate') return { input: { profile: flags.profile || parsed.positionals[0] || 'source-clean' }, options: {} };
   if (parsed.command === 'qualify-checkpoint') {
     const file = flags.receipt || flags.report || parsed.positionals[0] || flags.input;
@@ -161,6 +167,10 @@ async function commandInput(parsed, runtime = {}) {
   const explicitMaterial = explicitTargets.length ? await loadNodePortableInput(explicitTargets, loadOptions) : emptyMaterial();
   const defaultSchemaMaterial = schemaTargets.length ? decorateDefaultSchemaMaterial(await loadNodePortableInput(schemaTargets, loadOptions), runtime.defaultSchemaSource) : emptyMaterial();
   const material = mergeLoadedMaterial(explicitMaterial, defaultSchemaMaterial);
+  if (parsed.command === 'project-handoff-carrier-output') return {
+    input: { ...material, route: flags.route || '', collisionInstance: flags['collision-instance'] || 1 },
+    options: {}
+  };
   const options = {
     startId: flags.start || '',
     direction: flags.direction || 'ancestors',
@@ -427,6 +437,7 @@ function parseArgs(argv = []) {
   }
   return { command, flags, positionals };
 }
+
 
 function writeJson(io, value, pretty = true) {
   io.log(JSON.stringify(value, null, pretty ? 2 : 0));

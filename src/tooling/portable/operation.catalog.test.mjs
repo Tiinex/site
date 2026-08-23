@@ -19,6 +19,8 @@ const expected = [
   'create-local-draft',
   'materialize-durable-findings',
   'create-checkpoint',
+  'manufacture-handoff-package',
+  'orient-handoff-package',
   'build-runtime-package',
   'rehydrate-runtime-package',
   'roundtrip-runtime-package',

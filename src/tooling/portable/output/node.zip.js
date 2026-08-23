@@ -1,12 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspectExportPackageBundle } from '../../../export/package.builder.js';
+import { packageFileBytes } from '../../../export/package.bytes.js';
 import { createDeterministicStoredZip, safeZipPath } from './deterministic.zip.js';
 
 export function portableRuntimePackageZipBuffer(bundle = {}) {
   const inspection = inspectExportPackageBundle(bundle);
   if (inspection.status !== 'valid') throw new Error('portable.runtime-package.zip.bundle.invalid');
-  const entries = (bundle.files || []).map((file) => ({ name: safeZipPath(file.path), data: Buffer.from(String(file.content ?? ''), 'utf8') }));
+  const entries = (bundle.files || []).map((file) => ({ name: safeZipPath(file.path), data: Buffer.from(packageFileBytes(file)) }));
   if (entries.some((entry) => !entry.name)) throw new Error('portable.runtime-package.zip.path.invalid');
   return createDeterministicStoredZip(entries);
 }

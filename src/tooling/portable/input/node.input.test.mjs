@@ -31,6 +31,17 @@ try {
   assert.equal(zipInput.files.some((file) => file.path === 'assets/pixel.bin' && file.kind === 'asset'), true);
   assert.equal(zipInput.findings.some((finding) => finding.severity === 'error'), false);
 
+  const packageControlPath = path.join(root, 'package-control.zip');
+  const largePackageControl = JSON.stringify({ schema: 'tiinex.portable.large-package-control.fixture.v1', padding: 'x'.repeat(140 * 1024) });
+  await writeFile(packageControlPath, storedZip([{ name: 'tiinex.package/handoff-closure.json', data: Buffer.from(largePackageControl, 'utf8') }]));
+  const packageControlInput = await loadNodePortableInput(packageControlPath);
+  const hydratedPackageControl = packageControlInput.files.find((file) => file.path === 'tiinex.package/handoff-closure.json');
+  assert.equal(typeof hydratedPackageControl?.content, 'string', true, 'package control JSON above generic archive preview size must remain readable within portable maxTextBytes');
+  assert.equal(JSON.parse(hydratedPackageControl.content).schema, 'tiinex.portable.large-package-control.fixture.v1');
+  const boundedPackageControlInput = await loadNodePortableInput(packageControlPath, { maxTextBytes: 64 * 1024 });
+  assert.equal(typeof boundedPackageControlInput.files.find((file) => file.path === 'tiinex.package/handoff-closure.json')?.content, 'undefined');
+  assert.equal(boundedPackageControlInput.findings.some((finding) => finding.code === 'portable.node.zip-text-too-large'), true);
+
   const output = [];
   const errors = [];
   const exitCode = await runPortableCli(['inspect', nested], {

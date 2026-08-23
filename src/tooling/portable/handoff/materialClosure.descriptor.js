@@ -14,6 +14,7 @@ export function buildHandoffClosureDescriptor(plan = {}, packageMaterial = {}) {
     const entries = correlationStatus === 'qualified' && (packaged.entries || []).length ? packaged.entries : workspace.includedEntries;
     return Object.freeze({
       id: workspace.id,
+      title: String(workspace.title || workspace.id || ''),
       source: workspace.source,
       materialization: workspace.materialization,
       qualification: workspace.qualification,

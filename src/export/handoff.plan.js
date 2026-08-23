@@ -23,17 +23,26 @@ export function prepareWorkspaceHandoffExport(workspace = {}, options = {}) {
 export function prepareRecipientRelativeWorkspaceHandoffExport(input = {}, options = {}) {
   const built = buildRecipientRelativeHandoffTransportPackage(input, options);
   const roundtrip = options.verifyRoundtrip === false ? null : roundTripRecipientRelativeHandoffTransportPackage(built, options);
-  const executable = built.status !== 'blocked' && built.inspection?.status === 'valid' && built.closureInspection?.status === 'valid' && (!roundtrip || roundtrip.status === 'passed');
+  const executable = built.status !== 'blocked' && built.inspection?.status === 'valid' && built.closureInspection?.status === 'valid' && built.carrierInspection?.status === 'valid' && built.coldConsumerEntrypointInspection?.status === 'valid' && (!roundtrip || roundtrip.status === 'passed');
+  const carrierTransportReady = built.carrierProjection?.mode !== 'shared' || built.carrierProjection?.status === 'ready';
+  const transportExecutable = executable && carrierTransportReady && built.transportCompanion?.status === 'ready' && built.companionInspection?.status === 'valid';
   return Object.freeze({
     schema: 'tiinex.export.handoff.recipient-relative-preparation.v1',
     status: executable ? built.status : 'blocked',
     executable,
+    transportExecutable,
     plan: built.plan,
     bundle: built.bundle,
     descriptor: built.descriptor,
+    transportCompanion: built.transportCompanion,
     inspection: built.inspection,
     closureInspection: built.closureInspection,
+    carrierProjection: built.carrierProjection,
+    carrierInspection: built.carrierInspection,
+    coldConsumerProjection: built.coldConsumerProjection,
+    coldConsumerEntrypointInspection: built.coldConsumerEntrypointInspection,
+    companionInspection: built.companionInspection,
     roundtrip,
-    boundary: 'Site-facing delegation to the shared portable recipient-relative material-closure owner. Handoff semantics, provider authority, workspace completeness, and acceptance/completion are not reinterpreted here.'
+    boundary: 'Site-facing delegation to shared portable recipient-relative package and non-authoritative transport companion owners. Projection readiness is exposed separately and does not redefine Handoff semantics, provider authority, workspace completeness, or acceptance/completion.'
   });
 }

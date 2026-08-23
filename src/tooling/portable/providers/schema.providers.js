@@ -45,8 +45,7 @@ export async function resolvePortableSchemaMaterial(input = {}, options = {}) {
     return resolutionResult(schemaId, null, providerCatalog, findings, null);
   }
 
-  const candidates = collectSchemaCandidates(input);
-  const localSelection = selectSchemaCandidate(candidates, schemaId);
+  const localSelection = selectPortableLoadedSchemaMaterial(input, { schemaId });
   findings.push(...localSelection.findings);
   if (localSelection.status === 'ambiguous') return resolutionResult(schemaId, null, providerCatalog, findings, null, 'ambiguous');
   if (localSelection.material) return resolutionResult(schemaId, localSelection.material, providerCatalog, findings, null);
@@ -78,6 +77,13 @@ export async function resolvePortableSchemaMaterial(input = {}, options = {}) {
   const request = buildProviderRequest(schemaId, providerCatalog, input, options);
   findings.push(portableFinding('warning', 'portable.schema-provider.material.unresolved', 'Readable schema material was not found in loaded material, cache, provider responses, or executable providers.', { schemaId }));
   return resolutionResult(schemaId, null, providerCatalog, findings, request);
+}
+
+
+export function selectPortableLoadedSchemaMaterial(input = {}, options = {}) {
+  const schemaId = String(input.schemaId || options.schemaId || '').trim();
+  if (!schemaId) return Object.freeze({ status: 'unresolved', material: null, findings: Object.freeze([portableFinding('error', 'portable.schema-provider.schema.required', 'Schema material selection requires a schema id.')]) });
+  return selectSchemaCandidate(collectSchemaCandidates(input), schemaId);
 }
 
 export async function resolvePortableSchemaChainMaterial(input = {}, options = {}) {
@@ -226,6 +232,15 @@ function inspectSchemaCandidate(candidateValue, schemaId) {
   const source = normalizeSource(file.source || {}, candidateValue.providerId, candidateValue.remoteFetch, candidateValue.cached);
   const binding = schemaRegistry.byId.get(schemaId)?.binding || null;
   const qualification = qualifyPortableSchemaMaterial({ path, source, binding, checksum: file.checksum || source.checksum || '', markdown, runtimeBootstrapProvenance: candidateValue.runtimeBootstrapProvenance });
+  if (candidateValue.runtimeBootstrapProvenance && (qualification.representationIntegrity !== 'verified' || qualification.authority !== 'bundled-canonical-self-verified')) {
+    findings.push(portableFinding('error', 'portable.schema-provider.bootstrap.integrity.invalid', 'Runtime-owned canonical bootstrap schema material failed exact self-integrity/source qualification and was rejected.', {
+      ref: path,
+      schemaId,
+      representationIntegrity: qualification.representationIntegrity,
+      authority: qualification.authority
+    }));
+    return { material: null, findings };
+  }
   const material = Object.freeze({
     schema: PORTABLE_SCHEMA_MATERIAL_RESOLUTION_SCHEMA_ID,
     schemaId,

@@ -8,6 +8,9 @@ import { buildHandoffClosureDescriptor, HANDOFF_CLOSURE_DESCRIPTOR_PATH, inspect
 import { qualifyHandoffMaterialClosurePlanReadiness } from './materialClosure.readiness.js';
 import { qualifyHandoffMaterialClosurePlanInputBinding } from './materialClosure.inputBinding.js';
 import { qualifyHandoffMaterializedOutput } from './materialClosure.materialized.js';
+import { buildHandoffTransportCompanionProjection, HANDOFF_TRANSPORT_COMPANION_PATH, inspectHandoffTransportCompanion } from './transportCompanion.js';
+import { buildHandoffCarrierProjection, HANDOFF_CARRIER_PROJECTION_PATH, inspectHandoffCarrierProjection } from './carrierProjection.js';
+import { buildHandoffColdConsumerProjection, renderHandoffColdConsumerEntrypoint, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, inspectHandoffColdConsumerEntrypoint } from './coldConsumerEntrypoint.js';
 
 export const PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID = 'tiinex.portable.handoff-transport-package.v1';
 
@@ -57,12 +60,42 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
       extraFiles.push(finalizeFile({ path: bootstrapPath, kind: 'handoff-bootstrap', logicalKind: 'transport-orientation', mediaType: String(input.bootstrap?.mediaType || input.bootstrap?.type || 'text/markdown'), data: bootstrapData, boundary: 'Optional transport orientation only; not a Tiinex artifact or workspace lineage member.' }));
     }
   }
+  let additionalTransportBlocked = false;
+  const additionalTransportPaths = new Set();
+  for (const entry of input.additionalTransportFiles || []) {
+    const filePath = safePath(entry.path || '');
+    const data = packageFileBytes(entry);
+    if (!filePath || data.byteLength === 0 || additionalTransportPaths.has(filePath) || reservedGeneratedPath(filePath)) {
+      additionalTransportBlocked = true;
+      continue;
+    }
+    additionalTransportPaths.add(filePath);
+    extraFiles.push(finalizeFile({
+      path: filePath,
+      kind: String(entry.kind || 'handoff-transport-material'),
+      logicalKind: String(entry.logicalKind || 'recipient-relative-transport-material'),
+      entryId: String(entry.entryId || ''),
+      mediaType: String(entry.mediaType || entry.type || 'application/octet-stream'),
+      data,
+      boundary: String(entry.boundary || 'Additional recipient-relative transport byte; package placement does not create semantic authority.'),
+      sourceBoundary: String(entry.sourceBoundary || '')
+    }));
+  }
   const localRunId = String(input.localRunId || `handoff-closure:${stableFingerprintBytes(utf8Bytes(JSON.stringify({ handoff: plan.handoff, required: plan.requirements?.required?.map((x) => [x.requirementId, x.disposition]), reference: plan.requirements?.reference?.map((x) => [x.requirementId, x.disposition]) })))}`);
   const descriptor = buildHandoffClosureDescriptor(plan, { materialized: packagedMaterial, workspaces: packagedWorkspaces, bootstrapPath, localRunId, planInputBinding, materializedOutputQualification });
   const descriptorFile = finalizeFile({ path: HANDOFF_CLOSURE_DESCRIPTOR_PATH, kind: 'handoff-closure-descriptor', logicalKind: 'disposable-transport-control', mediaType: 'application/json', content: `${stablePrettyJson(descriptor)}\n`, boundary: descriptor.boundary });
+  const packageClosureStatus = planReadiness.state === 'qualified' && planReadiness.expectedRequiredClosureReady && planInputBinding.state === 'qualified' && materializedOutputQualification.state === 'qualified' && baseBundle.status !== 'blocked' && !workspaceCorrelationBlocked && !bootstrapCarrierBlocked && !additionalTransportBlocked ? (baseBundle.status === 'degraded' ? 'degraded' : 'ready') : 'blocked';
+  const projectionBundle = { ...baseBundle, files: [...(baseBundle.files || []), ...extraFiles, descriptorFile], handoffClosure: descriptor };
+  const carrierProjection = buildHandoffCarrierProjection({ bundle: projectionBundle, descriptor, routes: input.transportRoutes || input.handoffRoutes || [] });
+  const carrierFile = finalizeFile({ path: HANDOFF_CARRIER_PROJECTION_PATH, kind: 'handoff-carrier-projection', logicalKind: 'disposable-human-transport-projection', mediaType: 'application/json', content: `${stablePrettyJson(carrierProjection)}\n`, boundary: carrierProjection.boundary });
+  const coldConsumerProjection = buildHandoffColdConsumerProjection({ carrierProjection });
+  const coldConsumerEntrypointFile = finalizeFile({ path: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, kind: 'handoff-cold-consumer-entrypoint', logicalKind: 'disposable-package-orientation-projection', mediaType: 'text/markdown', content: renderHandoffColdConsumerEntrypoint({ projection: coldConsumerProjection }), boundary: coldConsumerProjection.boundary });
+  const transportStatus = carrierProjection.mode === 'shared' && carrierProjection.status !== 'ready' ? 'blocked' : packageClosureStatus;
+  const transportCompanion = buildHandoffTransportCompanionProjection({ bundle: baseBundle, descriptor, packageStatus: transportStatus, participation: input.transportParticipation || input.participation || {} });
+  const companionFile = finalizeFile({ path: HANDOFF_TRANSPORT_COMPANION_PATH, kind: 'handoff-transport-companion', logicalKind: 'disposable-transport-projection', mediaType: 'application/json', content: `${stablePrettyJson(transportCompanion)}\n`, boundary: transportCompanion.boundary });
   const oldFileMapPath = 'tiinex.package/file-map.json';
   const buildReceiptPath = 'tiinex.package/build-receipt.json';
-  const baseGoverned = [...(baseBundle.files || []).filter((file) => ![oldFileMapPath, buildReceiptPath].includes(String(file.path || ''))), ...extraFiles, descriptorFile].map(finalizeFile);
+  const baseGoverned = [...(baseBundle.files || []).filter((file) => ![oldFileMapPath, buildReceiptPath].includes(String(file.path || ''))), ...extraFiles, descriptorFile, carrierFile, coldConsumerEntrypointFile, companionFile].map(finalizeFile);
   const materialRepresentationSha256 = packageMaterialRepresentationSha256(baseGoverned);
   const priorBuildReceipt = parseJsonFile((baseBundle.files || []).find((file) => String(file.path || '') === buildReceiptPath)) || {};
   const buildReceipt = Object.freeze({ ...priorBuildReceipt, materialRepresentationSha256, counts: Object.freeze({ ...(priorBuildReceipt.counts || {}), materialFiles: baseGoverned.filter((file) => file.path && !String(file.path).startsWith('tiinex.package/')).length }) });
@@ -71,11 +104,14 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
   const fileMap = buildExportPackageFileMap(governed, { packageId: baseBundle.packageId || '' });
   const fileMapFile = finalizeFile({ path: oldFileMapPath, kind: 'package-file-map', mediaType: 'application/json', content: `${stablePrettyJson(fileMap)}\n` });
   const files = Object.freeze([...governed, fileMapFile]);
-  const status = planReadiness.state === 'qualified' && planReadiness.expectedRequiredClosureReady && planInputBinding.state === 'qualified' && materializedOutputQualification.state === 'qualified' && baseBundle.status !== 'blocked' && !workspaceCorrelationBlocked && !bootstrapCarrierBlocked ? (baseBundle.status === 'degraded' ? 'degraded' : 'ready') : 'blocked';
+  const status = transportStatus;
   const bundle = deepFreeze({ ...baseBundle, schema: baseBundle.schema, status, files, fileMap, packageRepresentationSha256: fileMap.representationSha256, handoffClosure: descriptor, boundary: `${baseBundle.boundary} Recipient-relative Handoff closure descriptor/material are disposable transport controls and do not alter semantic Handoff or workspace truth.` });
   const inspection = inspectExportPackageBundle(bundle);
   const closureInspection = inspectHandoffClosureDescriptor(bundle);
-  return deepFreeze({ schema: PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID, status: inspection.status === 'valid' && closureInspection.status === 'valid' ? status : 'blocked', plan, planReadiness, planInputBinding, materializedOutputQualification, bundle, inspection, closureInspection, descriptor });
+  const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const coldConsumerEntrypointInspection = inspectHandoffColdConsumerEntrypoint(bundle);
+  const companionInspection = inspectHandoffTransportCompanion(bundle);
+  return deepFreeze({ schema: PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID, status: inspection.status === 'valid' && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? status : 'blocked', plan, planReadiness, planInputBinding, materializedOutputQualification, bundle, inspection, closureInspection, descriptor, carrierProjection, carrierInspection, coldConsumerProjection, coldConsumerEntrypointInspection, transportCompanion, companionInspection });
 }
 
 export function roundTripRecipientRelativeHandoffTransportPackage(input = {}, options = {}) {
@@ -83,8 +119,11 @@ export function roundTripRecipientRelativeHandoffTransportPackage(input = {}, op
   const bundle = built.bundle || input.bundle;
   const runtime = roundTripPortableRuntimePackage({ bundle });
   const closureInspection = inspectHandoffClosureDescriptor(bundle);
-  const status = runtime.status.startsWith('passed') && closureInspection.status === 'valid' ? 'passed' : 'failed';
-  return deepFreeze({ schema: 'tiinex.portable.handoff-transport-package.roundtrip.v1', status, built, runtime, closureInspection, verification: Object.freeze({ descriptorPath: HANDOFF_CLOSURE_DESCRIPTOR_PATH, descriptorVerified: closureInspection.status === 'valid', packageRoundtrip: runtime.status, requiredClosureReady: Boolean(built.plan?.requiredClosureReady) }) });
+  const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const coldConsumerEntrypointInspection = inspectHandoffColdConsumerEntrypoint(bundle);
+  const companionInspection = inspectHandoffTransportCompanion(bundle);
+  const status = runtime.status.startsWith('passed') && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? 'passed' : 'failed';
+  return deepFreeze({ schema: 'tiinex.portable.handoff-transport-package.roundtrip.v1', status, built, runtime, closureInspection, carrierInspection, coldConsumerEntrypointInspection, companionInspection, verification: Object.freeze({ descriptorPath: HANDOFF_CLOSURE_DESCRIPTOR_PATH, descriptorVerified: closureInspection.status === 'valid', carrierProjectionPath: HANDOFF_CARRIER_PROJECTION_PATH, carrierProjectionVerified: carrierInspection.status === 'valid', coldConsumerEntrypointPath: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, coldConsumerEntrypointVerified: coldConsumerEntrypointInspection.status === 'valid', companionPath: HANDOFF_TRANSPORT_COMPANION_PATH, companionVerified: companionInspection.status === 'valid', packageRoundtrip: runtime.status, requiredClosureReady: Boolean(built.plan?.requiredClosureReady) }) });
 }
 
 
@@ -124,6 +163,7 @@ function workspaceCarrierBoundary(workspace = null) {
   return 'Package-local partial workspace byte carrier; directory shape is not completeness proof.';
 }
 
+function reservedGeneratedPath(value = '') { return ['tiinex.package/file-map.json', 'tiinex.package/build-receipt.json', HANDOFF_CLOSURE_DESCRIPTOR_PATH, HANDOFF_CARRIER_PROJECTION_PATH, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, HANDOFF_TRANSPORT_COMPANION_PATH].includes(String(value || '')); }
 function materialPackagePath(entry = {}) { return safePath(entry.requestedPackagePath || `handoff.material/${safeToken(entry.requirementId || 'material')}/material.bin`); }
 function workspacePackagePath(workspace = {}, entry = {}, qualifiedWorkspaceId = '') { return safePath(entry.packagePath || `handoff.workspaces/${safeToken(qualifiedWorkspaceId || workspace.id || workspace.workspaceId || 'workspace')}/${safePath(entry.path || 'material.bin')}`); }
 function safePath(value = '') { return String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter((part) => part && part !== '.' && part !== '..').map((part) => part.replace(/[\u0000-\u001f<>:"|?*]/g, '_')).join('/') || 'material.bin'; }
