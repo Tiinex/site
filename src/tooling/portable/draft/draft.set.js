@@ -114,7 +114,9 @@ function createdParent(entry, childPath = '', proposalId = '') {
     } : null,
     boundary: 'portable local artifact set; no remote source provenance inferred',
     sourceMode: draft.sourceMode,
-    source: null
+    source: null,
+    markdown: String(draft.markdown || ''),
+    integrity: parsed?.integrity || null
   }, childPath);
 }
 

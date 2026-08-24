@@ -11,6 +11,7 @@ import {
   inspectPortableMaterial,
   planPortableArtifactCreation,
   planPortableArtifactRepairs,
+  planPortableLineageIntegrity,
   preparePortableTaskOperation,
   preparePortableAssetAnalysisOperation,
   readPortableSchemaSection,
@@ -264,6 +265,13 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'planning-only',
     inputSchema: 'tiinex.portable.repair-plan.request.v1',
     handler: planPortableArtifactRepairs
+  }),
+  'lineage-integrity-plan': operation({
+    name: 'lineage-integrity-plan',
+    description: 'Inspect loaded Parent/self/Parent-target integrity and produce a read-only cascade-aware repair plan without mutating lineage or publication state.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.lineage-integrity-plan.request.v1',
+    handler: planPortableLineageIntegrity
   }),
   'search-lineage': operation({
     name: 'search-lineage',

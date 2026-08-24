@@ -1,4 +1,4 @@
-import { sealC14nV2Self } from '../integrity/integrity.c14nV2.js';
+import { sealC14nV2Self, validatedC14nV2PrimarySelfDigest } from '../integrity/integrity.c14nV2.js';
 import { schemaIdForRecord } from './schema.identity.js';
 import { canonicalRootCreatedAt } from './creation.rootMetadata.js';
 import { renderSchemaReference } from './schema.reference.js';
@@ -46,6 +46,12 @@ export function renderArtifactCreationDraftMarkdown(contract = {}, input = {}) {
     `  - Summary: ${summary}`,
     ...(status ? [`  - Status: ${status}`] : []),
     '', '---', '', bodyMarkdown, '', '# Continuity Integrity', '',
+    ...(parent ? [
+      `- ${integrityMethodReference}`,
+      `  - Towards: [${parent.traceLabel}](${parent.integrityTarget})`,
+      `  - Value: ${parent.primarySelfDigest}`,
+      ''
+    ] : []),
     `- ${integrityMethodReference}`,
     '  - Towards: self',
     '  - Value: pending'
@@ -106,12 +112,19 @@ function parentEnvelope(record = {}, childPath = '') {
   const published = normalizePublishedReference(record.publishedReference || record.browseGitReference || record.browseGit || '');
   const schemaReferenceAuthority = normalizeParentSchemaReferenceAuthority(record.schemaReferenceAuthority || record.parentSchemaReferenceAuthority, schemaId);
   if (!schemaId || !parentPath || !child || !relativeReference) throw new Error('creation-parent-identity-incomplete');
+  const parentSelf = validatedC14nV2PrimarySelfDigest(record.markdown || '');
+  if (parentSelf.state !== 'verified') throw new Error(`creation-parent-primary-self-${parentSelf.reason || parentSelf.state}`);
+  const publishedReference = published.state === 'qualified' ? published.target : '';
+  const integrityTarget = publishedReference || relativeReference;
+  if (!integrityTarget) throw new Error('creation-parent-integrity-target-unavailable');
   return Object.freeze({
     schemaId,
     schemaReferenceAuthority,
     createdAt: String(record.createdAt || '').trim(),
     relativeReference,
-    publishedReference: published.state === 'qualified' ? published.target : '',
+    publishedReference,
+    integrityTarget,
+    primarySelfDigest: parentSelf.value,
     traceLabel: basename(parentPath)
   });
 }

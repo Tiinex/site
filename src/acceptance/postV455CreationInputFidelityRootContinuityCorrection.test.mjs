@@ -62,6 +62,8 @@ const unpublishedContinuation = createArtifactDraftMarkdown(continuation, { pare
 assert.equal(unpublishedContinuation, '', 'exact continuation must fail closed when the local Parent has no qualified published/recovery authority');
 const qualifiedParent = Object.freeze({
   ...parent,
+  markdown: rootMarkdown,
+  integrity: rootParsed.integrity,
   publishedReference: Object.freeze({ target: 'https://archive.example.test/v455/parent-455.trace.md', state: 'qualified' }),
   schemaReferenceAuthority: Object.freeze({ ...continuation.schemaReferences.current, resolutionState: 'qualified' })
 });

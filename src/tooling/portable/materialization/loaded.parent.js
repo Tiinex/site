@@ -37,6 +37,8 @@ export function projectPortableLoadedParentRecord(record = {}) {
     boundary: exact(record.boundary || record.source?.boundary || 'loaded material boundary'),
     sourceMode: exact(record.sourceMode || ''),
     source: record.source || null,
+    markdown: exact(record.markdown || ''),
+    integrity: record.integrity || null,
     publishedReference: record.publishedReference || null,
     schemaReferenceAuthority: record.schemaReferenceAuthority || null,
     title: exact(record.title || ''),

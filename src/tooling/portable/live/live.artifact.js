@@ -146,7 +146,9 @@ function resolveParentRecord(parentRef, material, artifacts, findings) {
       }) : null,
       boundary: 'portable local artifact; no remote provenance',
       sourceMode: 'local-portable-live',
-      source: null
+      source: null,
+      markdown: String(parent.draft?.markdown || ''),
+      integrity: parsed?.integrity || null
     });
   }
   if (parentRef.startsWith('loaded:')) {

@@ -26,6 +26,44 @@ export function canonicalC14nV2SelfState(markdown = '') {
   });
 }
 
+
+export function validatedC14nV2PrimarySelfDigest(markdown = '') {
+  const state = canonicalC14nV2SelfState(markdown);
+  if (state.state !== 'verified') return Object.freeze({
+    state: state.state,
+    reason: state.reason || state.state,
+    value: '',
+    declaredValue: state.declaredValue || '',
+    computedValue: state.computedValue || ''
+  });
+  return Object.freeze({
+    state: 'verified',
+    reason: '',
+    value: state.declaredValue,
+    declaredValue: state.declaredValue,
+    computedValue: state.computedValue
+  });
+}
+
+export function verifyC14nV2TargetSelfDigest({ value = '', targetMarkdown = '' } = {}) {
+  const expectedValue = String(value || '').trim();
+  const target = validatedC14nV2PrimarySelfDigest(targetMarkdown);
+  if (target.state !== 'verified') return Object.freeze({
+    state: target.state === 'mismatch' ? 'target-self-mismatch' : target.state,
+    reason: target.reason || target.state,
+    expectedValue,
+    targetValue: target.declaredValue || '',
+    computedTargetValue: target.computedValue || ''
+  });
+  return Object.freeze({
+    state: expectedValue && expectedValue === target.value ? 'verified' : 'mismatch',
+    reason: !expectedValue ? 'comparison-value-missing' : expectedValue === target.value ? '' : 'target-self-digest-mismatch',
+    expectedValue,
+    targetValue: target.value,
+    computedTargetValue: target.computedValue
+  });
+}
+
 export function sealC14nV2Self(markdown = '') {
   const state = canonicalC14nV2SelfState(markdown);
   if (!['verified', 'mismatch', 'prepared'].includes(state.state)) return Object.freeze({ state: state.state, reason: state.reason, markdown: String(markdown || ''), value: '' });

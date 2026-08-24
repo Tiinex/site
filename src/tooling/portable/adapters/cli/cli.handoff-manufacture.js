@@ -121,6 +121,8 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
       status: humanOutput.status,
       primary: humanOutput.primary,
       normalInlineRouting: humanOutput.normalInlineRouting ? Object.freeze({ ...humanOutput.normalInlineRouting }) : null,
+      presentation: humanOutput.presentation ? Object.freeze({ ...humanOutput.presentation }) : null,
+      normalEmissionBoundary: humanOutput.normalEmissionBoundary ? Object.freeze({ ...humanOutput.normalEmissionBoundary, allowed: Object.freeze([...(humanOutput.normalEmissionBoundary.allowed || [])]) }) : null,
       fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: undefined }) : null
     }) : null,
     toolingBootstrap: result.toolingBootstrap || null,

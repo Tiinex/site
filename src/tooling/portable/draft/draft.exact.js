@@ -16,6 +16,8 @@ export function normalizePortableParentRecord(parent = {}) {
     boundary: String(parent.boundary || parent.source?.boundary || ''),
     sourceMode: String(parent.sourceMode || ''),
     source: parent.source || null,
+    markdown: String(parent.markdown || ''),
+    integrity: parent.integrity || null,
     publishedReference: normalizeReferenceEvidence(parent.publishedReference || parent.browseGitReference || parent.browseGit || null),
     schemaReferenceAuthority: normalizeSchemaReferenceEvidence(parent.schemaReferenceAuthority || parent.parentSchemaReferenceAuthority || null)
   });

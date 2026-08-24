@@ -4,7 +4,7 @@ import { resolveSchemaCapabilities, CapabilityStatus } from './capability.regist
 import { schemaRegistry } from './registry.js';
 import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';
 import { executeArtifactCreationCapability, qualifyArtifactCreationCapability } from './creation.capability.js';
-import { canonicalC14nV2SelfState } from '../integrity/integrity.c14nV2.js';
+import { canonicalC14nV2SelfState, verifyC14nV2TargetSelfDigest } from '../integrity/integrity.c14nV2.js';
 import { validatePortableContractInstance } from '../tooling/portable/schema/contract.validate.js';
 import { qualifyRootCreationRepresentation, qualifyContinuationCreationRepresentation } from './creation.representation.js';
 import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
@@ -173,8 +173,10 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
   if (rootCreation) findings.push(...validateRootCreationRepresentation(draft.markdown || '', contract));
   else if (parentExpected) {
     const relativeReference = relativePath(dirname(options.childPath || draft.path || ''), parentRecord.path || '');
-    const representation = qualifyContinuationCreationRepresentation(draft.markdown || '', contract, parentRecord, { relativeReference });
+    const parentIntegrityTarget = qualifiedParentIntegrityTarget(parentRecord, relativeReference);
+    const representation = qualifyContinuationCreationRepresentation(draft.markdown || '', contract, parentRecord, { relativeReference, parentIntegrityTarget });
     findings.push(...(representation.findings || []).map((message, index) => error(`creation.continuation-representation.${index + 1}`, message)));
+    findings.push(...validateParentTargetIntegrity(parsed, parentRecord, parentIntegrityTarget));
     const parentSchemaAuthority = parentRecord.schemaReferenceAuthority || {};
     const parentSchemaReference = qualifySchemaReferenceValue(parent.schema?.raw || '', parentSchemaAuthority);
     for (const [index, message] of (parentSchemaReference.findings || []).entries()) findings.push(error(`creation.parent-schema-reference.${index + 1}`, message));
@@ -196,6 +198,31 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
   });
 }
 
+
+
+function validateParentTargetIntegrity(parsed = {}, parentRecord = {}, expectedTarget = '') {
+  const entries = (parsed?.integrity?.entries || []).filter((entry) => entry?.method === C14N_V2_METHOD_ID && String(entry?.towards || '') !== 'self');
+  if (entries.length !== 1) return [];
+  const entry = entries[0];
+  if (!expectedTarget || String(entry.towards || '') !== String(expectedTarget)) return [];
+  const result = verifyC14nV2TargetSelfDigest({ value: entry.value || '', targetMarkdown: parentRecord.markdown || '' });
+  if (result.state === 'verified') return [];
+  const code = result.state === 'mismatch'
+    ? 'creation.integrity.parent-target.mismatch'
+    : result.state === 'target-self-mismatch'
+      ? 'creation.integrity.parent-self.mismatch'
+      : result.state === 'ambiguous'
+        ? 'creation.integrity.parent-self.ambiguous'
+        : 'creation.integrity.parent-self.unavailable';
+  return [error(code, `Parent-target c14n-v2 verification failed: ${result.reason || result.state}.`)];
+}
+
+function qualifiedParentIntegrityTarget(parentRecord = {}, relativeReference = '') {
+  const published = parentRecord?.publishedReference || parentRecord?.browseGitReference || parentRecord?.browseGit || null;
+  const target = typeof published === 'string' ? '' : String(published?.target || published?.url || '');
+  const state = typeof published === 'string' ? 'unresolved' : String(published?.state || published?.resolutionState || 'unresolved');
+  return state === 'qualified' && target ? target : String(relativeReference || '');
+}
 
 function validateRootCreationRepresentation(markdown = '', contract = {}) {
   const qualification = qualifyRootCreationRepresentation(markdown, contract);

@@ -34,6 +34,8 @@ const parent = Object.freeze({
   path: '.topics/development/tooling/dogfood/published-parent.trace.md',
   schemaId: 'tiinex.task.v1',
   currentCreatedAt: '2026-08-21 18:57:00',
+  markdown: root.draft.markdown,
+  integrity: parseArtifactMarkdown(root.draft.markdown).integrity,
   publishedReference: Object.freeze({ target: 'https://archive.example.test/exact/published-parent.trace.md', state: 'qualified', evidence: Object.freeze({ representation: 'fixture' }) }),
   schemaReferenceAuthority: Object.freeze({ schemaId: 'tiinex.task.v1', preferredTarget: TASK, exactTargets: Object.freeze([TASK]), resolutionState: 'qualified' })
 });

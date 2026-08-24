@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createPortableLocalArtifactSet } from './draft.set.js';
+import { sealedC14nV2FixtureMarkdown } from '../../../integrity/integrity.testFixture.js';
 import { prepareEpistemicMaterialization } from '../materialization/epistemic.plan.js';
 import { materializeLiveArtifact } from '../live/live.artifact.js';
 
@@ -14,7 +15,7 @@ const values = Object.freeze({
 const childCreatedAt = '2026-08-21T17:30:00.000Z';
 const canonicalCreatedAt = '2026-08-21 16:34:00';
 const alternateCreatedAt = '2026-08-21 16:35:00';
-const withAuthority = (record = {}) => ({ ...record, publishedReference: { target: 'https://archive.example.test/exact/loaded-parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: record.schemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/loaded-parent.schema.md', resolutionState: 'qualified' } });
+const withAuthority = (record = {}) => ({ markdown: sealedC14nV2FixtureMarkdown('Loaded Parent Fixture'), ...record, publishedReference: { target: 'https://archive.example.test/exact/loaded-parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: record.schemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/loaded-parent.schema.md', resolutionState: 'qualified' } });
 const taskPath = '.topics/development/tooling/dogfood/001-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure.trace.md';
 const resultPath = '.topics/development/tooling/dogfood/001-1-1-1-1-1-site-tooling-v473-portable-parent-authority-coherence-metadata-fidelity-closure-result.trace.md';
 

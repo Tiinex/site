@@ -5,6 +5,7 @@ import { renderArtifactCreationDraftMarkdown } from '../../../schemas/creation.r
 import { qualifyCreationSchemaReferences } from '../../../schemas/creation.schemaReferences.js';
 import { canonicalC14nV2SelfState } from '../../../integrity/integrity.c14nV2.js';
 import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
+import { sealedC14nV2FixtureMarkdown } from '../../../integrity/integrity.testFixture.js';
 import { allocateContinuationPath } from '../../../transitions/record.transitions.js';
 import { prepareEpistemicMaterialization } from '../materialization/epistemic.plan.js';
 import { processPortableLiveTurn } from '../live/live.lineage.js';
@@ -78,6 +79,7 @@ assert(second.path.includes('/002-2-'), second.path);
 const parentRecord = {
   ...parent,
   hasContinuityContext: true,
+  markdown: sealedC14nV2FixtureMarkdown('v475 task parent'),
   publishedReference: { target: 'https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md', state: 'qualified' },
   schemaReferenceAuthority: { schemaId: 'tiinex.task.v1', preferredTarget: TASK, exactTargets: [TASK], resolutionState: 'qualified' }
 };

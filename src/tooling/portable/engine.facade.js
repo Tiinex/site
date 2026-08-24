@@ -11,6 +11,7 @@ import { normalizePortableFinding, portableFinding } from './findings.js';
 import { normalizePortableDepth as normalizeDepth, normalizePortableSchemaIds as normalizeSchemaIds, portableOperationResult as operationResult } from './operation.result.js';
 import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
 import { searchPortableLineage as searchPortableLineageIndex } from './lineage/lineage.search.js';
+import { inspectPortableLineageIntegrity } from './lineage/lineage.integrity.plan.js';
 import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
 import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
 import { createPortableLocalDraft, stagePortableDraft } from './draft/draft.create.js';
@@ -404,6 +405,16 @@ export function planPortableArtifactRepairs(input = {}, options = {}) {
   const repairPlan = buildPortableRepairPlan(input, options);
   const findings = Array.isArray(input?.findings) ? input.findings : input?.validation?.findings || input?.audit?.findings || [];
   return operationResult('repair-plan', { repairPlan, findings });
+}
+
+export function planPortableLineageIntegrity(input = {}, options = {}) {
+  const inspection = inspectPortableLineageIntegrity(input, options);
+  return operationResult('lineage-integrity-plan', {
+    status: inspection.status,
+    inspection,
+    repairPlan: inspection.repairPlan,
+    findings: inspection.findings || []
+  });
 }
 
 export function searchPortableLineage(input = {}, options = {}) {

@@ -15,7 +15,8 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
   const bodyH1 = headingOccurrences(bodyLines, 1);
   const bodyH2 = headingOccurrences(bodyLines, 2);
   const sectionBodies = Object.fromEntries(boundSections.map((section) => [section, Object.freeze(exactSectionBodies(bodyLines, section))]));
-  const selfEntries = integritySelfEntries(lines, integrityHeadingIndexes);
+  const integrityEntriesDetailed = integrityEntries(lines, integrityHeadingIndexes);
+  const selfEntries = integrityEntriesDetailed.filter(isSelf);
   return Object.freeze({
     schema: 'tiinex.site.creation-representation-occurrences.v1',
     continuityContextHeadings: countExact(envelopeLines, '# Continuity Context'),
@@ -30,7 +31,8 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
     bodyH2: Object.freeze(bodyH2),
     sectionBodies: Object.freeze(sectionBodies),
     integrityHeadings: integrityHeadingIndexes.length,
-    integrityEntries: integrityEntryCount(lines, integrityHeadingIndexes),
+    integrityEntries: integrityEntriesDetailed.length,
+    integrityEntryDetails: Object.freeze(integrityEntriesDetailed),
     selfIntegrityEntries: Object.freeze(selfEntries)
   });
 }
@@ -126,29 +128,44 @@ function integrityEntryCount(lines, integrityHeadingIndexes) {
   return count;
 }
 
-function integritySelfEntries(lines, integrityHeadingIndexes) {
+function integrityEntries(lines, integrityHeadingIndexes) {
   const out = [];
   for (const headingIndex of integrityHeadingIndexes) {
     const end = nextTopLevelHeading(lines, headingIndex + 1);
     let current = null;
+    const flush = () => {
+      if (!current) return;
+      out.push(Object.freeze(current));
+      current = null;
+    };
     for (let i = headingIndex + 1; i < end; i += 1) {
       const top = lines[i].match(/^-\s+(.+?)\s*$/);
       if (top) {
-        if (current && isSelf(current)) out.push(Object.freeze(current));
-        current = { methodRaw: top[1], method: stripLink(top[1]), towards: '', valueCount: 0 };
+        flush();
+        current = { methodRaw: top[1], method: stripLink(top[1]), towardsRaw: '', towards: '', towardsLabel: '', valueCount: 0, value: '' };
         continue;
       }
       if (!current) continue;
-      const towards = lines[i].match(/^\s+-\s+Towards:\s*(.*?)\s*$/); if (towards) current.towards = stripLink(towards[1]);
-      if (/^\s+-\s+Value:\s*/.test(lines[i])) current.valueCount += 1;
+      const towards = lines[i].match(/^\s+-\s+Towards:\s*(.*?)\s*$/);
+      if (towards) {
+        current.towardsRaw = towards[1];
+        current.towards = linkTargetOrText(towards[1]);
+        current.towardsLabel = stripLink(towards[1]);
+      }
+      const value = lines[i].match(/^\s+-\s+Value:\s*(.*?)\s*$/);
+      if (value) {
+        current.valueCount += 1;
+        if (current.valueCount === 1) current.value = value[1];
+      }
     }
-    if (current && isSelf(current)) out.push(Object.freeze(current));
+    flush();
   }
   return out;
 }
 function isSelf(entry) { return entry.method === C14N_V2_METHOD_ID && entry.towards === 'self'; }
 function nextTopLevelHeading(lines, start) { for (let i = start; i < lines.length; i += 1) if (/^#\s+/.test(lines[i])) return i; return lines.length; }
 function stripLink(value = '') { const text = String(value || '').trim(); const link = text.match(/^\[([^\]]+)\]\([^)]+\)$/); return (link ? link[1] : text).trim(); }
+function linkTargetOrText(value = '') { const text = String(value || '').trim(); const link = text.match(/^\[([^\]]+)\]\(([^)]+)\)$/); return (link ? link[2] : text).trim(); }
 function escapeRegExp(value = '') { return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 export function qualifyContinuationCreationRepresentation(markdown = '', contract = {}, parentRecord = {}, options = {}) {
@@ -164,9 +181,10 @@ export function qualifyContinuationCreationRepresentation(markdown = '', contrac
   expectCount(findings, 'Created At field', observed.createdAt.length, 1);
   expectCount(findings, 'body H1 title', observed.bodyH1.length, 1);
   expectCount(findings, 'Continuity Integrity heading', observed.integrityHeadings, 1);
-  expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 1);
+  expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 2);
   expectCount(findings, `${C14N_V2_METHOD_ID} Towards:self entry`, observed.selfIntegrityEntries.length, 1);
   qualifyPrimarySelfMethodReference(findings, observed, contract);
+  qualifyParentTargetIntegrityEntry(findings, observed, contract, options.parentIntegrityTarget || '');
   for (const section of sections) expectCount(findings, `bound section ${section}`, observed.sectionBodies[section]?.length || 0, 1);
 
   const text = String(markdown || '').replace(/\r\n?/g, '\n');
@@ -190,6 +208,24 @@ export function qualifyContinuationCreationRepresentation(markdown = '', contrac
     if (browse[0]?.target !== String(parentRecord?.publishedReference?.target || '')) findings.push('Parent browse + git Origin must preserve the exact qualified published Parent representation.');
   }
   return Object.freeze({ state: findings.length ? 'ambiguous' : 'qualified', findings: Object.freeze(findings), observed });
+}
+
+
+function qualifyParentTargetIntegrityEntry(findings, observed, contract, expectedTarget = '') {
+  const candidates = (observed.integrityEntryDetails || []).filter((entry) => entry.method === C14N_V2_METHOD_ID && entry.towards !== 'self');
+  expectCount(findings, `${C14N_V2_METHOD_ID} Parent-target entry`, candidates.length, 1);
+  if (candidates.length !== 1) return;
+  const entry = candidates[0];
+  const authority = contract?.integrityMethodReferences?.primarySelf || null;
+  if (authority) {
+    const qualification = qualifyIntegrityMethodReferenceValue(entry.methodRaw || entry.method || '', authority);
+    for (const finding of qualification.findings || []) findings.push(finding);
+  }
+  if (!entry.towards) findings.push('Parent-target integrity Towards value is required.');
+  else if (!expectedTarget) findings.push('Required Parent-target integrity target is unavailable.');
+  else if (entry.towards !== String(expectedTarget)) findings.push(`Parent-target integrity Towards must be exactly ${expectedTarget}.`);
+  expectCount(findings, 'Parent-target integrity Value field', entry.valueCount, 1);
+  if (entry.valueCount === 1 && !entry.value) findings.push('Parent-target integrity Value must not be empty.');
 }
 
 function exactTopLevelBlock(text, label) {

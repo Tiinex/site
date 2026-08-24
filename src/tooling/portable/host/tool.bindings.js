@@ -232,7 +232,7 @@ function argumentsTemplate(capabilityName, request = {}) {
   });
   if (capabilityName === 'repositoryRead') return Object.freeze({
     repository: request.repository || 'Tiinex/docs',
-    path: '<exact path selected from search result or expectedPaths>',
+    path: request.path || '<exact path selected from search result or expectedPaths>',
     ref: request.ref || 'master'
   });
   if (capabilityName === 'filesystemRead') return Object.freeze({ path: request.path || request.localPath || '<local path>' });

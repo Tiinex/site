@@ -3,6 +3,7 @@ import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { runPortableOperation } from '../operation.catalog.js';
 import { createPortableLocalDraft } from './draft.create.js';
 import { createPortableLocalArtifactSet } from './draft.set.js';
+import { sealedC14nV2FixtureMarkdown } from '../../../integrity/integrity.testFixture.js';
 import {
   normalizePortableParentRecord,
   qualifyPortableExactParent,
@@ -17,7 +18,7 @@ const values = Object.freeze({
   Dependencies: 'Qualified explicit Parent metadata.'
 });
 const createdAt = '2026-08-21T16:40:00.000Z';
-const withAuthority = (parent = {}) => ({ ...parent, publishedReference: { target: 'https://archive.example.test/exact/parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: parent.schemaId || parent.currentSchemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/parent.schema.md', resolutionState: 'qualified' } });
+const withAuthority = (parent = {}) => ({ markdown: sealedC14nV2FixtureMarkdown('Parent Authority Fixture'), ...parent, publishedReference: { target: 'https://archive.example.test/exact/parent.trace.md', state: 'qualified' }, schemaReferenceAuthority: { schemaId: parent.schemaId || parent.currentSchemaId || 'tiinex.topic.v1', preferredTarget: 'https://archive.example.test/schemas/parent.schema.md', resolutionState: 'qualified' } });
 
 async function continueTask(parentRecord) {
   return runPortableOperation('create-local-draft', {

@@ -1,6 +1,7 @@
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { projectHandoffMaterialRequirements } from './materialClosure.requirements.js';
 import { qualifyHandoffCarrierWorkspaces, selectHandoffCarrierDefaultWorkspace, handoffCarrierWorkspaceForRoute, projectHandoffCarrierWorkspace, findProjectedHandoffCarrierWorkspace } from './carrierProjection.workspaces.js';
+import { HANDOFF_HUMAN_OUTPUT_PRESENTATION, HANDOFF_NORMAL_EMISSION_BOUNDARY } from './humanOutputPresentation.js';
 
 export const HANDOFF_CARRIER_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-carrier-projection.v1';
 export const HANDOFF_CARRIER_PROJECTION_PATH = 'tiinex.package/handoff-carrier.json';
@@ -73,10 +74,12 @@ export function projectHandoffHumanOutput(input = {}) {
     status,
     primary: selected.route ? Object.freeze({ kind: 'handoff-package', filename, routeId: selected.route.id, workspaceId: selected.route.workspaceId, workspaceRelativeHandoffPath: selected.route.workspaceRelativePath, collisionInstance: instance, singleHumanTransportChoice: true }) : null,
     normalInlineRouting: selected.route ? Object.freeze({ kind: 'transport-text', content: transportText, normalEmission: true, requiredForHumanCompletion: true, placement: 'adjacent-to-primary', authority: 'none' }) : null,
+    presentation: HANDOFF_HUMAN_OUTPUT_PRESENTATION,
+    normalEmissionBoundary: HANDOFF_NORMAL_EMISSION_BOUNDARY,
     fallbackTransportText: selected.route ? Object.freeze({ supported: true, filename: transportSidecarFilename(filename), content: transportText, normalEmission: false, requiredForHumanCompletion: false, authority: 'none' }) : null,
     selectedRoute: selected.route || null,
     findings: Object.freeze(findings),
-    boundary: 'Human-facing output projection only. Normal completion is the sole primary package plus exact adjacent inline routing text. The package remains authoritative for qualified route membership; outer filenames, inline transport text, and optional transport-text sidecars are disposable and rename-safe.'
+    boundary: 'Human-facing output projection only. Normal completion is exactly the sole primary package plus the adjacent exact routing content in a copyable host surface. Presentation wrappers carry no semantic authority. Internal humanOutput JSON, helper artifacts, semantic work-summary prose, manually reconstructed routing, duplicate normal file choices, and optional transport-text sidecars are outside normal emission unless explicitly requested.'
   });
 }
 

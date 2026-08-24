@@ -6,6 +6,7 @@ import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { runPortableOperation } from '../operation.catalog.js';
 import { createPortableLocalDraft } from './draft.create.js';
+import { sealedC14nV2FixtureMarkdown } from '../../../integrity/integrity.testFixture.js';
 
 const topicValues = {
   Summary: 'Exact  values   only',
@@ -15,7 +16,7 @@ const topicValues = {
 };
 const PARENT_SCHEMA_REFERENCE = 'https://archive.example.test/schemas/tiinex.topic.v1.schema.md';
 const PARENT_PUBLISHED_REFERENCE = 'https://archive.example.test/artifacts/p.trace.md';
-const qualifiedParent = (extra = {}) => ({ id: 'parent-A', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1', publishedReference: { target: PARENT_PUBLISHED_REFERENCE, state: 'qualified' }, schemaReferenceAuthority: { schemaId: 'tiinex.topic.v1', preferredTarget: PARENT_SCHEMA_REFERENCE, resolutionState: 'qualified' }, ...extra });
+const qualifiedParent = (extra = {}) => ({ id: 'parent-A', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1', markdown: sealedC14nV2FixtureMarkdown('Exact Parent A'), publishedReference: { target: PARENT_PUBLISHED_REFERENCE, state: 'qualified' }, schemaReferenceAuthority: { schemaId: 'tiinex.topic.v1', preferredTarget: PARENT_SCHEMA_REFERENCE, resolutionState: 'qualified' }, ...extra });
 
 const taskValues = {
   Summary: 'Exact  task   values',
