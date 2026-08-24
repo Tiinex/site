@@ -72,10 +72,11 @@ export function projectHandoffHumanOutput(input = {}) {
     schema: HANDOFF_HUMAN_OUTPUT_SCHEMA_ID,
     status,
     primary: selected.route ? Object.freeze({ kind: 'handoff-package', filename, routeId: selected.route.id, workspaceId: selected.route.workspaceId, workspaceRelativeHandoffPath: selected.route.workspaceRelativePath, collisionInstance: instance, singleHumanTransportChoice: true }) : null,
-    fallbackTransportText: selected.route ? Object.freeze({ supported: true, filename: transportSidecarFilename(filename), content: transportText, normalEmission: false, authority: 'none' }) : null,
+    normalInlineRouting: selected.route ? Object.freeze({ kind: 'transport-text', content: transportText, normalEmission: true, requiredForHumanCompletion: true, placement: 'adjacent-to-primary', authority: 'none' }) : null,
+    fallbackTransportText: selected.route ? Object.freeze({ supported: true, filename: transportSidecarFilename(filename), content: transportText, normalEmission: false, requiredForHumanCompletion: false, authority: 'none' }) : null,
     selectedRoute: selected.route || null,
     findings: Object.freeze(findings),
-    boundary: 'Human-facing output projection only. The package remains authoritative for qualified route membership; outer filenames and optional transport-text sidecars are disposable and rename-safe.'
+    boundary: 'Human-facing output projection only. Normal completion is the sole primary package plus exact adjacent inline routing text. The package remains authoritative for qualified route membership; outer filenames, inline transport text, and optional transport-text sidecars are disposable and rename-safe.'
   });
 }
 
@@ -226,10 +227,6 @@ function normalizeRouteSpecs(value, descriptor, defaultWorkspace = null) {
     const workspaceId = String(spec.workspaceId || spec.workspace || defaultWorkspaceId || '');
     const key = `${workspaceId}\u0000${path}`;
     if (path && !map.has(key)) map.set(key, Object.freeze({ workspaceId, path, purpose: String(spec.purpose || '') }));
-  }
-  if (fallback && defaultWorkspaceId) {
-    const key = `${defaultWorkspaceId}\u0000${fallback}`;
-    if (!map.has(key)) map.set(key, Object.freeze({ workspaceId: defaultWorkspaceId, path: fallback, purpose: '' }));
   }
   return [...map.values()].sort((a, b) => a.workspaceId.localeCompare(b.workspaceId) || a.path.localeCompare(b.path));
 }

@@ -42,6 +42,7 @@ try {
     packageInspection: 'valid',
     closureInspection: 'valid',
     carrierInspection: 'valid',
+    pointerEntrypointInspection: 'valid',
     coldConsumerEntrypointInspection: 'valid',
     companionInspection: 'valid',
     roundtrip: 'passed',

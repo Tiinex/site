@@ -39,6 +39,7 @@ import { describePortableCheckpointGate, qualifyPortableCheckpoint } from './con
 import { manufactureRecipientRelativeHandoffPackage } from './handoff/manufacture.js';
 import { projectHandoffCarrierOutputFromPackage } from './handoff/carrierProjection.js';
 import { orientColdConsumerFromHandoffPackage } from './handoff/coldConsumerEntrypoint.js';
+import { auditHandoffPackageContextCarriage } from './handoff/contextAudit.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
 
@@ -316,24 +317,31 @@ export const portableOperationCatalog = Object.freeze({
   }),
   'manufacture-handoff-package': operation({
     name: 'manufacture-handoff-package',
-    description: 'Build and verify a recipient-relative Handoff package from qualified workspace/materialization inputs. Node CLI adapters can deterministically enumerate a workspace and attach a separately qualified portable Tooling bootstrap so callers do not hand-assemble carrier entries.',
+    description: 'Build/verify qualified Handoff packages.',
     safety: 'local-package-result',
     inputSchema: 'tiinex.portable.handoff-manufacturing.request.v1',
     handler: (input = {}, options = {}) => wrapPortableResult('manufacture-handoff-package', manufactureRecipientRelativeHandoffPackage(input, options))
   }),
   'project-handoff-carrier-output': operation({
     name: 'project-handoff-carrier-output',
-    description: 'Regenerate one disposable human carrier filename and minimal transport text from package-qualified Handoff route projection. Shared carriers require an explicit route selector.',
+    description: 'Regenerate qualified human carrier output.',
     safety: 'read-only',
     inputSchema: 'tiinex.portable.handoff-carrier-output.request.v1',
     handler: (input = {}) => wrapPortableResult('project-handoff-carrier-output', projectHandoffCarrierOutputFromPackage(input))
   }),
   'orient-handoff-package': operation({
     name: 'orient-handoff-package',
-    description: 'Correlate tiinex.package/START.md with package truth without executing received code.',
+    description: 'Verify START/Pointer orientation.',
     safety: 'read-only',
     inputSchema: 'tiinex.portable.handoff-cold-consumer-orientation.request.v1',
     handler: (input = {}) => wrapPortableResult('orient-handoff-package', orientColdConsumerFromHandoffPackage(input))
+  }),
+  'audit-handoff-package-context': operation({
+    name: 'audit-handoff-package-context',
+    description: 'Audit recipient package carriage.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.handoff-context-carriage-audit.request.v1',
+    handler: (input = {}) => wrapPortableResult('audit-handoff-package-context', auditHandoffPackageContextCarriage(input))
   }),
   'build-runtime-package': operation({
     name: 'build-runtime-package',

@@ -11,6 +11,7 @@ import { qualifyHandoffMaterializedOutput } from './materialClosure.materialized
 import { buildHandoffTransportCompanionProjection, HANDOFF_TRANSPORT_COMPANION_PATH, inspectHandoffTransportCompanion } from './transportCompanion.js';
 import { buildHandoffCarrierProjection, HANDOFF_CARRIER_PROJECTION_PATH, inspectHandoffCarrierProjection } from './carrierProjection.js';
 import { buildHandoffColdConsumerProjection, renderHandoffColdConsumerEntrypoint, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, inspectHandoffColdConsumerEntrypoint } from './coldConsumerEntrypoint.js';
+import { buildHandoffPointerEntrypoints, inspectHandoffPointerEntrypoints, HANDOFF_POINTER_ENTRYPOINT_PREFIX } from './pointerEntrypoint.js';
 
 export const PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID = 'tiinex.portable.handoff-transport-package.v1';
 
@@ -88,6 +89,8 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
   const projectionBundle = { ...baseBundle, files: [...(baseBundle.files || []), ...extraFiles, descriptorFile], handoffClosure: descriptor };
   const carrierProjection = buildHandoffCarrierProjection({ bundle: projectionBundle, descriptor, routes: input.transportRoutes || input.handoffRoutes || [] });
   const carrierFile = finalizeFile({ path: HANDOFF_CARRIER_PROJECTION_PATH, kind: 'handoff-carrier-projection', logicalKind: 'disposable-human-transport-projection', mediaType: 'application/json', content: `${stablePrettyJson(carrierProjection)}\n`, boundary: carrierProjection.boundary });
+  const pointerEntrypointProjection = buildHandoffPointerEntrypoints({ carrierProjection, createdAt: baseBundle.manifest?.createdAt || baseBundle.builtAt || '' });
+  const pointerEntrypointFiles = pointerEntrypointProjection.entries.map((entry) => finalizeFile({ path: entry.path, kind: 'handoff-route-pointer', logicalKind: 'disposable-package-orientation-projection', mediaType: 'text/markdown', content: entry.markdown, boundary: entry.boundary }));
   const coldConsumerProjection = buildHandoffColdConsumerProjection({ carrierProjection });
   const coldConsumerEntrypointFile = finalizeFile({ path: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, kind: 'handoff-cold-consumer-entrypoint', logicalKind: 'disposable-package-orientation-projection', mediaType: 'text/markdown', content: renderHandoffColdConsumerEntrypoint({ projection: coldConsumerProjection }), boundary: coldConsumerProjection.boundary });
   const transportStatus = carrierProjection.mode === 'shared' && carrierProjection.status !== 'ready' ? 'blocked' : packageClosureStatus;
@@ -95,7 +98,7 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
   const companionFile = finalizeFile({ path: HANDOFF_TRANSPORT_COMPANION_PATH, kind: 'handoff-transport-companion', logicalKind: 'disposable-transport-projection', mediaType: 'application/json', content: `${stablePrettyJson(transportCompanion)}\n`, boundary: transportCompanion.boundary });
   const oldFileMapPath = 'tiinex.package/file-map.json';
   const buildReceiptPath = 'tiinex.package/build-receipt.json';
-  const baseGoverned = [...(baseBundle.files || []).filter((file) => ![oldFileMapPath, buildReceiptPath].includes(String(file.path || ''))), ...extraFiles, descriptorFile, carrierFile, coldConsumerEntrypointFile, companionFile].map(finalizeFile);
+  const baseGoverned = [...(baseBundle.files || []).filter((file) => ![oldFileMapPath, buildReceiptPath].includes(String(file.path || ''))), ...extraFiles, descriptorFile, carrierFile, ...pointerEntrypointFiles, coldConsumerEntrypointFile, companionFile].map(finalizeFile);
   const materialRepresentationSha256 = packageMaterialRepresentationSha256(baseGoverned);
   const priorBuildReceipt = parseJsonFile((baseBundle.files || []).find((file) => String(file.path || '') === buildReceiptPath)) || {};
   const buildReceipt = Object.freeze({ ...priorBuildReceipt, materialRepresentationSha256, counts: Object.freeze({ ...(priorBuildReceipt.counts || {}), materialFiles: baseGoverned.filter((file) => file.path && !String(file.path).startsWith('tiinex.package/')).length }) });
@@ -109,9 +112,10 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
   const inspection = inspectExportPackageBundle(bundle);
   const closureInspection = inspectHandoffClosureDescriptor(bundle);
   const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const pointerEntrypointInspection = inspectHandoffPointerEntrypoints(bundle);
   const coldConsumerEntrypointInspection = inspectHandoffColdConsumerEntrypoint(bundle);
   const companionInspection = inspectHandoffTransportCompanion(bundle);
-  return deepFreeze({ schema: PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID, status: inspection.status === 'valid' && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? status : 'blocked', plan, planReadiness, planInputBinding, materializedOutputQualification, bundle, inspection, closureInspection, descriptor, carrierProjection, carrierInspection, coldConsumerProjection, coldConsumerEntrypointInspection, transportCompanion, companionInspection });
+  return deepFreeze({ schema: PORTABLE_HANDOFF_TRANSPORT_PACKAGE_SCHEMA_ID, status: inspection.status === 'valid' && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && pointerEntrypointInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? status : 'blocked', plan, planReadiness, planInputBinding, materializedOutputQualification, bundle, inspection, closureInspection, descriptor, carrierProjection, carrierInspection, pointerEntrypointProjection, pointerEntrypointInspection, coldConsumerProjection, coldConsumerEntrypointInspection, transportCompanion, companionInspection });
 }
 
 export function roundTripRecipientRelativeHandoffTransportPackage(input = {}, options = {}) {
@@ -120,10 +124,11 @@ export function roundTripRecipientRelativeHandoffTransportPackage(input = {}, op
   const runtime = roundTripPortableRuntimePackage({ bundle });
   const closureInspection = inspectHandoffClosureDescriptor(bundle);
   const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const pointerEntrypointInspection = inspectHandoffPointerEntrypoints(bundle);
   const coldConsumerEntrypointInspection = inspectHandoffColdConsumerEntrypoint(bundle);
   const companionInspection = inspectHandoffTransportCompanion(bundle);
-  const status = runtime.status.startsWith('passed') && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? 'passed' : 'failed';
-  return deepFreeze({ schema: 'tiinex.portable.handoff-transport-package.roundtrip.v1', status, built, runtime, closureInspection, carrierInspection, coldConsumerEntrypointInspection, companionInspection, verification: Object.freeze({ descriptorPath: HANDOFF_CLOSURE_DESCRIPTOR_PATH, descriptorVerified: closureInspection.status === 'valid', carrierProjectionPath: HANDOFF_CARRIER_PROJECTION_PATH, carrierProjectionVerified: carrierInspection.status === 'valid', coldConsumerEntrypointPath: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, coldConsumerEntrypointVerified: coldConsumerEntrypointInspection.status === 'valid', companionPath: HANDOFF_TRANSPORT_COMPANION_PATH, companionVerified: companionInspection.status === 'valid', packageRoundtrip: runtime.status, requiredClosureReady: Boolean(built.plan?.requiredClosureReady) }) });
+  const status = runtime.status.startsWith('passed') && closureInspection.status === 'valid' && carrierInspection.status === 'valid' && pointerEntrypointInspection.status === 'valid' && coldConsumerEntrypointInspection.status === 'valid' && companionInspection.status === 'valid' ? 'passed' : 'failed';
+  return deepFreeze({ schema: 'tiinex.portable.handoff-transport-package.roundtrip.v1', status, built, runtime, closureInspection, carrierInspection, pointerEntrypointInspection, coldConsumerEntrypointInspection, companionInspection, verification: Object.freeze({ descriptorPath: HANDOFF_CLOSURE_DESCRIPTOR_PATH, descriptorVerified: closureInspection.status === 'valid', carrierProjectionPath: HANDOFF_CARRIER_PROJECTION_PATH, carrierProjectionVerified: carrierInspection.status === 'valid', pointerEntrypointsVerified: pointerEntrypointInspection.status === 'valid', coldConsumerEntrypointPath: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, coldConsumerEntrypointVerified: coldConsumerEntrypointInspection.status === 'valid', companionPath: HANDOFF_TRANSPORT_COMPANION_PATH, companionVerified: companionInspection.status === 'valid', packageRoundtrip: runtime.status, requiredClosureReady: Boolean(built.plan?.requiredClosureReady) }) });
 }
 
 
@@ -163,7 +168,7 @@ function workspaceCarrierBoundary(workspace = null) {
   return 'Package-local partial workspace byte carrier; directory shape is not completeness proof.';
 }
 
-function reservedGeneratedPath(value = '') { return ['tiinex.package/file-map.json', 'tiinex.package/build-receipt.json', HANDOFF_CLOSURE_DESCRIPTOR_PATH, HANDOFF_CARRIER_PROJECTION_PATH, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, HANDOFF_TRANSPORT_COMPANION_PATH].includes(String(value || '')); }
+function reservedGeneratedPath(value = '') { const path = String(value || ''); return path.startsWith(HANDOFF_POINTER_ENTRYPOINT_PREFIX) || ['tiinex.package/file-map.json', 'tiinex.package/build-receipt.json', HANDOFF_CLOSURE_DESCRIPTOR_PATH, HANDOFF_CARRIER_PROJECTION_PATH, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, HANDOFF_TRANSPORT_COMPANION_PATH].includes(path); }
 function materialPackagePath(entry = {}) { return safePath(entry.requestedPackagePath || `handoff.material/${safeToken(entry.requirementId || 'material')}/material.bin`); }
 function workspacePackagePath(workspace = {}, entry = {}, qualifiedWorkspaceId = '') { return safePath(entry.packagePath || `handoff.workspaces/${safeToken(qualifiedWorkspaceId || workspace.id || workspace.workspaceId || 'workspace')}/${safePath(entry.path || 'material.bin')}`); }
 function safePath(value = '') { return String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter((part) => part && part !== '.' && part !== '..').map((part) => part.replace(/[\u0000-\u001f<>:"|?*]/g, '_')).join('/') || 'material.bin'; }

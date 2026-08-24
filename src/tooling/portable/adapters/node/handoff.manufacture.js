@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageFileBytes, sha256Hex } from '../../../../export/package.bytes.js';
 import { projectHandoffMaterialRequirements } from '../../handoff/materialClosure.requirements.js';
+import { inferWorkspaceTitle, normalizeAdditionalWorkspaceDescriptors, normalizeTransportRoute, safeWorkspaceToken, serializableMetadata } from './handoff.manufacture.multiRoot.js';
 
 export const PORTABLE_NODE_WORKSPACE_ENUMERATION_SCHEMA_ID = 'tiinex.portable.node-workspace-enumeration.v1';
 export const PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID = 'tiinex.portable.tooling-bootstrap.manifest.v1';
@@ -16,7 +17,7 @@ const IMPORT_RE = /(?:\bimport\s+(?:[^'";]+?\s+from\s+)?|\bexport\s+(?:\*|\{[^}]
 
 export async function prepareNodeHandoffManufacturingInput(input = {}, options = {}) {
   const workspaceRoot = path.resolve(String(input.workspaceRoot || input.workspace || '.'));
-  const workspaceId = safeToken(input.workspaceId || path.basename(workspaceRoot) || 'workspace');
+  const workspaceId = safeWorkspaceToken(input.workspaceId || path.basename(workspaceRoot) || 'workspace');
   const requestedWorkspaceTitle = String(input.workspaceTitle || input.title || '').trim();
   const handoffPath = normalizeRelativePath(input.handoffPath || input.handoff || '');
   if (!handoffPath) throw new Error('portable.handoff-manufacture.handoff-path.required');
@@ -32,12 +33,39 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
 
   const enumeration = await enumerateNodeWorkspace(workspaceRoot, {
     workspaceId,
+    workspaceTitle: requestedWorkspaceTitle,
+    sourceMetadata: input.workspaceSource || input.sourceMetadata || {},
     excludeDirectories: input.excludeDirectories || options.excludeDirectories,
     maxFiles: input.maxFiles || options.maxFiles
   });
   if (enumeration.status !== 'qualified-complete') throw new Error(`portable.handoff-manufacture.workspace-enumeration.${enumeration.status}`);
   const workspaceTitle = requestedWorkspaceTitle || inferWorkspaceTitle(enumeration) || workspaceId;
-  const transportRoutes = Object.freeze([...(input.transportRoutes || input.handoffRoutes || [])].map((route) => typeof route === 'string' ? normalizeRelativePath(route) : Object.freeze({ ...route, path: normalizeRelativePath(route?.path || route?.workspaceRelativePath || '') })).filter((route) => typeof route === 'string' ? Boolean(route) : Boolean(route.path)));
+  const primaryMaterialization = Object.freeze({ ...enumeration.materialization, title: workspaceTitle });
+  const additionalWorkspaceDescriptors = normalizeAdditionalWorkspaceDescriptors(input.additionalWorkspaces || input.workspaceRoots || input.workspaceDescriptors || []);
+  const workspaceMaterializations = [primaryMaterialization];
+  const workspaceEnumerations = [Object.freeze({ id: workspaceId, root: workspaceRoot, evidence: enumeration.evidence })];
+  const seenWorkspaceIds = new Set([workspaceId]);
+  for (const descriptor of additionalWorkspaceDescriptors) {
+    const id = safeWorkspaceToken(descriptor.id || descriptor.workspaceId || '');
+    if (!descriptor.id && !descriptor.workspaceId) throw new Error('portable.handoff-manufacture.additional-workspace.id.required');
+    if (seenWorkspaceIds.has(id)) throw new Error(`portable.handoff-manufacture.workspace-id.duplicate:${id}`);
+    seenWorkspaceIds.add(id);
+    const root = path.resolve(String(descriptor.root || descriptor.workspaceRoot || descriptor.path || ''));
+    if (!descriptor.root && !descriptor.workspaceRoot && !descriptor.path) throw new Error(`portable.handoff-manufacture.additional-workspace.root.required:${id}`);
+    const requestedTitle = String(descriptor.title || descriptor.name || descriptor.workspaceTitle || '').trim();
+    const enumerated = await enumerateNodeWorkspace(root, {
+      workspaceId: id,
+      workspaceTitle: requestedTitle,
+      sourceMetadata: descriptor.source || descriptor.sourceMetadata || {},
+      excludeDirectories: descriptor.excludeDirectories || input.excludeDirectories || options.excludeDirectories,
+      maxFiles: descriptor.maxFiles || input.maxFiles || options.maxFiles
+    });
+    if (enumerated.status !== 'qualified-complete') throw new Error(`portable.handoff-manufacture.workspace-enumeration.${id}.${enumerated.status}`);
+    const title = requestedTitle || inferWorkspaceTitle(enumerated) || id;
+    workspaceMaterializations.push(Object.freeze({ ...enumerated.materialization, title }));
+    workspaceEnumerations.push(Object.freeze({ id, root, evidence: enumerated.evidence }));
+  }
+  const transportRoutes = Object.freeze([...(input.transportRoutes || input.handoffRoutes || [])].map((route) => normalizeTransportRoute(route, workspaceId)).filter(Boolean));
 
   const requirements = projectHandoffMaterialRequirements(handoff);
   const materials = await resolveWorkspaceRequirementMaterials(requirements, workspaceRoot, path.dirname(absoluteHandoff), enumeration, input.materialBindings || {});
@@ -55,14 +83,19 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
     handoff,
     requirements,
     workspace: Object.freeze({ id: workspaceId, name: workspaceTitle, title: workspaceTitle, records: Object.freeze([]), assets: Object.freeze([]) }),
-    workspaceMaterializations: Object.freeze([enumeration.materialization]),
+    workspaceMaterializations: Object.freeze(workspaceMaterializations),
     materials: Object.freeze(materials),
     recipient: Object.freeze({ referenceTargets: Object.freeze([...(input.referenceTargets || [])].map(String)) }),
     bootstrap: orientationBootstrap,
     additionalTransportFiles: toolingBootstrap.files,
     transportRoutes,
     toolingBootstrap: toolingBootstrap.summary,
-    manufacturingEvidence: Object.freeze({ enumeration: enumeration.evidence, toolingBootstrap: toolingBootstrap.summary, carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, boundary: 'Route requests are qualified later against packaged workspace bytes; adapter path text is not route authority.' }) }),
+    manufacturingEvidence: Object.freeze({
+      enumeration: enumeration.evidence,
+      workspaceEnumerations: Object.freeze(workspaceEnumerations),
+      toolingBootstrap: toolingBootstrap.summary,
+      carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
+    }),
     verifyRoundtrip: input.verifyRoundtrip !== false
   });
 }
@@ -102,7 +135,8 @@ export async function enumerateNodeWorkspace(rootInput = '.', options = {}) {
     entries.push(Object.freeze({ path: relative, data, bytes, sha256, mediaType: mediaTypeForPath(relative) }));
     includedEntries.push(Object.freeze({ path: relative, bytes, sha256, referenceTarget: '' }));
   }
-  const workspaceId = safeToken(options.workspaceId || path.basename(root) || 'workspace');
+  const workspaceId = safeWorkspaceToken(options.workspaceId || path.basename(root) || 'workspace');
+  const workspaceTitle = String(options.workspaceTitle || '').trim();
   const evidencePayload = Object.freeze({
     schema: 'tiinex.portable.workspace-completeness-evidence.v1',
     state: 'qualified',
@@ -122,15 +156,15 @@ export async function enumerateNodeWorkspace(rootInput = '.', options = {}) {
     evidence: evidencePayload,
     materialization: Object.freeze({
       id: workspaceId,
+      title: workspaceTitle || workspaceId,
       state: 'complete',
-      source: Object.freeze({ kind: 'node-directory-enumeration', workspaceId, boundary: '.' }),
+      source: Object.freeze({ kind: 'node-directory-enumeration', workspaceId, boundary: '.', operatorMetadata: Object.freeze(serializableMetadata(options.sourceMetadata || {})), authority: 'none' }),
       completenessEvidence: evidencePayload,
       entries: Object.freeze(entries),
       includedEntries: Object.freeze(includedEntries)
     })
   });
 }
-
 async function resolveWorkspaceRequirementMaterials(requirements, workspaceRoot, handoffDir, enumeration, bindings = {}) {
   const out = [];
   const byPath = new Map((enumeration.materialization?.entries || []).map((entry) => [normalizeRelativePath(entry.path), entry]));
@@ -215,7 +249,6 @@ export async function buildToolingBootstrapTransportFiles(input = {}) {
   }
   return Object.freeze({ manifest, summary, files: Object.freeze(files) });
 }
-
 function verifyExpectedPersistentBootstrap(expected, manifest, manifestSha256) {
   if (!expected || typeof expected !== 'object' || !Object.keys(expected).length) throw new Error('portable.tooling-bootstrap.persistent-verification.required');
   const candidate = expected.manifest && typeof expected.manifest === 'object' ? expected.manifest : expected;
@@ -237,7 +270,6 @@ function verifyExpectedPersistentBootstrap(expected, manifest, manifestSha256) {
     manifestSha256
   });
 }
-
 async function enumerateRuntimeDependencyGraph(runtimeRoot, options = {}) {
   const maxFiles = positiveInteger(options.maxFiles, 4000);
   const queue = ['tools/tiinex-portable.mjs'];
@@ -271,7 +303,6 @@ async function enumerateRuntimeDependencyGraph(runtimeRoot, options = {}) {
   const representationSha256 = sha256Text(stableJson(entries.map(({ path: entryPath, bytes, sha256 }) => ({ path: `runtime/${entryPath}`, bytes, sha256 }))));
   return Object.freeze({ entries: Object.freeze(entries), totalBytes, representationSha256 });
 }
-
 async function enumerateFilesUnder(root, runtimeRoot) {
   const out = [];
   const queue = [root];
@@ -287,7 +318,6 @@ async function enumerateFilesUnder(root, runtimeRoot) {
   }
   return out.sort();
 }
-
 function staticRelativeSpecifiers(text = '') {
   const out = [];
   IMPORT_RE.lastIndex = 0;
@@ -303,24 +333,12 @@ function resolveImportRelative(fromFile, specifier) {
   return resolved;
 }
 function transportFile(filePath, data, kind, logicalKind) { return Object.freeze({ path: filePath, data, kind, logicalKind, mediaType: mediaTypeForPath(filePath), boundary: 'Manifest-declared portable Tooling bootstrap transport byte. Co-location does not grant bootstrap authority; exact manifest membership and digest are required.' }); }
-
-function inferWorkspaceTitle(enumeration = {}) {
-  const entry = (enumeration.materialization?.entries || []).find((item) => normalizeRelativePath(item.path) === 'package.json');
-  if (!entry) return '';
-  try {
-    const parsed = JSON.parse(new TextDecoder().decode(packageFileBytes(entry)));
-    return String(parsed.name || '').trim();
-  } catch {
-    return '';
-  }
-}
 function normalizeDelivery(value) { const delivery = String(value || 'embedded').trim().toLowerCase(); if (!['embedded', 'persistent'].includes(delivery)) throw new Error(`portable.tooling-bootstrap.delivery.unsupported:${delivery}`); return delivery; }
 function mediaTypeForPath(value = '') { const lower = String(value).toLowerCase(); if (lower.endsWith('.md')) return 'text/markdown'; if (lower.endsWith('.json')) return 'application/json'; if (/\.(?:m?js|cjs)$/.test(lower)) return 'text/javascript'; if (lower.endsWith('.ts')) return 'text/typescript'; if (lower.endsWith('.css')) return 'text/css'; if (lower.endsWith('.html')) return 'text/html'; if (/\.(?:yml|yaml)$/.test(lower)) return 'text/yaml'; if (lower.endsWith('.txt')) return 'text/plain'; return 'application/octet-stream'; }
 function normalizeRelativePath(value = '') { return String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter((part) => part && part !== '.').join('/'); }
 function inside(root, absolute) { const relative = path.relative(root, absolute); return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)); }
 function assertInside(root, absolute, code) { if (!inside(root, absolute)) throw new Error(code); }
 function isExternalReference(value = '') { return /^[a-z][a-z0-9+.-]*:/i.test(String(value || '')) || String(value || '').startsWith('//'); }
-function safeToken(value = '') { return String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'workspace'; }
 function positiveInteger(value, fallback) { const parsed = Number.parseInt(value, 10); return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback; }
 function sha256Text(value = '') { return createHash('sha256').update(String(value), 'utf8').digest('hex'); }
 function stableJson(value) { return JSON.stringify(sortJson(value)); }

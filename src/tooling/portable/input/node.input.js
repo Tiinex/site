@@ -110,6 +110,7 @@ async function readZipFile(absolute, files, findings, options = {}) {
         files.push(Object.freeze({
           path: entry.path,
           ...(typeof textContent === 'string' ? { content: textContent } : {}),
+          ...(typeof textContent !== 'string' && entry.bytes ? { data: entry.bytes } : {}),
           size: entry.size,
           type: entry.type,
           kind: entry.kind,

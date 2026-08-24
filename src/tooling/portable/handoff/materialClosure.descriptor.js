@@ -110,7 +110,7 @@ function resolvePackagedWorkspace(index, key = '') {
 
 
 function descriptorRequirement(item = {}) {
-  return Object.freeze({ requirementId: String(item.requirementId || ''), classification: String(item.classification || ''), disposition: String(item.disposition || ''), referenceTarget: String(item.referenceTarget || ''), reason: String(item.reason || ''), recipientReferenceCapability: Boolean(item.recipientReferenceCapability), materializedPackagePath: String(item.packagePath || item.selectedMaterial?.packagePath || ''), selectedMaterial: descriptorSelectedMaterial(item.selectedMaterial) });
+  return Object.freeze({ requirementId: String(item.requirementId || ''), name: String(item.requirementName || item.name || ''), classification: String(item.classification || ''), disposition: String(item.disposition || ''), referenceTarget: String(item.referenceTarget || ''), reason: String(item.reason || ''), recipientReferenceCapability: Boolean(item.recipientReferenceCapability), materializedPackagePath: String(item.packagePath || item.selectedMaterial?.packagePath || ''), selectedMaterial: descriptorSelectedMaterial(item.selectedMaterial) });
 }
 function descriptorSelectedMaterial(material = null) {
   if (!material) return null;

@@ -21,6 +21,7 @@ const expected = [
   'create-checkpoint',
   'manufacture-handoff-package',
   'orient-handoff-package',
+  'audit-handoff-package-context',
   'build-runtime-package',
   'rehydrate-runtime-package',
   'roundtrip-runtime-package',

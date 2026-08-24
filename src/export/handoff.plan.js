@@ -23,7 +23,7 @@ export function prepareWorkspaceHandoffExport(workspace = {}, options = {}) {
 export function prepareRecipientRelativeWorkspaceHandoffExport(input = {}, options = {}) {
   const built = buildRecipientRelativeHandoffTransportPackage(input, options);
   const roundtrip = options.verifyRoundtrip === false ? null : roundTripRecipientRelativeHandoffTransportPackage(built, options);
-  const executable = built.status !== 'blocked' && built.inspection?.status === 'valid' && built.closureInspection?.status === 'valid' && built.carrierInspection?.status === 'valid' && built.coldConsumerEntrypointInspection?.status === 'valid' && (!roundtrip || roundtrip.status === 'passed');
+  const executable = built.status !== 'blocked' && built.inspection?.status === 'valid' && built.closureInspection?.status === 'valid' && built.carrierInspection?.status === 'valid' && built.pointerEntrypointInspection?.status === 'valid' && built.coldConsumerEntrypointInspection?.status === 'valid' && (!roundtrip || roundtrip.status === 'passed');
   const carrierTransportReady = built.carrierProjection?.mode !== 'shared' || built.carrierProjection?.status === 'ready';
   const transportExecutable = executable && carrierTransportReady && built.transportCompanion?.status === 'ready' && built.companionInspection?.status === 'valid';
   return Object.freeze({
@@ -39,6 +39,8 @@ export function prepareRecipientRelativeWorkspaceHandoffExport(input = {}, optio
     closureInspection: built.closureInspection,
     carrierProjection: built.carrierProjection,
     carrierInspection: built.carrierInspection,
+    pointerEntrypointProjection: built.pointerEntrypointProjection,
+    pointerEntrypointInspection: built.pointerEntrypointInspection,
     coldConsumerProjection: built.coldConsumerProjection,
     coldConsumerEntrypointInspection: built.coldConsumerEntrypointInspection,
     companionInspection: built.companionInspection,

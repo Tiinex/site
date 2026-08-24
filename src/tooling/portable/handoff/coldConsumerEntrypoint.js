@@ -1,5 +1,6 @@
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { inspectHandoffCarrierProjection } from './carrierProjection.js';
+import { inspectHandoffPointerEntrypoints } from './pointerEntrypoint.js';
 
 export const HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH = 'tiinex.package/START.md';
 export const HANDOFF_COLD_CONSUMER_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-cold-consumer-projection.v1';
@@ -105,15 +106,17 @@ export function inspectHandoffColdConsumerEntrypoint(bundle = {}) {
 export function orientColdConsumerFromHandoffPackage(input = {}) {
   const bundle = input.bundle || input;
   const inspection = inspectHandoffColdConsumerEntrypoint(bundle);
+  const pointerEntrypoints = inspectHandoffPointerEntrypoints(bundle);
   const projection = inspection.projection || null;
   return deepFreeze({
     schema: 'tiinex.portable.handoff-cold-consumer-orientation.v1',
-    status: inspection.status === 'valid' && projection?.status === 'ready' ? 'ready' : 'blocked',
+    status: inspection.status === 'valid' && pointerEntrypoints.status === 'valid' && projection?.status === 'ready' ? 'ready' : 'blocked',
     entrypoint: inspection,
+    pointerEntrypoints,
     workspaces: projection?.workspaces || Object.freeze([]),
     routes: projection?.routes || Object.freeze([]),
     selection: projection?.selection || null,
-    boundary: 'Read-only package orientation. Received package code is not executed, and START text never overrides independently correlated package truth.'
+    boundary: 'Read-only package orientation. Received package code is not executed; START and package-root Pointer projections must independently correlate with package truth and never override it.'
   });
 }
 

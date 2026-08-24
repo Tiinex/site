@@ -47,6 +47,9 @@ try {
 
   const noSelection = projectHandoffHumanOutput({ projection: built.carrierProjection });
   assert.equal(noSelection.status, 'selection-required');
+  assert.equal(noSelection.primary, null);
+  assert.equal(noSelection.normalInlineRouting, null);
+  assert.equal(noSelection.fallbackTransportText, null);
   const selectedOutputs = routes.map((route) => projectHandoffHumanOutput({ projection: built.carrierProjection, route }));
   for (let index = 0; index < routes.length; index += 1) {
     const projected = selectedOutputs[index];
@@ -65,6 +68,8 @@ try {
     const regenerated = projectHandoffCarrierOutputFromPackage({ files: built.bundle.files, route });
     assert.equal(regenerated.status, 'ready');
     assert.equal(regenerated.humanOutput.primary.workspaceRelativeHandoffPath, route);
+    assert.equal(regenerated.humanOutput.normalInlineRouting.content, regenerated.humanOutput.fallbackTransportText.content);
+    assert.equal(regenerated.humanOutput.normalInlineRouting.normalEmission, true);
     assert.equal(createHash('sha256').update(portableRuntimePackageZipBuffer(built.bundle)).digest('hex'), zipSha, 'route selection must not mutate shared carrier bytes');
   }
 
@@ -171,6 +176,13 @@ try {
   const projected = JSON.parse(selectionLines.at(-1));
   assert.equal(projected.status, 'ready');
   assert.equal(projected.humanOutput.primary.filename, 'tiinex-shared-fixture-004-anchor-to-axiom--3.handoff-package.zip');
+  assert.equal(projected.humanOutput.normalInlineRouting.content, `Handoff package attached.
+
+Workspace: tiinex-shared-fixture
+Continue from:
+${routes[1]}
+`);
+  assert.equal(projected.humanOutput.normalInlineRouting.content, projected.humanOutput.fallbackTransportText.content);
 } finally {
   await rm(root, { recursive: true, force: true });
 }

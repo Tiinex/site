@@ -109,7 +109,7 @@ function candidateBoundToRequirement(candidate, requirement) {
   return candidate.referenceTarget === target;
 }
 function resolution(disposition, requirement, candidates, selected, capability, reason) {
-  return deepFreeze({ disposition, requirementId: requirement.id, classification: requirement.classification, referenceTarget: String(requirement.reference?.target || ''), recipientReferenceCapability: Boolean(capability), selectedMaterial: selected, candidates: Object.freeze(candidates), reason });
+  return deepFreeze({ disposition, requirementId: requirement.id, requirementName: String(requirement.name || ''), classification: requirement.classification, referenceTarget: String(requirement.reference?.target || ''), recipientReferenceCapability: Boolean(capability), selectedMaterial: selected, candidates: Object.freeze(candidates), reason });
 }
 function serializable(value = {}) { const out = {}; for (const [key, item] of Object.entries(value || {})) if (typeof item !== 'function' && typeof item !== 'undefined') out[key] = item; return out; }
 function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }

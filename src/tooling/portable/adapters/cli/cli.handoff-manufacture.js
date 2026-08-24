@@ -10,11 +10,22 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   const handoffPath = flags.handoff || parsed.positionals?.[1] || '';
   const materialBindings = await readOptionalJson(flags['material-bindings'] || flags.materials);
   const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
+  const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
+  const routeDescriptorValue = await readOptionalJson(flags['workspace-routes'] || flags['handoff-route-descriptors']);
+  const additionalWorkspaces = [
+    ...splitFlag(flags['additional-workspaces']),
+    ...descriptorArray(workspaceDescriptorValue, 'workspaces')
+  ];
+  const handoffRoutes = [
+    ...splitFlag(flags['handoff-routes'] || flags.routes),
+    ...descriptorArray(routeDescriptorValue, 'routes')
+  ];
   const verifyRoundtrip = !flags['no-roundtrip'];
   const input = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     handoffPath,
-    handoffRoutes: splitFlag(flags['handoff-routes'] || flags.routes),
+    handoffRoutes,
+    additionalWorkspaces,
     workspaceId: flags['workspace-id'] || '',
     workspaceTitle: flags['workspace-title'] || flags.title || '',
     toolingBootstrap: flags['tooling-bootstrap'] || 'embedded',
@@ -106,7 +117,12 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
       selection: Object.freeze({ ...(projection.selection || {}) }),
       routes: routeSummary
     }),
-    humanOutput: humanOutput ? Object.freeze({ status: humanOutput.status, primary: humanOutput.primary, fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: undefined }) : null }) : null,
+    humanOutput: humanOutput ? Object.freeze({
+      status: humanOutput.status,
+      primary: humanOutput.primary,
+      normalInlineRouting: humanOutput.normalInlineRouting ? Object.freeze({ ...humanOutput.normalInlineRouting }) : null,
+      fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: undefined }) : null
+    }) : null,
     toolingBootstrap: result.toolingBootstrap || null,
     manufacturingEvidence: result.manufacturingEvidence || null,
     toolingBootstrapInspection: Object.freeze({
@@ -149,4 +165,5 @@ function defaultSidecarPath(packageTarget) {
   return packageTarget.toLowerCase().endsWith(suffix) ? `${packageTarget.slice(0, -suffix.length)}.transport.txt` : `${packageTarget}.transport.txt`;
 }
 async function readOptionalJson(file = '') { if (!file) return {}; return JSON.parse(await readFile(file, 'utf8')); }
+function descriptorArray(value, key) { if (Array.isArray(value)) return value; if (Array.isArray(value?.[key])) return value[key]; return []; }
 function splitFlag(value) { if (!value || value === true) return []; return String(value).split(',').map((item) => item.trim()).filter(Boolean); }

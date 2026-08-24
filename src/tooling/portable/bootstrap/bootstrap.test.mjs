@@ -20,6 +20,9 @@ assert.equal(bootstrap.includes('## Manufacture Recipient-Relative Handoff Packa
 assert.equal(bootstrap.includes('manufacture-handoff-package'), true);
 assert.equal(bootstrap.includes('tiinex.package/START.md'), true);
 assert.equal(bootstrap.includes('orient-handoff-package'), true);
+assert.equal(bootstrap.includes('audit-handoff-package-context'), true);
+assert.equal(bootstrap.includes('humanOutput.normalInlineRouting.content'), true);
+assert.equal(bootstrap.includes('sole primary package'), true);
 assert.equal(bootstrap.includes('Filename or co-location under a bootstrap-like path does not grant bootstrap authority.'), true);
 assert.equal(bootstrap.includes('canonical Handoff semantic authoring/validation or a locked canonical package schema'), true);
 
