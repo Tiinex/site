@@ -1,4 +1,4 @@
-import { packageFileBytes } from '../../../export/package.bytes.js';
+import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { inspectHandoffCarrierProjection } from './carrierProjection.js';
 import { inspectHandoffPointerEntrypoints } from './pointerEntrypoint.js';
 import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
@@ -121,9 +121,19 @@ export function orientColdConsumerFromHandoffPackage(input = {}) {
     const v2 = inspectRecipientFacingV2Topology(bundle);
     const projection = v2.coldConsumerProjection || null;
     const routeMetadata = new Map((v2.routes || []).map((route) => [`${String(route.workspaceId || '')}\u0000${String(route.workspaceRelativeHandoffPath || '')}`, route]));
+    const carrierRouteById = new Map((v2.carrierProjection?.routes || []).map((route) => [String(route.id || ''), route]));
+    const workspaceArchiveById = new Map((v2.workspaces || []).map((workspace) => {
+      const archivePath = String(workspace.workspaceArchivePath || '');
+      const archiveFile = (bundle.files || []).find((file) => String(file.path || '') === archivePath);
+      return [String(workspace.workspaceId || ''), Object.freeze({ path: archivePath, sha256: archiveFile ? sha256Hex(packageFileBytes(archiveFile)) : '' })];
+    }));
     const routes = Object.freeze((projection?.routes || []).map((route) => {
       const metadata = routeMetadata.get(`${String(route.workspaceId || '')}\u0000${String(route.workspaceRelativeHandoffPath || '')}`) || {};
-      return Object.freeze({ ...route, pointerPath: String(metadata.pointerPath || ''), participantRolePointers: Object.freeze([...(metadata.participantRolePointers || [])]) });
+      const archive = workspaceArchiveById.get(String(route.workspaceId || '')) || {};
+      const carrierRoute = carrierRouteById.get(String(route.id || '')) || {};
+      const handoffSha256 = String(route.sha256 || '');
+      const handoffPath = String(route.workspaceRelativeHandoffPath || '');
+      return Object.freeze({ ...route, sha256: handoffSha256, sha256Target: handoffPath, handoffSha256, archiveSha256: String(archive.sha256 || ''), archivePackagePath: String(archive.path || route.packagePath || ''), requiredClosure: carrierRoute.requiredClosure || null, pointerPath: String(metadata.pointerPath || ''), participantRolePointers: Object.freeze([...(metadata.participantRolePointers || [])]) });
     }));
     return deepFreeze({ schema: 'tiinex.portable.handoff-cold-consumer-orientation.v1', status: v2.status === 'valid' && projection?.status === 'ready' ? 'ready' : 'blocked', entrypoint: Object.freeze({ schema: 'tiinex.portable.handoff-v2.recipient-orientation.inspection.v1', status: v2.status, path: RECIPIENT_V2_READ_PATH, projection, findings: v2.findings }), pointerEntrypoints: Object.freeze({ schema: 'tiinex.portable.handoff-v2.recipient-pointer.inspection.v1', status: v2.status, entries: v2.routes, findings: v2.findings }), workspaces: projection?.workspaces || Object.freeze([]), routes, participantRoles: v2.participantRoles || Object.freeze([]), selection: projection?.selection || null, boundary: 'Read-only recipient-facing v2 orientation from qualified visible Tiinex artifacts and exact payload bytes; no legacy control JSON, filename, or adjacency authority.' });
   }

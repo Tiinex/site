@@ -46,7 +46,7 @@ try {
   assert.equal(code, 0);
   assert.equal(lines.length, 1, 'normal cold return should be recoverable from the one manufacture result');
   const result = JSON.parse(lines[0]);
-  const expectedText = `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-2-handoff-pointer.trace.md\n`;
+  const expectedText = `Handoff package attached.\n\nCold start: read Start directly; do not list or extract this package.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n001-3-2-handoff-pointer.trace.md\n`;
   assert.equal(result.status, 'ready');
   assert.equal(result.humanOutput.status, 'ready');
   assert.equal(result.humanOutput.primary.singleHumanTransportChoice, true);
@@ -89,14 +89,14 @@ try {
   const expectedRecipientV2Invocation = recipientV2StandardInvocation(baseRecipientV2HumanOutput, recipientV2Inspection);
   assert.equal(recipientV2HumanOutput.normalInlineRouting.content, expectedRecipientV2Invocation);
   assert.equal(recipientV2HumanOutput.fallbackTransportText.content, expectedRecipientV2Invocation);
-  assert.equal(expectedRecipientV2Invocation, `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-2-handoff-pointer.trace.md\n`);
+  assert.equal(expectedRecipientV2Invocation, `Handoff package attached.\n\nCold start: read Start directly; do not list or extract this package.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n001-3-2-handoff-pointer.trace.md\n`);
   assert.equal(expectedRecipientV2Invocation.includes(routes[0]), false, 'transport text must not duplicate the semantic Handoff path owned by the selected route Pointer');
   assert.equal(expectedRecipientV2Invocation.includes('Workspace:'), false, 'recipient-v2 transport text must not expose Workspace naming as an alternate ingress hint');
   assert.equal(expectedRecipientV2Invocation.includes('human-output-fixture'), false, 'recipient-v2 transport text must not leak Workspace id outside package-owned artifacts');
   assert.equal(expectedRecipientV2Invocation.includes('Selected Handoff'), false, 'transport text is an address label, not a semantic Handoff summary');
   const axiomBase = projectHandoffHumanOutput({ projection: built.carrierProjection, route: routes[1] });
   const axiomInvocation = recipientV2StandardInvocation(axiomBase, recipientV2Inspection);
-  assert.equal(axiomInvocation, `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-1-handoff-pointer.trace.md\n`);
+  assert.equal(axiomInvocation, `Handoff package attached.\n\nCold start: read Start directly; do not list or extract this package.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n001-3-1-handoff-pointer.trace.md\n`);
   assert.notEqual(axiomInvocation, expectedRecipientV2Invocation, 'the same shared ZIP must be addressable to different recipients only by exact route-specific outer invocation');
 } finally {
   await rm(root, { recursive: true, force: true });

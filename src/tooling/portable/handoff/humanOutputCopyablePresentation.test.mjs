@@ -42,7 +42,7 @@ try {
   ], { log: (value) => lines.push(value), error: (value) => lines.push(value) }, { runtimeRoot });
   assert.equal(code, 0);
   const result = JSON.parse(lines.at(-1));
-  const expected = `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-1-handoff-pointer.trace.md\n`;
+  const expected = `Handoff package attached.\n\nCold start: read Start directly; do not list or extract this package.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n001-3-1-handoff-pointer.trace.md\n`;
   assert.equal(result.humanOutput.normalInlineRouting.content, expected);
   assert.equal(result.humanOutput.normalInlineRouting.content.includes('```'), false, 'host wrapper must never become routing content');
   assert.deepEqual(result.humanOutput.presentation, {

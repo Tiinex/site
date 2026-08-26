@@ -245,8 +245,8 @@ try {
   const sitePointerPath = multi.inspection.routes.find((item) => item.workspaceId === 'site')?.pointerPath || '';
   const docsPointerPath = multi.inspection.routes.find((item) => item.workspaceId === 'docs')?.pointerPath || '';
   assert(sitePointerPath && docsPointerPath && sitePointerPath !== docsPointerPath);
-  assert(siteInvocation.includes(`Start:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n${sitePointerPath}\n`));
-  assert(docsInvocation.includes(`Start:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n${docsPointerPath}\n`));
+  assert(siteInvocation.includes(`Start:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n${sitePointerPath}\n`));
+  assert(docsInvocation.includes(`Start:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from (do not read native; pass to Tiinex after bootstrap):\n${docsPointerPath}\n`));
   assert.equal(siteInvocation.includes('.topics/015-handoff.trace.md'), false, 'v2 transport address must not duplicate semantic Handoff path from the route Pointer');
   assert.notEqual(siteInvocation, docsInvocation, 'parallel recipients use route-specific outer invocation over the same shared v2 ZIP bytes');
   assert.equal(siteInvocation.includes('Workspace:'), false, 'recipient-v2 outer routing must not expose Workspace as an alternate ingress hint');
@@ -267,7 +267,7 @@ try {
   const sharedOutputPath = path.join(root, regeneratedSiteOutput.humanOutput.primary.filename);
   const sharedCliOutput = await materializeHandoffManufactureCliOutput(multi, { route: siteQualifiedRoute.id, output: sharedOutputPath });
   assert.equal(sharedCliOutput.humanOutput.status, 'ready');
-  assert(sharedCliOutput.humanOutput.normalInlineRouting.content.includes(`Continue from:\n${sitePointerPath}\n`));
+  assert(sharedCliOutput.humanOutput.normalInlineRouting.content.includes(`Continue from (do not read native; pass to Tiinex after bootstrap):\n${sitePointerPath}\n`));
   const sharedOutputArchive = inspectStoredWorkspaceArchive(await readFile(sharedOutputPath), { ownedBytes: true });
   assert.equal(sharedOutputArchive.state, 'qualified');
   const sharedOutputInspection = inspectRecipientFacingV2Topology({ files: (sharedOutputArchive.entries || []).map((entry) => ({ path: entry.path, data: entry.data })) });

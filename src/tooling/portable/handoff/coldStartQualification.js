@@ -5,6 +5,7 @@ import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { orientColdConsumerFromHandoffPackage } from './coldConsumerEntrypoint.js';
 import { inspectStoredWorkspaceArchive } from './workspaceByteProvider.js';
 import { parseRecipientV2Facts } from './recipientV2.artifacts.js';
+import { parseNamedDeclarationSection } from '../schema/named.declarations.js';
 
 export const PORTABLE_COLD_START_INGRESS_CONTRACT_SCHEMA_ID = 'tiinex.portable.cold-start-ingress-contract.v1';
 export const PORTABLE_COLD_CONSUMER_GROUNDING_SCHEMA_ID = 'tiinex.portable.cold-consumer-grounding.v1';
@@ -70,6 +71,8 @@ export function describePortableColdStartIngress(input = {}) {
     qualification: Object.freeze({
       recoveryIsNotPreferredPath: true,
       qualifiedToolingAvailabilityMustBeObserved: true,
+      cli: 'qualify-cold-start <handoff-package.zip> --route <Continue-from> --pre-takeover minimal-bootstrap-only|none|native-archaeology',
+      evidenceBoundary: 'Tooling generates orientation/grounding receipts itself in one-shot mode. Pre-takeover native-host behavior remains caller/host evidence unless the host supplies independent instrumentation.',
       firstSemanticOperationMustMatchProfile: true,
       nativePreTakeoverUse: `At most ${profile.minimalNativeBootstrapActions} explicit minimal host/bootstrap ingress action(s); arbitrary semantic archaeology before Tiinex takeover does not qualify.`,
       groundingBeforeSubstantiveWork: kind !== COLD_START_INGRESS_KINDS.DEGRADED_CAPTURE,
@@ -156,6 +159,20 @@ export function groundPortableColdConsumer(input = {}, options = {}) {
       authentication: 'request-capability-only; never inferred from provider identity',
       trustSensitiveExerciseRequiresAcceptedReceipt: true
     }),
+    next: Object.freeze({
+      qualification: Object.freeze({
+        operation: 'qualify-cold-start',
+        mode: 'one-shot-package',
+        eligible: !blocked,
+        groundingStatus: blocked ? 'blocked' : degraded ? 'degraded' : 'ready',
+        degradedGroundingBlocksPreferredPath: false,
+        cli: 'qualify-cold-start <same-handoff-package.zip> --route <same-Continue-from> --pre-takeover minimal-bootstrap-only|none|native-archaeology',
+        externalQualificationSchemaRequired: false,
+        separateGroundingCallRequired: false,
+        hostEvidenceBoundary: 'Choose the pre-takeover value from the behavior actually observed; portable Tooling does not independently observe native-host actions that happened before Tooling takeover.',
+        missingDataBoundary: 'Do not invent host capabilities, interaction mode, participant identity, or Role material merely to remove a degraded grounding state; qualification may proceed whenever grounding is not blocked.'
+      })
+    }),
     findings: Object.freeze(findings),
     findingSummary: summarizePortableFindings(findings),
     boundary: 'Portable consumer grounding only. Handoff and Role artifacts remain semantic authority; participant identity is never inferred from one transport channel; host/provider projections do not create authority.'
@@ -163,6 +180,59 @@ export function groundPortableColdConsumer(input = {}, options = {}) {
 }
 
 export function qualifyPortableColdStart(input = {}, options = {}) {
+  if (isOneShotColdStartQualificationInput(input)) return qualifyPortableColdStartRun(input, options);
+  return qualifyPortableColdStartTrace(input, options);
+}
+
+export function qualifyPortableColdStartRun(input = {}, options = {}) {
+  const ingressKind = normalizeIngressKind(input.ingressKind || input.kind || COLD_START_INGRESS_KINDS.HANDOFF);
+  const bundle = input.bundle || input.package || input;
+  const route = String(input.route || input.routeId || input.routePath || '').trim();
+  const hostEvidence = normalizeOneShotHostEvidence(input.hostEvidence || input.preTakeover || input.preTiinex || input.hostPreTakeover || 'unverified', input.hostEvidenceSource || input.evidenceSource || '');
+  const grounding = groundPortableColdConsumer({
+    ...input,
+    bundle,
+    package: bundle,
+    ingressKind,
+    route,
+    toolingAvailable: input.toolingAvailable === false ? false : true
+  }, options);
+  const events = [];
+  if (hostEvidence.mode === 'minimal-bootstrap-only') events.push({ mechanism: 'native-host', action: 'read declared Start/bootstrap nodes and materialize verified portable Tooling bootstrap', semanticClass: 'minimal-bootstrap', status: 'completed', read: true, arbitrary: false, candidateArtifacts: 0 });
+  else if (hostEvidence.mode === 'native-archaeology') events.push({ mechanism: 'native-host', action: 'native package/archive/filesystem inspection before Tiinex takeover', semanticClass: 'semantic-archaeology', status: 'completed', read: true, arbitrary: true, candidateArtifacts: Math.max(1, Number(input.candidateArtifacts || 1) || 1) });
+  else if (hostEvidence.mode === 'none') { /* Tooling was already callable; no native bootstrap action is declared. */ }
+  events.push({ mechanism: 'tiinex', operation: 'orient-handoff-package', status: String(grounding.orientation?.status || 'blocked') });
+  events.push({ mechanism: 'tiinex', operation: 'ground-cold-consumer', status: String(grounding.status || 'blocked') });
+  const traceInput = {
+    ingressKind,
+    toolingAvailable: input.toolingAvailable === false ? false : true,
+    events,
+    grounding,
+    outcome: grounding.status === 'blocked' ? { state: 'failed' } : hostEvidence.mode === 'unverified' ? { state: 'unknown' } : { state: 'recovered' },
+    hostEvidence: { state: hostEvidence.mode === 'unverified' ? 'unverified' : 'provided', source: hostEvidence.source, mode: hostEvidence.mode },
+    requireHostEvidence: true
+  };
+  const qualification = qualifyPortableColdStartTrace(traceInput, options);
+  const continuation = projectGroundedContinuation({ bundle, route, grounding, qualification });
+  return deepFreeze({
+    ...qualification,
+    grounding,
+    continuation,
+    oneShot: Object.freeze({
+      state: grounding.status === 'blocked' ? 'blocked' : 'completed',
+      routeSelector: route,
+      hostEvidence: Object.freeze(hostEvidence),
+      toolingEvidence: 'generated-by-qualify-cold-start-run',
+      evidenceAttribution: Object.freeze({
+        tooling: Object.freeze({ source: 'portable-tooling', independentlyObserved: true, covers: Object.freeze(['orientation', 'route-resolution', 'recipient-grounding']) }),
+        preTakeoverHost: Object.freeze({ source: hostEvidence.source, mode: hostEvidence.mode, independentlyObservedByTooling: false })
+      }),
+      boundary: 'Tooling can generate and qualify its own orientation/grounding receipts. Pre-takeover native-host behavior is not directly observable by portable Tooling unless supplied by a host observer; caller-declared host evidence remains explicitly attributed rather than promoted to independent proof.'
+    })
+  });
+}
+
+function qualifyPortableColdStartTrace(input = {}, options = {}) {
   const ingressKind = normalizeIngressKind(input.ingressKind || input.kind || COLD_START_INGRESS_KINDS.HANDOFF);
   const contract = describePortableColdStartIngress({ ingressKind });
   const profile = contract.profile;
@@ -177,6 +247,10 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
   const groundingEvent = findReadyOperationEvent(events, 'ground-cold-consumer');
   const availabilityObserved = input.toolingAvailable === true || Boolean(firstTiinex) || input.tooling?.available === true || input.bootstrap?.qualified === true;
   const explicitlyUnavailable = input.toolingAvailable === false || input.tooling?.available === false;
+  const hostEvidenceState = normalizeToken(input.hostEvidence?.state || input.hostEvidenceState || '');
+  const hostEvidenceSource = String(input.hostEvidence?.source || input.hostEvidenceSource || '').trim();
+  const hostEvidenceRequired = input.requireHostEvidence === true;
+  const hostEvidenceQualified = !hostEvidenceRequired || ['provided', 'observed', 'external-observer', 'host-instrumented', 'self-reported'].includes(hostEvidenceState);
 
   const preTakeoverNative = events.filter((event) => event.index < firstTiinexIndex && event.mechanism === 'native-host');
   const minimalBootstrap = preTakeoverNative.filter((event) => event.semanticClass === 'minimal-bootstrap');
@@ -193,6 +267,7 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
   const timeToOrientationMs = computeTimeToOrientation(events, orientationEvent);
   const fallback = qualifyFallback(input, events);
 
+  if (hostEvidenceRequired && !hostEvidenceQualified) findings.push(portableFinding('warning', 'portable.cold-start.host-evidence.unverified', 'Portable Tooling cannot independently observe pre-takeover native-host actions in this run; preferred-path qualification remains incomplete until bounded host evidence is supplied.', { source: hostEvidenceSource || 'unverified' }));
   if (!explicitlyUnavailable && !availabilityObserved) findings.push(portableFinding('warning', 'portable.cold-start.tooling-availability.unqualified', 'Preferred-path qualification cannot pass without observed qualified Tiinex Tooling/bootstrap availability.'));
   if (firstTiinex && profile.firstSemanticOperation && firstTiinex.operation !== profile.firstSemanticOperation) findings.push(portableFinding('error', 'portable.cold-start.first-semantic-operation.mismatch', 'The first observed Tiinex semantic operation does not match the ingress contract.', { expected: profile.firstSemanticOperation, actual: firstTiinex.operation }));
   if (minimalBootstrap.length > profile.minimalNativeBootstrapActions) findings.push(portableFinding('error', 'portable.cold-start.minimal-bootstrap.exceeded', 'Native/bootstrap ingress exceeded the explicit minimal pre-Tiinex allowance.', { allowed: profile.minimalNativeBootstrapActions, actual: minimalBootstrap.length }));
@@ -217,6 +292,7 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
   const recoveryState = normalizeRecoveryState(input.outcome || input.recovery || {});
   const blockingErrors = findings.filter((finding) => finding.severity === 'error');
   const preferredPassed = !explicitlyUnavailable
+    && hostEvidenceQualified
     && availabilityObserved
     && Boolean(firstTiinex)
     && (!profile.orientationOperation || Boolean(orientationEvent))
@@ -229,6 +305,8 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
 
   const state = preferredPassed
     ? 'preferred-pass'
+    : hostEvidenceRequired && !hostEvidenceQualified
+      ? 'incomplete'
     : recoveryState === 'recovered'
       ? 'recovered-not-preferred'
       : explicitlyUnavailable || (fallback.used && fallback.justified)
@@ -253,6 +331,7 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
       expectedFirstSemanticOperation: profile.firstSemanticOperation,
       orientationOperation: orientationEvent?.operation || '',
       groundingState: input.grounding?.status || (groundingEvent ? String(groundingEvent.status || 'observed') : 'unobserved'),
+      hostEvidence: Object.freeze({ required: hostEvidenceRequired, state: hostEvidenceState || (hostEvidenceRequired ? 'unverified' : 'not-required'), source: hostEvidenceSource || '', mode: String(input.hostEvidence?.mode || ''), independentlyObservedByTooling: false }),
       fallback
     }),
     metrics: Object.freeze({
@@ -280,6 +359,30 @@ export function qualifyPortableColdStart(input = {}, options = {}) {
     findings: Object.freeze(findings),
     findingSummary: summarizePortableFindings(findings),
     boundary: 'Preferred-path qualification is independent from final-answer correctness. Native host tools remain valid after Tiinex takeover and as explicit degraded fallback; this result does not authorize network access, authentication, source mutation, repository writes, or fabricated receipts.'
+  });
+}
+
+function isOneShotColdStartQualificationInput(input = {}) {
+  const bundle = input?.bundle || input?.package || null;
+  if (!bundle || !Array.isArray(bundle.files)) return false;
+  const explicitEvents = input?.events || input?.observations || input?.trace;
+  return !(Array.isArray(explicitEvents) && explicitEvents.length);
+}
+
+function normalizeOneShotHostEvidence(value, source = '') {
+  const raw = typeof value === 'object' && value ? value : { mode: value };
+  const token = normalizeToken(raw.mode || raw.state || raw.kind || value || 'unverified');
+  const mode = ['minimal-bootstrap-only', 'minimal-bootstrap', 'bootstrap-only'].includes(token)
+    ? 'minimal-bootstrap-only'
+    : ['none', 'tooling-preinstalled', 'already-available'].includes(token)
+      ? 'none'
+      : ['native-archaeology', 'archaeology', 'fallback'].includes(token)
+        ? 'native-archaeology'
+        : 'unverified';
+  return Object.freeze({
+    mode,
+    source: String(raw.source || source || (mode === 'unverified' ? 'unverified' : 'caller-declared')).trim(),
+    independentlyObservedByTooling: false
   });
 }
 
@@ -665,8 +768,91 @@ function parseRoleMaterial(entry) {
   }
 }
 
+function projectGroundedContinuation({ bundle = {}, route = '', grounding = {}, qualification = {} } = {}) {
+  const selectedRouteId = String(grounding.selectedRoute?.id || '');
+  const requiredContext = Object.freeze((grounding.selectedRoute?.requiredClosure?.requirements || []).map((entry) => hydrateRequiredContextEntry(bundle, entry)));
+  const unresolvedRequired = requiredContext.filter((entry) => entry.state !== 'qualified');
+  const groundingBlocked = String(grounding.status || '') === 'blocked';
+  const continuationReady = Boolean(selectedRouteId) && !groundingBlocked && unresolvedRequired.length === 0;
+  return deepFreeze({
+    state: continuationReady ? 'ready' : 'blocked',
+    substantiveWorkMayBegin: continuationReady,
+    qualificationState: String(qualification.status || ''),
+    selectedRoute: Object.freeze({
+      id: selectedRouteId,
+      selector: String(route || ''),
+      workspaceId: String(grounding.selectedRoute?.workspaceId || ''),
+      pointerPath: String(grounding.selectedRoute?.pointerPath || '')
+    }),
+    transfer: Object.freeze([...(grounding.handoff?.transfers || [])]),
+    requiredContext,
+    completionExpectation: grounding.handoff?.completionExpectation || Object.freeze({ signalKind: '', signalMeaning: '', returnTo: '' }),
+    next: continuationReady
+      ? 'Consume the qualified Required Context projection below, then continue substantive work within the grounded Handoff and Role boundaries. No Tooling API discovery is required.'
+      : 'Do not begin substantive work until the selected Handoff and every Required Context dependency are qualified.',
+    boundary: 'Grounded continuation projection only. Handoff Transfers and Completion Expectation come from exact selected Handoff bytes; Required Context comes from exact route closure and is not inferred from nearby Workspace material.'
+  });
+}
+
+function hydrateRequiredContextEntry(bundle = {}, entry = {}) {
+  const resolution = entry.resolution || {};
+  const base = {
+    requirementId: String(entry.requirementId || ''),
+    name: String(entry.name || ''),
+    state: String(entry.state || resolution.state || 'unresolved'),
+    referenceTarget: String(entry.referenceTarget || ''),
+    kind: String(resolution.kind || ''),
+    workspaceId: String(resolution.workspaceId || ''),
+    archivePackagePath: String(resolution.archivePackagePath || resolution.packagePath || ''),
+    innerPath: String(resolution.innerPath || resolution.workspaceRelativePath || ''),
+    packagePath: String(resolution.packagePath || ''),
+    providerMode: String(resolution.providerMode || ''),
+    bytes: Number(resolution.bytes || 0),
+    sha256: String(resolution.sha256 || '')
+  };
+  if (base.state !== 'qualified') return Object.freeze({ ...base, contentState: 'unavailable', content: '' });
+  const hydrated = resolveQualifiedMaterialBytes(bundle, resolution);
+  if (!hydrated.bytes) return Object.freeze({ ...base, state: 'unresolved', contentState: 'unavailable', content: '' });
+  const actualSha256 = sha256Hex(hydrated.bytes);
+  const identityQualified = (!base.bytes || hydrated.bytes.byteLength === base.bytes) && (!base.sha256 || actualSha256 === base.sha256);
+  const text = identityQualified && hydrated.bytes.byteLength <= 65536 ? decodeUtf8(hydrated.bytes) : '';
+  return Object.freeze({
+    ...base,
+    state: identityQualified ? 'qualified' : 'identity-mismatch',
+    actualBytes: hydrated.bytes.byteLength,
+    actualSha256,
+    contentState: text ? 'hydrated-text' : identityQualified ? 'qualified-locator-only' : 'unavailable',
+    content: text
+  });
+}
+
+function resolveQualifiedMaterialBytes(bundle = {}, resolution = {}) {
+  const kind = String(resolution.kind || '');
+  if (kind === 'workspace-archive-entry') {
+    const archivePath = String(resolution.archivePackagePath || resolution.packagePath || '');
+    const innerPath = normalizePath(resolution.innerPath || resolution.workspaceRelativePath || '');
+    const archiveFile = findFile(bundle, archivePath);
+    if (!archiveFile || !innerPath) return Object.freeze({ bytes: null });
+    const archive = inspectStoredWorkspaceArchive(packageFileBytes(archiveFile), { ownedBytes: true });
+    if (archive.state !== 'qualified') return Object.freeze({ bytes: null });
+    const matches = (archive.entries || []).filter((candidate) => normalizePath(candidate.path || '') === innerPath);
+    return Object.freeze({ bytes: matches.length === 1 ? packageFileBytes({ data: matches[0].data }) : null });
+  }
+  const packagePath = String(resolution.packagePath || '');
+  const file = packagePath ? findFile(bundle, packagePath) : null;
+  return Object.freeze({ bytes: file ? packageFileBytes(file) : null });
+}
+
 function parseHandoffGrounding(markdown, route) {
   const parties = sectionText(markdown, 'Handoff Parties');
+  const transferSection = parseNamedDeclarationSection(markdown, '## Transfers');
+  const completion = sectionText(markdown, 'Completion Expectation');
+  const transfers = Object.freeze((transferSection.entries || []).filter((entry) => String(entry.name || '').trim().toLowerCase() !== 'none').map((entry) => Object.freeze({
+    id: String(entry.name || ''),
+    transferKind: String(entry.fields?.['Transfer Kind'] || ''),
+    description: String(entry.fields?.Description || ''),
+    boundary: String(entry.fields?.Boundary || '')
+  })));
   return deepFreeze({
     schemaId: /Current Schema:\s*(?:\[)?tiinex\.handoff\.v1\b/i.test(markdown) ? 'tiinex.handoff.v1' : '',
     purpose: sectionField(parties, 'Purpose'),
@@ -676,17 +862,23 @@ function parseHandoffGrounding(markdown, route) {
     toKind: sectionField(parties, 'To Kind'),
     fromReference: sectionReferenceTarget(parties, 'From Reference'),
     toReference: sectionReferenceTarget(parties, 'To Reference'),
+    transfers,
+    completionExpectation: Object.freeze({
+      signalKind: sectionField(completion, 'Signal Kind'),
+      signalMeaning: sectionField(completion, 'Signal Meaning'),
+      returnTo: sectionField(completion, 'Return To')
+    }),
     routeId: String(route?.id || ''),
     workspaceId: String(route?.workspaceId || ''),
     workspaceRelativePath: String(route?.workspaceRelativeHandoffPath || route?.workspaceRelativePath || ''),
     packagePath: String(route?.packagePath || ''),
     sha256: String(route?.sha256 || ''),
-    boundary: 'Exact Handoff parties/purpose read from selected qualified Handoff bytes; transport route labels are not substituted for artifact semantics.'
+    boundary: 'Exact Handoff parties/purpose/work-transfer/completion expectation read from selected qualified Handoff bytes; transport route labels are not substituted for artifact semantics.'
   });
 }
 
 function emptyHandoffGrounding() {
-  return deepFreeze({ schemaId: '', purpose: '', from: '', fromKind: '', fromReference: '', to: '', toKind: '', toReference: '', routeId: '', workspaceId: '', workspaceRelativePath: '', packagePath: '', sha256: '', boundary: 'No Handoff material supplied.' });
+  return deepFreeze({ schemaId: '', purpose: '', from: '', fromKind: '', fromReference: '', to: '', toKind: '', toReference: '', transfers: Object.freeze([]), completionExpectation: Object.freeze({ signalKind: '', signalMeaning: '', returnTo: '' }), routeId: '', workspaceId: '', workspaceRelativePath: '', packagePath: '', sha256: '', boundary: 'No Handoff material supplied.' });
 }
 
 function resolveGroundingRouteMarkdown(bundle = {}, selectedRoute = {}, findings = []) {
@@ -732,7 +924,7 @@ function selectGroundingRoute(orientation = {}, selector = '') {
     return Object.freeze({ state: routes.length > 1 ? 'selection-required' : 'unresolved', route: null });
   }
   const normalized = normalizePath(requested);
-  const matches = routes.filter((route) => route.id === requested || normalizePath(route.workspaceRelativeHandoffPath || route.workspaceRelativePath || '') === normalized || `${route.workspaceId}:${normalizePath(route.workspaceRelativeHandoffPath || route.workspaceRelativePath || '')}` === requested);
+  const matches = routes.filter((route) => route.id === requested || normalizePath(route.pointerPath || '') === normalized || normalizePath(route.workspaceRelativeHandoffPath || route.workspaceRelativePath || '') === normalized || `${route.workspaceId}:${normalizePath(route.workspaceRelativeHandoffPath || route.workspaceRelativePath || '')}` === requested);
   return Object.freeze({ state: matches.length === 1 ? 'qualified' : matches.length > 1 ? 'ambiguous' : 'unresolved', route: matches.length === 1 ? matches[0] : null });
 }
 

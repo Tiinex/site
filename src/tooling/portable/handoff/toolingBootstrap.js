@@ -13,7 +13,10 @@ export function inspectPortableToolingBootstrap(bundle = {}) {
   else if (String(manifest.schema || '') !== PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID) findings.push(finding('error', 'portable.tooling-bootstrap.manifest.schema', 'Portable Tooling bootstrap manifest schema is unsupported.', { actual: manifest.schema || '' }));
 
   const delivery = String(manifest?.delivery || '');
+  const entrypoint = String(manifest?.entrypoint || '').trim();
   if (manifest && !['embedded', 'persistent'].includes(delivery)) findings.push(finding('error', 'portable.tooling-bootstrap.delivery.unsupported', 'Portable Tooling bootstrap delivery mode is unsupported.', { delivery }));
+  if (manifest && !entrypoint) findings.push(finding('error', 'portable.tooling-bootstrap.entrypoint.missing', 'Portable Tooling bootstrap manifest must declare one exact runtime entrypoint.'));
+  else if (entrypoint && (!entrypoint.startsWith('runtime/') || entrypoint.includes('..'))) findings.push(finding('error', 'portable.tooling-bootstrap.entrypoint.invalid', 'Portable Tooling bootstrap entrypoint must be one normalized runtime-relative path.', { entrypoint }));
   const declared = new Map();
   for (const entry of manifest?.runtime?.entries || []) {
     const relative = String(entry.path || '');
@@ -33,6 +36,8 @@ export function inspectPortableToolingBootstrap(bundle = {}) {
     if (Number(entry.bytes || 0) !== data.byteLength) findings.push(finding('error', 'portable.tooling-bootstrap.runtime.bytes-mismatch', 'Embedded Tooling bootstrap runtime byte length differs from its manifest.', { path: packagePath }));
     if (String(entry.sha256 || '') !== sha256Hex(data)) findings.push(finding('error', 'portable.tooling-bootstrap.runtime.sha256-mismatch', 'Embedded Tooling bootstrap runtime digest differs from its manifest.', { path: packagePath }));
   }
+  const entrypointPackagePath = entrypoint ? `tiinex.bootstrap/${entrypoint}` : '';
+  if (entrypointPackagePath && !declared.has(entrypointPackagePath)) findings.push(finding('error', 'portable.tooling-bootstrap.entrypoint.unlisted', 'Portable Tooling bootstrap entrypoint is not present in the exact manifest-declared runtime representation.', { entrypoint }));
   const runtimeFiles = files.filter((file) => String(file.path || '').startsWith('tiinex.bootstrap/runtime/'));
   if (delivery === 'embedded') {
     for (const file of runtimeFiles) if (!declared.has(String(file.path || ''))) findings.push(finding('error', 'portable.tooling-bootstrap.runtime.unlisted', 'A package byte is colocated under the bootstrap runtime prefix but is not granted bootstrap authority by the manifest.', { path: file.path || '' }));
@@ -48,8 +53,9 @@ export function inspectPortableToolingBootstrap(bundle = {}) {
     status: findings.some((item) => item.severity === 'error') ? 'invalid' : 'valid',
     delivery: delivery || 'unknown',
     manifest,
+    entrypoint: entrypoint ? Object.freeze({ path: entrypoint, packagePath: entrypointPackagePath, state: declared.has(entrypointPackagePath) ? 'qualified' : 'unqualified' }) : null,
     counts: Object.freeze({ declaredRuntimeFiles: declared.size, suppliedRuntimeFiles: runtimeFiles.length, findings: findings.length, errors: findings.filter((item) => item.severity === 'error').length }),
-    qualification: Object.freeze({ exactManifestMembershipRequired: true, filenameOrColocationAuthority: false, ordinaryWorkspaceBytesAreBootstrapAuthority: false }),
+    qualification: Object.freeze({ exactManifestMembershipRequired: true, exactEntrypointManifestMembershipRequired: true, filenameOrColocationAuthority: false, ordinaryWorkspaceBytesAreBootstrapAuthority: false }),
     findings: Object.freeze(findings)
   });
 }

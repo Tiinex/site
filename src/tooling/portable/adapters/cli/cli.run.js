@@ -140,10 +140,28 @@ async function commandInput(parsed, runtime = {}) {
   }
 
   if (parsed.command === 'qualify-cold-start') {
-    const file = flags.evidence || flags.trace || flags.input || parsed.positionals[0];
-    if (!file) throw new Error('portable.cli.cold-start-evidence.required');
-    const evidence = JSON.parse(await readFile(file, 'utf8'));
-    return { input: { ...evidence, ingressKind: flags.ingress || evidence.ingressKind || evidence.kind || 'routed-handoff-package' }, options: {} };
+    const evidenceFile = flags.evidence || flags.trace || flags.input || '';
+    if (evidenceFile) {
+      const evidence = JSON.parse(await readFile(evidenceFile, 'utf8'));
+      return { input: { ...evidence, ingressKind: flags.ingress || evidence.ingressKind || evidence.kind || 'routed-handoff-package' }, options: {} };
+    }
+    const packagePath = String(flags.package || parsed.positionals[0] || '').trim();
+    if (!packagePath) throw new Error('portable.cli.cold-start-package-or-evidence.required');
+    const material = await loadNodePortableInput([packagePath], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
+    const interaction = await readOptionalJson(flags.interaction);
+    return {
+      input: {
+        ...material,
+        bundle: material,
+        ingressKind: flags.ingress || flags.kind || 'routed-handoff-package',
+        route: flags.route || '',
+        preTakeover: flags['pre-takeover'] || 'unverified',
+        hostEvidenceSource: flags['evidence-source'] || '',
+        interaction: interaction.interaction || interaction,
+        toolingAvailable: flags['tooling-unavailable'] ? false : true
+      },
+      options: {}
+    };
   }
 
   if (parsed.command === 'plan-host-action') {

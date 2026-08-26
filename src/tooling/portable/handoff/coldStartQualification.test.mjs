@@ -129,6 +129,40 @@ const packageBuilt = buildRecipientRelativeHandoffTransportPackage({
 }, { packageInput: { builtAt: '2026-08-24T19:15:00.000Z' } });
 assert.equal(packageBuilt.status, 'ready');
 
+const oneShotPreferred = qualifyPortableColdStart({ bundle: packageBuilt.bundle, preTakeover: 'minimal-bootstrap-only' });
+assert.equal(oneShotPreferred.status, 'preferred-pass');
+assert.equal(oneShotPreferred.qualification.preferredPathPassed, true);
+assert.equal(oneShotPreferred.oneShot.toolingEvidence, 'generated-by-qualify-cold-start-run');
+assert.equal(oneShotPreferred.oneShot.hostEvidence.independentlyObservedByTooling, false);
+assert.equal(oneShotPreferred.oneShot.evidenceAttribution.tooling.independentlyObserved, true);
+assert.deepEqual(oneShotPreferred.oneShot.evidenceAttribution.tooling.covers, ['orientation', 'route-resolution', 'recipient-grounding']);
+assert.equal(oneShotPreferred.oneShot.evidenceAttribution.preTakeoverHost.independentlyObservedByTooling, false);
+assert.equal(oneShotPreferred.grounding.handoff.to, 'Loom');
+assert.equal(oneShotPreferred.qualification.hostEvidence.source, 'caller-declared');
+assert.equal(oneShotPreferred.qualification.hostEvidence.independentlyObservedByTooling, false);
+assert.equal(oneShotPreferred.grounding.next.qualification.mode, 'one-shot-package');
+assert.equal(oneShotPreferred.grounding.next.qualification.externalQualificationSchemaRequired, false);
+assert.equal(oneShotPreferred.grounding.next.qualification.separateGroundingCallRequired, false);
+assert.equal(oneShotPreferred.grounding.next.qualification.eligible, true);
+assert.equal(oneShotPreferred.grounding.next.qualification.degradedGroundingBlocksPreferredPath, false);
+assert.equal(oneShotPreferred.continuation.state, 'ready');
+assert.equal(oneShotPreferred.continuation.substantiveWorkMayBegin, true);
+assert.equal(oneShotPreferred.continuation.transfer[0].id, 'fixture-transfer');
+assert.equal(oneShotPreferred.continuation.transfer[0].description, 'bounded fixture work');
+assert.equal(oneShotPreferred.continuation.requiredContext.length, 0);
+assert.equal(oneShotPreferred.continuation.completionExpectation.returnTo, 'Anchor');
+assert.match(oneShotPreferred.continuation.next, /No Tooling API discovery is required/);
+
+const oneShotUnverified = qualifyPortableColdStart({ bundle: packageBuilt.bundle });
+assert.equal(oneShotUnverified.status, 'incomplete');
+assert.equal(oneShotUnverified.qualification.preferredPathPassed, false);
+assert(oneShotUnverified.findings.some((finding) => finding.code === 'portable.cold-start.host-evidence.unverified'));
+
+const oneShotArchaeology = qualifyPortableColdStart({ bundle: packageBuilt.bundle, preTakeover: 'native-archaeology' });
+assert.equal(oneShotArchaeology.status, 'recovered-not-preferred');
+assert.equal(oneShotArchaeology.qualification.preferredPathPassed, false);
+assert(oneShotArchaeology.findings.some((finding) => finding.code === 'portable.cold-start.native-archaeology.pre-takeover'));
+
 const tools = [
   { id: 'local.runtime', name: 'local.runtime', description: 'Read files and zip archives and execute JavaScript processes.', capabilities: ['filesystemRead', 'archiveRead', 'javascript'] },
   { id: 'host.presentation', name: 'host.presentation', description: 'Return artifacts, request human confirmation, request authentication, and present copyable text.', capabilities: ['artifactReturn', 'humanConfirmation', 'authenticationRequest', 'copyableTextPresentation'] }

@@ -1,3 +1,5 @@
+import { crc32 as nativeCrc32 } from 'node:zlib';
+
 export function createDeterministicStoredZip(entries = []) {
   const normalized = entries
     .map((entry) => ({ name: safeZipPath(entry?.name || ''), data: bytesFrom(entry?.data) }))
@@ -81,18 +83,6 @@ function bytesFrom(value) {
   return Buffer.from(String(value ?? ''), 'utf8');
 }
 
-const CRC_TABLE = makeCrcTable();
 function crc32(buffer) {
-  let crc = 0xffffffff;
-  for (const byte of buffer) crc = CRC_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-  return (crc ^ 0xffffffff) >>> 0;
-}
-function makeCrcTable() {
-  const table = new Uint32Array(256);
-  for (let index = 0; index < 256; index += 1) {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
-    table[index] = value >>> 0;
-  }
-  return table;
+  return nativeCrc32(buffer) >>> 0;
 }

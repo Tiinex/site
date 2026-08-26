@@ -9,9 +9,11 @@ export function recipientV2StandardInvocation(humanOutput = {}, inspection = {})
   return [
     'Handoff package attached.',
     '',
+    'Cold start: read Start directly; do not list or extract this package.',
+    '',
     'Start:',
     RECIPIENT_V2_READ_PATH,
-    'Continue from:',
+    'Continue from (do not read native; pass to Tiinex after bootstrap):',
     String(routeMeta.pointerPath),
     ''
   ].join('\n');

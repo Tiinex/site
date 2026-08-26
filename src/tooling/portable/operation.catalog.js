@@ -83,7 +83,7 @@ export const portableOperationCatalog = Object.freeze({
   }),
   'qualify-cold-start': operation({
     name: 'qualify-cold-start',
-    description: 'Qualify observed cold-start actions as preferred Tiinex-first, recovered-but-not-preferred, degraded fallback, or failed while reporting bounded ingress metrics.',
+    description: 'Qualify cold-start behavior from either an explicit observation trace or a Handoff package + route one-shot run that generates Tooling orientation/grounding receipts while keeping pre-takeover host evidence explicitly attributed.',
     safety: 'read-only-normalization',
     inputSchema: 'tiinex.portable.cold-start-qualification.request.v1',
     handler: (input = {}, options = {}) => wrapPortableResult('qualify-cold-start', qualifyPortableColdStart(input, options))
