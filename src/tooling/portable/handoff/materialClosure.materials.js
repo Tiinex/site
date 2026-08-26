@@ -19,7 +19,8 @@ export function collectHandoffMaterialCandidates(input = {}) {
 export function resolveRequirementMaterial(requirement = {}, candidates = [], recipient = {}, policy = {}) {
   const target = String(requirement.reference?.target || '');
   const capability = recipientCanResolveReference(recipient, target);
-  const relevant = candidates.filter((candidate) => candidateMatchesRequirement(candidate, requirement));
+  const exactRequirementCandidates = candidates.filter((candidate) => candidate.requirementId && candidate.requirementId === requirement.id);
+  const relevant = exactRequirementCandidates.length ? exactRequirementCandidates : candidates.filter((candidate) => candidateMatchesRequirement(candidate, requirement));
   const withBytes = relevant.filter((candidate) => candidate.bytes > 0 && candidate.sha256);
   const conflicts = withBytes.filter((candidate) => candidate.expectedSha256 && candidate.expectedSha256 !== candidate.sha256);
   if (conflicts.length) return resolution('integrity-conflict', requirement, relevant, null, capability, 'Resolved bytes contradict declared expected integrity authority.');
@@ -109,7 +110,7 @@ function candidateBoundToRequirement(candidate, requirement) {
   return candidate.referenceTarget === target;
 }
 function resolution(disposition, requirement, candidates, selected, capability, reason) {
-  return deepFreeze({ disposition, requirementId: requirement.id, requirementName: String(requirement.name || ''), classification: requirement.classification, referenceTarget: String(requirement.reference?.target || ''), recipientReferenceCapability: Boolean(capability), selectedMaterial: selected, candidates: Object.freeze(candidates), reason });
+  return deepFreeze({ disposition, requirementId: requirement.id, requirementName: String(requirement.name || ''), classification: requirement.classification, referenceTarget: String(requirement.reference?.target || ''), routeWorkspaceId: String(requirement.routeWorkspaceId || ''), routePath: String(requirement.routePath || ''), sourceRequirementId: String(requirement.sourceRequirementId || ''), recipientReferenceCapability: Boolean(capability), selectedMaterial: selected, candidates: Object.freeze(candidates), reason });
 }
 function serializable(value = {}) { const out = {}; for (const [key, item] of Object.entries(value || {})) if (typeof item !== 'function' && typeof item !== 'undefined') out[key] = item; return out; }
 function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }

@@ -4,6 +4,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { portableCliHelpText } from '../adapters/cli/cli.help.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-handoff-human-output-023-'));
 try {
@@ -32,13 +35,14 @@ try {
     '--handoff', route,
     '--route', route,
     '--workspace-id', 'copyable-fixture',
+    '--workspace-target', 'workspace.workspace.md',
     '--output-dir', outputDir,
     '--built-at', '2026-08-24T10:00:00.000Z',
     '--compact'
   ], { log: (value) => lines.push(value), error: (value) => lines.push(value) }, { runtimeRoot });
   assert.equal(code, 0);
   const result = JSON.parse(lines.at(-1));
-  const expected = `Handoff package attached.\n\nWorkspace: tiinex-copyable-fixture\nContinue from:\n${route}\n`;
+  const expected = `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-1-handoff-pointer.trace.md\n`;
   assert.equal(result.humanOutput.normalInlineRouting.content, expected);
   assert.equal(result.humanOutput.normalInlineRouting.content.includes('```'), false, 'host wrapper must never become routing content');
   assert.deepEqual(result.humanOutput.presentation, {
@@ -76,8 +80,38 @@ try {
 async function makeWorkspace(rootPath, route) {
   await mkdir(path.join(rootPath, '.topics', 'handoff'), { recursive: true });
   await writeFile(path.join(rootPath, 'package.json'), '{"name":"tiinex-copyable-fixture","type":"module"}\n', 'utf8');
-  await writeFile(path.join(rootPath, route), `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-24 10:00:00\n\n---\n\n# Copyable presentation fixture\n\n## Handoff Parties\n\n- Purpose: prove host presentation metadata\n- From: Loom\n- From Kind: role\n- To: Anchor\n- To Kind: role\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`, 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(), 'utf8');
+  await writeFile(path.join(rootPath, route), qualifiedHandoffFixture({ title: 'Copyable presentation fixture', from: 'Loom', to: 'Anchor', purpose: 'prove host presentation metadata', createdAt: '2026-08-24 10:00:00' }), 'utf8');
 }
+function workspaceMarkdown() {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-24 09:50:00
+  - Authors: Fixture
+  - Why: Qualify the exact Workspace carried by the copyable-presentation regression.
+  - Summary: Copyable presentation fixture Workspace.
+  - Status: active/local
+
+---
+
+# Copyable Presentation Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}
+`;
+}
+
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });
   await mkdir(path.join(rootPath, 'src', 'tooling', 'portable', 'bootstrap'), { recursive: true });

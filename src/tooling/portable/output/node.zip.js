@@ -7,7 +7,7 @@ import { createDeterministicStoredZip, safeZipPath } from './deterministic.zip.j
 export function portableRuntimePackageZipBuffer(bundle = {}) {
   const inspection = inspectExportPackageBundle(bundle);
   if (inspection.status !== 'valid') throw new Error('portable.runtime-package.zip.bundle.invalid');
-  const entries = (bundle.files || []).map((file) => ({ name: safeZipPath(file.path), data: Buffer.from(packageFileBytes(file)) }));
+  const entries = (bundle.files || []).map((file) => ({ name: safeZipPath(file.path), data: bufferViewOfPackageFile(file) }));
   if (entries.some((entry) => !entry.name)) throw new Error('portable.runtime-package.zip.path.invalid');
   return createDeterministicStoredZip(entries);
 }
@@ -29,3 +29,11 @@ export async function writePortableRuntimePackageZip(bundle = {}, outputPath = '
   });
 }
 
+
+function bufferViewOfPackageFile(file = {}) {
+  const value = file.data;
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof Uint8Array) return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+  const bytes = packageFileBytes(file);
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}

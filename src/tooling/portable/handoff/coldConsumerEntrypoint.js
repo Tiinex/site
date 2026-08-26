@@ -1,6 +1,8 @@
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { inspectHandoffCarrierProjection } from './carrierProjection.js';
 import { inspectHandoffPointerEntrypoints } from './pointerEntrypoint.js';
+import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
+import { RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
 
 export const HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH = 'tiinex.package/START.md';
 export const HANDOFF_COLD_CONSUMER_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-cold-consumer-projection.v1';
@@ -42,6 +44,15 @@ export function buildHandoffColdConsumerProjection(input = {}) {
       fileMap: 'tiinex.package/file-map.json',
       manifest: 'tiinex.package/manifest.json'
     }),
+    preferredPath: Object.freeze({
+      ingressKind: 'routed-handoff-package',
+      firstSemanticOperation: 'orient-handoff-package',
+      groundingOperation: 'ground-cold-consumer',
+      qualificationOperation: 'qualify-cold-start',
+      minimalHostBootstrapActions: 1,
+      nativeFallback: 'explicit-and-justified-only',
+      providerSpecificSemanticAuthority: false
+    }),
     workspaces,
     routes,
     selection: Object.freeze({
@@ -70,10 +81,10 @@ export function renderHandoffColdConsumerEntrypoint(input = {}) {
     : projection.selection.qualifiedRouteCount > 1
       ? 'Select exactly one qualified route by route id before projecting recipient-facing output.'
       : 'No qualified route is available; inspect the package control findings and fail closed.';
-  return `# Tiinex Handoff Package Start\n\nThis file is a generated orientation aid for a cold consumer. Read it without executing package code. The structured projection below is non-authoritative and must correlate with the package-local carrier, closure, file map, manifest, and carried workspace bytes.\n\n## Workspaces\n\n${workspaceLines}\n\n## Routes\n\n${routeLines}\n\n## Next\n\n${next}\n\n${BEGIN}\n\`\`\`json\n${stablePrettyJson(projection)}\n\`\`\`\n${END}\n`;
+  return `# Tiinex Handoff Package Start\n\nThis file is a generated orientation aid for a cold consumer. Read it without executing package code. The structured projection below is non-authoritative and must correlate with the package-local carrier, closure, file map, manifest, and carried workspace bytes.\n\n## Preferred Tiinex Ingress\n\nAfter the host has surfaced this package to qualified portable Tooling, invoke \`orient-handoff-package\` as the first semantic operation. Before that takeover, at most one minimal host/bootstrap ingress action is allowed. Do not perform arbitrary ZIP/filesystem archaeology first when qualified Tiinex orientation is available. Ground the recipient/participants/interaction with \`ground-cold-consumer\` before substantive work; native tools remain valid after takeover and as explicit justified fallback.\n\n## Workspaces\n\n${workspaceLines}\n\n## Routes\n\n${routeLines}\n\n## Next\n\n${next}\n\n${BEGIN}\n\`\`\`json\n${stablePrettyJson(projection)}\n\`\`\`\n${END}\n`;
 }
 
-export function inspectHandoffColdConsumerEntrypoint(bundle = {}) {
+export function inspectHandoffColdConsumerEntrypoint(bundle = {}, options = {}) {
   const findings = [];
   const file = findFile(bundle, HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH);
   const parsed = file ? parseProjectionFromMarkdown(decodeUtf8(packageFileBytes(file))) : null;
@@ -82,13 +93,14 @@ export function inspectHandoffColdConsumerEntrypoint(bundle = {}) {
   if (parsed && parsed.schema !== HANDOFF_COLD_CONSUMER_PROJECTION_SCHEMA_ID) findings.push(finding('error', 'portable.handoff-start.schema.invalid', 'Handoff START projection schema/version is unsupported.'));
   if (parsed && parsed.boundary !== BOUNDARY) findings.push(finding('error', 'portable.handoff-start.boundary.invalid', 'Handoff START projection lost its non-authoritative package-orientation boundary.'));
 
-  const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const carrierInspection = options.carrierInspection || inspectHandoffCarrierProjection(bundle);
   if (carrierInspection.status !== 'valid') findings.push(finding('error', 'portable.handoff-start.carrier.invalid', 'Handoff START cannot qualify because the package carrier projection does not independently correlate with current package truth.'));
   if (parsed && carrierInspection.projection) {
     const expected = buildHandoffColdConsumerProjection({ carrierProjection: carrierInspection.projection });
     for (const field of ['status', 'controls', 'workspaces', 'routes', 'selection', 'authority']) {
       if (stableJson(parsed[field]) !== stableJson(expected[field])) findings.push(finding('error', `portable.handoff-start.${field}.mismatch`, `Handoff START ${field} diverges from independently recomputed package truth.`));
     }
+    if (Object.prototype.hasOwnProperty.call(parsed, 'preferredPath') && stableJson(parsed.preferredPath) !== stableJson(expected.preferredPath)) findings.push(finding('error', 'portable.handoff-start.preferredPath.mismatch', 'Handoff START preferredPath diverges from independently recomputed portable cold-start guidance.'));
     if (parsed.authority?.semanticAuthority !== 'none' || parsed.authority?.packageTruthRequired !== true) findings.push(finding('error', 'portable.handoff-start.authority.promotion', 'Handoff START projection promotes orientation text into semantic authority.'));
   }
 
@@ -105,6 +117,16 @@ export function inspectHandoffColdConsumerEntrypoint(bundle = {}) {
 
 export function orientColdConsumerFromHandoffPackage(input = {}) {
   const bundle = input.bundle || input;
+  if ((bundle.files || []).some((file) => String(file.path || '') === RECIPIENT_V2_READ_PATH)) {
+    const v2 = inspectRecipientFacingV2Topology(bundle);
+    const projection = v2.coldConsumerProjection || null;
+    const routeMetadata = new Map((v2.routes || []).map((route) => [`${String(route.workspaceId || '')}\u0000${String(route.workspaceRelativeHandoffPath || '')}`, route]));
+    const routes = Object.freeze((projection?.routes || []).map((route) => {
+      const metadata = routeMetadata.get(`${String(route.workspaceId || '')}\u0000${String(route.workspaceRelativeHandoffPath || '')}`) || {};
+      return Object.freeze({ ...route, pointerPath: String(metadata.pointerPath || ''), participantRolePointers: Object.freeze([...(metadata.participantRolePointers || [])]) });
+    }));
+    return deepFreeze({ schema: 'tiinex.portable.handoff-cold-consumer-orientation.v1', status: v2.status === 'valid' && projection?.status === 'ready' ? 'ready' : 'blocked', entrypoint: Object.freeze({ schema: 'tiinex.portable.handoff-v2.recipient-orientation.inspection.v1', status: v2.status, path: RECIPIENT_V2_READ_PATH, projection, findings: v2.findings }), pointerEntrypoints: Object.freeze({ schema: 'tiinex.portable.handoff-v2.recipient-pointer.inspection.v1', status: v2.status, entries: v2.routes, findings: v2.findings }), workspaces: projection?.workspaces || Object.freeze([]), routes, participantRoles: v2.participantRoles || Object.freeze([]), selection: projection?.selection || null, boundary: 'Read-only recipient-facing v2 orientation from qualified visible Tiinex artifacts and exact payload bytes; no legacy control JSON, filename, or adjacency authority.' });
+  }
   const inspection = inspectHandoffColdConsumerEntrypoint(bundle);
   const pointerEntrypoints = inspectHandoffPointerEntrypoints(bundle);
   const projection = inspection.projection || null;

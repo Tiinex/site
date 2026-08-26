@@ -1,5 +1,11 @@
 export function qualifyHandoffMaterialClosurePlanReadiness(plan = {}) {
-  const requiredBlockers = Object.freeze((plan.requirements?.required || [])
+  const blockingRequirements = [
+    ...(plan.requirements?.required || []),
+    ...(plan.requirements?.endpointRoles || []),
+    ...(plan.requirements?.participantRoles || []),
+    ...(plan.requirements?.dependencies || [])
+  ];
+  const requiredBlockers = Object.freeze(blockingRequirements
     .filter((entry) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(String(entry?.disposition || '')))
     .map((entry) => Object.freeze({ requirementId: String(entry?.requirementId || ''), disposition: String(entry?.disposition || '') })));
   const workspaceBlockers = Object.freeze((plan.workspaceMaterializations || [])

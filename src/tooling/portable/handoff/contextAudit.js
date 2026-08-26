@@ -2,11 +2,14 @@ import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { inspectHandoffClosureDescriptor } from './materialClosure.descriptor.js';
 import { inspectHandoffCarrierProjection } from './carrierProjection.js';
 import { inspectHandoffPointerEntrypoints, isHandoffPointerEntrypointPath } from './pointerEntrypoint.js';
+import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
+import { RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
 
 export const PORTABLE_HANDOFF_CONTEXT_AUDIT_SCHEMA_ID = 'tiinex.portable.handoff-context-carriage-audit.v1';
 
 export function auditHandoffPackageContextCarriage(input = {}) {
   const bundle = input.bundle || input;
+  if ((bundle.files || []).some((file) => String(file.path || '') === RECIPIENT_V2_READ_PATH)) return auditRecipientV2(bundle);
   const findings = [];
   const closureInspection = inspectHandoffClosureDescriptor(bundle);
   const carrierInspection = inspectHandoffCarrierProjection(bundle);
@@ -18,12 +21,14 @@ export function auditHandoffPackageContextCarriage(input = {}) {
   const fileMapByPath = new Map((fileMap.entries || []).map((entry) => [String(entry.path || ''), entry]));
   const byPath = new Map((bundle.files || []).map((file) => [String(file.path || ''), file]));
   const workspaceEntries = indexWorkspaceEntries(descriptor.workspaceMaterializations || []);
+  const workspaceOuterCarriers = indexWorkspaceOuterCarriers(descriptor.workspaceArchiveBindings || []);
   const workspaceByteIndex = indexWorkspaceBytes(descriptor.workspaceMaterializations || []);
   const materialByPath = indexMaterialized(descriptor.materialized || []);
   const requirementById = new Map([...(descriptor.requirements?.required || []), ...(descriptor.requirements?.reference || [])].map((item) => [String(item.requirementId || ''), item]));
   const routeGroundingByPath = indexRouteGrounding(carrier.routes || []);
 
-  const workspaceGroups = (descriptor.workspaceMaterializations || []).map((workspace) => workspaceGroup(workspace, routeGroundingByPath));
+  const bindingByWorkspace = new Map((descriptor.workspaceArchiveBindings || []).map((binding) => [String(binding.workspaceId || ''), binding]));
+  const workspaceGroups = (descriptor.workspaceMaterializations || []).map((workspace) => workspaceGroup(workspace, routeGroundingByPath, bindingByWorkspace.get(String(workspace.id || ''))));
   const materialCarriers = [];
   const explicitDetached = [];
   const generatedEntrypoints = [];
@@ -38,14 +43,15 @@ export function auditHandoffPackageContextCarriage(input = {}) {
     nonControlCarrierCount += 1;
     const mapEntry = fileMapByPath.get(path) || {};
     const workspaceMatches = workspaceEntries.get(path) || [];
+    const workspaceOuterMatches = workspaceOuterCarriers.get(path) || [];
     const materialMatches = materialByPath.get(path) || [];
-    if (workspaceMatches.length === 1) {
+    if (workspaceMatches.length === 1 || workspaceOuterMatches.length === 1) {
       classifiedCarrierCount += 1;
       continue;
     }
-    if (workspaceMatches.length > 1) {
+    if (workspaceMatches.length > 1 || workspaceOuterMatches.length > 1) {
       unexplained.push(summaryFile(file, mapEntry, 'ambiguous-workspace-carrier'));
-      findings.push(finding('error', 'portable.handoff-context.workspace-carrier.ambiguous', 'One package carrier is claimed by multiple workspace materializations.', { path, count: workspaceMatches.length }));
+      findings.push(finding('error', 'portable.handoff-context.workspace-carrier.ambiguous', 'One package carrier is claimed by multiple workspace materializations.', { path, count: Math.max(workspaceMatches.length, workspaceOuterMatches.length) }));
       continue;
     }
     if (path.startsWith('handoff.material/')) {
@@ -95,6 +101,28 @@ export function auditHandoffPackageContextCarriage(input = {}) {
     findings.push(finding('error', 'portable.handoff-context.carrier.unexplained', 'Non-control/non-bootstrap package carrier has no explicit qualified carriage reason.', { path, kind: String(mapEntry.kind || file.kind || '') }));
   }
 
+  for (const material of descriptor.materialized || []) {
+    if (String(material.carrierKind || '') !== 'workspace-archive-entry') continue;
+    const requirement = requirementById.get(String(material.requirementId || '')) || {};
+    const duplicateWorkspaceBytes = workspaceByteIndex.get(`${Number(material.bytes || 0)}:${String(material.sha256 || '')}`) || [];
+    materialCarriers.push(Object.freeze({
+      path: '',
+      reason: material.classification === 'reference' ? 'resolved-reference-context-via-workspace-archive' : 'resolved-required-context-via-workspace-archive',
+      requirement: Object.freeze({ id: String(material.requirementId || ''), name: String(requirement.name || ''), classification: String(material.classification || ''), referenceTarget: String(material.referenceTarget || '') }),
+      selectedProvider: Object.freeze({ ...(material.provider || {}) }),
+      provenance: Object.freeze({ ...(material.provenance || {}) }),
+      authority: Object.freeze({ ...(material.authority || {}) }),
+      carrierKind: 'workspace-archive-entry',
+      workspaceId: String(material.workspaceId || ''),
+      workspaceRelativePath: String(material.workspaceRelativePath || ''),
+      bytes: Number(material.bytes || 0),
+      sha256: String(material.sha256 || ''),
+      actualBytes: Number(material.bytes || 0),
+      actualSha256: String(material.sha256 || ''),
+      identicalWorkspaceBytes: Object.freeze(duplicateWorkspaceBytes.map((entry) => Object.freeze({ workspaceId: entry.workspaceId, workspaceRelativePath: entry.path, packagePath: entry.packagePath })))
+    }));
+  }
+
   const coverageQualified = classifiedCarrierCount === nonControlCarrierCount && unexplained.length === 0;
   if (!coverageQualified) findings.push(finding('error', 'portable.handoff-context.coverage.incomplete', 'Context-carriage audit did not classify every non-control/non-bootstrap package carrier.', { nonControlCarrierCount, classifiedCarrierCount, unexplained: unexplained.length }));
 
@@ -117,6 +145,26 @@ export function auditHandoffPackageContextCarriage(input = {}) {
   });
 }
 
+
+function auditRecipientV2(bundle = {}) {
+  const inspection = inspectRecipientFacingV2Topology(bundle);
+  const files = bundle.files || [];
+  const workspacePayloadPaths = new Set((inspection.workspaces || []).flatMap((item) => [item.workspaceArtifactPath, item.workspaceArchivePath]));
+  const routePointerPaths = new Set((inspection.routes || []).map((item) => item.pointerPath));
+  const participantRolePointerPaths = new Set((inspection.participantRoles || []).map((item) => item.pointerPath));
+  const cachePaths = new Set((inspection.caches || []).flatMap((cache) => [cache.artifactPath, cache.archivePath]));
+  const rootPath = String(inspection.rootArtifact?.path || '');
+  const classified = files.filter((file) => {
+    const path = String(file.path || '');
+    return path === rootPath || path === RECIPIENT_V2_READ_PATH || workspacePayloadPaths.has(path) || routePointerPaths.has(path) || participantRolePointerPaths.has(path) || cachePaths.has(path) || /bootstrap\.(?:trace\.md|zip)$/i.test(path);
+  }).length;
+  const unexplained = Math.max(0, files.length - classified);
+  const findings = [...(inspection.findings || [])];
+  if (unexplained) findings.push(finding('error', 'portable.handoff-context.v2.coverage.incomplete', 'Recipient-facing v2 context audit could not classify every visible root carrier.', { total: files.length, classified, unexplained }));
+  const cacheMaterials = (inspection.caches || []).flatMap((cache) => cache.materials || []);
+  return deepFreeze({ schema: PORTABLE_HANDOFF_CONTEXT_AUDIT_SCHEMA_ID, status: inspection.status === 'valid' && !unexplained ? 'ready' : 'blocked', coverage: Object.freeze({ nonControlCarrierCount: files.length, classifiedCarrierCount: classified, unexplainedCarrierCount: unexplained, state: unexplained ? 'incomplete' : 'qualified' }), workspaceMaterializations: Object.freeze((inspection.workspaces || []).map((item) => Object.freeze({ workspaceId: item.workspaceId, reason: 'complete-workspace-archive-representation', qualification: 'qualified', carrierMode: 'archive', workspaceTargetPackagePath: item.workspaceArtifactPath, archivePackagePath: item.workspaceArchivePath }))), materialCarriers: Object.freeze([]), generatedEntrypoints: Object.freeze([String(inspection.rootArtifact?.path || ''), RECIPIENT_V2_READ_PATH, ...(inspection.participantRoles || []).map((item) => item.pointerPath), ...(inspection.routes || []).map((item) => item.pointerPath)].filter(Boolean)), namedPackageRequirements: Object.freeze([]), explicitDetachedMaterial: Object.freeze(cacheMaterials), unexplainedCarriers: Object.freeze([]), duplicateByteSummary: Object.freeze({ materialCarriersAlsoPresentInWorkspace: 0, totalMaterialCarriers: cacheMaterials.length, interpretation: 'Exact Workspace-scoped recipient cache material is permitted only when not satisfied by a qualified Workspace archive.' }), routeGrounding: Object.freeze((inspection.carrierProjection?.routes || []).map((route) => Object.freeze({ routeId: route.id, workspaceId: route.workspaceId, handoffPackagePath: route.packagePath, required: route.requiredClosure?.requirements || [] }))), inspections: Object.freeze({ recipientV2: inspection.status }), findings: Object.freeze(dedupeFindings(findings)), boundary: 'Recipient-facing v2 carriage audit over qualified visible Tiinex artifacts and exact payload bytes; no outer control JSON is required.' });
+}
+
 function indexWorkspaceEntries(workspaces = []) {
   const map = new Map();
   for (const workspace of workspaces) for (const entry of workspace.includedEntries || []) {
@@ -125,6 +173,15 @@ function indexWorkspaceEntries(workspaces = []) {
     const list = map.get(path) || [];
     list.push(Object.freeze({ workspaceId: String(workspace.id || ''), materialization: String(workspace.materialization || ''), ...entry }));
     map.set(path, list);
+  }
+  return map;
+}
+function indexWorkspaceOuterCarriers(bindings = []) {
+  const map = new Map();
+  const add = (path, value) => { if (!path) return; const list = map.get(path) || []; list.push(value); map.set(path, list); };
+  for (const binding of bindings) {
+    add(String(binding.workspaceTarget?.packagePath || ''), Object.freeze({ workspaceId: String(binding.workspaceId || ''), role: 'workspace-target' }));
+    add(String(binding.representation?.packagePath || ''), Object.freeze({ workspaceId: String(binding.workspaceId || ''), role: 'workspace-archive' }));
   }
   return map;
 }
@@ -158,7 +215,7 @@ function indexRouteGrounding(routes = []) {
   }
   return map;
 }
-function workspaceGroup(workspace = {}, routeGroundingByPath) {
+function workspaceGroup(workspace = {}, routeGroundingByPath, archiveBinding = null) {
   const entries = workspace.includedEntries || [];
   const grounding = [];
   for (const entry of entries) for (const role of routeGroundingByPath.get(String(entry.packagePath || '')) || []) grounding.push(Object.freeze({ workspaceRelativePath: String(entry.path || ''), packagePath: String(entry.packagePath || ''), ...role }));
@@ -172,6 +229,7 @@ function workspaceGroup(workspace = {}, routeGroundingByPath) {
     totalBytes: entries.reduce((sum, entry) => sum + Number(entry.bytes || 0), 0),
     completenessEvidence: Object.freeze({ ...(workspace.completenessEvidence || {}) }),
     routeGrounding: Object.freeze(grounding),
+    ...(archiveBinding ? { carrierMode: 'archive', workspaceTargetPackagePath: String(archiveBinding.workspaceTarget?.packagePath || ''), archivePackagePath: String(archiveBinding.representation?.packagePath || '') } : { carrierMode: 'exploded' }),
     interpretation: 'Workspace snapshot carriage is distinct from route Required Context; only routeGrounding entries are known to participate in explicit route grounding.'
   });
 }

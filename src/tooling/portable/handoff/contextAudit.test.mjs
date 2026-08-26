@@ -8,6 +8,7 @@ import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { auditHandoffPackageContextCarriage } from './contextAudit.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-context-audit-'));
 try {
@@ -108,7 +109,17 @@ async function makeWorkspace(rootPath) {
   await writeFile(path.join(rootPath, '.topics', 'handoff', '017-anchor-to-loom.trace.md'), handoffMarkdown(), 'utf8');
 }
 function handoffMarkdown() {
-  return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 19:00:00\n\n---\n\n# Context audit fixture\n\n## Handoff Parties\n\n- Purpose: recipient-context audit fixture\n- From: Anchor\n- From Kind: role\n- To: Loom\n- To Kind: role\n\n## Required Context\n\n- required-context\n  - Material: exact required binary\n  - Material Reference: [Required binary](required-context.bin)\n  - Purpose: explicit route grounding\n  - Availability: available\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+  return qualifiedHandoffFixture({
+    title: 'Context audit fixture',
+    to: 'Loom',
+    purpose: 'recipient-context audit fixture',
+    createdAt: '2026-08-23 19:00:00',
+    requiredContext: `- required-context
+  - Material: exact required binary
+  - Material Reference: [Required binary](required-context.bin)
+  - Purpose: explicit route grounding
+  - Availability: available`
+  });
 }
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });

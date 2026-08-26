@@ -1,6 +1,7 @@
 import { packageFileBytes } from '../../../export/package.bytes.js';
+import { handoffWorkspaceProviderForId } from './workspaceByteProvider.js';
 
-export function qualifyHandoffCarrierWorkspaces(bundle = {}, descriptor = {}) {
+export function qualifyHandoffCarrierWorkspaces(bundle = {}, descriptor = {}, byteProvider = null) {
   const manifest = bundle.manifest || parseJsonFile(findFile(bundle, 'tiinex.package/manifest.json')) || {};
   const primaryId = String(manifest.packageScope?.workspaceId || manifest.workspaceId || '');
   const primaryTitle = String(manifest.packageScope?.workspaceTitle || manifest.title || primaryId || '');
@@ -18,7 +19,10 @@ export function qualifyHandoffCarrierWorkspaces(bundle = {}, descriptor = {}) {
     if (id && counts.get(id) !== 1) reasons.push('workspace-id-ambiguous');
     if (String(workspace.qualification || '') !== 'qualified') reasons.push('workspace-qualification-unqualified');
     if (String(workspace.correlationStatus || '') !== 'qualified') reasons.push('workspace-correlation-unqualified');
-    return deepFreeze({ state: reasons.length ? (reasons.includes('workspace-id-ambiguous') ? 'ambiguous' : 'blocked') : 'qualified', id, title, slug: slug(title || id), materialization: workspace, reasons: Object.freeze(reasons) });
+    const providerWorkspace = byteProvider ? handoffWorkspaceProviderForId(byteProvider, id) : null;
+    if (byteProvider && providerWorkspace?.state !== 'qualified') reasons.push(...(providerWorkspace?.reasons || [`workspace-provider-${providerWorkspace?.state || 'unresolved'}`]));
+    const state = reasons.length ? (reasons.includes('workspace-id-ambiguous') || providerWorkspace?.state === 'ambiguous' ? 'ambiguous' : 'blocked') : 'qualified';
+    return deepFreeze({ state, id, title, slug: slug(title || id), materialization: workspace, provider: providerWorkspace, reasons: Object.freeze([...new Set(reasons)]) });
   }).sort((a, b) => a.id.localeCompare(b.id)));
 }
 
@@ -33,7 +37,7 @@ export function selectHandoffCarrierDefaultWorkspace(bundle = {}, workspaces = [
 export function handoffCarrierWorkspaceForRoute(workspaces = [], workspaceId = '') {
   const matches = workspaces.filter((workspace) => workspace.id === String(workspaceId || ''));
   if (matches.length === 1) return matches[0];
-  return deepFreeze({ state: matches.length > 1 ? 'ambiguous' : 'unresolved', id: String(workspaceId || ''), title: String(workspaceId || ''), slug: slug(workspaceId), materialization: null, reasons: Object.freeze([matches.length > 1 ? 'workspace-id-ambiguous' : 'workspace-id-unresolved']) });
+  return deepFreeze({ state: matches.length > 1 ? 'ambiguous' : 'unresolved', id: String(workspaceId || ''), title: String(workspaceId || ''), slug: slug(workspaceId), materialization: null, provider: null, reasons: Object.freeze([matches.length > 1 ? 'workspace-id-ambiguous' : 'workspace-id-unresolved']) });
 }
 
 export function projectHandoffCarrierWorkspace(workspace = {}) {

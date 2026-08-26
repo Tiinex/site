@@ -3,6 +3,8 @@ import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../node/handoff.manufacture.js';
 import { projectHandoffHumanOutput } from '../../handoff/carrierProjection.js';
 import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
+import { writeRecipientFacingV2PackageZip } from '../../output/recipientV2.zip.js';
+import { projectRecipientV2HumanOutput } from '../../handoff/recipientV2.humanOutput.js';
 
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
@@ -11,6 +13,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   const materialBindings = await readOptionalJson(flags['material-bindings'] || flags.materials);
   const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
   const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
+  const workspaceTargetValue = await readOptionalJson(flags['workspace-targets']);
   const routeDescriptorValue = await readOptionalJson(flags['workspace-routes'] || flags['handoff-route-descriptors']);
   const additionalWorkspaces = [
     ...splitFlag(flags['additional-workspaces']),
@@ -28,13 +31,16 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     additionalWorkspaces,
     workspaceId: flags['workspace-id'] || '',
     workspaceTitle: flags['workspace-title'] || flags.title || '',
+    workspaceTargetPath: flags['workspace-target'] || flags['workspace-artifact'] || '',
+    workspaceTargets: workspaceTargetValue,
     toolingBootstrap: flags['tooling-bootstrap'] || 'embedded',
     expectedToolingBootstrap,
     materialBindings,
     referenceTargets: splitFlag(flags['reference-targets']),
     maxFiles: flags['max-files'],
     bootstrapMaxFiles: flags['bootstrap-max-files'],
-    verifyRoundtrip
+    verifyRoundtrip,
+    recipientRouteSelector: ''
   }, runtime);
   return {
     input,
@@ -46,19 +52,21 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
 }
 
 export async function materializeHandoffManufactureCliOutput(result = {}, flags = {}) {
-  const humanOutput = projectHandoffHumanOutput({
+  let humanOutput = projectHandoffHumanOutput({
     projection: result.carrierProjection || {},
     route: flags.route || '',
     collisionInstance: flags['collision-instance'] || 1
   });
+  if (result.bundle?.transportFormat) humanOutput = projectRecipientV2HumanOutput(humanOutput, result.inspection || {});
   const wantsWrite = Boolean(flags.output || flags['output-dir']);
   if (!wantsWrite) return summarizeHandoffManufactureCliOutput(result, {}, humanOutput, null);
   const shared = result.carrierProjection?.mode === 'shared';
   if ((shared || flags['output-dir'] || flags['transport-text']) && humanOutput.status !== 'ready') throw new Error(humanOutput.status === 'selection-required' ? 'portable.cli.handoff-carrier.route-selection.required' : 'portable.cli.handoff-carrier.output.blocked');
-  const target = flags.output
-    ? path.resolve(String(flags.output))
-    : path.resolve(String(flags['output-dir']), humanOutput.primary.filename);
-  const writeReceipt = await writePortableRuntimePackageZip(result.bundle, target);
+  const target = resolveHandoffOutputPath(flags, humanOutput.primary.filename);
+  const writeBundle = result.bundle;
+  const writeReceipt = writeBundle?.transportFormat
+    ? await writeRecipientFacingV2PackageZip(writeBundle, target, writeBundle === result.bundle ? { inspection: result.inspection } : {})
+    : await writePortableRuntimePackageZip(writeBundle, target);
   const transportTextReceipt = flags['transport-text'] ? await writeTransportTextSidecar(humanOutput, target, flags['transport-text']) : null;
   return summarizeHandoffManufactureCliOutput(result, writeReceipt, humanOutput, transportTextReceipt);
 }
@@ -153,6 +161,18 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
   });
 }
 
+
+function resolveHandoffOutputPath(flags = {}, projectedFilename = '') {
+  const filename = String(projectedFilename || '').trim();
+  if (!filename) throw new Error('portable.cli.handoff-carrier.output-filename.unresolved');
+  if (flags.output) {
+    const requested = path.resolve(String(flags.output));
+    if (path.basename(requested) !== filename) throw new Error('portable.cli.handoff-carrier.output-filename.mismatch');
+    return requested;
+  }
+  if (!flags['output-dir']) throw new Error('portable.cli.handoff-carrier.output-dir.required');
+  return path.resolve(String(flags['output-dir']), filename);
+}
 async function writeTransportTextSidecar(humanOutput, packageTarget, flagValue) {
   const target = flagValue === true
     ? defaultSidecarPath(packageTarget)

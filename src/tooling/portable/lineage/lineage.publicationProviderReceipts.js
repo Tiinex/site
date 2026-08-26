@@ -3,6 +3,7 @@ import {
   acceptPortableHostActionReceipt
 } from '../host/tool.bindings.js';
 import { portableFinding } from '../findings.js';
+import { sha256Hex, utf8Bytes } from '../../../export/package.bytes.js';
 
 export function normalizePublicationProviderReceipts(input = {}) {
   const findings = [];
@@ -42,6 +43,36 @@ export function normalizePublicationProviderReceipts(input = {}) {
       returnedProviderContentMustBeRehashedByLineageTooling: true
     })
   });
+}
+
+export function qualifiedPublicationCandidatesForParent(providerEvidence = {}, parentRecord = {}) {
+  const markdown = String(parentRecord?.markdown || '');
+  if (!markdown) return Object.freeze([]);
+  const expectedBytes = utf8Bytes(markdown);
+  const expectedSha256 = sha256Hex(expectedBytes);
+  const candidates = new Map();
+  for (const observation of providerEvidence.observations || []) {
+    for (const file of observation.files || []) {
+      const source = file.source || {};
+      const repository = String(source.repository || '').trim();
+      const commit = String(source.commit || '').trim().toLowerCase();
+      const sourcePath = normalizePath(source.path || file.path || '');
+      if (!repository || !/^[0-9a-f]{40}$/.test(commit) || !sourcePath || typeof file.content !== 'string') continue;
+      const bytes = utf8Bytes(file.content);
+      const sha256 = sha256Hex(bytes);
+      if (bytes.byteLength !== expectedBytes.byteLength || sha256.toLowerCase() !== expectedSha256.toLowerCase()) continue;
+      const locator = `https://github.com/${repository}/blob/${commit}/${sourcePath}`;
+      candidates.set(locator, Object.freeze({
+        state: 'qualified',
+        locator,
+        actionId: String(observation.actionId || ''),
+        providerId: String(file.providerId || ''),
+        source: Object.freeze({ repository, commit, path: sourcePath }),
+        materialIdentity: Object.freeze({ state: 'qualified', sha256, bytes: bytes.byteLength })
+      }));
+    }
+  }
+  return Object.freeze([...candidates.values()].sort((a, b) => a.locator.localeCompare(b.locator)));
 }
 
 function addAcceptance(acceptance = {}, observations, references, findings, sourceKind) {

@@ -8,6 +8,7 @@ import { inspectHandoffPointerEntrypoints, isHandoffPointerEntrypointPath, CANON
 import { orientColdConsumerFromHandoffPackage } from './coldConsumerEntrypoint.js';
 import { canonicalC14nV2SelfState, sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-pointer-entrypoint-'));
 try {
@@ -81,7 +82,17 @@ async function makeWorkspace(rootPath) {
   for (const [filename, to] of [['016-anchor-to-loom.trace.md', 'Loom'], ['016-anchor-to-axiom.trace.md', 'Axiom']]) await writeFile(path.join(rootPath, '.topics', 'handoff', filename), handoffMarkdown(to), 'utf8');
 }
 function handoffMarkdown(to) {
-  return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 18:30:00\n\n---\n\n# Pointer fixture ${to}\n\n## Handoff Parties\n\n- Purpose: pointer fixture\n- From: Anchor\n- From Kind: role\n- To: ${to}\n- To Kind: role\n\n## Required Context\n\n- context\n  - Material: exact context\n  - Material Reference: [Context](../context.md)\n  - Purpose: fixture\n  - Availability: available\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+  return qualifiedHandoffFixture({
+    title: `Pointer fixture ${to}`,
+    to,
+    purpose: 'pointer fixture',
+    createdAt: '2026-08-23 18:30:00',
+    requiredContext: `- context
+  - Material: exact context
+  - Material Reference: [Context](../context.md)
+  - Purpose: fixture
+  - Availability: available`
+  });
 }
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });

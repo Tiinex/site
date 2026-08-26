@@ -46,6 +46,13 @@ export function packageAssetBytes(asset = {}) {
   return Object.freeze({ bytes: new Uint8Array(), mediaType: String(asset.type || asset.mimeType || 'application/octet-stream'), representation: 'unavailable' });
 }
 
+export function packageFileByteView(file = {}) {
+  if (file.data instanceof Uint8Array) return file.data;
+  if (file.bytesData instanceof Uint8Array) return file.bytesData;
+  if (file.bytes instanceof Uint8Array) return file.bytes;
+  return packageFileBytes(file);
+}
+
 export function packageFileBytes(file = {}) {
   if (file.data instanceof Uint8Array || file.data instanceof ArrayBuffer || ArrayBuffer.isView(file.data) || Array.isArray(file.data)) return toUint8Array(file.data);
   if (file.bytesData instanceof Uint8Array || file.bytesData instanceof ArrayBuffer || ArrayBuffer.isView(file.bytesData) || Array.isArray(file.bytesData)) return toUint8Array(file.bytesData);
@@ -66,7 +73,7 @@ export function stableFingerprintBytes(value) {
 }
 
 export function sha256Hex(value) {
-  const bytes = toUint8Array(value);
+  const bytes = readOnlyUint8View(value);
   const words = [];
   const bitLength = bytes.length * 8;
   const paddedLength = (((bytes.length + 9 + 63) >> 6) << 6);
@@ -106,6 +113,16 @@ export function sha256Hex(value) {
   }
   words.push(h0, h1, h2, h3, h4, h5, h6, h7);
   return words.map((word) => (word >>> 0).toString(16).padStart(8, '0')).join('');
+}
+
+
+function readOnlyUint8View(value) {
+  if (value instanceof Uint8Array) return value;
+  if (value instanceof ArrayBuffer) return new Uint8Array(value);
+  if (ArrayBuffer.isView(value)) return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  if (Array.isArray(value) && value.every((item) => Number.isInteger(item) && item >= 0 && item <= 255)) return Uint8Array.from(value);
+  if (value === undefined || value === null) return new Uint8Array();
+  return utf8Bytes(String(value));
 }
 
 function rotr(value, bits) { return (value >>> bits) | (value << (32 - bits)); }

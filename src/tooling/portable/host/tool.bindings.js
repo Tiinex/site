@@ -12,13 +12,18 @@ const CAPABILITIES = Object.freeze({
   archiveRead: capability('archiveRead', [/\bzip\b/, /archive/, /extract/, /unpack/]),
   repositorySearch: capability('repositorySearch', [/github.*search/, /repository.*search/, /search.*repository/, /search files.*repo/, /code search/], [/web search/, /news search/, /product search/]),
   repositoryRead: capability('repositoryRead', [/github.*fetch/, /fetch file/, /repository content/, /read.*github/, /read.*repository/, /repo.*file/]),
+  repositoryWrite: capability('repositoryWrite', [/github.*create/, /github.*update/, /repository.*write/, /write.*repository/, /create.*repository file/, /update.*repository file/]),
   httpRead: capability('httpRead', [/http/, /web fetch/, /download url/, /open url/]),
   javascript: capability('javascript', [/javascript/, /\bnode\b/, /code execution/, /python/]),
   shell: capability('shell', [/shell/, /terminal/, /container/, /exec/]),
   images: capability('images', [/vision/, /image analysis/, /open image/, /multimodal/, /screenshot/]),
   pdf: capability('pdf', [/pdf/, /screenshot.*page/, /render.*pdf/]),
   filesystemWrite: capability('filesystemWrite', [/write file/, /save file/, /filesystem.*write/, /create.*local file/], [/github/, /repository/, /remote write/]),
-  remoteWriteAvailable: capability('remoteWriteAvailable', [/github.*create/, /github.*update/, /remote write/, /create.*repository file/, /update.*repository file/])
+  remoteWriteAvailable: capability('remoteWriteAvailable', [/github.*create/, /github.*update/, /remote write/, /create.*repository file/, /update.*repository file/]),
+  artifactReturn: capability('artifactReturn', [/return.*artifact/, /return.*file/, /artifact.*output/, /download.*file/, /attach.*output/]),
+  humanConfirmation: capability('humanConfirmation', [/human.*confirm/, /ask.*user/, /request.*approval/, /confirmation.*prompt/, /user.*approval/]),
+  authenticationRequest: capability('authenticationRequest', [/request.*authentication/, /oauth/, /sign[ -]?in request/, /authentication.*prompt/]),
+  copyableTextPresentation: capability('copyableTextPresentation', [/copyable.*text/, /clipboard/, /code block/, /copy.*text/, /text.*presentation/])
 });
 
 const ACTIONS = Object.freeze({
@@ -28,11 +33,16 @@ const ACTIONS = Object.freeze({
   }),
   'repository-search': Object.freeze({ aliases: ['repositorysearch'], steps: ['repositorySearch'] }),
   'repository-read': Object.freeze({ aliases: ['repositoryread'], steps: ['repositoryRead'] }),
+  'repository-write': Object.freeze({ aliases: ['repositorywrite'], steps: ['repositoryWrite'], requiresAuthorization: true }),
   'filesystem-read': Object.freeze({ aliases: ['filesystemread', 'read-file'], steps: ['filesystemRead'] }),
   'archive-read': Object.freeze({ aliases: ['archiveread', 'extract-archive'], steps: ['archiveRead'] }),
   'image-analysis': Object.freeze({ aliases: ['images', 'multimodal.images', 'open-image-with-host-vision'], steps: ['images'] }),
   'pdf-analysis': Object.freeze({ aliases: ['pdf', 'multimodal.pdf', 'open-or-render-pdf-with-host-reader'], steps: ['pdf'] }),
   'filesystem-write': Object.freeze({ aliases: ['filesystemwrite', 'write-file'], steps: ['filesystemWrite'] }),
+  'artifact-return': Object.freeze({ aliases: ['artifactreturn', 'return-artifact'], steps: ['artifactReturn'] }),
+  'human-confirmation': Object.freeze({ aliases: ['humanconfirmation', 'request-confirmation'], steps: ['humanConfirmation'] }),
+  'authentication-request': Object.freeze({ aliases: ['authenticationrequest', 'request-authentication'], steps: ['authenticationRequest'] }),
+  'copyable-text-presentation': Object.freeze({ aliases: ['copyabletextpresentation', 'present-copyable-text'], steps: ['copyableTextPresentation'] }),
   'remote-write': Object.freeze({ aliases: ['remotewriteavailable', 'publish-or-remote-write'], steps: ['remoteWriteAvailable'], requiresAuthorization: true })
 });
 
@@ -235,19 +245,29 @@ function argumentsTemplate(capabilityName, request = {}) {
     path: request.path || '<exact path selected from search result or expectedPaths>',
     ref: request.ref || 'master'
   });
+  if (capabilityName === 'repositoryWrite') return Object.freeze({ repository: request.repository || '<explicit repository>', path: request.path || '<explicit target path>', ref: request.ref || '<explicit ref>', content: '<explicit reviewed content>' });
   if (capabilityName === 'filesystemRead') return Object.freeze({ path: request.path || request.localPath || '<local path>' });
   if (capabilityName === 'archiveRead') return Object.freeze({ archivePath: request.archivePath || request.locator?.archivePath || '<archive path>', entryPath: request.entryPath || request.locator?.entryPath || '<entry path>' });
   if (capabilityName === 'images' || capabilityName === 'pdf') return Object.freeze({ path: request.asset?.path || request.assetPath || request.path || '<asset path>', locator: request.asset?.locator || request.locator || null });
   if (capabilityName === 'filesystemWrite') return Object.freeze({ path: request.path || '<output path>', content: '<explicit local content>' });
   if (capabilityName === 'remoteWriteAvailable') return Object.freeze({ target: request.target || '<explicit authorized remote target>', content: '<explicit reviewed content>' });
+  if (capabilityName === 'artifactReturn') return Object.freeze({ artifact: request.artifact || '<explicit local artifact/result>' });
+  if (capabilityName === 'humanConfirmation') return Object.freeze({ prompt: request.prompt || request.purpose || '<bounded confirmation request>' });
+  if (capabilityName === 'authenticationRequest') return Object.freeze({ service: request.service || '<service>', purpose: request.purpose || '<bounded authentication purpose>' });
+  if (capabilityName === 'copyableTextPresentation') return Object.freeze({ text: request.text || '<exact text>', presentation: 'copyable' });
   return Object.freeze({});
 }
 
 function expectedResult(capabilityName) {
   if (capabilityName === 'repositorySearch') return Object.freeze({ paths: ['<repository path>'], repository: '<owner/name>', ref: '<resolved ref or commit>' });
   if (capabilityName === 'repositoryRead') return Object.freeze({ files: [{ path: '<repository path>', content: '<UTF-8 text>', source: { repository: '<owner/name>', ref: '<ref>', commit: '<commit when available>', path: '<repository path>', authority: '<explicit claim>' } }] });
+  if (capabilityName === 'repositoryWrite') return Object.freeze({ status: '<completed status>', target: { repository: '<owner/name>', path: '<path>', ref: '<ref>' }, receipt: '<host evidence>' });
   if (capabilityName === 'filesystemRead' || capabilityName === 'archiveRead') return Object.freeze({ files: [{ path: '<local or archive-relative path>', content: '<UTF-8 text or explicit asset locator>' }] });
   if (capabilityName === 'images' || capabilityName === 'pdf') return Object.freeze({ assetPath: '<asset path>', description: '<generated description>', observations: ['<bounded observation>'], qualification: { mode: 'host-multimodal' } });
+  if (capabilityName === 'artifactReturn') return Object.freeze({ status: 'completed', artifactReference: '<host-returned artifact reference>' });
+  if (capabilityName === 'humanConfirmation') return Object.freeze({ status: 'completed', confirmed: '<true|false>', responder: '<explicit responder when available>' });
+  if (capabilityName === 'authenticationRequest') return Object.freeze({ status: 'completed', authenticationState: '<authorized|declined|unavailable>', credentialMaterial: 'not-returned-to-portable-tooling' });
+  if (capabilityName === 'copyableTextPresentation') return Object.freeze({ status: 'completed', presentation: 'copyable-text' });
   return Object.freeze({ status: '<completed status>', result: '<explicit normalized result>' });
 }
 

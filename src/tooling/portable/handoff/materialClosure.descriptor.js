@@ -1,7 +1,9 @@
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { qualifyHandoffMaterialClosurePlanReadiness } from './materialClosure.readiness.js';
+import { buildHandoffWorkspaceByteProvider, resolveHandoffWorkspaceEntry } from './workspaceByteProvider.js';
 
 export const HANDOFF_CLOSURE_DESCRIPTOR_SCHEMA_ID = 'tiinex.transport.handoff-material-closure-descriptor.v1';
+export const HANDOFF_CLOSURE_DESCRIPTOR_V2_SCHEMA_ID = 'tiinex.transport.handoff-material-closure-descriptor.v2';
 export const HANDOFF_CLOSURE_DESCRIPTOR_PATH = 'tiinex.package/handoff-closure.json';
 
 export function buildHandoffClosureDescriptor(plan = {}, packageMaterial = {}) {
@@ -32,7 +34,10 @@ export function buildHandoffClosureDescriptor(plan = {}, packageMaterial = {}) {
     plan: Object.freeze({ status: String(plan.status || 'blocked'), requiredClosureReady: Boolean(plan.requiredClosureReady), localRunId: String(packageMaterial.localRunId || ''), inputBindingState: String(packageMaterial.planInputBinding?.state || 'unresolved'), inputBindingMode: String(packageMaterial.planInputBinding?.mode || 'unknown'), inputBindingFindings: Object.freeze([...(packageMaterial.planInputBinding?.findings || [])]), materializedOutputState: String(packageMaterial.materializedOutputQualification?.state || 'unresolved'), materializedOutputFindings: Object.freeze([...(packageMaterial.materializedOutputQualification?.findings || [])]) }),
     requirements: Object.freeze({
       required: Object.freeze((plan.requirements?.required || []).map(descriptorRequirement)),
-      reference: Object.freeze((plan.requirements?.reference || []).map(descriptorRequirement))
+      reference: Object.freeze((plan.requirements?.reference || []).map(descriptorRequirement)),
+      endpointRoles: Object.freeze((plan.requirements?.endpointRoles || []).map(descriptorRequirement)),
+      participantRoles: Object.freeze((plan.requirements?.participantRoles || []).map(descriptorRequirement)),
+      dependencies: Object.freeze((plan.requirements?.dependencies || []).map(descriptorRequirement))
     }),
     materialized: Object.freeze(materialized),
     workspaceMaterializations: Object.freeze(workspaces),
@@ -51,14 +56,28 @@ export function buildHandoffClosureDescriptor(plan = {}, packageMaterial = {}) {
   });
 }
 
-export function inspectHandoffClosureDescriptor(bundle = {}) {
+export function inspectHandoffClosureDescriptor(bundle = {}, options = {}) {
   const findings = [];
   const descriptorFile = (bundle.files || []).find((file) => String(file.path || '') === HANDOFF_CLOSURE_DESCRIPTOR_PATH);
   const descriptor = descriptorFile ? parseJsonFile(descriptorFile) : null;
   if (!descriptor) findings.push(finding('error', 'portable.handoff-closure.descriptor.missing', 'Handoff transport package is missing a readable package-local closure descriptor.'));
-  if (descriptor && descriptor.schema !== HANDOFF_CLOSURE_DESCRIPTOR_SCHEMA_ID) findings.push(finding('error', 'portable.handoff-closure.descriptor.schema.invalid', 'Handoff closure descriptor schema/version is unsupported.'));
+  const supportedSchema = descriptor && [HANDOFF_CLOSURE_DESCRIPTOR_SCHEMA_ID, HANDOFF_CLOSURE_DESCRIPTOR_V2_SCHEMA_ID].includes(String(descriptor.schema || ''));
+  if (descriptor && !supportedSchema) findings.push(finding('error', 'portable.handoff-closure.descriptor.schema.invalid', 'Handoff closure descriptor schema/version is unsupported.'));
+  const isV2 = String(descriptor?.schema || '') === HANDOFF_CLOSURE_DESCRIPTOR_V2_SCHEMA_ID;
   const byPath = new Map((bundle.files || []).map((file) => [String(file.path || ''), file]));
+  const suppliedProvider = options.workspaceByteProvider || (options.schema === 'tiinex.portable.handoff-workspace-byte-provider.v1' ? options : null);
+  const byteProvider = descriptor ? (suppliedProvider || buildHandoffWorkspaceByteProvider(bundle, descriptor)) : null;
+  if (isV2 && byteProvider?.status !== 'ready') findings.push(...(byteProvider?.findings || []));
+
   for (const entry of descriptor?.materialized || []) {
+    if (String(entry.carrierKind || '') === 'workspace-archive-entry') {
+      const resolved = resolveHandoffWorkspaceEntry(byteProvider || {}, entry.workspaceId, entry.workspaceRelativePath);
+      if (resolved.state !== 'qualified') { findings.push(finding('error', 'portable.handoff-closure.material.workspace-provider-unqualified', 'Descriptor materialized entry cannot be resolved through its qualified workspace archive provider.', { requirementId: entry.requirementId || '', workspaceId: entry.workspaceId || '', workspaceRelativePath: entry.workspaceRelativePath || '', reason: resolved.reason || resolved.state })); continue; }
+      const data = packageFileBytes({ data: resolved.data });
+      if (Number(entry.bytes || 0) !== data.byteLength) findings.push(finding('error', 'portable.handoff-closure.material.bytes-mismatch', 'Descriptor materialized entry byte length differs from workspace-provider bytes.', { requirementId: entry.requirementId || '', workspaceId: entry.workspaceId || '', workspaceRelativePath: entry.workspaceRelativePath || '' }));
+      if (String(entry.sha256 || '') !== sha256Hex(data)) findings.push(finding('error', 'portable.handoff-closure.material.sha256-mismatch', 'Descriptor materialized entry digest differs from workspace-provider bytes.', { requirementId: entry.requirementId || '', workspaceId: entry.workspaceId || '', workspaceRelativePath: entry.workspaceRelativePath || '' }));
+      continue;
+    }
     const file = byPath.get(String(entry.packagePath || ''));
     if (!file) { findings.push(finding('error', 'portable.handoff-closure.material.missing', 'Descriptor materialized entry is missing from package bytes.', { requirementId: entry.requirementId || '', packagePath: entry.packagePath || '' })); continue; }
     const data = packageFileBytes(file);
@@ -67,13 +86,14 @@ export function inspectHandoffClosureDescriptor(bundle = {}) {
   }
   for (const workspace of descriptor?.workspaceMaterializations || []) {
     if (String(workspace.correlationStatus || '') !== 'qualified') findings.push(finding('error', 'portable.handoff-closure.workspace-correlation.unqualified', 'Descriptor workspace materialization is not uniquely correlated to one packaged workspace byte carrier.', { workspaceId: workspace.id || '', correlationStatus: workspace.correlationStatus || 'unresolved' }));
+    if (isV2) continue;
     for (const entry of workspace.includedEntries || []) {
       if (!entry.packagePath) continue;
       const file = byPath.get(String(entry.packagePath || ''));
       if (!file) { findings.push(finding('error', 'portable.handoff-closure.workspace-material.missing', 'Descriptor workspace material entry is missing from package bytes.', { workspaceId: workspace.id || '', packagePath: entry.packagePath || '' })); continue; }
       const data = packageFileBytes(file);
-      if (Number(entry.bytes || 0) !== data.byteLength) findings.push(finding('error', 'portable.handoff-closure.workspace-material.bytes-mismatch', 'Descriptor workspace material byte length differs from package bytes.', { workspaceId: workspace.id || '', packagePath: entry.packagePath || '' }));
-      if (String(entry.sha256 || '') !== sha256Hex(data)) findings.push(finding('error', 'portable.handoff-closure.workspace-material.sha256-mismatch', 'Descriptor workspace material digest differs from package bytes.', { workspaceId: workspace.id || '', packagePath: entry.packagePath || '' }));
+      if (Number(entry.bytes || 0) !== data.byteLength) findings.push(finding('error', 'portable.handoff-closure.workspace-material.bytes-mismatch', 'Descriptor workspace material entry byte length differs from package bytes.', { workspaceId: workspace.id || '', packagePath: entry.packagePath || '' }));
+      if (String(entry.sha256 || '') !== sha256Hex(data)) findings.push(finding('error', 'portable.handoff-closure.workspace-material.sha256-mismatch', 'Descriptor workspace material entry digest differs from package bytes.', { workspaceId: workspace.id || '', packagePath: entry.packagePath || '' }));
     }
   }
   if (descriptor?.bootstrap?.status === 'present' && !byPath.has(String(descriptor.bootstrap.packagePath || ''))) findings.push(finding('error', 'portable.handoff-closure.bootstrap.missing', 'Descriptor declares bootstrap present but the package-local bootstrap file is missing.', { packagePath: descriptor.bootstrap.packagePath || '' }));
@@ -88,7 +108,7 @@ export function inspectHandoffClosureDescriptor(bundle = {}) {
   if (descriptor && String(descriptor.plan?.inputBindingState || '') !== 'qualified') findings.push(finding('error', 'portable.handoff-closure.plan-input-binding.unqualified', 'Descriptor plan is not qualified against the current parallel Handoff/recipient planning inputs.', { mode: descriptor.plan?.inputBindingMode || 'unknown', inputBindingFindings: descriptor.plan?.inputBindingFindings || [] }));
   if (descriptor && String(descriptor.plan?.materializedOutputState || '') !== 'qualified') findings.push(finding('error', 'portable.handoff-closure.materialized-output.unqualified', 'Descriptor plan materialized output is not qualified against its own selected material-resolution truth.', { materializedOutputFindings: descriptor.plan?.materializedOutputFindings || [] }));
   inspectRequirementMaterialCorrespondence(descriptor, findings);
-  return deepFreeze({ schema: 'tiinex.transport.handoff-material-closure-descriptor.inspection.v1', status: findings.some((item) => item.severity === 'error') ? 'invalid' : 'valid', descriptor, findings: Object.freeze(findings) });
+  return deepFreeze({ schema: 'tiinex.transport.handoff-material-closure-descriptor.inspection.v1', status: findings.some((item) => item.severity === 'error') ? 'invalid' : 'valid', descriptor, findings: Object.freeze(dedupeFindings(findings)), ...(isV2 ? { workspaceByteProvider: byteProvider } : {}) });
 }
 
 
@@ -110,7 +130,7 @@ function resolvePackagedWorkspace(index, key = '') {
 
 
 function descriptorRequirement(item = {}) {
-  return Object.freeze({ requirementId: String(item.requirementId || ''), name: String(item.requirementName || item.name || ''), classification: String(item.classification || ''), disposition: String(item.disposition || ''), referenceTarget: String(item.referenceTarget || ''), reason: String(item.reason || ''), recipientReferenceCapability: Boolean(item.recipientReferenceCapability), materializedPackagePath: String(item.packagePath || item.selectedMaterial?.packagePath || ''), selectedMaterial: descriptorSelectedMaterial(item.selectedMaterial) });
+  return Object.freeze({ requirementId: String(item.requirementId || ''), name: String(item.requirementName || item.name || ''), classification: String(item.classification || ''), disposition: String(item.disposition || ''), referenceTarget: String(item.referenceTarget || ''), reason: String(item.reason || ''), recipientReferenceCapability: Boolean(item.recipientReferenceCapability), routeWorkspaceId: String(item.routeWorkspaceId || ''), routePath: String(item.routePath || ''), sourceRequirementId: String(item.sourceRequirementId || ''), materializedPackagePath: String(item.packagePath || item.selectedMaterial?.packagePath || ''), selectedMaterial: descriptorSelectedMaterial(item.selectedMaterial) });
 }
 function descriptorSelectedMaterial(material = null) {
   if (!material) return null;
@@ -118,7 +138,7 @@ function descriptorSelectedMaterial(material = null) {
 }
 function inspectRequirementMaterialCorrespondence(descriptor, findings) {
   if (!descriptor) return;
-  const requirements = [...(descriptor.requirements?.required || []), ...(descriptor.requirements?.reference || [])];
+  const requirements = [...(descriptor.requirements?.required || []), ...(descriptor.requirements?.reference || []), ...(descriptor.requirements?.endpointRoles || []), ...(descriptor.requirements?.participantRoles || []), ...(descriptor.requirements?.dependencies || [])];
   const materialized = descriptor.materialized || [];
   const byRequirement = new Map();
   for (const carrier of materialized) {
@@ -140,8 +160,9 @@ function inspectRequirementMaterialCorrespondence(descriptor, findings) {
 }
 
 function descriptorMaterial(entry = {}) {
-  return Object.freeze({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || ''), packagePath: String(entry.packagePath || ''), originalPath: String(entry.path || ''), bytes: Number(entry.bytes || 0), sha256: String(entry.sha256 || ''), mediaType: String(entry.mediaType || ''), provider: entry.provider || {}, provenance: entry.provenance || {}, authority: entry.authority || {} });
+  return Object.freeze({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || ''), routeWorkspaceId: String(entry.routeWorkspaceId || ''), routePath: String(entry.routePath || ''), sourceRequirementId: String(entry.sourceRequirementId || ''), packagePath: String(entry.packagePath || ''), originalPath: String(entry.path || ''), bytes: Number(entry.bytes || 0), sha256: String(entry.sha256 || ''), mediaType: String(entry.mediaType || ''), provider: entry.provider || {}, provenance: entry.provenance || {}, authority: entry.authority || {}, ...(entry.carrierKind ? { carrierKind: String(entry.carrierKind), workspaceId: String(entry.workspaceId || ''), workspaceRelativePath: String(entry.workspaceRelativePath || '') } : {}) });
 }
 function parseJsonFile(file = {}) { try { return JSON.parse(new TextDecoder().decode(packageFileBytes(file))); } catch { return null; } }
 function finding(severity, code, message, extra = {}) { return Object.freeze({ severity, code, message, ...extra }); }
+function dedupeFindings(items = []) { const map = new Map(); for (const item of items) { const key = `${item.severity || ''}:${item.code || ''}:${item.workspaceId || ''}:${item.requirementId || ''}:${item.packagePath || ''}:${item.workspaceRelativePath || ''}`; if (!map.has(key)) map.set(key, item); } return [...map.values()]; }
 function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }

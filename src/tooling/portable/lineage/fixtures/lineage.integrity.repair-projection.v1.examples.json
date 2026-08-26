@@ -1,0 +1,605 @@
+{
+  "schema": "tiinex.portable.lineage-integrity-repair-projection-fixtures.v1",
+  "examples": {
+    "healthy-chain": {
+      "state": "healthy",
+      "findingClass": "healthy-lineage",
+      "severity": "info",
+      "trustImpact": "none",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "oldDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified",
+        "current": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "candidate": "",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": false,
+        "headerFields": [],
+        "footerChanges": [],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": false,
+        "state": "not-required",
+        "blockers": [],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "not-applicable"
+        },
+        {
+          "id": "approve",
+          "state": "not-required"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Lineage integrity is healthy.",
+        "detail": ".topics/lineage/B.trace.md matches its resolved Parent integrity target.",
+        "nextAction": "No repair action is required."
+      },
+      "machineEvidence": {
+        "inspectionState": "healthy",
+        "planAction": "no-change",
+        "planDisposition": "no-change",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": null
+      }
+    },
+    "missing-parent-target": {
+      "state": "repair-available",
+      "findingClass": "missing-parent-target",
+      "severity": "warning",
+      "trustImpact": "lineage-verification-incomplete",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "",
+        "oldDigest": "",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified",
+        "current": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "candidate": "",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": true,
+        "state": "pending",
+        "blockers": [],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "approve",
+          "state": "required"
+        },
+        {
+          "id": "apply-local-result",
+          "state": "after-approval"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Parent integrity repair is ready to review.",
+        "detail": "A verified Parent target can be added without changing authored body content.",
+        "nextAction": "Review the cascade impact and approve the local repair."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-missing",
+        "planAction": "backfill-parent-target-v2",
+        "planDisposition": "proposed",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": null
+      }
+    },
+    "mismatch-review": {
+      "state": "review-required",
+      "findingClass": "parent-target-mismatch",
+      "severity": "error",
+      "trustImpact": "trust-sensitive-review-required",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "oldDigest": "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified",
+        "current": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "candidate": "",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": true,
+        "state": "pending",
+        "blockers": [
+          "existing-target-mismatch-is-not-refresh-authority"
+        ],
+        "semanticAuthorityRequired": true,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "approve",
+          "state": "blocked"
+        },
+        {
+          "id": "apply-local-result",
+          "state": "blocked"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Parent target mismatch needs review.",
+        "detail": "The recorded Parent target does not match the loaded Parent truth and must not be refreshed automatically.",
+        "nextAction": "Provide a semantic disposition and authority before local application."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-mismatch",
+        "planAction": "review-parent-target-mismatch",
+        "planDisposition": "requires-explicit-approval",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": null
+      }
+    },
+    "qualified-permalink-repair": {
+      "state": "repair-available",
+      "findingClass": "qualified-permalink-repair",
+      "severity": "warning",
+      "trustImpact": "publication-truth-unavailable",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "",
+        "oldDigest": "",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified-repair-available",
+        "current": "",
+        "candidate": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [
+          "Parent.Origin.browse+git"
+        ],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": true,
+        "state": "pending",
+        "blockers": [],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": true
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "approve",
+          "state": "required"
+        },
+        {
+          "id": "apply-local-result",
+          "state": "after-approval"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Qualified Parent permalink repair is available.",
+        "detail": "Accepted provider bytes identify one exact immutable Parent URL; nothing has been applied.",
+        "nextAction": "Review the header/footer mutation and approve it for local application."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-missing",
+        "planAction": "update-parent-origin-permalink",
+        "planDisposition": "proposed",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": {
+          "kind": "qualified-exact-publication-candidate",
+          "locator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+          "receiptReference": "host-action:e9380710",
+          "materialIdentity": {
+            "state": "qualified",
+            "sha256": "9f048828ef8406fc6556b7f0540c5c1a05630de1169d874c0e450308f10779bb",
+            "bytes": 812
+          }
+        },
+        "receipt": null
+      }
+    },
+    "unpublished-parent-blocker": {
+      "state": "blocked",
+      "findingClass": "publication-locator-unavailable",
+      "severity": "warning",
+      "trustImpact": "publication-truth-unavailable",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "A.trace.md",
+        "currentLocator": "",
+        "oldDigest": "",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "missing",
+        "current": "",
+        "candidate": "",
+        "evidenceState": "not-applicable",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": false,
+        "state": "not-required",
+        "blockers": [
+          "publication-origin-missing"
+        ],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "approve",
+          "state": "not-required"
+        },
+        {
+          "id": "apply-local-result",
+          "state": "blocked"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Parent publication locator is unavailable.",
+        "detail": "No truthful immutable Parent locator is currently qualified, so none was fabricated.",
+        "nextAction": "Keep this repair blocked until publication evidence exists."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-missing",
+        "planAction": "backfill-parent-target-v2",
+        "planDisposition": "blocked",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": null
+      }
+    },
+    "cascade-preview": {
+      "state": "repair-available",
+      "findingClass": "missing-parent-target",
+      "severity": "warning",
+      "trustImpact": "lineage-verification-incomplete",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "",
+        "oldDigest": "",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified",
+        "current": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "candidate": "",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 1,
+        "descendants": [
+          {
+            "id": ".topics/lineage/C.trace.md",
+            "path": ".topics/lineage/C.trace.md",
+            "depth": 1,
+            "reason": "descendant-binds-to-artifact-self-digest"
+          }
+        ]
+      },
+      "decision": {
+        "required": true,
+        "state": "pending",
+        "blockers": [],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "approve",
+          "state": "required"
+        },
+        {
+          "id": "apply-local-result",
+          "state": "after-approval"
+        },
+        {
+          "id": "export-changeset",
+          "state": "after-local-result"
+        }
+      ],
+      "human": {
+        "headline": "Parent integrity repair is ready to review.",
+        "detail": "A verified Parent target can be added without changing authored body content.",
+        "nextAction": "Review the cascade impact and approve the local repair."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-missing",
+        "planAction": "backfill-parent-target-v2",
+        "planDisposition": "proposed",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": null
+      }
+    },
+    "repaired-local-ready-for-export": {
+      "state": "local-result-ready",
+      "findingClass": "repaired-local-result",
+      "severity": "info",
+      "trustImpact": "local-repair-produced-not-published",
+      "artifact": {
+        "path": ".topics/lineage/B.trace.md"
+      },
+      "parentTarget": {
+        "id": ".topics/lineage/A.trace.md",
+        "path": ".topics/lineage/A.trace.md",
+        "trace": "A.trace.md",
+        "expectedLocator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "currentLocator": "",
+        "oldDigest": "",
+        "candidateDigest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+      },
+      "publicationLocator": {
+        "state": "qualified",
+        "current": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+        "candidate": "",
+        "evidenceState": "qualified",
+        "fabricated": false
+      },
+      "proposedMutation": {
+        "required": true,
+        "headerFields": [],
+        "footerChanges": [
+          "Parent-target c14n-v2 entry",
+          "primary self c14n-v2 Value after fixed sibling entry"
+        ],
+        "bodyMutation": false,
+        "sourceMutation": false,
+        "publicationMutation": false
+      },
+      "cascadeImpact": {
+        "count": 0,
+        "descendants": []
+      },
+      "decision": {
+        "required": false,
+        "state": "satisfied-by-local-result",
+        "blockers": [],
+        "semanticAuthorityRequired": false,
+        "publicationQualificationRequired": false
+      },
+      "safeActions": [
+        {
+          "id": "inspect",
+          "state": "available"
+        },
+        {
+          "id": "preview",
+          "state": "available"
+        },
+        {
+          "id": "export-changeset",
+          "state": "available"
+        }
+      ],
+      "human": {
+        "headline": "Local repair is ready to export.",
+        "detail": ".topics/lineage/B.trace.md has a local repair result; source and publication state were not mutated.",
+        "nextAction": "Export the changeset or merge it through the normal workflow."
+      },
+      "machineEvidence": {
+        "inspectionState": "parent-target-missing",
+        "planAction": "backfill-parent-target-v2",
+        "planDisposition": "proposed",
+        "parentMaterialAvailable": true,
+        "projectionEvidence": null,
+        "receipt": {
+          "status": "changed",
+          "repairClass": "missing-parent-target-backfill",
+          "oldParentTarget": {
+            "locator": "",
+            "digest": ""
+          },
+          "newParentTarget": {
+            "locator": "https://github.com/Tiinex/site/blob/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/.topics/lineage/A.trace.md",
+            "digest": "JvfXz1X0-O9xL0PkBfKWrMSbQL1slvF6PdcuvNjUcJ0"
+          },
+          "oldSelfDigest": "tUPuAmBJ_KDi6o6rp8Q_WqcAQIcUzUM5t8dCtTLfiZk",
+          "newSelfDigest": "NvMI6lFtycb5p2eLxg6pYbWnfAhtR1B4ZK58jv71bYo",
+          "mutationSurface": [
+            "Continuity Integrity/Parent-target c14n-v2",
+            "Continuity Integrity/primary self Value"
+          ],
+          "bodyPreservationCheck": "byte-identical",
+          "remainingBlockers": []
+        }
+      }
+    }
+  }
+}

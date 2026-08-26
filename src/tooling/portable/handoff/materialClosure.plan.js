@@ -16,14 +16,23 @@ export function planRecipientRelativeHandoffMaterialClosure(input = {}, options 
   });
   const required = requirements.required.map((requirement) => resolveRequirementMaterial(requirement, candidates, input.recipient || {}, policy));
   const reference = requirements.reference.map((requirement) => referenceDisposition(requirement, candidates, input.recipient || {}, policy));
+  const endpointRoles = (requirements.endpointRoles || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, input.recipient || {}, { ...policy, preferReferenceWhenResolvable: false }));
+  const participantRoles = (requirements.participantRoles || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, input.recipient || {}, { ...policy, preferReferenceWhenResolvable: false }));
+  const dependencies = (requirements.dependencies || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, input.recipient || {}, { ...policy, preferReferenceWhenResolvable: false }));
   const workspaces = qualifyWorkspaceMaterializations(input.workspaceMaterializations || [], findings);
-  const inputBinding = buildHandoffMaterialClosurePlanInputBinding(requirements, input.recipient || {}, { required, reference }, { policy, bootstrap: input.bootstrap || {} });
+  const inputBinding = buildHandoffMaterialClosurePlanInputBinding(requirements, input.recipient || {}, { required, reference, endpointRoles, participantRoles, dependencies }, { policy, bootstrap: input.bootstrap || {} });
   const requiredBlocked = required.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
+  const endpointRoleBlocked = endpointRoles.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
+  const participantRoleBlocked = participantRoles.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
+  const dependencyBlocked = dependencies.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
   const workspaceBlocked = workspaces.some((item) => item.qualification === 'invalid-completeness-claim');
-  const ready = !requiredBlocked && !workspaceBlocked;
+  const ready = !requiredBlocked && !endpointRoleBlocked && !participantRoleBlocked && !dependencyBlocked && !workspaceBlocked;
   for (const item of required) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.required.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
+  for (const item of endpointRoles) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.endpoint-role.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
+  for (const item of participantRoles) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.participant-role.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
+  for (const item of dependencies) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.dependency.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
   for (const item of reference) if (item.disposition === 'ambiguous' || item.disposition === 'integrity-conflict') findings.push(finding('warning', `portable.handoff-material.reference.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
-  const materialized = [...required, ...reference].filter((item) => item.disposition === 'materialized' && item.selectedMaterial).map((item) => materializedPlanEntry(item));
+  const materialized = [...required, ...reference, ...endpointRoles, ...participantRoles, ...dependencies].filter((item) => item.disposition === 'materialized' && item.selectedMaterial).map((item) => materializedPlanEntry(item));
   return deepFreeze({
     schema: PORTABLE_HANDOFF_MATERIAL_CLOSURE_PLAN_SCHEMA_ID,
     status: ready ? 'ready' : 'blocked',
@@ -33,7 +42,7 @@ export function planRecipientRelativeHandoffMaterialClosure(input = {}, options 
     handoff: requirements.handoff,
     inputBinding,
     policy,
-    requirements: Object.freeze({ required: Object.freeze(required), reference: Object.freeze(reference) }),
+    requirements: Object.freeze({ required: Object.freeze(required), reference: Object.freeze(reference), endpointRoles: Object.freeze(endpointRoles), participantRoles: Object.freeze(participantRoles), dependencies: Object.freeze(dependencies) }),
     materialized: Object.freeze(materialized),
     workspaceMaterializations: Object.freeze(workspaces),
     bootstrap: Object.freeze({ status: policy.bootstrap, boundary: 'Optional transport orientation only; not Handoff semantics, workspace authority, or artifact identity.' }),
@@ -56,6 +65,9 @@ function materializedPlanEntry(item) {
     requirementId: item.requirementId,
     classification: item.classification,
     referenceTarget: item.referenceTarget,
+    routeWorkspaceId: item.routeWorkspaceId,
+    routePath: item.routePath,
+    sourceRequirementId: item.sourceRequirementId,
     path: material.path,
     requestedPackagePath: material.packagePath,
     bytes: material.bytes,

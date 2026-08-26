@@ -9,6 +9,7 @@ import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-handoff-manufacture-'));
 try {
@@ -42,6 +43,7 @@ try {
     packageInspection: 'valid',
     closureInspection: 'valid',
     carrierInspection: 'valid',
+    selectedHandoffConformance: 'qualified',
     pointerEntrypointInspection: 'valid',
     coldConsumerEntrypointInspection: 'valid',
     companionInspection: 'valid',
@@ -127,6 +129,58 @@ try {
     }),
     /persistent-verification\.representation-mismatch/
   );
+
+
+  const invalidHandoffPath = path.join(workspaceRoot, '.topics', 'invalid-handoff.trace.md');
+  await writeFile(invalidHandoffPath, qualifiedHandoffFixture({
+    title: 'Schema-invalid selected Handoff fixture',
+    to: 'Loom',
+    purpose: 'prove manufacture readiness consumes exact selected-Handoff conformance',
+    createdAt: '2026-08-23 10:45:00',
+    transferKind: 'result'
+  }), 'utf8');
+  const invalidInput = await prepareNodeHandoffManufacturingInput({
+    workspaceRoot,
+    workspaceId: 'docs-fixture',
+    workspaceTitle: 'Docs Fixture',
+    handoffPath: '.topics/invalid-handoff.trace.md',
+    toolingBootstrap: 'embedded',
+    runtimeRoot
+  });
+  const invalidBuilt = manufactureRecipientRelativeHandoffPackage(invalidInput, { packageInput: { builtAt: '2026-08-23T10:51:00.000Z' } });
+  assert.equal(invalidBuilt.status, 'blocked');
+  assert.equal(invalidBuilt.carrierProjection.routes[0].conformance.status, 'blocked');
+  assert.equal(invalidBuilt.carrierProjection.routes[0].conformance.selfIntegrity.state, 'verified');
+  assert(invalidBuilt.carrierProjection.routes[0].conformance.findings.some((finding) => finding.code === 'portable.contract.field-domain.value.invalid'));
+  assert(invalidBuilt.findings.some((finding) => finding.code === 'portable.contract.field-domain.value.invalid'));
+
+
+  const originalInvalidReturn = await readFile(new URL('./fixtures/027-invalid-return-handoff.fixture.txt', import.meta.url), 'utf8');
+  const originalInvalidResult = await readFile(new URL('./fixtures/027-invalid-audit-result.fixture.txt', import.meta.url), 'utf8');
+  const originalInvalidRoute = '.topics/development/handoff/loom/027-1-handoff-package-workspace-archive-and-control-plane-minimality-audit-return.trace.md';
+  const originalInvalidParent = '.topics/development/tooling/dogfood/027-1-handoff-package-workspace-archive-and-control-plane-minimality-audit-result.trace.md';
+  await mkdir(path.join(workspaceRoot, '.topics', 'development', 'handoff', 'loom'), { recursive: true });
+  await mkdir(path.join(workspaceRoot, '.topics', 'development', 'tooling', 'dogfood'), { recursive: true });
+  await writeFile(path.join(workspaceRoot, originalInvalidRoute), originalInvalidReturn, 'utf8');
+  await writeFile(path.join(workspaceRoot, originalInvalidParent), originalInvalidResult, 'utf8');
+  const originalInvalidInput = await prepareNodeHandoffManufacturingInput({
+    workspaceRoot,
+    workspaceId: 'docs-fixture',
+    workspaceTitle: 'Docs Fixture',
+    handoffPath: originalInvalidRoute,
+    toolingBootstrap: 'embedded',
+    runtimeRoot
+  });
+  const originalInvalidBuilt = manufactureRecipientRelativeHandoffPackage(originalInvalidInput, { packageInput: { builtAt: '2026-08-23T10:52:00.000Z' } });
+  const originalInvalidConformance = originalInvalidBuilt.carrierProjection.routes[0].conformance;
+  assert.equal(originalInvalidInput.plan?.requiredClosureReady ?? originalInvalidBuilt.plan.requiredClosureReady, true);
+  assert.equal(originalInvalidBuilt.status, 'blocked', 'the exact original checksum-valid/schema-invalid return Handoff must suppress manufacture readiness');
+  assert.equal(originalInvalidBuilt.verification.selectedHandoffConformance, 'blocked');
+  assert.equal(originalInvalidConformance.selfIntegrity.state, 'verified');
+  assert.equal(originalInvalidConformance.parentContinuity.targetResolution.verification.state, 'verified');
+  assert(originalInvalidConformance.findings.some((finding) => finding.code === 'portable.contract.section.required.missing'));
+  assert(originalInvalidConformance.findings.some((finding) => finding.code === 'portable.contract.conditional.field.required.missing'));
+  assert(originalInvalidConformance.findings.filter((finding) => finding.code === 'portable.contract.field-domain.value.invalid').length >= 2);
 } finally {
   await rm(root, { recursive: true, force: true });
 }
@@ -136,7 +190,13 @@ async function makeWorkspace(rootPath) {
   await mkdir(path.join(rootPath, 'content'), { recursive: true });
   await mkdir(path.join(rootPath, 'tiinex.bootstrap', 'runtime'), { recursive: true });
   await writeFile(path.join(rootPath, '.topics', 'context.md'), '# Context\n\nNon-Site workspace context.\n', 'utf8');
-  await writeFile(path.join(rootPath, '.topics', 'handoff.trace.md'), `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 10:40:00\n\n---\n\n# Non-Site handoff fixture\n\n## Required Context\n\n- context\n  - Material: exact local context\n  - Purpose: prove exact workspace-relative routing\n  - Availability: available\n  - Material Reference: [Context](context.md)\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`, 'utf8');
+  await writeFile(path.join(rootPath, '.topics', 'handoff.trace.md'), qualifiedHandoffFixture({
+    title: 'Non-Site handoff fixture',
+    to: 'Loom',
+    purpose: 'prove exact workspace-relative routing',
+    createdAt: '2026-08-23 10:40:00',
+    requiredContext: `- context\n  - Material: exact local context\n  - Purpose: prove exact workspace-relative routing\n  - Availability: available\n  - Material Reference: [Context](context.md)`
+  }), 'utf8');
   await writeFile(path.join(rootPath, 'content', 'a.txt'), 'alpha\n', 'utf8');
   await writeFile(path.join(rootPath, 'content', 'blob.bin'), Uint8Array.from([0, 1, 2, 3, 255, 128, 64]));
   await writeFile(path.join(rootPath, 'tiinex.bootstrap', 'runtime', 'ordinary-workspace-byte.js'), 'export default "ordinary workspace material";\n', 'utf8');

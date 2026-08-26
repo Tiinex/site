@@ -10,7 +10,7 @@ export function normalizeAdditionalWorkspaceDescriptors(value) {
 export function normalizeTransportRoute(route, defaultWorkspaceId = '') {
   if (typeof route === 'string') {
     const pathValue = normalizeRelativePath(route);
-    return pathValue ? pathValue : null;
+    return pathValue ? Object.freeze({ workspaceId: String(defaultWorkspaceId || '').trim(), path: pathValue }) : null;
   }
   const pathValue = normalizeRelativePath(route?.path || route?.workspaceRelativePath || '');
   if (!pathValue) return null;

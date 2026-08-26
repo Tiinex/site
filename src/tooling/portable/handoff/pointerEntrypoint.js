@@ -2,6 +2,7 @@ import { packageFileBytes, sha256Hex, utf8Bytes } from '../../../export/package.
 import { canonicalC14nV2SelfState, sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 import { inspectHandoffCarrierProjection } from './carrierProjection.js';
+import { qualifyTiinexRouteArtifact } from './routeArtifactConformance.js';
 
 export const HANDOFF_POINTER_ENTRYPOINT_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-pointer-entrypoints.v1';
 export const HANDOFF_POINTER_ENTRYPOINT_INSPECTION_SCHEMA_ID = 'tiinex.portable.handoff-pointer-entrypoints.inspection.v1';
@@ -26,9 +27,9 @@ export function buildHandoffPointerEntrypoints(input = {}) {
   });
 }
 
-export function inspectHandoffPointerEntrypoints(bundle = {}) {
+export function inspectHandoffPointerEntrypoints(bundle = {}, options = {}) {
   const findings = [];
-  const carrierInspection = inspectHandoffCarrierProjection(bundle);
+  const carrierInspection = options.carrierInspection || inspectHandoffCarrierProjection(bundle);
   if (carrierInspection.status !== 'valid') findings.push(finding('error', 'portable.handoff-pointer.carrier.invalid', 'Handoff Pointer entrypoints cannot qualify because package carrier truth is invalid.'));
   const carrier = carrierInspection.projection || {};
   const createdAt = packageCreatedAt(bundle);
@@ -44,13 +45,14 @@ export function inspectHandoffPointerEntrypoints(bundle = {}) {
   for (const [path, files] of actualByPath) if (files.length > 1) findings.push(finding('error', 'portable.handoff-pointer.duplicate-path', 'Multiple generated Pointer carriers use the same package-root path.', { path, count: files.length }));
 
   const expectedByPath = new Map((expected.entries || []).map((entry) => [entry.path, entry]));
-  const qualifiedTargets = new Set((carrier.routes || []).filter((route) => route.state === 'qualified').map((route) => String(route.packagePath || '')));
+  const qualifiedTargets = new Set((carrier.routes || []).filter((route) => route.state === 'qualified').map((route) => String(route.pointerTarget || route.packagePath || '')));
   const actualEntries = [];
   for (const file of actualFiles) {
     const parsed = parsePointer(file);
     actualEntries.push(parsed);
     if (parsed.schemaState !== 'qualified') findings.push(finding('error', 'portable.handoff-pointer.schema.invalid', 'Package-root Pointer is not an ordinary tiinex.pointer.v1 artifact.', { path: parsed.path }));
     if (parsed.integrityState !== 'verified') findings.push(finding('error', 'portable.handoff-pointer.integrity.invalid', 'Package-root Pointer self integrity is not verified.', { path: parsed.path, integrityState: parsed.integrityState }));
+    if (parsed.conformance.status !== 'qualified') findings.push(finding('error', 'portable.handoff-pointer.conformance.invalid', 'Generated package-root Pointer fails Tiinex Root/continuity conformance.', { path: parsed.path, reasons: parsed.conformance.findings.map((item) => item.code) }));
     if (parsed.targets.length !== 1) findings.push(finding('error', 'portable.handoff-pointer.target.cardinality', 'Each package route Pointer must expose exactly one explicit destination.', { path: parsed.path, count: parsed.targets.length }));
     if (/^\s*-\s+Parent\b/m.test(parsed.markdown)) findings.push(finding('error', 'portable.handoff-pointer.parent.promotion', 'Generated package route Pointer must not mint Parent continuity. ', { path: parsed.path }));
     for (const target of parsed.targets) if (!qualifiedTargets.has(target)) findings.push(finding('error', 'portable.handoff-pointer.target.unqualified-route', 'Pointer target is not a package-qualified Handoff route.', { path: parsed.path, target }));
@@ -81,14 +83,14 @@ export function isHandoffPointerEntrypointPath(value = '') {
 function buildPointerEntry(route = {}, createdAt = '') {
   const path = pointerPath(route);
   const title = `Handoff route pointer — ${String(route.parties?.to || route.workspaceId || 'recipient')}`;
-  const unsigned = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: [tiinex.pointer.v1](${CANONICAL_POINTER_SCHEMA_TARGET})\n  - Created At: ${createdAt}\n  - Summary: Thin package-local pointer to one qualified Handoff route.\n\n---\n\n# ${title}\n\nThis generated pointer exposes one next hop only. Package carrier and closure controls remain the authority for whether that Handoff route is qualified.\n\n## Destinations\n\n- Qualified Handoff route: [${route.workspaceRelativePath}](${route.packagePath})\n\n# Continuity Integrity\n\n- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})\n  - Towards: self\n  - Value: \n`;
+  const unsigned = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: [tiinex.pointer.v1](${CANONICAL_POINTER_SCHEMA_TARGET})\n  - Created At: ${createdAt}\n  - Summary: Thin package-local pointer to one qualified Handoff route.\n\n---\n\n# ${title}\n\nThis generated pointer exposes one next hop only. Package carrier and closure controls remain the authority for whether that Handoff route is qualified.\n\n## Destinations\n\n- Qualified Handoff route: [${route.workspaceRelativePath}](${route.pointerTarget || route.packagePath})\n\n# Continuity Integrity\n\n- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})\n  - Towards: self\n  - Value: \n`;
   const sealed = sealC14nV2Self(unsigned);
   if (sealed.state !== 'sealed') throw new Error(`portable.handoff-pointer.integrity.seal-failed:${sealed.reason || sealed.state}`);
   return deepFreeze({
     path,
     routeId: String(route.id || ''),
     workspaceId: String(route.workspaceId || ''),
-    targetPackagePath: String(route.packagePath || ''),
+    targetPackagePath: String(route.pointerTarget || route.packagePath || ''),
     targetSha256: String(route.sha256 || ''),
     markdown: `${sealed.markdown}\n`,
     boundary: BOUNDARY
@@ -106,7 +108,8 @@ function parsePointer(file = {}) {
   const schemaState = /Current Schema:\s*\[tiinex\.pointer\.v1\]\([^)]+\)/i.test(markdown) || /Current Schema:\s*tiinex\.pointer\.v1\b/i.test(markdown) ? 'qualified' : 'invalid';
   const integrityState = canonicalC14nV2SelfState(markdown).state;
   const targets = parseDestinationTargets(markdown);
-  return Object.freeze({ path: String(file.path || ''), schemaState, integrityState, targets: Object.freeze(targets), sha256: sha256Hex(packageFileBytes(file)), markdown });
+  const conformance = qualifyTiinexRouteArtifact({ markdown, expectedSchemaId: 'tiinex.pointer.v1', requireExactContract: false });
+  return Object.freeze({ path: String(file.path || ''), schemaState, integrityState, conformance, targets: Object.freeze(targets), sha256: sha256Hex(packageFileBytes(file)), markdown });
 }
 
 function parseDestinationTargets(markdown = '') {

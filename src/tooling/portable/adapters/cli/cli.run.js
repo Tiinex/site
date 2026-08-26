@@ -132,6 +132,20 @@ async function commandInput(parsed, runtime = {}) {
     return { input: host, options: {} };
   }
 
+  if (parsed.command === 'describe-cold-start-ingress') return { input: { ingressKind: flags.ingress || flags.kind || parsed.positionals[0] || 'routed-handoff-package' }, options: {} };
+
+  if (parsed.command === 'project-cold-start-host') {
+    const host = await readOptionalJson(flags.host || flags.tools);
+    return { input: { ...host, host, ingressKind: flags.ingress || flags.kind || parsed.positionals[0] || 'routed-handoff-package', toolingInvocationAvailable: Boolean(flags['tooling-invocation']) }, options: {} };
+  }
+
+  if (parsed.command === 'qualify-cold-start') {
+    const file = flags.evidence || flags.trace || flags.input || parsed.positionals[0];
+    if (!file) throw new Error('portable.cli.cold-start-evidence.required');
+    const evidence = JSON.parse(await readFile(file, 'utf8'));
+    return { input: { ...evidence, ingressKind: flags.ingress || evidence.ingressKind || evidence.kind || 'routed-handoff-package' }, options: {} };
+  }
+
   if (parsed.command === 'plan-host-action') {
     const host = await readOptionalJson(flags.host || flags.tools);
     const request = await readOptionalJson(flags.request);
@@ -161,7 +175,7 @@ async function commandInput(parsed, runtime = {}) {
   const schemaAwareOperations = new Set(['resolve-schema-material', 'resolve-schema-chain-material', 'describe-schema-chain', 'make-writer-brief', 'schema-guide', 'read-schema-section', 'plan-artifact', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'update-local-draft', 'validate-draft', 'stage-draft', 'materialize-durable-findings', 'process-live-turn', 'export-live-lineage']);
   const defaultSchemaTargets = schemaAwareOperations.has(parsed.command) ? normalizeRuntimePaths(runtime.defaultSchemaMaterialPaths) : [];
   const schemaTargets = defaultSchemaTargets.filter((target) => !explicitTargets.includes(target));
-  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package']);
+  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package', 'describe-cold-start-ingress', 'project-cold-start-host', 'qualify-cold-start', 'ground-cold-consumer']);
   if (!explicitTargets.length && !schemaTargets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
   const loadOptions = { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] };
   const explicitMaterial = explicitTargets.length ? await loadNodePortableInput(explicitTargets, loadOptions) : emptyMaterial();
@@ -180,6 +194,29 @@ async function commandInput(parsed, runtime = {}) {
   };
   const host = await readOptionalJson(flags.host);
   const schemaCache = await readOptionalJson(flags.cache);
+  if (parsed.command === 'ground-cold-consumer') {
+    const interaction = await readOptionalJson(flags.interaction);
+    const participantsValue = await readOptionalJson(flags.participants);
+    const contributionsValue = await readOptionalJson(flags.contributions);
+    const roleMaterialPath = String(flags['role-material'] || '').trim();
+    const roleMaterials = roleMaterialPath ? [{ path: roleMaterialPath, markdown: await readFile(roleMaterialPath, 'utf8') }] : [];
+    return {
+      input: {
+        ...material,
+        bundle: material,
+        host,
+        ingressKind: flags.ingress || flags.kind || 'routed-handoff-package',
+        route: flags.route || '',
+        interaction: interaction.interaction || interaction,
+        participants: participantsValue.participants || (Array.isArray(participantsValue) ? participantsValue : []),
+        contributions: contributionsValue.contributions || (Array.isArray(contributionsValue) ? contributionsValue : []),
+        currentContributionId: flags['current-contribution'] || '',
+        roleMaterials,
+        toolingAvailable: flags['tooling-unavailable'] ? false : true
+      },
+      options
+    };
+  }
   if (parsed.command === 'prepare-task') return {
     input: {
       ...material,

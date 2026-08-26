@@ -18,7 +18,12 @@ assert.equal(bootstrap.includes('## Bind Capabilities To Concrete Host Tools'), 
 assert.equal(bootstrap.includes('tiinex.portable.host-action-receipt.v1'), true);
 assert.equal(bootstrap.includes('## Manufacture Recipient-Relative Handoff Packages'), true);
 assert.equal(bootstrap.includes('manufacture-handoff-package'), true);
-assert.equal(bootstrap.includes('tiinex.package/START.md'), true);
+assert.equal(bootstrap.includes('001-1-READ-BEFORE-PROCEEDING.trace.md'), true);
+assert.equal(bootstrap.includes('001-<package-slug>.trace.md'), true);
+assert.equal(bootstrap.includes('Generated Markdown children declare package-local `Parent` continuity'), true);
+assert.equal(bootstrap.includes('Exact durable source artifacts inside Workspace/cache archives retain their own historical provenance'), true);
+assert.equal(bootstrap.includes('001-0-READ-BEFORE-PROCEEDING.trace.md'), false);
+assert.equal(bootstrap.includes('tiinex.package/START.md'), false);
 assert.equal(bootstrap.includes('orient-handoff-package'), true);
 assert.equal(bootstrap.includes('audit-handoff-package-context'), true);
 assert.equal(bootstrap.includes('humanOutput.normalInlineRouting.content'), true);

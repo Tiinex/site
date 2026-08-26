@@ -10,8 +10,6 @@ import { findSchemaMaterial, normalizePortableInput, suppliedSchemaParentId } fr
 import { normalizePortableFinding, portableFinding } from './findings.js';
 import { normalizePortableDepth as normalizeDepth, normalizePortableSchemaIds as normalizeSchemaIds, portableOperationResult as operationResult } from './operation.result.js';
 import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
-import { searchPortableLineage as searchPortableLineageIndex } from './lineage/lineage.search.js';
-import { inspectPortableLineageIntegrity } from './lineage/lineage.integrity.plan.js';
 import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
 import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
 import { createPortableLocalDraft, stagePortableDraft } from './draft/draft.create.js';
@@ -20,6 +18,7 @@ import { discoverPortableHostCapabilities } from './host/host.capabilities.js';
 import { listPortableMaterialProviders, resolvePortableSchemaChainMaterial, resolvePortableSchemaMaterial } from './providers/schema.providers.js';
 import { inspectPortableAssets, preparePortableAssetAnalysis } from './assets/asset.operations.js';
 import { preparePortableTask } from './orchestration/task.prepare.js';
+export { planPortableLineageIntegrity, projectPortableLineageIntegrityRepair, applyPortableLineageIntegrity, searchPortableLineage } from './lineage/lineage.operations.js';
 
 export const PORTABLE_RESULT_SCHEMA_ID = 'tiinex.portable.operation.result.v1';
 export const PORTABLE_SCHEMA_CHAIN_SCHEMA_ID = 'tiinex.portable.schema-chain.v1';
@@ -405,30 +404,6 @@ export function planPortableArtifactRepairs(input = {}, options = {}) {
   const repairPlan = buildPortableRepairPlan(input, options);
   const findings = Array.isArray(input?.findings) ? input.findings : input?.validation?.findings || input?.audit?.findings || [];
   return operationResult('repair-plan', { repairPlan, findings });
-}
-
-export function planPortableLineageIntegrity(input = {}, options = {}) {
-  const inspection = inspectPortableLineageIntegrity(input, options);
-  return operationResult('lineage-integrity-plan', {
-    status: inspection.status,
-    inspection,
-    repairPlan: inspection.repairPlan,
-    findings: inspection.findings || []
-  });
-}
-
-export function searchPortableLineage(input = {}, options = {}) {
-  const search = searchPortableLineageIndex(input, options);
-  return operationResult('search-lineage', {
-    boundary: search.boundary,
-    query: search.query,
-    filters: search.filters,
-    scope: search.scope,
-    matches: search.matches,
-    page: search.page,
-    facets: search.facets,
-    findings: search.findings || []
-  });
 }
 
 function sanitizeAudit(result = {}, record = {}, options = {}) {

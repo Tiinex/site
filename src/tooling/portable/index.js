@@ -47,3 +47,4 @@ export * from './transfer/transfer.plan.js';
 
 export * from './handoff/manufacture.js';
 export * from './handoff/toolingBootstrap.js';
+export * from './handoff/coldStartQualification.js';

@@ -93,7 +93,8 @@ export function buildRecipientRelativeHandoffTransportPackage(input = {}, option
   const pointerEntrypointFiles = pointerEntrypointProjection.entries.map((entry) => finalizeFile({ path: entry.path, kind: 'handoff-route-pointer', logicalKind: 'disposable-package-orientation-projection', mediaType: 'text/markdown', content: entry.markdown, boundary: entry.boundary }));
   const coldConsumerProjection = buildHandoffColdConsumerProjection({ carrierProjection });
   const coldConsumerEntrypointFile = finalizeFile({ path: HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH, kind: 'handoff-cold-consumer-entrypoint', logicalKind: 'disposable-package-orientation-projection', mediaType: 'text/markdown', content: renderHandoffColdConsumerEntrypoint({ projection: coldConsumerProjection }), boundary: coldConsumerProjection.boundary });
-  const transportStatus = carrierProjection.mode === 'shared' && carrierProjection.status !== 'ready' ? 'blocked' : packageClosureStatus;
+  const selectedHandoffConformanceReady = (carrierProjection.routes || []).length > 0 && (carrierProjection.routes || []).every((route) => route.conformance?.status === 'qualified');
+  const transportStatus = !selectedHandoffConformanceReady || (carrierProjection.mode === 'shared' && carrierProjection.status !== 'ready') ? 'blocked' : packageClosureStatus;
   const transportCompanion = buildHandoffTransportCompanionProjection({ bundle: baseBundle, descriptor, packageStatus: transportStatus, participation: input.transportParticipation || input.participation || {} });
   const companionFile = finalizeFile({ path: HANDOFF_TRANSPORT_COMPANION_PATH, kind: 'handoff-transport-companion', logicalKind: 'disposable-transport-projection', mediaType: 'application/json', content: `${stablePrettyJson(transportCompanion)}\n`, boundary: transportCompanion.boundary });
   const oldFileMapPath = 'tiinex.package/file-map.json';

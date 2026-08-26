@@ -33,7 +33,7 @@ export function qualifyHandoffMaterializedOutput(plan = {}) {
 
 function expectedMaterializedEntries(requirements = {}, findings = []) {
   const out = [];
-  for (const item of [...(requirements.required || []), ...(requirements.reference || [])]) {
+  for (const item of [...(requirements.required || []), ...(requirements.reference || []), ...(requirements.endpointRoles || []), ...(requirements.participantRoles || []), ...(requirements.dependencies || [])]) {
     if (String(item.disposition || '') !== 'materialized') continue;
     if (!item.selectedMaterial) {
       findings.push('materialized-output-selected-material-missing');
@@ -44,6 +44,9 @@ function expectedMaterializedEntries(requirements = {}, findings = []) {
       requirementId: item.requirementId,
       classification: item.classification,
       referenceTarget: item.referenceTarget,
+      routeWorkspaceId: item.routeWorkspaceId,
+      routePath: item.routePath,
+      sourceRequirementId: item.sourceRequirementId,
       path: material.path,
       requestedPackagePath: material.packagePath,
       bytes: material.bytes,
@@ -72,6 +75,9 @@ function normalizeCarrier(entry = {}, source = 'supplied', findings = []) {
     requirementId: String(entry.requirementId || ''),
     classification: String(entry.classification || ''),
     referenceTarget: String(entry.referenceTarget || ''),
+    routeWorkspaceId: String(entry.routeWorkspaceId || ''),
+    routePath: String(entry.routePath || ''),
+    sourceRequirementId: String(entry.sourceRequirementId || ''),
     path: String(entry.path || ''),
     requestedPackagePath: String(entry.requestedPackagePath || entry.packagePath || ''),
     bytes: actualBytes,
@@ -106,6 +112,9 @@ function carrierProjection(entry = {}) {
     requirementId: String(entry.requirementId || ''),
     classification: String(entry.classification || ''),
     referenceTarget: String(entry.referenceTarget || ''),
+    routeWorkspaceId: String(entry.routeWorkspaceId || ''),
+    routePath: String(entry.routePath || ''),
+    sourceRequirementId: String(entry.sourceRequirementId || ''),
     path: String(entry.path || ''),
     requestedPackagePath: String(entry.requestedPackagePath || ''),
     bytes: Number(entry.bytes || 0),

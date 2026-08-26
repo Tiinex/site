@@ -5,6 +5,7 @@ import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
@@ -137,7 +138,17 @@ async function makeWorkspace(rootPath, title, to, contextName, bytes) {
   await writeFile(path.join(rootPath, 'content', 'blob.bin'), Uint8Array.from(bytes));
 }
 function handoffMarkdown(title, to, contextName) {
-  return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 18:00:00\n\n---\n\n# ${title} handoff\n\n## Handoff Parties\n\n- Purpose: multi-root fixture\n- From: Anchor\n- From Kind: role\n- To: ${to}\n- To Kind: role\n\n## Required Context\n\n- local-context\n  - Material: exact context\n  - Material Reference: [Context](${contextName})\n  - Purpose: route-local context\n  - Availability: available\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+  return qualifiedHandoffFixture({
+    title: `${title} handoff`,
+    to,
+    purpose: 'multi-root fixture',
+    createdAt: '2026-08-23 18:00:00',
+    requiredContext: `- local-context
+  - Material: exact context
+  - Material Reference: [Context](${contextName})
+  - Purpose: route-local context
+  - Availability: available`
+  });
 }
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });

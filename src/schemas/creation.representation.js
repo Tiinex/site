@@ -8,7 +8,9 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
   const envelopeLines = boundary >= 0 ? lines.slice(0, boundary) : lines.slice();
   const integrityHeadingIndexes = indexesOf(lines, (line) => line === '# Continuity Integrity');
   const integrityStart = integrityHeadingIndexes.length ? integrityHeadingIndexes[0] : lines.length;
-  const bodyLines = boundary >= 0 ? lines.slice(boundary + 1, integrityStart) : [];
+  const footerSeparatorIndexes = integrityHeadingIndexes.filter((index) => canonicalDividerImmediatelyBefore(lines, index));
+  const bodyEnd = footerSeparatorIndexes.length === 1 ? footerSeparatorIndexes[0] - 2 : integrityStart;
+  const bodyLines = boundary >= 0 ? lines.slice(boundary + 1, bodyEnd) : [];
   const currentBlocks = topLevelListBlocks(envelopeLines, 'Current');
   const parentBlocks = topLevelListBlocks(envelopeLines, 'Parent');
   const boundSections = [...new Set((options.boundSections || []).map((value) => String(value || '')).filter(Boolean))];
@@ -31,6 +33,7 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
     bodyH2: Object.freeze(bodyH2),
     sectionBodies: Object.freeze(sectionBodies),
     integrityHeadings: integrityHeadingIndexes.length,
+    footerSeparators: footerSeparatorIndexes.length,
     integrityEntries: integrityEntriesDetailed.length,
     integrityEntryDetails: Object.freeze(integrityEntriesDetailed),
     selfIntegrityEntries: Object.freeze(selfEntries)
@@ -52,6 +55,7 @@ export function qualifyRootCreationRepresentation(markdown = '', contract = {}) 
   if (summaryBound) expectCount(findings, 'Current Summary field', observed.summary.length, 1);
   expectCount(findings, 'body H1 title', observed.bodyH1.length, 1);
   expectCount(findings, 'Continuity Integrity heading', observed.integrityHeadings, 1);
+  expectCount(findings, 'canonical divider immediately before Continuity Integrity', observed.footerSeparators, 1);
   expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 1);
   expectCount(findings, `${C14N_V2_METHOD_ID} Towards:self entry`, observed.selfIntegrityEntries.length, 1);
   qualifyPrimarySelfMethodReference(findings, observed, contract);
@@ -66,6 +70,11 @@ function qualifyPrimarySelfMethodReference(findings, observed, contract) {
   if (!authority) return;
   const qualification = qualifyIntegrityMethodReferenceValue(observed.selfIntegrityEntries[0].methodRaw || observed.selfIntegrityEntries[0].method || '', authority);
   for (const finding of qualification.findings || []) findings.push(finding);
+}
+
+function canonicalDividerImmediatelyBefore(lines, headingIndex) {
+  if (headingIndex < 2) return false;
+  return lines[headingIndex - 1] === '' && lines[headingIndex - 2] === '---';
 }
 
 function expectCount(findings, label, count, expected) {
@@ -181,6 +190,7 @@ export function qualifyContinuationCreationRepresentation(markdown = '', contrac
   expectCount(findings, 'Created At field', observed.createdAt.length, 1);
   expectCount(findings, 'body H1 title', observed.bodyH1.length, 1);
   expectCount(findings, 'Continuity Integrity heading', observed.integrityHeadings, 1);
+  expectCount(findings, 'canonical divider immediately before Continuity Integrity', observed.footerSeparators, 1);
   expectCount(findings, 'Continuity Integrity method entry', observed.integrityEntries, 2);
   expectCount(findings, `${C14N_V2_METHOD_ID} Towards:self entry`, observed.selfIntegrityEntries.length, 1);
   qualifyPrimarySelfMethodReference(findings, observed, contract);

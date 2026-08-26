@@ -1,61 +1,64 @@
-import { prepareRecipientRelativeWorkspaceHandoffExport } from '../../../export/handoff.plan.js';
 import { summarizePortableFindings } from '../findings.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
-
-export const PORTABLE_HANDOFF_MANUFACTURING_SCHEMA_ID = 'tiinex.portable.handoff-manufacturing.v1';
+import { upgradeRecipientRelativeHandoffTransportPackageV2 } from './materialClosure.archiveV2.js';
+import { buildRecipientRelativeHandoffV2DirectBaseline } from './materialClosure.archiveV2.direct.js';
 
 export function manufactureRecipientRelativeHandoffPackage(input = {}, options = {}) {
-  const prepared = prepareRecipientRelativeWorkspaceHandoffExport(input, {
-    ...options,
-    verifyRoundtrip: options.verifyRoundtrip !== false && input.verifyRoundtrip !== false
-  });
-  const toolingBootstrapInspection = inspectPortableToolingBootstrap(prepared.bundle);
+  const baseline = buildRecipientRelativeHandoffV2DirectBaseline(input, options);
+  const upgraded = upgradeRecipientRelativeHandoffTransportPackageV2(baseline, input, options);
+  const toolingBootstrapInspection = upgraded.inspection?.bootstrapInspection || inspectPortableToolingBootstrap(baseline.bundle || upgraded.bundle || {});
   const findings = Object.freeze([
-    ...(prepared.plan?.findings || []),
-    ...(prepared.inspection?.findings || []),
-    ...(prepared.closureInspection?.findings || []),
-    ...(prepared.carrierInspection?.findings || []),
-    ...(prepared.pointerEntrypointInspection?.findings || []),
-    ...(prepared.coldConsumerEntrypointInspection?.findings || []),
-    ...(prepared.companionInspection?.findings || []),
-    ...(prepared.roundtrip?.findings || []),
-    ...(toolingBootstrapInspection.findings || [])
+    ...(baseline.findings || []),
+    ...(upgraded.findings || []),
+    ...(upgraded.inspection?.findings || []),
+    ...(upgraded.closureInspection?.findings || []),
+    ...(upgraded.carrierInspection?.findings || []),
+    ...(upgraded.pointerEntrypointInspection?.findings || []),
+    ...(upgraded.coldConsumerEntrypointInspection?.findings || []),
+    ...(upgraded.companionInspection?.findings || []),
+    ...(upgraded.roundtrip?.findings || []),
+    ...(toolingBootstrapInspection?.findings || [])
   ]);
-  const status = prepared.executable && prepared.transportExecutable && toolingBootstrapInspection.status === 'valid' ? prepared.status : 'blocked';
+  const status = baseline.status !== 'blocked' && upgraded.status !== 'blocked' && toolingBootstrapInspection?.status === 'valid' ? upgraded.status : 'blocked';
   return Object.freeze({
-    schema: PORTABLE_HANDOFF_MANUFACTURING_SCHEMA_ID,
+    schema: 'tiinex.portable.handoff-manufacturing.v2',
     status,
-    executable: prepared.executable,
-    transportExecutable: prepared.transportExecutable,
+    executable: Boolean(baseline.executable) && status !== 'blocked',
+    transportExecutable: status !== 'blocked',
     verification: Object.freeze({
-      packageInspection: String(prepared.inspection?.status || 'unavailable'),
-      closureInspection: String(prepared.closureInspection?.status || 'unavailable'),
-      carrierInspection: String(prepared.carrierInspection?.status || 'unavailable'),
-      pointerEntrypointInspection: String(prepared.pointerEntrypointInspection?.status || 'unavailable'),
-      coldConsumerEntrypointInspection: String(prepared.coldConsumerEntrypointInspection?.status || 'unavailable'),
-      companionInspection: String(prepared.companionInspection?.status || 'unavailable'),
-      roundtrip: prepared.roundtrip ? String(prepared.roundtrip.status || 'unknown') : 'not-requested',
-      toolingBootstrap: toolingBootstrapInspection.status
+      baselineManufacture: String(baseline.status || 'unavailable'),
+      manufacturePath: 'direct-qualified-workspace-to-archive',
+      packageInspection: String(upgraded.inspection?.status || 'unavailable'),
+      closureInspection: String(upgraded.closureInspection?.status || 'unavailable'),
+      carrierInspection: String(upgraded.carrierInspection?.status || 'unavailable'),
+      selectedHandoffConformance: (upgraded.carrierProjection?.routes || []).length > 0 && (upgraded.carrierProjection?.routes || []).every((route) => route.conformance?.status === 'qualified') ? 'qualified' : 'blocked',
+      pointerEntrypointInspection: String(upgraded.pointerEntrypointInspection?.status || 'unavailable'),
+      coldConsumerEntrypointInspection: String(upgraded.coldConsumerEntrypointInspection?.status || 'unavailable'),
+      companionInspection: String(upgraded.companionInspection?.status || 'unavailable'),
+      roundtrip: upgraded.roundtrip ? String(upgraded.roundtrip.status || 'unknown') : 'not-requested',
+      toolingBootstrap: String(toolingBootstrapInspection?.status || 'unavailable')
     }),
-    plan: prepared.plan,
-    bundle: prepared.bundle,
-    descriptor: prepared.descriptor,
-    transportCompanion: prepared.transportCompanion,
-    inspection: prepared.inspection,
-    closureInspection: prepared.closureInspection,
-    carrierProjection: prepared.carrierProjection,
-    carrierInspection: prepared.carrierInspection,
-    pointerEntrypointProjection: prepared.pointerEntrypointProjection,
-    pointerEntrypointInspection: prepared.pointerEntrypointInspection,
-    coldConsumerProjection: prepared.coldConsumerProjection,
-    coldConsumerEntrypointInspection: prepared.coldConsumerEntrypointInspection,
-    companionInspection: prepared.companionInspection,
-    roundtrip: prepared.roundtrip,
+    plan: baseline.plan,
+    bundle: upgraded.bundle || baseline.bundle,
+    descriptor: upgraded.descriptor || baseline.descriptor,
+    transportCompanion: upgraded.transportCompanion || baseline.transportCompanion,
+    inspection: upgraded.inspection || baseline.inspection,
+    closureInspection: upgraded.closureInspection || baseline.closureInspection,
+    carrierProjection: upgraded.carrierProjection || baseline.carrierProjection,
+    carrierInspection: upgraded.carrierInspection || baseline.carrierInspection,
+    pointerEntrypointProjection: upgraded.pointerEntrypointProjection || baseline.pointerEntrypointProjection,
+    pointerEntrypointInspection: upgraded.pointerEntrypointInspection || baseline.pointerEntrypointInspection,
+    coldConsumerProjection: upgraded.coldConsumerProjection || baseline.coldConsumerProjection,
+    coldConsumerEntrypointInspection: upgraded.coldConsumerEntrypointInspection || baseline.coldConsumerEntrypointInspection,
+    companionInspection: upgraded.companionInspection || baseline.companionInspection,
+    roundtrip: upgraded.roundtrip || null,
     toolingBootstrap: input.toolingBootstrap || null,
     manufacturingEvidence: input.manufacturingEvidence || null,
     toolingBootstrapInspection,
+    migration: upgraded.migration || null,
+    baseline: Object.freeze({ schema: baseline.schema, status: baseline.status, packageRepresentationSha256: String(baseline.bundle?.packageRepresentationSha256 || ''), representation: 'semantic-control-plus-detached-material-without-exploded-workspace-carrier' }),
     findings,
     findingSummary: summarizePortableFindings(findings),
-    boundary: 'Ordinary portable manufacturing facade over the existing recipient-relative Handoff closure/package owners. It does not define canonical Handoff meaning, infer workspace completeness, or assign bootstrap authority by package placement.'
+    boundary: 'Canonical archive-backed Handoff manufacturing facade. It fails closed unless each carrier workspace is bound to one exact carried tiinex.workspace.v1 artifact and one independently verified complete workspace archive.'
   });
 }

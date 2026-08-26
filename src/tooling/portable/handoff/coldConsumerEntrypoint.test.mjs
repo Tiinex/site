@@ -7,6 +7,7 @@ import { inspectHandoffColdConsumerEntrypoint, orientColdConsumerFromHandoffPack
 import { projectHandoffHumanOutput } from './carrierProjection.js';
 import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const encoder = new TextEncoder();
 const primaryPath = '.topics/handoff/005-anchor-to-loom.trace.md';
@@ -50,6 +51,17 @@ assert.equal(built.coldConsumerProjection.selection.implicitRouteId, '');
 const cold = orientColdConsumerFromHandoffPackage(built.bundle);
 assert.equal(cold.status, 'ready');
 assert.deepEqual(cold.routes.map((route) => route.workspaceId), ['alpha', 'beta']);
+assert.equal(built.coldConsumerProjection.preferredPath.firstSemanticOperation, 'orient-handoff-package');
+assert.equal(built.coldConsumerProjection.preferredPath.groundingOperation, 'ground-cold-consumer');
+
+const legacyStart = String(startFile.content || '').replace(/\n  "preferredPath": \{[\s\S]*?\n  \},(?=\n  "routes")/, '');
+const legacyBundle = {
+  ...built.bundle,
+  files: built.bundle.files.map((file) => file.path === startFile.path ? { ...file, data: encoder.encode(legacyStart), content: undefined } : file)
+};
+const legacyInspection = inspectHandoffColdConsumerEntrypoint(legacyBundle);
+assert.equal(legacyInspection.status, 'valid', 'pre-026 START projections remain orientable; preferredPath is additive guidance');
+assert.equal(orientColdConsumerFromHandoffPackage(legacyBundle).status, 'ready');
 
 const secondaryHuman = projectHandoffHumanOutput({ projection: built.carrierProjection, route: built.carrierProjection.routes[1].id });
 assert.equal(secondaryHuman.status, 'ready');
@@ -95,7 +107,7 @@ function workspaceMaterialization(id, title, handoffPath, markdown) {
 }
 
 function handoffMarkdown(from, to) {
-  return `# Continuity Context\n\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 17:00:00\n\n---\n\n# Multi-workspace ${to} handoff\n\n## Handoff Parties\n\n- Purpose: Tooling 013 multi-workspace fixture\n- From: ${from}\n- From Kind: role\n- To: ${to}\n- To Kind: role\n\n# Continuity Integrity\n`;
+  return qualifiedHandoffFixture({ title: `Multi-workspace ${to} handoff`, from, to, purpose: 'Tooling 013 multi-workspace fixture', createdAt: '2026-08-23 17:00:00' });
 }
 function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 

@@ -1,4 +1,4 @@
-import { packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Bytes } from './package.bytes.js';
+import { packageFileByteView, packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Bytes } from './package.bytes.js';
 
 export const EXPORT_PACKAGE_FILE_MAP_SCHEMA_ID = 'tiinex.export.package.file-map.v1';
 export const EXPORT_PACKAGE_FILE_MAP_PATH = 'tiinex.package/file-map.json';
@@ -34,7 +34,7 @@ export function finalizeFile(file = {}) {
 }
 
 export function buildExportPackageFileMap(files = [], input = {}) {
-  const governed = files.filter((file) => normalizePackagePath(file.path || '') !== EXPORT_PACKAGE_FILE_MAP_PATH).map(finalizeFile);
+  const governed = files.filter((file) => normalizePackagePath(file.path || '') !== EXPORT_PACKAGE_FILE_MAP_PATH).map((file) => input.assumeFinalized === true && finalizedFileShape(file) ? file : finalizeFile(file));
   const entries = governed.map((file, index) => fileMapEntry(file, index));
   const representationSha256 = sha256Hex(utf8Bytes(stableJson(entries)));
   return deepFreeze({
@@ -73,7 +73,7 @@ export function inspectExportPackageFileMap(fileMap = {}, files = [], manifest =
       findings.push(finding('error', 'export.package.file-map.claimed-file-missing', 'File-map claims a governed package file that is physically missing.', { path, entryId: entry.entryId || '' }));
       continue;
     }
-    const data = packageFileBytes(file);
+    const data = packageFileByteView(file);
     if (Number(entry.bytes) !== data.byteLength) findings.push(finding('error', 'export.package.file-map.bytes-mismatch', 'Governed package file byte length does not match file-map authority.', { path, expected: Number(entry.bytes), actual: data.byteLength }));
     const digest = sha256Hex(data);
     if (String(entry.sha256 || '') !== digest) findings.push(finding('error', 'export.package.file-map.sha256-mismatch', 'Governed package file SHA-256 does not match file-map authority.', { path, expected: entry.sha256 || '', actual: digest }));
@@ -128,6 +128,10 @@ function flattenManifestEntries(manifest = {}) {
   ];
 }
 
+
+function finalizedFileShape(file = {}) {
+  return Number.isInteger(Number(file.bytes)) && Number(file.bytes) >= 0 && /^[0-9a-f]{64}$/i.test(String(file.sha256 || '')) && typeof file.fingerprint === 'string';
+}
 function fileMapEntry(file = {}, index = 0) {
   return deepFreeze({
     ordinal: index,

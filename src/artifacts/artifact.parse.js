@@ -4,7 +4,8 @@ export function parseArtifactMarkdown(markdown = '') {
   const envelopeText = envelopeBoundary === -1 ? text : text.slice(0, envelopeBoundary).trimEnd();
   const remainder = envelopeBoundary === -1 ? '' : text.slice(envelopeBoundary).replace(/^---\s*\n?/, '');
   const integrityIndex = remainder.search(/^# Continuity Integrity\s*$/m);
-  const bodyText = integrityIndex === -1 ? remainder.trim() : remainder.slice(0, integrityIndex).trim();
+  const bodySlice = integrityIndex === -1 ? remainder : remainder.slice(0, integrityIndex);
+  const bodyText = stripCanonicalFooterDivider(bodySlice).trim();
   const integrityText = integrityIndex === -1 ? '' : remainder.slice(integrityIndex).trim();
 
   const envelope = parseContinuityEnvelope(envelopeText);
@@ -188,6 +189,11 @@ function blockAfterTopLevelList(text, label) {
   return out.join('\n');
 }
 
+
+function stripCanonicalFooterDivider(value) {
+  const text = String(value || '').replace(/\s+$/, '');
+  return text.replace(/(?:^|\n)---\s*$/, '');
+}
 function normalizeLineEndings(value) { return String(value || '').replace(/\r\n?/g, '\n'); }
 function findFirstHorizontalRule(text) { const match = /^---\s*$/m.exec(text); return match ? match.index : -1; }
 function markdownLink(value) {

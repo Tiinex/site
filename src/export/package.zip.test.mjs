@@ -26,5 +26,8 @@ const bundle = buildExportPackageBundle({ id: 'w', title: 'W', records: [{ id: '
 const bytes = exportPackageZipUint8Array(bundle);
 assert.equal(bytes[0], 0x50);
 assert.equal(bytes[1], 0x4b);
+const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+assert.equal(header.getUint16(10, true), 0, 'deterministic ZIP time should be midnight');
+assert.equal(header.getUint16(12, true), 0x0021, 'deterministic ZIP date should be 1980-01-01');
 assert(Buffer.from(bytes).includes(Buffer.from('tiinex.package/manifest.json')), 'zip should include manifest path');
 console.log('export.package.zip: ok');

@@ -1,5 +1,5 @@
 import { buildExportPackageContract, buildExportPackageReceipt, finalizeExportPackageManifestPaths } from './package.manifest.js';
-import { packageAssetBytes, packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Bytes } from './package.bytes.js';
+import { packageAssetBytes, packageFileByteView, packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Bytes } from './package.bytes.js';
 import { assignFinalPackagePaths, buildExportPackageFileMap, EXPORT_PACKAGE_FILE_MAP_PATH, finalizeFile, inspectExportPackageFileMap } from './package.fileMap.js';
 import { workspaceContextOwnedMarkdown } from './package.workspaceContext.js';
 import { inspectExportPackageControlConsistency, packageMaterialRepresentationSha256 } from './package.controlIntegrity.js';
@@ -93,7 +93,7 @@ export function inspectExportPackageBundle(bundle = {}) {
     if (file.path && paths.has(file.path)) findings.push(bundleFinding('error', 'export.package.bundle.file.path-duplicate', 'Package file path is duplicated.', { path: file.path }));
     paths.add(file.path);
     if (file.path && isUnsafePackagePath(file.path)) findings.push(bundleFinding('error', 'export.package.bundle.file.path-unsafe', 'Package file path is unsafe.', { path: file.path }));
-    const data = packageFileBytes(file);
+    const data = packageFileByteView(file);
     if (Number(file.bytes || 0) !== data.byteLength) findings.push(bundleFinding('error', 'export.package.bundle.file.bytes-mismatch', 'Package file byte count does not match exact serialized bytes.', { path: file.path || '' }));
     if (file.sha256 && file.sha256 !== sha256Hex(data)) findings.push(bundleFinding('error', 'export.package.bundle.file.sha256-mismatch', 'Package file SHA-256 does not match exact serialized bytes.', { path: file.path || '' }));
     if (file.fingerprint && file.fingerprint !== stableFingerprintBytes(data)) findings.push(bundleFinding('error', 'export.package.bundle.file.fingerprint-mismatch', 'Package file compatibility fingerprint does not match exact serialized bytes.', { path: file.path || '' }));

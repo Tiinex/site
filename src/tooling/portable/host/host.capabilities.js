@@ -18,11 +18,13 @@ export function discoverPortableHostCapabilities(input = {}, options = {}) {
       archiveRead: explicitBoolean(explicit.materialAccess?.archiveRead ?? explicit.materialAccess?.archives, inferred.archiveRead),
       repositorySearch: explicitBoolean(explicit.materialAccess?.repositorySearch ?? explicit.repositories?.search, inferred.repositorySearch),
       repositoryRead: explicitBoolean(explicit.materialAccess?.repositoryRead ?? explicit.repositories?.read, inferred.repositoryRead),
+      repositoryWrite: explicitBoolean(explicit.materialAccess?.repositoryWrite ?? explicit.repositories?.write, inferred.repositoryWrite),
       httpRead: explicitBoolean(explicit.materialAccess?.httpRead, inferred.httpRead)
     }),
     execution: Object.freeze({
       javascript: explicitBoolean(explicit.execution?.javascript, inferred.javascript),
       shell: explicitBoolean(explicit.execution?.shell, inferred.shell),
+      process: explicitBoolean(explicit.execution?.process ?? explicit.execution?.processExecution, inferred.shell || inferred.javascript),
       networkFromExecutionSandbox: explicitBoolean(explicit.execution?.networkFromExecutionSandbox ?? explicit.execution?.network, false)
     }),
     multimodal: Object.freeze({
@@ -32,8 +34,15 @@ export function discoverPortableHostCapabilities(input = {}, options = {}) {
     mutation: Object.freeze({
       localDraftResult: true,
       filesystemWrite: explicitBoolean(explicit.mutation?.filesystemWrite, inferred.filesystemWrite),
-      remoteWriteAvailable: explicitBoolean(explicit.mutation?.remoteWriteAvailable, inferred.remoteWriteAvailable),
+      repositoryWrite: explicitBoolean(explicit.mutation?.repositoryWrite ?? explicit.repositories?.write, inferred.repositoryWrite),
+      remoteWriteAvailable: explicitBoolean(explicit.mutation?.remoteWriteAvailable, inferred.remoteWriteAvailable || inferred.repositoryWrite),
       remoteWriteAuthorized: explicit.mutation?.remoteWriteAuthorized === true || options.allowRemoteWrite === true
+    }),
+    interaction: Object.freeze({
+      artifactReturn: explicitBoolean(explicit.interaction?.artifactReturn, inferred.artifactReturn),
+      humanConfirmation: explicitBoolean(explicit.interaction?.humanConfirmation, inferred.humanConfirmation),
+      authenticationRequest: explicitBoolean(explicit.interaction?.authenticationRequest, inferred.authenticationRequest),
+      copyableTextPresentation: explicitBoolean(explicit.interaction?.copyableTextPresentation, inferred.copyableTextPresentation)
     })
   });
 
@@ -48,6 +57,7 @@ export function discoverPortableHostCapabilities(input = {}, options = {}) {
     schema: PORTABLE_TOOLING_DISCOVERY_SCHEMA_ID,
     profile: Object.freeze({
       schema: PORTABLE_HOST_CAPABILITIES_SCHEMA_ID,
+      capabilityInstance: buildCapabilityInstance(input, options),
       capabilities,
       tools: Object.freeze(tools),
       toolBindings: toolBindings.bindings
@@ -99,7 +109,7 @@ function buildTaskRoutes(capabilities = {}) {
 
 function directCapabilityProfile(value = {}) {
   if (!value || typeof value !== 'object') return null;
-  return (value.materialAccess || value.repositories || value.execution || value.multimodal || value.mutation) ? value : null;
+  return (value.materialAccess || value.repositories || value.execution || value.multimodal || value.mutation || value.interaction) ? value : null;
 }
 
 function inferToolCapabilities(toolBindings = {}) {
@@ -112,16 +122,46 @@ function inferToolCapabilities(toolBindings = {}) {
     archiveRead: available('archiveRead'),
     repositorySearch: available('repositorySearch'),
     repositoryRead: available('repositoryRead'),
+    repositoryWrite: available('repositoryWrite'),
     httpRead: available('httpRead'),
     javascript: available('javascript'),
     shell: available('shell'),
     images: available('images'),
     pdf: available('pdf'),
     filesystemWrite: available('filesystemWrite'),
-    remoteWriteAvailable: available('remoteWriteAvailable')
+    remoteWriteAvailable: available('remoteWriteAvailable'),
+    artifactReturn: available('artifactReturn'),
+    humanConfirmation: available('humanConfirmation'),
+    authenticationRequest: available('authenticationRequest'),
+    copyableTextPresentation: available('copyableTextPresentation')
   };
 }
 
+
+function buildCapabilityInstance(input = {}, options = {}) {
+  const provider = normalizeIdentity(input.provider || options.provider || {}, 'provider');
+  const host = normalizeIdentity(input.hostIdentity || input.hostContext || input.host || options.hostIdentity || options.hostContext || {}, 'host');
+  const session = normalizeIdentity(input.session || input.sessionContext || options.session || {}, 'session');
+  const explicitInstanceId = String(input.capabilityInstanceId || options.capabilityInstanceId || session.capabilityInstanceId || '').trim();
+  const instanceId = explicitInstanceId || (session.id ? `session:${session.id}` : '');
+  return Object.freeze({
+    schema: 'tiinex.portable.host-capability-instance.v1',
+    instanceId,
+    state: instanceId ? 'session-bound' : 'unbound',
+    provider: Object.freeze({ id: provider.id, name: provider.name, declared: provider.declared }),
+    host: Object.freeze({ id: host.id, name: host.name, declared: host.declared }),
+    session: Object.freeze({ id: session.id, name: session.name, declared: session.declared }),
+    authority: Object.freeze({ providerNameGrantsCapability: false, hostNameGrantsCapability: false, currentSessionBindingsRequired: true, advertisementIsExerciseEvidence: false })
+  });
+}
+
+function normalizeIdentity(value, kind) {
+  if (typeof value === 'string') return { id: value.trim(), name: value.trim(), declared: Boolean(value.trim()), capabilityInstanceId: '' };
+  if (!value || typeof value !== 'object') return { id: '', name: '', declared: false, capabilityInstanceId: '' };
+  const id = String(value.id || value.identifier || value.slug || '').trim();
+  const name = String(value.name || value.label || id || '').trim();
+  return { id, name, declared: Boolean(id || name), capabilityInstanceId: kind === 'session' ? String(value.capabilityInstanceId || '').trim() : '' };
+}
 
 function route(task, status, sequence) {
   return Object.freeze({ task, status, sequence: Object.freeze([...new Set(sequence.filter(Boolean))]) });

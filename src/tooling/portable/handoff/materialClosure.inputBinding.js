@@ -128,7 +128,7 @@ function qualifyBindingAgainstPlan(plan = {}, supplied = {}) {
   if (stableJson(planRequirements) !== stableJson(boundRequirements)) findings.push('plan-input-binding-requirements-self-mismatch');
 
   const boundRecipient = new Map((supplied.recipientResolution || []).map((entry) => [String(entry.requirementId || ''), Boolean(entry.resolvable)]));
-  for (const entry of [...(plan.requirements?.required || []), ...(plan.requirements?.reference || [])]) {
+  for (const entry of [...(plan.requirements?.required || []), ...(plan.requirements?.reference || []), ...(plan.requirements?.endpointRoles || []), ...(plan.requirements?.participantRoles || []), ...(plan.requirements?.dependencies || [])]) {
     const id = String(entry.requirementId || '');
     if (!boundRecipient.has(id) || boundRecipient.get(id) !== Boolean(entry.recipientReferenceCapability)) {
       findings.push('plan-input-binding-recipient-self-mismatch');
@@ -195,14 +195,20 @@ function normalizeRequirementsInput(requirements = {}) {
     ...requirements,
     handoff: requirements.handoff || {},
     required: requirements.required || [],
-    reference: requirements.reference || []
+    reference: requirements.reference || [],
+    endpointRoles: requirements.endpointRoles || [],
+    participantRoles: requirements.participantRoles || [],
+    dependencies: requirements.dependencies || []
   };
 }
 
 function candidatesFromBinding(binding = {}) {
   const all = [
     ...(binding.materialResolution?.required || []),
-    ...(binding.materialResolution?.reference || [])
+    ...(binding.materialResolution?.reference || []),
+    ...(binding.materialResolution?.endpointRoles || []),
+    ...(binding.materialResolution?.participantRoles || []),
+    ...(binding.materialResolution?.dependencies || [])
   ].flatMap((entry) => entry.candidates || []);
   const byStable = new Map();
   for (const candidate of all) {
@@ -230,7 +236,10 @@ function handoffBinding(requirements = {}) {
       semanticStatus: String(requirements.handoff?.semanticStatus || 'unknown')
     }),
     required: Object.freeze((requirements.required || []).map(requirementBinding)),
-    reference: Object.freeze((requirements.reference || []).map(requirementBinding))
+    reference: Object.freeze((requirements.reference || []).map(requirementBinding)),
+    endpointRoles: Object.freeze((requirements.endpointRoles || []).map(requirementBinding)),
+    participantRoles: Object.freeze((requirements.participantRoles || []).map(requirementBinding)),
+    dependencies: Object.freeze((requirements.dependencies || []).map(requirementBinding))
   });
 }
 
@@ -249,7 +258,7 @@ function requirementBinding(entry = {}) {
 }
 
 function recipientBinding(requirements = {}, recipient = {}) {
-  return Object.freeze([...(requirements.required || []), ...(requirements.reference || [])].map((entry) => {
+  return Object.freeze([...(requirements.required || []), ...(requirements.reference || []), ...(requirements.endpointRoles || []), ...(requirements.participantRoles || []), ...(requirements.dependencies || [])].map((entry) => {
     const target = String(entry.reference?.target || entry.referenceTarget || '');
     return Object.freeze({
       requirementId: String(entry.id || entry.requirementId || ''),
@@ -267,13 +276,19 @@ function resolveMaterialResolution(requirements = {}, candidates = [], recipient
     if (policy.includeReferenceMaterial === true || resolved.disposition === 'reference-sufficient') return resolved;
     return Object.freeze({ ...resolved, disposition: 'omitted-by-plan', selectedMaterial: null, reason: 'Reference-only material was intentionally omitted by this recipient-relative plan.' });
   });
-  return Object.freeze({ required: Object.freeze(required), reference: Object.freeze(reference) });
+  const endpointRoles = (requirements.endpointRoles || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, recipient, { ...policy, preferReferenceWhenResolvable: false }));
+  const participantRoles = (requirements.participantRoles || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, recipient, { ...policy, preferReferenceWhenResolvable: false }));
+  const dependencies = (requirements.dependencies || []).map((requirement) => resolveRequirementMaterial(requirement, candidates, recipient, { ...policy, preferReferenceWhenResolvable: false }));
+  return Object.freeze({ required: Object.freeze(required), reference: Object.freeze(reference), endpointRoles: Object.freeze(endpointRoles), participantRoles: Object.freeze(participantRoles), dependencies: Object.freeze(dependencies) });
 }
 
 function materialResolutionBinding(materialResolution = {}) {
   return deepFreeze({
     required: Object.freeze((materialResolution.required || []).map(resolutionBinding)),
-    reference: Object.freeze((materialResolution.reference || []).map(resolutionBinding))
+    reference: Object.freeze((materialResolution.reference || []).map(resolutionBinding)),
+    endpointRoles: Object.freeze((materialResolution.endpointRoles || []).map(resolutionBinding)),
+    participantRoles: Object.freeze((materialResolution.participantRoles || []).map(resolutionBinding)),
+    dependencies: Object.freeze((materialResolution.dependencies || []).map(resolutionBinding))
   });
 }
 
@@ -316,7 +331,10 @@ function candidateBinding(candidate = {}) {
 function materialResolutionFromBinding(binding = {}) {
   return {
     required: (binding.materialResolution?.required || []).map(bindingResolutionAsResolution),
-    reference: (binding.materialResolution?.reference || []).map(bindingResolutionAsResolution)
+    reference: (binding.materialResolution?.reference || []).map(bindingResolutionAsResolution),
+    endpointRoles: (binding.materialResolution?.endpointRoles || []).map(bindingResolutionAsResolution),
+    participantRoles: (binding.materialResolution?.participantRoles || []).map(bindingResolutionAsResolution),
+    dependencies: (binding.materialResolution?.dependencies || []).map(bindingResolutionAsResolution)
   };
 }
 
@@ -335,14 +353,20 @@ function bindingResolutionAsResolution(entry = {}) {
 function requirementResolutionProjection(requirements = {}) {
   return {
     required: (requirements.required || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
-    reference: (requirements.reference || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') }))
+    reference: (requirements.reference || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    endpointRoles: (requirements.endpointRoles || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    participantRoles: (requirements.participantRoles || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    dependencies: (requirements.dependencies || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') }))
   };
 }
 
 function bindingRequirementResolutionProjection(handoff = {}) {
   return {
     required: (handoff.required || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
-    reference: (handoff.reference || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') }))
+    reference: (handoff.reference || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    endpointRoles: (handoff.endpointRoles || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    participantRoles: (handoff.participantRoles || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') })),
+    dependencies: (handoff.dependencies || []).map((entry) => ({ requirementId: String(entry.requirementId || ''), classification: String(entry.classification || ''), referenceTarget: String(entry.referenceTarget || '') }))
   };
 }
 
@@ -350,7 +374,10 @@ function requirementsFromBinding(binding = {}) {
   return {
     handoff: binding.handoff?.handoff || {},
     required: (binding.handoff?.required || []).map(bindingRequirementAsRequirement),
-    reference: (binding.handoff?.reference || []).map(bindingRequirementAsRequirement)
+    reference: (binding.handoff?.reference || []).map(bindingRequirementAsRequirement),
+    endpointRoles: (binding.handoff?.endpointRoles || []).map(bindingRequirementAsRequirement),
+    participantRoles: (binding.handoff?.participantRoles || []).map(bindingRequirementAsRequirement),
+    dependencies: (binding.handoff?.dependencies || []).map(bindingRequirementAsRequirement)
   };
 }
 

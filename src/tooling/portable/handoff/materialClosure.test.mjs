@@ -1,14 +1,68 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { exportPackageZipUint8Array } from '../../../export/package.zip.js';
-import { prepareRecipientRelativeWorkspaceHandoffExport } from '../../../export/handoff.plan.js';
+import { prepareRecipientRelativeWorkspaceHandoffExport as prepareRecipientRelativeWorkspaceHandoffExportBase } from '../../../export/handoff.plan.js';
 import { validateArtifact } from '../../../validation/validateArtifact.js';
 import { schemaRegistry } from '../../../schemas/registry.js';
 import { rehydratePortableRuntimePackage } from '../package/runtime.package.js';
 import { inspectHandoffClosureDescriptor, HANDOFF_CLOSURE_DESCRIPTOR_PATH } from './materialClosure.descriptor.js';
-import { planRecipientRelativeHandoffMaterialClosure } from './materialClosure.plan.js';
+import { planRecipientRelativeHandoffMaterialClosure as planRecipientRelativeHandoffMaterialClosureBase } from './materialClosure.plan.js';
 import { projectHandoffMaterialRequirements } from './materialClosure.requirements.js';
-import { buildRecipientRelativeHandoffTransportPackage, roundTripRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
+import { buildRecipientRelativeHandoffTransportPackage as buildRecipientRelativeHandoffTransportPackageBase, roundTripRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+
+
+const FIXTURE_ROUTE_WORKSPACE_ID = 'handoff-fixture-workspace';
+
+function planRecipientRelativeHandoffMaterialClosure(input = {}, options = {}) {
+  return planRecipientRelativeHandoffMaterialClosureBase(withQualifiedHandoffCarrier(input), options);
+}
+
+function buildRecipientRelativeHandoffTransportPackage(input = {}, options = {}) {
+  return buildRecipientRelativeHandoffTransportPackageBase(withQualifiedHandoffCarrier(input), options);
+}
+
+function prepareRecipientRelativeWorkspaceHandoffExport(input = {}, options = {}) {
+  return prepareRecipientRelativeWorkspaceHandoffExportBase(withQualifiedHandoffCarrier(input), options);
+}
+
+function withQualifiedHandoffCarrier(input = {}) {
+  const selectedHandoff = selectedFixtureHandoff(input);
+  if (!selectedHandoff?.markdown || !selectedHandoff?.path) return input;
+  const routeEntry = Object.freeze({ path: selectedHandoff.path, content: selectedHandoff.markdown });
+  const supplied = Array.isArray(input.workspaceMaterializations) ? input.workspaceMaterializations : [];
+  const workspaceMaterializations = supplied.length
+    ? supplied.map((workspace) => ({
+      ...workspace,
+      entries: appendRouteEntry(workspace.entries, routeEntry)
+    }))
+    : [{
+      id: FIXTURE_ROUTE_WORKSPACE_ID,
+      state: 'complete',
+      completenessEvidence: { state: 'qualified', proof: 'enumerated-set' },
+      entries: [routeEntry]
+    }];
+  const routeWorkspaceId = String(workspaceMaterializations[0]?.id || workspaceMaterializations[0]?.workspaceId || (supplied.length ? 'workspace-0' : FIXTURE_ROUTE_WORKSPACE_ID));
+  return {
+    ...input,
+    workspaceMaterializations,
+    transportRoutes: input.transportRoutes || input.handoffRoutes || [{ workspaceId: routeWorkspaceId, path: selectedHandoff.path }]
+  };
+}
+
+function appendRouteEntry(entries = [], routeEntry) {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.some((entry) => String(entry?.path || '') === routeEntry.path)) return list;
+  return [...list, routeEntry];
+}
+
+function selectedFixtureHandoff(input = {}) {
+  if (input.handoff?.markdown && input.handoff?.path) return input.handoff;
+  const planPath = String(input.plan?.handoff?.path || '');
+  if (typeof handoff !== 'undefined' && planPath === String(handoff?.path || '')) return handoff;
+  if (typeof handoffB !== 'undefined' && planPath === String(handoffB?.path || '')) return handoffB;
+  return null;
+}
 
 
 const currentRoot = schemaRegistry.byId.get('tiinex.root.v1');
@@ -33,40 +87,21 @@ assert(dogfoodProjection.requirements.reference.some((entry) => entry.requiremen
 
 const A = 'https://authority.example/material/A';
 const B = 'https://authority.example/material/B';
-const handoffMarkdown = `# Continuity Context
-
-- Envelope Schema: tiinex.root.v1
-- Current
-  - Current Schema: tiinex.handoff.v1
-  - Created At: 2026-08-22 13:00:00
-
----
-
-# Handoff fixture
-
-## Required Context
-
-- required-A
+const handoffMarkdown = qualifiedHandoffFixture({
+  title: 'Handoff fixture',
+  createdAt: '2026-08-22 13:00:00',
+  requiredContext: `- required-A
   - Material: exact A
   - Purpose: required
   - Availability: available
-  - Material Reference: [A](${A})
-
-## Reference Context
-
-- reference-B
+  - Material Reference: [A](${A})`,
+  referenceContext: `- reference-B
   - Material: optional B
   - Purpose: useful
   - Availability: unresolved
-  - Material Reference: [B](${B})
-
-# Continuity Integrity
-
-- sha256-base64url-c14n-v2
-  - Towards: self
-  - Value: fixture
-`;
-const handoff = { id: 'handoff:fixture', path: '.topics/handoff.trace.md', reference: 'tiinex://handoff/fixture', semanticStatus: 'valid', markdown: handoffMarkdown };
+  - Material Reference: [B](${B})`
+});
+const handoff = { id: 'handoff:fixture', path: '.topics/handoff/999-handoff-fixture.trace.md', reference: 'tiinex://handoff/fixture', semanticStatus: 'valid', markdown: handoffMarkdown };
 const workspace = { id: 'w', title: 'Recipient package', records: [], assets: [] };
 const bytesA = new TextEncoder().encode('exact-A-bytes');
 
@@ -192,7 +227,7 @@ const duplicateIdPackaged = buildRecipientRelativeHandoffTransportPackage({
 }, { packageInput: { builtAt: '2026-08-22T13:00:50.000Z' } });
 assert.equal(duplicateIdPackaged.status, 'blocked', 'invalid completeness remains a blocking planner truth even when a later duplicate id is qualified');
 assert.deepEqual(duplicateIdPackaged.plan.workspaceMaterializations.map((entry) => [entry.materialization, entry.qualification]), [['partial', 'invalid-completeness-claim'], ['complete', 'qualified']]);
-const duplicateWorkspaceFiles = duplicateIdPackaged.bundle.files.filter((file) => file.kind === 'handoff-workspace-material');
+const duplicateWorkspaceFiles = duplicateIdPackaged.bundle.files.filter((file) => file.kind === 'handoff-workspace-material' && file.entryId !== `workspace:docs:${handoff.path}`);
 assert.equal(duplicateWorkspaceFiles.length, 2);
 const firstDuplicateCarrier = duplicateWorkspaceFiles.find((file) => file.path.endsWith('/first.txt'));
 const secondDuplicateCarrier = duplicateWorkspaceFiles.find((file) => file.path.endsWith('/second.txt'));
@@ -208,8 +243,8 @@ assert.equal(duplicateIdPackaged.bundle.fileMap.entries.find((entry) => entry.pa
 
 
 const collisionWorkspaces = [
-  { id: 'docs', state: 'complete', completenessEvidence: { state: 'qualified', proof: 'enumerated-set' }, source: { label: 'SOURCE-A' }, entries: [{ path: 'same.txt', packagePath: 'handoff.workspaces/carrier-A/same.txt', content: 'AAAA' }] },
-  { id: 'docs', state: 'complete', completenessEvidence: { state: 'qualified', proof: 'enumerated-set' }, source: { label: 'SOURCE-B' }, entries: [{ path: 'same.txt', packagePath: 'handoff.workspaces/carrier-B/same.txt', content: 'BBBB' }] }
+  { id: 'docs-a', state: 'complete', completenessEvidence: { state: 'qualified', proof: 'enumerated-set' }, source: { label: 'SOURCE-A' }, entries: [{ path: 'same.txt', packagePath: 'handoff.workspaces/carrier-A/same.txt', content: 'AAAA' }] },
+  { id: 'docs-b', state: 'complete', completenessEvidence: { state: 'qualified', proof: 'enumerated-set' }, source: { label: 'SOURCE-B' }, entries: [{ path: 'same.txt', packagePath: 'handoff.workspaces/carrier-B/same.txt', content: 'BBBB' }] }
 ];
 const collisionPlan = planRecipientRelativeHandoffMaterialClosure({ handoff, recipient: { referenceTargets: [A] }, workspaceMaterializations: collisionWorkspaces });
 assert.notEqual(collisionPlan.workspaceMaterializations[0].transportCorrelationKey, collisionPlan.workspaceMaterializations[1].transportCorrelationKey, 'transport correlation must include exact carrier/source/package-path truth rather than only declared workspace fields');
@@ -290,12 +325,21 @@ const uncorrelatedCarrier = uncorrelatedPackaged.bundle.files.find((file) => fil
 assert(uncorrelatedCarrier);
 assert.equal(uncorrelatedCarrier.boundary.includes('complete-evidence-backed'), false);
 
-const handoffBMarkdown = handoffMarkdown
-  .replace('# Handoff fixture', '# Handoff B fixture')
-  .replace('- required-A', '- required-B')
-  .replace('Material: exact A', 'Material: exact B')
-  .replace('Material Reference: [A](' + A + ')', 'Material Reference: [B](' + B + ')');
-const handoffB = { id: 'handoff:fixture-b', path: '.topics/handoff-b.trace.md', reference: 'tiinex://handoff/fixture-b', semanticStatus: 'valid', markdown: handoffBMarkdown };
+const handoffBMarkdown = qualifiedHandoffFixture({
+  title: 'Handoff B fixture',
+  createdAt: '2026-08-22 13:00:00',
+  requiredContext: `- required-B
+  - Material: exact B
+  - Purpose: required
+  - Availability: available
+  - Material Reference: [B](${B})`,
+  referenceContext: `- reference-B
+  - Material: optional B
+  - Purpose: useful
+  - Availability: unresolved
+  - Material Reference: [B](${B})`
+});
+const handoffB = { id: 'handoff:fixture-b', path: '.topics/handoff/999-handoff-b-fixture.trace.md', reference: 'tiinex://handoff/fixture-b', semanticStatus: 'valid', markdown: handoffBMarkdown };
 const externallySuppliedPlanA = planRecipientRelativeHandoffMaterialClosure({ handoff, recipient: { referenceTargets: [A] } });
 const externalPlanSameInputs = buildRecipientRelativeHandoffTransportPackage({
   handoff,

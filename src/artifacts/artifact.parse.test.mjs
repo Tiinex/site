@@ -89,6 +89,34 @@ assert.equal(child.envelope.parent.origin, 'https://github.com/Tiinex/docs/blob/
 assert.equal(child.envelope.parent.createdAt, '2026-07-22T00:00:00.000Z', 'valid Parent Created At parses');
 assert.equal(child.envelope.current.createdAt, '2026-07-23T00:02:00.000Z', 'valid Current Created At stays separate');
 
+const CANONICAL_FOOTER_DIVIDER = `# Continuity Context
+
+- Envelope Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
+- Current
+  - Current Schema: [tiinex.topic.v1](tiinex.topic.v1.schema.md)
+  - Created At: 2026-07-23T00:02:30.000Z
+  - Summary: Canonical footer divider
+
+---
+
+# Canonical Divider
+
+## Current Read
+
+body sentinel
+
+---
+
+# Continuity Integrity
+
+- sha256-base64url-c14n-v2
+  - Towards: self
+  - Value: pending
+`;
+const canonicalDivider = parseArtifactMarkdown(CANONICAL_FOOTER_DIVIDER);
+assert.equal(canonicalDivider.body.text.includes('---'), false, 'canonical footer divider is representation boundary, not body content');
+assert.equal(canonicalDivider.body.text.endsWith('body sentinel'), true, 'body ends before canonical footer divider');
+assert.equal(canonicalDivider.integrity.entries.length, 1, 'integrity remains readable after canonical footer divider');
 
 
 const CHILD_WITH_RELATIVE_PARENT_LINK = `# Continuity Context

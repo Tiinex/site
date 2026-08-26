@@ -3,9 +3,15 @@ import { packageFileBytes } from '../../../export/package.bytes.js';
 import { buildRecipientRelativeHandoffTransportPackage, roundTripRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
 import { buildHandoffTransportCompanionProjection, HANDOFF_TRANSPORT_COMPANION_PATH, inspectHandoffTransportCompanion } from './transportCompanion.js';
 import { prepareRecipientRelativeWorkspaceHandoffExport } from '../../../export/handoff.plan.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const handoffPath = '.topics/development/handoff/loom/001-handoff-package-companion-projection-successor-handoff.trace.md';
-const handoffMarkdown = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 08:56:00\n\n---\n\n# Handoff fixture\n\n## Required Context\n\n## Reference Context\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+const handoffMarkdown = qualifiedHandoffFixture({
+  title: 'Handoff companion fixture',
+  to: 'Loom',
+  purpose: 'exercise transport companion projection',
+  createdAt: '2026-08-23 08:56:00'
+});
 const handoff = { id: handoffPath, path: handoffPath, reference: `tiinex://${handoffPath}`, semanticStatus: 'valid', markdown: handoffMarkdown };
 const workspace = { id: 'current-site', title: 'current Tiinex/site workspace', records: [], assets: [] };
 const workspaceMaterializations = [{
@@ -76,8 +82,23 @@ assert.equal(ambiguousRole.transportCompanion.status, 'ambiguous');
 assert(ambiguousRole.transportCompanion.blockers.some((item) => item.id === 'tiinex.handoff.transport.blocker.acting-role-ambiguous'));
 assert.equal(ambiguousRole.companionInspection.status, 'valid', 'truthfully ambiguous projection is coherent, not an invalid package');
 
-const blockedHandoff = { ...handoff, markdown: handoffMarkdown.replace('## Required Context\n', `## Required Context\n\n- required-X\n  - Material: exact X\n  - Purpose: required\n  - Availability: unresolved\n  - Material Reference: [X](https://authority.example/X)\n`) };
-const blocked = buildRecipientRelativeHandoffTransportPackage({ handoff: blockedHandoff, workspace, workspaceMaterializations, localRunId: 'loom-companion-package-blocked' }, { packageInput: { builtAt: '2026-08-23T10:18:00.000Z' } });
+const blockedHandoffMarkdown = qualifiedHandoffFixture({
+  title: 'Blocked Handoff companion fixture',
+  to: 'Loom',
+  purpose: 'exercise blocked transport companion projection',
+  createdAt: '2026-08-23 08:57:00',
+  requiredContext: `- required-X
+  - Material: exact X
+  - Purpose: required
+  - Availability: unresolved
+  - Material Reference: [X](https://authority.example/X)`
+});
+const blockedHandoff = { ...handoff, markdown: blockedHandoffMarkdown };
+const blockedWorkspaceMaterializations = [{
+  ...workspaceMaterializations[0],
+  entries: [{ path: handoffPath, content: blockedHandoffMarkdown }]
+}];
+const blocked = buildRecipientRelativeHandoffTransportPackage({ handoff: blockedHandoff, workspace, workspaceMaterializations: blockedWorkspaceMaterializations, localRunId: 'loom-companion-package-blocked' }, { packageInput: { builtAt: '2026-08-23T10:18:00.000Z' } });
 assert.equal(blocked.status, 'blocked');
 assert.equal(blocked.transportCompanion.status, 'blocked');
 assert(blocked.transportCompanion.blockers.some((item) => item.id === 'tiinex.handoff.transport.blocker.package-blocked'));

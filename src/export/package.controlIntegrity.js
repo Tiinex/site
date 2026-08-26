@@ -1,4 +1,4 @@
-import { packageFileBytes, sha256Hex, utf8Bytes } from './package.bytes.js';
+import { packageFileByteView, packageFileBytes, sha256Hex, utf8Bytes } from './package.bytes.js';
 import { exportPackageManifestFingerprint } from './package.manifest.js';
 import { inspectExportPackageControlTopology } from './package.controlTopology.js';
 
@@ -33,8 +33,8 @@ export function packageMaterialRepresentationSha256(files = []) {
       path: String(file.path || ''),
       entryId: String(file.entryId || ''),
       kind: String(file.kind || ''),
-      bytes: packageFileBytes(file).byteLength,
-      sha256: sha256Hex(packageFileBytes(file))
+      bytes: packageFileByteView(file).byteLength,
+      sha256: sha256Hex(packageFileByteView(file))
     }))
     .sort((a, b) => a.path.localeCompare(b.path) || a.entryId.localeCompare(b.entryId));
   return sha256Hex(utf8Bytes(JSON.stringify(entries)));

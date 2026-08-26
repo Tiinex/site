@@ -4,9 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { portableCliHelpText } from '../adapters/cli/cli.help.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { projectHandoffHumanOutput } from './carrierProjection.js';
+import { projectRecipientV2HumanOutput, recipientV2StandardInvocation } from './recipientV2.humanOutput.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-handoff-human-output-018-'));
 try {
@@ -33,6 +37,7 @@ try {
     '--handoff-routes', routes.join(','),
     '--route', selectedRoute,
     '--workspace-id', 'human-output-fixture',
+    '--workspace-target', 'workspace.workspace.md',
     '--output-dir', outputDir,
     '--built-at', '2026-08-24T06:20:00.000Z',
     '--compact'
@@ -41,7 +46,7 @@ try {
   assert.equal(code, 0);
   assert.equal(lines.length, 1, 'normal cold return should be recoverable from the one manufacture result');
   const result = JSON.parse(lines[0]);
-  const expectedText = `Handoff package attached.\n\nWorkspace: tiinex-human-output-fixture\nContinue from:\n${selectedRoute}\n`;
+  const expectedText = `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-2-handoff-pointer.trace.md\n`;
   assert.equal(result.status, 'ready');
   assert.equal(result.humanOutput.status, 'ready');
   assert.equal(result.humanOutput.primary.singleHumanTransportChoice, true);
@@ -64,6 +69,7 @@ try {
     workspaceRoot,
     workspaceId: 'human-output-fixture',
     handoffPath: routes[0],
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffRoutes: routes,
     toolingBootstrap: 'embedded',
     runtimeRoot
@@ -74,6 +80,24 @@ try {
   assert.equal(selectionRequired.primary, null);
   assert.equal(selectionRequired.normalInlineRouting, null);
   assert.equal(selectionRequired.fallbackTransportText, null);
+  const recipientV2Inspection = { routes: [
+    { pointerPath: '001-3-2-handoff-pointer.trace.md', workspaceId: 'human-output-fixture', workspaceRelativeHandoffPath: routes[0] },
+    { pointerPath: '001-3-1-handoff-pointer.trace.md', workspaceId: 'human-output-fixture', workspaceRelativeHandoffPath: routes[1] }
+  ] };
+  const baseRecipientV2HumanOutput = projectHandoffHumanOutput({ projection: built.carrierProjection, route: selectedRoute });
+  const recipientV2HumanOutput = projectRecipientV2HumanOutput(baseRecipientV2HumanOutput, recipientV2Inspection);
+  const expectedRecipientV2Invocation = recipientV2StandardInvocation(baseRecipientV2HumanOutput, recipientV2Inspection);
+  assert.equal(recipientV2HumanOutput.normalInlineRouting.content, expectedRecipientV2Invocation);
+  assert.equal(recipientV2HumanOutput.fallbackTransportText.content, expectedRecipientV2Invocation);
+  assert.equal(expectedRecipientV2Invocation, `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-2-handoff-pointer.trace.md\n`);
+  assert.equal(expectedRecipientV2Invocation.includes(routes[0]), false, 'transport text must not duplicate the semantic Handoff path owned by the selected route Pointer');
+  assert.equal(expectedRecipientV2Invocation.includes('Workspace:'), false, 'recipient-v2 transport text must not expose Workspace naming as an alternate ingress hint');
+  assert.equal(expectedRecipientV2Invocation.includes('human-output-fixture'), false, 'recipient-v2 transport text must not leak Workspace id outside package-owned artifacts');
+  assert.equal(expectedRecipientV2Invocation.includes('Selected Handoff'), false, 'transport text is an address label, not a semantic Handoff summary');
+  const axiomBase = projectHandoffHumanOutput({ projection: built.carrierProjection, route: routes[1] });
+  const axiomInvocation = recipientV2StandardInvocation(axiomBase, recipientV2Inspection);
+  assert.equal(axiomInvocation, `Handoff package attached.\n\nStart:\n001-1-READ-BEFORE-PROCEEDING.trace.md\nContinue from:\n001-3-1-handoff-pointer.trace.md\n`);
+  assert.notEqual(axiomInvocation, expectedRecipientV2Invocation, 'the same shared ZIP must be addressable to different recipients only by exact route-specific outer invocation');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
@@ -81,14 +105,54 @@ try {
 async function makeWorkspace(rootPath) {
   await mkdir(path.join(rootPath, '.topics', 'handoff'), { recursive: true });
   await writeFile(path.join(rootPath, 'package.json'), '{"name":"tiinex-human-output-fixture","type":"module"}\n', 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(), 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'context.md'), '# Required context\n', 'utf8');
   for (const [filename, to] of [['018-anchor-to-loom.trace.md', 'Loom'], ['018-anchor-to-axiom.trace.md', 'Axiom']]) {
     await writeFile(path.join(rootPath, '.topics', 'handoff', filename), handoffMarkdown(to), 'utf8');
   }
 }
 function handoffMarkdown(to) {
-  return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-24 08:20:00\n\n---\n\n# Tooling 018 ${to} fixture\n\n## Handoff Parties\n\n- Purpose: prove normal human output emission\n- From: Anchor\n- From Kind: role\n- To: ${to}\n- To Kind: role\n\n## Required Context\n\n- required-context\n  - Material: exact fixture context\n  - Material Reference: [Context](../context.md)\n  - Purpose: qualify shared-route required closure\n  - Availability: available\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+  return qualifiedHandoffFixture({
+    title: `Tooling 018 ${to} fixture`,
+    to,
+    purpose: 'prove normal human output emission',
+    createdAt: '2026-08-24 08:20:00',
+    requiredContext: `- required-context
+  - Material: exact fixture context
+  - Material Reference: [Context](../context.md)
+  - Purpose: qualify shared-route required closure
+  - Availability: available`
+  });
 }
+function workspaceMarkdown() {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-24 08:00:00
+  - Authors: Fixture
+  - Why: Qualify the exact Workspace carried by the human-output regression.
+  - Summary: Human output fixture Workspace.
+  - Status: active/local
+
+---
+
+# Human Output Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}
+`;
+}
+
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });
   await mkdir(path.join(rootPath, 'src', 'tooling', 'portable', 'bootstrap'), { recursive: true });

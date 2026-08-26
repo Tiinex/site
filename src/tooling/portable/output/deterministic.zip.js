@@ -11,7 +11,7 @@ export function createDeterministicStoredZip(entries = []) {
   let offset = 0;
   for (const entry of normalized) {
     const name = Buffer.from(entry.name, 'utf8');
-    const data = Buffer.from(entry.data);
+    const data = Buffer.isBuffer(entry.data) ? entry.data : entry.data instanceof Uint8Array ? Buffer.from(entry.data.buffer, entry.data.byteOffset, entry.data.byteLength) : Buffer.from(entry.data);
     const crc = crc32(data);
     const local = Buffer.alloc(30 + name.length);
     local.writeUInt32LE(0x04034b50, 0);

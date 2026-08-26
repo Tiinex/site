@@ -1,5 +1,5 @@
 import { inspectExportPackageBundle } from './package.builder.js';
-import { packageFileBytes } from './package.bytes.js';
+import { packageFileByteView, packageFileBytes } from './package.bytes.js';
 import { inspectTreeExportBundle } from './tree.bundle.js';
 
 export function exportPackageZipUint8Array(bundle = {}) {
@@ -15,7 +15,7 @@ export function exportTreeZipUint8Array(bundle = {}) {
 }
 
 export function exportFileMapZipUint8Array(files = [], invalidPathError = 'export.zip.path.invalid') {
-  const entries = (files || []).map((file) => ({ name: safeZipPath(file.path), data: packageFileBytes(file) }));
+  const entries = (files || []).map((file) => ({ name: safeZipPath(file.path), data: packageFileByteView(file) }));
   if (entries.some((entry) => !entry.name)) throw new Error(invalidPathError);
   return storedZip(entries);
 }
@@ -45,7 +45,7 @@ function storedZip(entries) {
     view.setUint16(6, 0x0800, true);
     view.setUint16(8, 0, true);
     view.setUint16(10, 0, true);
-    view.setUint16(12, 0, true);
+    view.setUint16(12, 0x0021, true); // 1980-01-01, aligned with portable deterministic ZIP output.
     view.setUint32(14, crc, true);
     view.setUint32(18, data.length, true);
     view.setUint32(22, data.length, true);
@@ -62,7 +62,7 @@ function storedZip(entries) {
     cv.setUint16(8, 0x0800, true);
     cv.setUint16(10, 0, true);
     cv.setUint16(12, 0, true);
-    cv.setUint16(14, 0, true);
+    cv.setUint16(14, 0x0021, true);
     cv.setUint32(16, crc, true);
     cv.setUint32(20, data.length, true);
     cv.setUint32(24, data.length, true);

@@ -1,0 +1,60 @@
+{
+  "schema": "tiinex.portable.cold-start-qualification.examples.v1",
+  "examples": [
+    {
+      "id": "routed-handoff-preferred",
+      "ingressKind": "routed-handoff-package",
+      "toolingAvailable": true,
+      "events": [
+        { "sequence": 1, "mechanism": "native-host", "action": "surface-attached-package", "semanticClass": "minimal-bootstrap", "bytes": 256, "elapsedMs": 5 },
+        { "sequence": 2, "mechanism": "tiinex", "operation": "orient-handoff-package", "status": "ready", "bytes": 4096, "elapsedMs": 20 },
+        { "sequence": 3, "mechanism": "tiinex", "operation": "ground-cold-consumer", "status": "ready", "bytes": 2048, "elapsedMs": 28 },
+        { "sequence": 4, "mechanism": "native-host", "action": "execute-local-test", "semanticClass": "execution", "bytes": 0, "elapsedMs": 40 },
+        { "sequence": 5, "mechanism": "native-host", "action": "substantive-reasoning", "semanticClass": "substantive-work", "bytes": 0, "elapsedMs": 45 }
+      ],
+      "outcome": { "correct": true },
+      "expect": { "status": "preferred-pass", "preferredPathPassed": true, "nativeActionsBeforeTiinexTakeover": 1, "arbitraryFilesReadBeforeOrientation": 0 }
+    },
+    {
+      "id": "workspace-bootstrap-preferred",
+      "ingressKind": "workspace-bootstrap",
+      "toolingAvailable": true,
+      "events": [
+        { "sequence": 1, "mechanism": "native-host", "action": "surface-workspace-bootstrap", "semanticClass": "minimal-bootstrap", "bytes": 128, "elapsedMs": 3 },
+        { "sequence": 2, "mechanism": "tiinex", "operation": "discover-tooling", "status": "ready", "bytes": 512, "elapsedMs": 8 },
+        { "sequence": 3, "mechanism": "tiinex", "operation": "search-lineage", "status": "ready", "bytes": 1024, "elapsedMs": 15 },
+        { "sequence": 4, "mechanism": "tiinex", "operation": "ground-cold-consumer", "status": "ready", "bytes": 384, "elapsedMs": 18 },
+        { "sequence": 5, "mechanism": "native-host", "action": "substantive-design-discussion", "semanticClass": "substantive-work", "bytes": 0, "elapsedMs": 25 }
+      ],
+      "outcome": { "correct": true },
+      "expect": { "status": "preferred-pass", "preferredPathPassed": true, "tiinexCallsToOrientation": 2, "candidateArtifactsInspectedBeforeOrientation": 0 }
+    },
+    {
+      "id": "axiom-style-native-archaeology-recovery",
+      "ingressKind": "routed-handoff-package",
+      "toolingAvailable": true,
+      "events": [
+        { "sequence": 1, "mechanism": "native-host", "action": "surface-attached-package", "semanticClass": "minimal-bootstrap", "bytes": 256, "elapsedMs": 4 },
+        { "sequence": 2, "mechanism": "native-host", "action": "list-zip-entries", "semanticClass": "native-read", "path": "package.zip", "bytes": 2400, "candidateArtifacts": 4, "elapsedMs": 14 },
+        { "sequence": 3, "mechanism": "native-host", "action": "extract-archive", "semanticClass": "native-read", "path": "package.zip", "bytes": 18000, "candidateArtifacts": 8, "elapsedMs": 28 },
+        { "sequence": 4, "mechanism": "native-host", "action": "read-role-and-lineage-files", "semanticClass": "native-read", "path": ".topics/", "bytes": 12000, "candidateArtifacts": 5, "elapsedMs": 41 },
+        { "sequence": 5, "mechanism": "tiinex", "operation": "orient-handoff-package", "status": "ready", "bytes": 4096, "elapsedMs": 55 },
+        { "sequence": 6, "mechanism": "tiinex", "operation": "ground-cold-consumer", "status": "ready", "bytes": 2048, "elapsedMs": 62 },
+        { "sequence": 7, "mechanism": "native-host", "action": "substantive-publication-classification", "semanticClass": "substantive-work", "bytes": 0, "elapsedMs": 78 }
+      ],
+      "outcome": { "correct": true },
+      "expect": { "status": "recovered-not-preferred", "preferredPathPassed": false, "recoveryState": "recovered", "unexpectedNativeActionsBeforeTiinexTakeover": 3, "arbitraryFilesReadBeforeOrientation": 3, "candidateArtifactsInspectedBeforeOrientation": 17 }
+    },
+    {
+      "id": "voice-stt-degraded-capture",
+      "ingressKind": "degraded-capture",
+      "toolingAvailable": false,
+      "events": [
+        { "sequence": 1, "mechanism": "native-host", "action": "capture-transcript", "semanticClass": "fallback", "reason": "Portable Tooling is unavailable in the voice capture host.", "bytes": 640, "elapsedMs": 12 }
+      ],
+      "fallback": { "used": true, "reason": "Portable Tooling is unavailable in the voice capture host." },
+      "outcome": { "state": "unknown" },
+      "expect": { "status": "degraded-fallback", "preferredPathPassed": false, "fallbackUsed": true, "fallbackJustified": true }
+    }
+  ]
+}

@@ -1,7 +1,10 @@
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
-import { projectHandoffMaterialRequirements } from './materialClosure.requirements.js';
+import { validatedC14nV2PrimarySelfDigest } from '../../../integrity/integrity.c14nV2.js';
+import { projectHandoffMaterialRequirements, projectParticipantRoleRequirements } from './materialClosure.requirements.js';
 import { qualifyHandoffCarrierWorkspaces, selectHandoffCarrierDefaultWorkspace, handoffCarrierWorkspaceForRoute, projectHandoffCarrierWorkspace, findProjectedHandoffCarrierWorkspace } from './carrierProjection.workspaces.js';
 import { HANDOFF_HUMAN_OUTPUT_PRESENTATION, HANDOFF_NORMAL_EMISSION_BOUNDARY } from './humanOutputPresentation.js';
+import { qualifySelectedHandoffArtifact } from './routeArtifactConformance.js';
+import { buildHandoffWorkspaceByteProvider, listHandoffWorkspaceEntries, resolveHandoffWorkspaceEntry } from './workspaceByteProvider.js';
 
 export const HANDOFF_CARRIER_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-carrier-projection.v1';
 export const HANDOFF_CARRIER_PROJECTION_PATH = 'tiinex.package/handoff-carrier.json';
@@ -12,18 +15,22 @@ const BOUNDARY = 'Disposable human carrier/output projection derived from qualif
 export function buildHandoffCarrierProjection(input = {}) {
   const bundle = input.bundle || {};
   const descriptor = input.descriptor || parseJsonFile(findFile(bundle, 'tiinex.package/handoff-closure.json')) || bundle.handoffClosure || {};
-  const workspaces = qualifyHandoffCarrierWorkspaces(bundle, descriptor);
+  const byteProvider = input.workspaceByteProvider || buildHandoffWorkspaceByteProvider(bundle, descriptor);
+  const workspaces = qualifyHandoffCarrierWorkspaces(bundle, descriptor, byteProvider);
   const defaultWorkspace = selectHandoffCarrierDefaultWorkspace(bundle, workspaces);
   const routeSpecs = normalizeRouteSpecs(input.routes || input.handoffRoutes || [], descriptor, defaultWorkspace);
   const shared = routeSpecs.length > 1;
-  const routes = routeSpecs.map((spec) => qualifyRoute(bundle, descriptor, handoffCarrierWorkspaceForRoute(workspaces, spec.workspaceId), spec, { enforceRequiredClosure: shared }));
+  const routes = routeSpecs.map((spec) => qualifyRoute(bundle, descriptor, byteProvider, handoffCarrierWorkspaceForRoute(workspaces, spec.workspaceId), spec, { enforceRequiredClosure: shared }));
   const qualifiedRoutes = routes.filter((route) => route.state === 'qualified');
   const mode = routes.length > 1 ? 'shared' : 'single';
   const findings = [];
   if (!workspaces.length) findings.push(finding('error', 'portable.handoff-carrier.workspaces.missing', 'Carrier projection requires at least one package workspace materialization.'));
   for (const workspace of workspaces) if (workspace.state !== 'qualified') findings.push(finding('error', `portable.handoff-carrier.workspace.${workspace.state}`, 'Carrier projection workspace is not uniquely qualified against package truth.', { workspaceId: workspace.id || '' }));
   if (!routes.length) findings.push(finding('error', 'portable.handoff-carrier.routes.missing', 'Carrier projection requires at least one controlling Handoff route.'));
-  for (const route of routes) if (route.state !== 'qualified') findings.push(finding('error', `portable.handoff-carrier.route.${route.state}`, 'Carrier projection route is not independently qualified against package truth.', { path: route.workspaceRelativePath || '', reasons: route.reasons || [] }));
+  for (const route of routes) {
+    if (route.state !== 'qualified') findings.push(finding('error', `portable.handoff-carrier.route.${route.state}`, 'Carrier projection route is not independently qualified against package truth.', { path: route.workspaceRelativePath || '', reasons: route.reasons || [] }));
+    for (const item of route.conformance?.findings || []) findings.push(finding(item.severity || 'error', item.code || 'portable.handoff-carrier.route.conformance', item.message || 'Selected Handoff conformance failed.', { path: route.workspaceRelativePath || '' }));
+  }
   if (qualifiedRoutes.length !== routes.length) findings.push(finding('error', 'portable.handoff-carrier.routes.unqualified', 'One or more advertised Handoff routes are unqualified; shared human routing must fail closed.'));
   const status = findings.some((item) => item.severity === 'error') ? 'blocked' : 'ready';
   return deepFreeze({
@@ -41,7 +48,7 @@ export function buildHandoffCarrierProjection(input = {}) {
   });
 }
 
-export function inspectHandoffCarrierProjection(bundle = {}) {
+export function inspectHandoffCarrierProjection(bundle = {}, options = {}) {
   const findings = [];
   const file = findFile(bundle, HANDOFF_CARRIER_PROJECTION_PATH);
   const projection = parseJsonFile(file);
@@ -49,7 +56,7 @@ export function inspectHandoffCarrierProjection(bundle = {}) {
   if (projection && projection.schema !== HANDOFF_CARRIER_PROJECTION_SCHEMA_ID) findings.push(finding('error', 'portable.handoff-carrier.schema.invalid', 'Handoff carrier projection schema/version is unsupported.'));
   if (projection && projection.boundary !== BOUNDARY) findings.push(finding('error', 'portable.handoff-carrier.boundary.invalid', 'Handoff carrier projection lost its disposable non-authoritative boundary.'));
   if (projection) {
-    const expected = buildHandoffCarrierProjection({ bundle, routes: (projection.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose })) });
+    const expected = buildHandoffCarrierProjection({ bundle, workspaceByteProvider: options.workspaceByteProvider || null, routes: (projection.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose, participantRoles: route.participantRoleSpecs || [] })) });
     for (const field of ['status', 'mode', 'workspaces', 'workspace', 'selection', 'routes', 'authority']) {
       if (stableJson(expected[field]) !== stableJson(projection[field])) findings.push(finding('error', `portable.handoff-carrier.${field}.mismatch`, `Handoff carrier ${field} diverges from current package/workspace truth.`));
     }
@@ -100,22 +107,23 @@ export function carrierFilenameForInstance(filename = '', instance = 1) {
 }
 
 
-function qualifyRoute(bundle, descriptor, workspace, spec = {}, options = {}) {
+function qualifyRoute(bundle, descriptor, byteProvider, workspace, spec = {}, options = {}) {
   const routePath = normalizeWorkspacePath(spec.path || spec.workspaceRelativePath || '');
   const reasons = [];
   if (workspace.state !== 'qualified') reasons.push(`workspace-${workspace.state || 'unresolved'}`);
   if (!routePath || !isWorkspaceRelativeArtifactPath(routePath)) reasons.push('workspace-relative-trace-path-required');
-  const entries = workspace.materialization?.includedEntries || [];
-  const matches = entries.filter((entry) => normalizeWorkspacePath(entry.path) === routePath);
-  if (matches.length !== 1) reasons.push(matches.length > 1 ? 'workspace-entry-ambiguous' : 'workspace-entry-missing');
-  const packagePath = String(matches[0]?.packagePath || '');
-  const packageFile = packagePath ? findFile(bundle, packagePath) : null;
-  if (!packageFile) reasons.push('package-byte-missing');
-  const data = packageFile ? packageFileBytes(packageFile) : new Uint8Array();
-  if (packageFile && matches[0]?.sha256 && String(matches[0].sha256) !== sha256Hex(data)) reasons.push('workspace-byte-digest-mismatch');
+  const resolution = routePath && workspace.id ? resolveHandoffWorkspaceEntry(byteProvider, workspace.id, routePath) : null;
+  if (!resolution || resolution.state !== 'qualified') reasons.push(resolution?.reason || 'workspace-entry-missing');
+  const data = resolution?.state === 'qualified' ? packageFileBytes({ data: resolution.data }) : new Uint8Array();
+  if (resolution?.state === 'qualified' && String(resolution.sha256 || '') !== sha256Hex(data)) reasons.push('workspace-byte-digest-mismatch');
   const markdown = data.byteLength ? decodeUtf8(data) : '';
-  if (!/Current Schema:\s*(?:\[)?tiinex\.handoff\.v1\b/i.test(markdown)) reasons.push('handoff-schema-unqualified');
-  const requiredClosure = qualifyRouteRequiredClosure(bundle, descriptor, workspace, routePath, markdown);
+  const conformance = markdown ? qualifySelectedHandoffArtifact({ markdown, resolveParent: ({ parent, targetEntry }) => resolveRouteParent(bundle, descriptor, byteProvider, workspace, routePath, parent, targetEntry) }) : null;
+  if (!conformance || conformance.status !== 'qualified') reasons.push('handoff-conformance-unqualified');
+  const participantRoleSpecs = Object.freeze([...(spec.participantRoles || spec.roles || [])].map((entry) => typeof entry === 'string' ? entry : Object.freeze({ ...(entry || {}) })));
+  const baseRequirements = projectHandoffMaterialRequirements({ path: routePath, markdown });
+  const participantRoles = projectParticipantRoleRequirements(participantRoleSpecs, { workspaceId: String(workspace.id || spec.workspaceId || ''), routePath });
+  const materialRequirements = deepFreeze({ ...baseRequirements, participantRoles, counts: Object.freeze({ ...(baseRequirements.counts || {}), participantRoles: participantRoles.length }) });
+  const requiredClosure = qualifyRouteRequiredClosure(bundle, descriptor, byteProvider, workspace, routePath, materialRequirements);
   if (options.enforceRequiredClosure && requiredClosure.state !== 'qualified') reasons.push('required-context-closure-unqualified');
   const parties = parseHandoffParties(markdown);
   if (!parties.from) reasons.push('from-unresolved');
@@ -123,27 +131,36 @@ function qualifyRoute(bundle, descriptor, workspace, spec = {}, options = {}) {
   const dimension = dimensionFromPath(routePath);
   if (!dimension) reasons.push('dimension-unresolved');
   const purpose = slug(spec.purpose || '');
-  const projectedFilename = !reasons.length ? carrierFilename(workspace.slug, dimension, parties.from, parties.to, purpose) : '';
+  const projectedFilename = !reasons.length ? carrierFilename(workspace.slug, dimension, parties.from, parties.to) : '';
+  const providerMode = String(resolution?.providerMode || '');
+  const packagePath = String(resolution?.packagePath || '');
+  const pointerTarget = providerMode === 'archive'
+    ? `${packagePath}#tiinex-workspace-entry=${encodeURIComponent(routePath)}`
+    : packagePath;
   return deepFreeze({
     id: routePath && workspace.id ? `handoff-route:${workspace.id}:${routePath}` : '',
     workspaceId: String(workspace.id || spec.workspaceId || ''),
     state: reasons.length ? 'blocked' : 'qualified',
     workspaceRelativePath: routePath,
     packagePath,
-    sha256: packageFile ? sha256Hex(data) : '',
+    ...(providerMode === 'archive' ? { providerMode, archivePackagePath: String(resolution?.archivePackagePath || packagePath), pointerTarget } : {}),
+    sha256: data.byteLength ? sha256Hex(data) : '',
     dimension,
     parties: Object.freeze({ from: parties.from, to: parties.to, fromSlug: slug(parties.from), toSlug: slug(parties.to) }),
     purpose,
     projectedFilename,
+    conformance,
+    materialRequirements,
+    participantRoles,
+    participantRoleSpecs,
     requiredClosure,
     reasons: Object.freeze(reasons),
     authority: Object.freeze({ artifactPartiesAuthoritative: true, dimensionSemanticAuthority: false, filenameSemanticAuthority: false })
   });
 }
 
-function qualifyRouteRequiredClosure(bundle, descriptor, workspace, routePath, markdown) {
-  const requirements = projectHandoffMaterialRequirements({ path: routePath, markdown });
-  const required = (requirements.required || []).map((requirement) => qualifyRequiredRequirement(bundle, descriptor, workspace, routePath, requirement));
+function qualifyRouteRequiredClosure(bundle, descriptor, byteProvider, workspace, routePath, requirements) {
+  const required = (requirements.required || []).map((requirement) => qualifyRequiredRequirement(bundle, descriptor, byteProvider, workspace, routePath, requirement));
   const qualified = required.filter((entry) => entry.state === 'qualified').length;
   return deepFreeze({
     state: qualified === required.length ? 'qualified' : 'blocked',
@@ -154,7 +171,7 @@ function qualifyRouteRequiredClosure(bundle, descriptor, workspace, routePath, m
   });
 }
 
-function qualifyRequiredRequirement(bundle, descriptor, workspace, routePath, requirement = {}) {
+function qualifyRequiredRequirement(bundle, descriptor, byteProvider, workspace, routePath, requirement = {}) {
   const target = String(requirement.reference?.target || '').trim();
   const reasons = [];
   let resolution = null;
@@ -162,9 +179,9 @@ function qualifyRequiredRequirement(bundle, descriptor, workspace, routePath, re
   if (!reasons.length && !isExternalReference(target)) {
     const resolvedPath = resolveWorkspaceReference(routePath, target);
     if (!resolvedPath) reasons.push('workspace-reference-outside-or-invalid');
-    else resolution = resolveWorkspaceRequiredMaterial(bundle, workspace, resolvedPath);
+    else resolution = resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath);
   }
-  if (!resolution && !reasons.length) resolution = resolveDescriptorMaterial(bundle, descriptor, target);
+  if (!resolution && !reasons.length) resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target);
   if (!resolution && !reasons.length) reasons.push('required-material-not-carried');
   if (resolution?.state !== 'qualified' && resolution?.reason) reasons.push(resolution.reason);
   return deepFreeze({
@@ -177,31 +194,107 @@ function qualifyRequiredRequirement(bundle, descriptor, workspace, routePath, re
   });
 }
 
-function resolveWorkspaceRequiredMaterial(bundle, workspace, resolvedPath) {
-  const matches = (workspace.materialization?.includedEntries || []).filter((entry) => normalizeWorkspacePath(entry.path) === resolvedPath);
-  if (matches.length !== 1) return Object.freeze({ state: 'blocked', reason: matches.length > 1 ? 'required-workspace-entry-ambiguous' : 'required-workspace-entry-missing' });
-  const entry = matches[0];
-  const file = findFile(bundle, String(entry.packagePath || ''));
-  if (!file) return Object.freeze({ state: 'blocked', reason: 'required-workspace-package-byte-missing' });
-  const data = packageFileBytes(file);
-  if (Number(entry.bytes || data.byteLength) !== data.byteLength || (entry.sha256 && String(entry.sha256) !== sha256Hex(data))) return Object.freeze({ state: 'blocked', reason: 'required-workspace-package-byte-mismatch' });
-  return Object.freeze({ state: 'qualified', kind: 'workspace-material', workspaceRelativePath: resolvedPath, packagePath: String(entry.packagePath || ''), bytes: data.byteLength, sha256: sha256Hex(data) });
+function resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath) {
+  const resolution = resolveHandoffWorkspaceEntry(byteProvider, workspace.id, resolvedPath);
+  if (resolution.state !== 'qualified') {
+    const reason = resolution.state === 'ambiguous' ? 'required-workspace-entry-ambiguous' : resolution.state === 'unresolved' ? 'required-workspace-entry-missing' : (resolution.reason || 'required-workspace-entry-missing');
+    return Object.freeze({ state: 'blocked', reason });
+  }
+  const data = packageFileBytes({ data: resolution.data });
+  if (Number(resolution.bytes || 0) !== data.byteLength || String(resolution.sha256 || '') !== sha256Hex(data)) return Object.freeze({ state: 'blocked', reason: 'required-workspace-package-byte-mismatch' });
+  return Object.freeze({
+    state: 'qualified',
+    kind: resolution.kind,
+    workspaceRelativePath: resolvedPath,
+    packagePath: String(resolution.packagePath || ''),
+    ...(resolution.providerMode === 'archive' ? { workspaceId: String(workspace.id || ''), providerMode: 'archive', archivePackagePath: String(resolution.archivePackagePath || resolution.packagePath || ''), innerPath: String(resolution.innerPath || resolvedPath) } : {}),
+    bytes: data.byteLength,
+    sha256: sha256Hex(data)
+  });
 }
 
-function resolveDescriptorMaterial(bundle, descriptor, target) {
+function resolveDescriptorMaterial(bundle, descriptor, byteProvider, target) {
   const matches = (descriptor.materialized || []).filter((entry) => String(entry.referenceTarget || '') === String(target || ''));
   const byRepresentation = new Map();
   for (const entry of matches) {
-    const key = `${entry.packagePath || ''}\u0000${entry.sha256 || ''}\u0000${Number(entry.bytes || 0)}`;
+    const key = entry.carrierKind === 'workspace-archive-entry'
+      ? `${entry.workspaceId || ''}\u0000${entry.workspaceRelativePath || ''}\u0000${entry.sha256 || ''}\u0000${Number(entry.bytes || 0)}`
+      : `${entry.packagePath || ''}\u0000${entry.sha256 || ''}\u0000${Number(entry.bytes || 0)}`;
     if (!byRepresentation.has(key)) byRepresentation.set(key, entry);
   }
   if (byRepresentation.size !== 1) return byRepresentation.size > 1 ? Object.freeze({ state: 'blocked', reason: 'required-material-carrier-ambiguous' }) : null;
   const entry = [...byRepresentation.values()][0];
+  if (String(entry.carrierKind || '') === 'workspace-archive-entry') {
+    const resolved = resolveHandoffWorkspaceEntry(byteProvider, entry.workspaceId, entry.workspaceRelativePath);
+    if (resolved.state !== 'qualified') return Object.freeze({ state: 'blocked', reason: resolved.reason || 'required-material-workspace-provider-unqualified' });
+    const data = packageFileBytes({ data: resolved.data });
+    if (Number(entry.bytes || 0) !== data.byteLength || String(entry.sha256 || '') !== sha256Hex(data)) return Object.freeze({ state: 'blocked', reason: 'required-material-package-byte-mismatch' });
+    return Object.freeze({ state: 'qualified', kind: 'workspace-archive-entry', workspaceId: String(entry.workspaceId || ''), workspaceRelativePath: String(entry.workspaceRelativePath || ''), providerMode: 'archive', packagePath: String(resolved.packagePath || ''), archivePackagePath: String(resolved.archivePackagePath || resolved.packagePath || ''), innerPath: String(resolved.innerPath || entry.workspaceRelativePath || ''), bytes: data.byteLength, sha256: sha256Hex(data) });
+  }
   const file = findFile(bundle, String(entry.packagePath || ''));
   if (!file) return Object.freeze({ state: 'blocked', reason: 'required-material-package-byte-missing' });
   const data = packageFileBytes(file);
   if (Number(entry.bytes || 0) !== data.byteLength || String(entry.sha256 || '') !== sha256Hex(data)) return Object.freeze({ state: 'blocked', reason: 'required-material-package-byte-mismatch' });
   return Object.freeze({ state: 'qualified', kind: 'materialized-required-material', packagePath: String(entry.packagePath || ''), bytes: data.byteLength, sha256: sha256Hex(data) });
+}
+
+function resolveRouteParent(bundle, descriptor, byteProvider, workspace, routePath, parent = {}, targetEntry = {}) {
+  const localTargets = [];
+  if (parent.trace && !isExternalReference(parent.trace)) localTargets.push(String(parent.trace));
+  for (const entry of parent.originEntries || []) {
+    if (String(entry?.label || '').trim() === 'relative' && entry?.target && !isExternalReference(entry.target)) localTargets.push(String(entry.target));
+  }
+  const candidates = new Map();
+  for (const target of localTargets) {
+    const resolvedPath = resolveWorkspaceReference(routePath, target);
+    if (!resolvedPath) continue;
+    const resolved = resolveHandoffWorkspaceEntry(byteProvider, workspace.id, resolvedPath);
+    if (resolved.state !== 'qualified') continue;
+    const data = packageFileBytes({ data: resolved.data });
+    if (Number(resolved.bytes || 0) !== data.byteLength || String(resolved.sha256 || '') !== sha256Hex(data)) continue;
+    const markdown = decodeUtf8(data);
+    if (!markdown) continue;
+    candidates.set(`${workspace.id}\u0000${resolvedPath}`, Object.freeze({ state: 'qualified', markdown, basis: 'parent-local-reference', workspaceRelativePath: resolvedPath, packagePath: String(resolved.packagePath || ''), sha256: sha256Hex(data) }));
+  }
+  if (candidates.size === 1) return [...candidates.values()][0];
+  if (candidates.size > 1) return Object.freeze({ state: 'ambiguous', reason: 'multiple-parent-local-reference-candidates' });
+
+  const digest = String(targetEntry?.value || '').trim();
+  if (!digest) return Object.freeze({ state: 'unavailable', reason: 'parent-target-digest-missing' });
+  const digestMatches = new Map();
+  for (const candidate of packageParentCandidates(bundle, descriptor, byteProvider)) {
+    const data = candidate.data || (candidate.packagePath ? packageFileBytes(findFile(bundle, candidate.packagePath) || {}) : new Uint8Array());
+    if (!data.byteLength) continue;
+    if (Number(candidate.bytes || data.byteLength) !== data.byteLength || (candidate.sha256 && String(candidate.sha256) !== sha256Hex(data))) continue;
+    const markdown = decodeUtf8(data);
+    if (!markdown) continue;
+    const self = validatedC14nV2PrimarySelfDigest(markdown);
+    if (self.state !== 'verified' || self.value !== digest) continue;
+    const key = `${candidate.workspaceId || ''}\u0000${candidate.workspaceRelativePath || ''}\u0000${candidate.packagePath || ''}`;
+    digestMatches.set(key, Object.freeze({ state: 'qualified', markdown, basis: 'parent-target-digest-candidate', workspaceRelativePath: normalizeWorkspacePath(candidate.workspaceRelativePath || ''), packagePath: String(candidate.packagePath || ''), sha256: sha256Hex(data) }));
+  }
+  if (digestMatches.size === 1) return [...digestMatches.values()][0];
+  if (digestMatches.size > 1) return Object.freeze({ state: 'ambiguous', reason: 'multiple-parent-target-digest-candidates' });
+  return Object.freeze({ state: 'unavailable', reason: 'parent-representation-not-carried' });
+}
+
+function packageParentCandidates(bundle = {}, descriptor = {}, byteProvider = {}) {
+  const candidates = new Map();
+  for (const workspace of descriptor.workspaceMaterializations || []) {
+    for (const entry of listHandoffWorkspaceEntries(byteProvider, workspace.id)) {
+      if (!/\.trace\.md$/i.test(String(entry.path || ''))) continue;
+      const key = `${workspace.id}\u0000${entry.path}`;
+      if (!candidates.has(key)) candidates.set(key, Object.freeze({ workspaceId: String(workspace.id || ''), packagePath: String(entry.packagePath || entry.archivePackagePath || ''), workspaceRelativePath: normalizeWorkspacePath(entry.path), bytes: Number(entry.bytes || 0), sha256: String(entry.sha256 || ''), data: entry.data }));
+    }
+  }
+  for (const entry of descriptor.materialized || []) {
+    if (String(entry.carrierKind || '') === 'workspace-archive-entry') continue;
+    const packagePath = String(entry.packagePath || '');
+    if (!packagePath || candidates.has(`package\u0000${packagePath}`)) continue;
+    const file = findFile(bundle, packagePath);
+    candidates.set(`package\u0000${packagePath}`, Object.freeze({ packagePath, workspaceRelativePath: normalizeWorkspacePath(entry.originalPath || ''), bytes: Number(entry.bytes || 0), sha256: String(entry.sha256 || ''), data: file ? packageFileBytes(file) : new Uint8Array() }));
+  }
+  return [...candidates.values()];
 }
 
 function resolveWorkspaceReference(routePath, target) {
@@ -229,7 +322,7 @@ function normalizeRouteSpecs(value, descriptor, defaultWorkspace = null) {
     const path = normalizeWorkspacePath(spec.path || spec.workspaceRelativePath || '');
     const workspaceId = String(spec.workspaceId || spec.workspace || defaultWorkspaceId || '');
     const key = `${workspaceId}\u0000${path}`;
-    if (path && !map.has(key)) map.set(key, Object.freeze({ workspaceId, path, purpose: String(spec.purpose || '') }));
+    if (path && !map.has(key)) map.set(key, Object.freeze({ workspaceId, path, purpose: String(spec.purpose || ''), participantRoles: Object.freeze([...(spec.participantRoles || spec.roles || [])].map((entry) => typeof entry === 'string' ? entry : Object.freeze({ ...(entry || {}) }))) }));
   }
   return [...map.values()].sort((a, b) => a.workspaceId.localeCompare(b.workspaceId) || a.path.localeCompare(b.path));
 }
@@ -263,10 +356,8 @@ function dimensionFromPath(value = '') {
   const name = normalizeWorkspacePath(value).split('/').pop() || '';
   return String(name.match(/^(\d{3}(?:-\d+)*)-/)?.[1] || '');
 }
-function carrierFilename(workspaceSlug, dimension, from, to, purpose = '') {
-  const parts = [slug(workspaceSlug), slug(dimension), slug(from), 'to', slug(to)].filter(Boolean);
-  if (purpose) parts.push(slug(purpose));
-  return `${parts.join('-')}.handoff-package.zip`;
+function carrierFilename(workspaceSlug, dimension, from, to) {
+  return `${[slug(workspaceSlug), slug(dimension), slug(from), 'to', slug(to)].filter(Boolean).join('-')}.handoff-package.zip`;
 }
 function transportTextForRoute(workspace = {}, route = {}) {
   const title = String(workspace.title || workspace.id || 'workspace');

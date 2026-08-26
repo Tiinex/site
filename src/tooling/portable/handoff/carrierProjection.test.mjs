@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { inspectHandoffCarrierProjection, projectHandoffCarrierOutputFromPackage, projectHandoffHumanOutput } from './carrierProjection.js';
@@ -32,6 +33,16 @@ try {
   const built = manufactureRecipientRelativeHandoffPackage(input, { packageInput: { builtAt: '2026-08-23T13:00:00.000Z' } });
   assert.equal(built.status, 'ready');
   assert.equal(built.transportExecutable, true);
+  const purposeInput = await prepareNodeHandoffManufacturingInput({
+    workspaceRoot,
+    workspaceId: 'shared-fixture',
+    handoffPath: routes[0],
+    handoffRoutes: [{ workspaceId: 'shared-fixture', path: routes[0], purpose: 'warm recipient pressure test' }],
+    toolingBootstrap: 'embedded',
+    runtimeRoot
+  });
+  const purposeBuilt = manufactureRecipientRelativeHandoffPackage(purposeInput, { packageInput: { builtAt: '2026-08-23T13:00:00.000Z' } });
+  assert.equal(purposeBuilt.carrierProjection.routes[0].projectedFilename, 'tiinex-shared-fixture-004-anchor-to-loom.handoff-package.zip', 'route purpose/test scenario must never leak into Tooling-projected carrier basename');
   assert.equal(built.verification.carrierInspection, 'valid');
   assert.equal(built.carrierProjection.status, 'ready');
   assert.equal(built.carrierProjection.mode, 'shared');
@@ -165,6 +176,36 @@ try {
   assert.equal(await readFile(cli.transportTextSidecar.path, 'utf8'), `Handoff package attached.\n\nWorkspace: tiinex-shared-fixture\nContinue from:\n${routes[2]}\n`);
   assert(Buffer.byteLength(cliLines.at(-1), 'utf8') < 60_000, 'shared-carrier CLI receipt must remain bounded and not serialize package bytes');
 
+  const leakedNameLines = [];
+  const leakedNamePath = path.join(cliDir, 'warm-recipient.handoff-package.zip');
+  const leakedNameCode = await runPortableCli([
+    'manufacture-handoff-package', workspaceRoot,
+    '--handoff', routes[0],
+    '--handoff-routes', routes.join(','),
+    '--route', routes[0],
+    '--workspace-id', 'shared-fixture',
+    '--output', leakedNamePath,
+    '--built-at', '2026-08-23T13:00:00.000Z',
+    '--compact'
+  ], { log: (value) => leakedNameLines.push(value), error: (value) => leakedNameLines.push(value) }, { runtimeRoot });
+  assert.equal(leakedNameCode, 1, 'Handoff manufacture must fail closed when caller-supplied basename diverges from Tooling projection');
+  assert.equal(JSON.parse(leakedNameLines.at(-1)).error, 'portable.cli.handoff-carrier.output-filename.mismatch');
+
+  const exactNameLines = [];
+  const exactNamePath = path.join(cliDir, 'tiinex-shared-fixture-004-anchor-to-loom.handoff-package.zip');
+  const exactNameCode = await runPortableCli([
+    'manufacture-handoff-package', workspaceRoot,
+    '--handoff', routes[0],
+    '--handoff-routes', routes.join(','),
+    '--route', routes[0],
+    '--workspace-id', 'shared-fixture',
+    '--output', exactNamePath,
+    '--built-at', '2026-08-23T13:00:00.000Z',
+    '--compact'
+  ], { log: (value) => exactNameLines.push(value), error: (value) => exactNameLines.push(value) }, { runtimeRoot });
+  assert.equal(exactNameCode, 0, 'exact Tooling-projected basename remains a valid explicit output path');
+  assert.equal(path.basename(JSON.parse(exactNameLines.at(-1)).primaryOutput.path), 'tiinex-shared-fixture-004-anchor-to-loom.handoff-package.zip');
+
   const selectionLines = [];
   const projectionCode = await runPortableCli([
     'project-handoff-carrier-output', cli.primaryOutput.path,
@@ -197,13 +238,48 @@ async function makeWorkspace(rootPath) {
   }
 }
 function handoffMarkdown(to) {
-  return `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 13:00:00\n\n---\n\n# Shared ${to} handoff\n\n## Handoff Parties\n\n- Purpose: shared-carrier fixture\n- From: Anchor\n- From Kind: role\n- To: ${to}\n- To Kind: role\n\n## Required Context\n\n- shared-context\n  - Material: exact shared context\n  - Material Reference: [Shared context](../shared-context.md)\n  - Purpose: prove common-byte reuse\n  - Availability: available\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`;
+  return qualifiedHandoffFixture({
+    title: `Shared ${to} handoff`,
+    to,
+    purpose: 'shared-carrier fixture',
+    createdAt: '2026-08-23 13:00:00',
+    requiredContext: `- shared-context
+  - Material: exact shared context
+  - Material Reference: [Shared context](../shared-context.md)
+  - Purpose: prove common-byte reuse
+  - Availability: available`
+  });
 }
 function handoffMarkdownWithMissingSecondaryRequired(to) {
-  return handoffMarkdown(to).replace('[Shared context](../shared-context.md)', '[Missing secondary material](missing.trace.md)');
+  return qualifiedHandoffFixture({
+    title: `Shared ${to} handoff`,
+    to,
+    purpose: 'shared-carrier fixture',
+    createdAt: '2026-08-23 13:00:00',
+    requiredContext: `- shared-context
+  - Material: exact shared context
+  - Material Reference: [Missing secondary material](missing.trace.md)
+  - Purpose: prove common-byte reuse
+  - Availability: available`
+  });
 }
 function handoffMarkdownWithMissingReference(to) {
-  return `${handoffMarkdown(to)}\n## Reference Context\n\n- optional-missing\n  - Material: optional missing material\n  - Material Reference: [Optional missing](missing-reference.trace.md)\n  - Purpose: prove Reference Context remains non-blocking\n  - Availability: unavailable\n`;
+  return qualifiedHandoffFixture({
+    title: `Shared ${to} handoff`,
+    to,
+    purpose: 'shared-carrier fixture',
+    createdAt: '2026-08-23 13:00:00',
+    requiredContext: `- shared-context
+  - Material: exact shared context
+  - Material Reference: [Shared context](../shared-context.md)
+  - Purpose: prove common-byte reuse
+  - Availability: available`,
+    referenceContext: `- optional-missing
+  - Material: optional missing material
+  - Material Reference: [Optional missing](missing-reference.trace.md)
+  - Purpose: prove Reference Context remains non-blocking
+  - Availability: unavailable`
+  });
 }
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });

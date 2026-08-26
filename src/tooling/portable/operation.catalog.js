@@ -11,7 +11,6 @@ import {
   inspectPortableMaterial,
   planPortableArtifactCreation,
   planPortableArtifactRepairs,
-  planPortableLineageIntegrity,
   preparePortableTaskOperation,
   preparePortableAssetAnalysisOperation,
   readPortableSchemaSection,
@@ -20,12 +19,12 @@ import {
   resolvePortableCapabilities,
   resolvePortableSchemaChainMaterialOperation,
   resolvePortableSchemaMaterialOperation,
-  searchPortableLineage,
   stagePortableArtifactDraft,
   updatePortableArtifactDraft,
   resolvePortableLineage,
   validatePortableArtifactDraft
 } from './engine.facade.js';
+import { portableLineageOperationDescriptors } from './lineage/lineage.operations.js';
 import { createPortableArtifactSet, preparePortableMaterialization } from './materialization/materialization.facade.js';
 import { processPortableLiveTurn, readPortableLiveLineage } from './live/live.lineage.js';
 import { exportPortableLiveLineage } from './live/live.export.js';
@@ -38,9 +37,10 @@ import { acceptPortablePublicationResult, planPortablePublication } from './publ
 import { acceptPortableHostActionReceipt, planPortableHostAction } from './host/tool.bindings.js';
 import { describePortableCheckpointGate, qualifyPortableCheckpoint } from './conformance/checkpoint.qualification.js';
 import { manufactureRecipientRelativeHandoffPackage } from './handoff/manufacture.js';
-import { projectHandoffCarrierOutputFromPackage } from './handoff/carrierProjection.js';
+import { projectPortableHandoffCarrierOutputFromPackage } from './handoff/recipientV2.humanOutput.js';
 import { orientColdConsumerFromHandoffPackage } from './handoff/coldConsumerEntrypoint.js';
 import { auditHandoffPackageContextCarriage } from './handoff/contextAudit.js';
+import { describePortableColdStartIngress, groundPortableColdConsumer, projectPortableColdStartHostGuidance, qualifyPortableColdStart } from './handoff/coldStartQualification.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
 
@@ -59,6 +59,34 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only',
     inputSchema: 'tiinex.portable.tooling-discovery.request.v1',
     handler: discoverPortableTooling
+  }),
+  'describe-cold-start-ingress': operation({
+    name: 'describe-cold-start-ingress',
+    description: 'Describe the portable Tiinex-first cold-start ingress contract, measurable preferred-path evidence, minimal host bootstrap allowance, and explicit degraded fallback boundary.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.cold-start-ingress.request.v1',
+    handler: (input = {}) => wrapPortableResult('describe-cold-start-ingress', describePortableColdStartIngress(input))
+  }),
+  'project-cold-start-host': operation({
+    name: 'project-cold-start-host',
+    description: 'Project non-authoritative host/bootstrap guidance from the portable cold-start ingress contract and current provider-neutral host/session capability bindings.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.cold-start-host-projection.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('project-cold-start-host', projectPortableColdStartHostGuidance(input, options))
+  }),
+  'ground-cold-consumer': operation({
+    name: 'ground-cold-consumer',
+    description: 'Ground the selected Handoff recipient Role boundary, participants/contributions, interaction purpose/mode, and provider/host/session capabilities without inferring transport identity or provider authority.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.cold-consumer-grounding.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('ground-cold-consumer', groundPortableColdConsumer(input, options))
+  }),
+  'qualify-cold-start': operation({
+    name: 'qualify-cold-start',
+    description: 'Qualify observed cold-start actions as preferred Tiinex-first, recovered-but-not-preferred, degraded fallback, or failed while reporting bounded ingress metrics.',
+    safety: 'read-only-normalization',
+    inputSchema: 'tiinex.portable.cold-start-qualification.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('qualify-cold-start', qualifyPortableColdStart(input, options))
   }),
   'plan-host-action': operation({
     name: 'plan-host-action',
@@ -266,20 +294,7 @@ export const portableOperationCatalog = Object.freeze({
     inputSchema: 'tiinex.portable.repair-plan.request.v1',
     handler: planPortableArtifactRepairs
   }),
-  'lineage-integrity-plan': operation({
-    name: 'lineage-integrity-plan',
-    description: 'Inspect loaded Parent/self/Parent-target integrity and produce a read-only cascade-aware repair plan without mutating lineage or publication state.',
-    safety: 'planning-only-read-only',
-    inputSchema: 'tiinex.portable.lineage-integrity-plan.request.v1',
-    handler: planPortableLineageIntegrity
-  }),
-  'search-lineage': operation({
-    name: 'search-lineage',
-    description: 'Search and filter loaded lineage by text, schema, source mode, relation role, integrity, continuity, qualification, findings, path, and traversal scope.',
-    safety: 'read-only',
-    inputSchema: 'tiinex.portable.lineage-search.request.v1',
-    handler: searchPortableLineage
-  }),
+  ...Object.fromEntries(portableLineageOperationDescriptors.map((descriptor) => [descriptor.name, operation(descriptor)])),
   'inspect-assets': operation({
     name: 'inspect-assets',
     description: 'Index binary assets, MIME/media kind, local references, locators, and required host analysis capabilities without interpreting asset content.',
@@ -327,7 +342,7 @@ export const portableOperationCatalog = Object.freeze({
     name: 'manufacture-handoff-package',
     description: 'Build/verify qualified Handoff packages.',
     safety: 'local-package-result',
-    inputSchema: 'tiinex.portable.handoff-manufacturing.request.v1',
+    inputSchema: 'tiinex.portable.handoff-manufacturing.request.v2',
     handler: (input = {}, options = {}) => wrapPortableResult('manufacture-handoff-package', manufactureRecipientRelativeHandoffPackage(input, options))
   }),
   'project-handoff-carrier-output': operation({
@@ -335,7 +350,7 @@ export const portableOperationCatalog = Object.freeze({
     description: 'Regenerate qualified human carrier output.',
     safety: 'read-only',
     inputSchema: 'tiinex.portable.handoff-carrier-output.request.v1',
-    handler: (input = {}) => wrapPortableResult('project-handoff-carrier-output', projectHandoffCarrierOutputFromPackage(input))
+    handler: (input = {}) => wrapPortableResult('project-handoff-carrier-output', projectPortableHandoffCarrierOutputFromPackage(input))
   }),
   'orient-handoff-package': operation({
     name: 'orient-handoff-package',

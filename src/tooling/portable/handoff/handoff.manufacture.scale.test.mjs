@@ -5,6 +5,7 @@ import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
+import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-handoff-scale-'));
 try {
@@ -13,7 +14,7 @@ try {
   await mkdir(path.join(workspaceRoot, '.topics'), { recursive: true });
   await mkdir(path.join(workspaceRoot, 'files'), { recursive: true });
   await writeFile(path.join(workspaceRoot, '.topics', 'context.md'), '# Scale context\n', 'utf8');
-  await writeFile(path.join(workspaceRoot, '.topics', 'handoff.trace.md'), `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n- Current\n  - Current Schema: tiinex.handoff.v1\n  - Created At: 2026-08-23 11:00:00\n\n---\n\n# Scale handoff fixture\n\n## Required Context\n\n- context\n  - Material: scale context\n  - Purpose: exact material closure under scale\n  - Availability: available\n  - Material Reference: [Context](context.md)\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: fixture\n`, 'utf8');
+  await writeFile(path.join(workspaceRoot, '.topics', 'handoff.trace.md'), qualifiedHandoffFixture({ title: 'Scale handoff fixture', to: 'Loom', purpose: 'scale manufacture fixture', createdAt: '2026-08-23 11:00:00', requiredContext: `- context\n  - Material: scale context\n  - Purpose: exact material closure under scale\n  - Availability: available\n  - Material Reference: [Context](context.md)` }), 'utf8');
   for (let index = 0; index < 1284; index += 1) await writeFile(path.join(workspaceRoot, 'files', `${String(index).padStart(4, '0')}.txt`), `carrier-${index}\n`, 'utf8');
   await makeRuntime(runtimeRoot);
 

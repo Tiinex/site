@@ -45,7 +45,7 @@ export function renderArtifactCreationDraftMarkdown(contract = {}, input = {}) {
     ...(why ? [`  - Why: ${why}`] : []),
     `  - Summary: ${summary}`,
     ...(status ? [`  - Status: ${status}`] : []),
-    '', '---', '', bodyMarkdown, '', '# Continuity Integrity', '',
+    '', '---', '', bodyMarkdown, '', '---', '', '# Continuity Integrity', '',
     ...(parent ? [
       `- ${integrityMethodReference}`,
       `  - Towards: [${parent.traceLabel}](${parent.integrityTarget})`,
