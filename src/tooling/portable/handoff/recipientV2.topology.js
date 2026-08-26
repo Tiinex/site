@@ -69,10 +69,13 @@ export function buildRecipientFacingV2Topology(input = {}) {
       prose: 'This artifact is the package-local lineage root. Its descendants deliberately mirror this declared Parent tree in their numeric pathing so a reader can random-access any leaf and traverse back to this root.',
       currentRead: [
         { label: 'Start', value: `[READ BEFORE PROCEEDING](${RECIPIENT_V2_READ_PATH})` },
+        { label: 'Carrier Dimension', value: `\`${String(carrier.lineage?.dimension || '001')}\`` },
+        ...(carrier.lineage?.parentDimension ? [{ label: 'Parent Carrier Dimension', value: `\`${String(carrier.lineage.parentDimension)}\`` }] : []),
+        { label: 'Carrier Checkpoint', value: String(carrier.lineage?.checkpointKind || 'major') },
         { label: 'Lineage Rule', value: 'numeric pathing mirrors declared package-local Parent continuity; filenames alone never establish the relation' }
       ],
       destinations: rootDestinations,
-      facts: { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', pathParentProjection: true, pathAuthority: false }
+      facts: { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', carrierLineage: carrier.lineage || null, pathParentProjection: true, pathAuthority: false }
     })
   });
   files.push(rootFile);

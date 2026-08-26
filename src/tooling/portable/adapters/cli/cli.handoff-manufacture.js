@@ -5,6 +5,9 @@ import { projectHandoffHumanOutput } from '../../handoff/carrierProjection.js';
 import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
 import { writeRecipientFacingV2PackageZip } from '../../output/recipientV2.zip.js';
 import { projectRecipientV2HumanOutput } from '../../handoff/recipientV2.humanOutput.js';
+import { inspectRecipientFacingV2Topology } from '../../handoff/recipientV2.inspect.js';
+import { carrierLineageFromCliParent, initialHandoffCarrierLineage } from '../../handoff/carrierLineage.js';
+import { loadNodePortableInput } from '../../input/node.input.js';
 
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
@@ -24,6 +27,25 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     ...descriptorArray(routeDescriptorValue, 'routes')
   ];
   const verifyRoundtrip = !flags['no-roundtrip'];
+  const parentPackagePath = String(flags['package-parent'] || '').trim();
+  let carrierLineage = initialHandoffCarrierLineage();
+  if (parentPackagePath) {
+    const resolvedParent = path.resolve(parentPackagePath);
+    const parentBytes = new Uint8Array(await readFile(resolvedParent));
+    const parentBundle = await loadNodePortableInput([resolvedParent], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
+    const parentInspection = inspectRecipientFacingV2Topology(parentBundle);
+    if (parentInspection.status !== 'valid') throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
+    carrierLineage = carrierLineageFromCliParent({
+      bundle: parentBundle,
+      parentPath: resolvedParent,
+      parentBytes,
+      routeDimensions: (parentInspection.carrierProjection?.routes || []).map((route) => route.dimension),
+      major: Boolean(flags['package-major']),
+      majorReason: flags['major-reason'] || ''
+    });
+  } else if (flags['package-major']) {
+    throw new Error('portable.cli.handoff-carrier.package-major.parent-required');
+  }
   const input = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     handoffPath,
@@ -40,7 +62,8 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     maxFiles: flags['max-files'],
     bootstrapMaxFiles: flags['bootstrap-max-files'],
     verifyRoundtrip,
-    recipientRouteSelector: ''
+    recipientRouteSelector: '',
+    carrierLineage
   }, runtime);
   return {
     input,
@@ -120,6 +143,7 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
     carrierProjection: Object.freeze({
       status: String(projection.status || 'unknown'),
       mode: String(projection.mode || ''),
+      lineage: projection.lineage ? Object.freeze({ ...projection.lineage }) : null,
       workspaces: Object.freeze((projection.workspaces || []).map((workspace) => Object.freeze({ ...workspace }))),
       workspace: Object.freeze({ ...(projection.workspace || {}) }),
       selection: Object.freeze({ ...(projection.selection || {}) }),
@@ -134,6 +158,8 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
       fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: undefined }) : null
     }) : null,
     toolingBootstrap: result.toolingBootstrap || null,
+    carrierLineage: result.carrierLineage || projection.lineage || null,
+    majorReadiness: result.majorReadiness || null,
     manufacturingEvidence: result.manufacturingEvidence || null,
     toolingBootstrapInspection: Object.freeze({
       schema: String(bootstrapInspection.schema || ''),

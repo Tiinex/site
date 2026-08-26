@@ -2,12 +2,16 @@ import { summarizePortableFindings } from '../findings.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
 import { upgradeRecipientRelativeHandoffTransportPackageV2 } from './materialClosure.archiveV2.js';
 import { buildRecipientRelativeHandoffV2DirectBaseline } from './materialClosure.archiveV2.direct.js';
+import { qualifyMajorCarrierReadiness } from './carrierLineage.js';
 
 export function manufactureRecipientRelativeHandoffPackage(input = {}, options = {}) {
   const baseline = buildRecipientRelativeHandoffV2DirectBaseline(input, options);
   const upgraded = upgradeRecipientRelativeHandoffTransportPackageV2(baseline, input, options);
   const toolingBootstrapInspection = upgraded.inspection?.bootstrapInspection || inspectPortableToolingBootstrap(baseline.bundle || upgraded.bundle || {});
+  const majorReadiness = qualifyMajorCarrierReadiness(input, input.carrierLineage || upgraded.carrierProjection?.lineage || baseline.carrierProjection?.lineage || {});
+  const majorFindings = majorReadiness.state === 'blocked' ? [Object.freeze({ severity: 'error', code: 'portable.handoff-carrier-lineage.major.not-self-contained', message: 'Major Handoff carrier requires complete replacement-capable carried Workspace snapshots.' })] : [];
   const findings = Object.freeze([
+    ...majorFindings,
     ...(baseline.findings || []),
     ...(upgraded.findings || []),
     ...(upgraded.inspection?.findings || []),
@@ -19,7 +23,7 @@ export function manufactureRecipientRelativeHandoffPackage(input = {}, options =
     ...(upgraded.roundtrip?.findings || []),
     ...(toolingBootstrapInspection?.findings || [])
   ]);
-  const status = baseline.status !== 'blocked' && upgraded.status !== 'blocked' && toolingBootstrapInspection?.status === 'valid' ? upgraded.status : 'blocked';
+  const status = baseline.status !== 'blocked' && upgraded.status !== 'blocked' && toolingBootstrapInspection?.status === 'valid' && majorReadiness.state !== 'blocked' ? upgraded.status : 'blocked';
   return Object.freeze({
     schema: 'tiinex.portable.handoff-manufacturing.v2',
     status,
@@ -55,6 +59,8 @@ export function manufactureRecipientRelativeHandoffPackage(input = {}, options =
     toolingBootstrap: input.toolingBootstrap || null,
     manufacturingEvidence: input.manufacturingEvidence || null,
     toolingBootstrapInspection,
+    carrierLineage: upgraded.carrierProjection?.lineage || baseline.carrierProjection?.lineage || input.carrierLineage || null,
+    majorReadiness,
     migration: upgraded.migration || null,
     baseline: Object.freeze({ schema: baseline.schema, status: baseline.status, packageRepresentationSha256: String(baseline.bundle?.packageRepresentationSha256 || ''), representation: 'semantic-control-plus-detached-material-without-exploded-workspace-carrier' }),
     findings,

@@ -6,6 +6,7 @@ import { parseArtifactMarkdown } from '../../../../artifacts/artifact.parse.js';
 import { projectHandoffMaterialRequirements, projectParticipantRoleRequirements } from '../../handoff/materialClosure.requirements.js';
 import { inferWorkspaceTitle, normalizeAdditionalWorkspaceDescriptors, normalizeTransportRoute, safeWorkspaceToken, serializableMetadata } from './handoff.manufacture.multiRoot.js';
 import { buildToolingBootstrapTransportFiles, PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID } from './handoff.manufacture.bootstrap.js';
+import { normalizeHandoffCarrierLineage } from '../../handoff/carrierLineage.js';
 
 export { buildToolingBootstrapTransportFiles, PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID };
 
@@ -100,12 +101,13 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
     additionalTransportFiles: toolingBootstrap.files,
     transportRoutes,
     workspaceTargets,
+    carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null),
     toolingBootstrap: toolingBootstrap.summary,
     manufacturingEvidence: Object.freeze({
       enumeration: enumeration.evidence,
       workspaceEnumerations: Object.freeze(workspaceEnumerations),
       toolingBootstrap: toolingBootstrap.summary,
-      carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
+      carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null), boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
     }),
     verifyRoundtrip: input.verifyRoundtrip !== false
   });

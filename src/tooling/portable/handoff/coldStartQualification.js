@@ -213,7 +213,7 @@ export function qualifyPortableColdStartRun(input = {}, options = {}) {
     requireHostEvidence: true
   };
   const qualification = qualifyPortableColdStartTrace(traceInput, options);
-  const continuation = projectGroundedContinuation({ bundle, route, grounding, qualification });
+  const continuation = projectGroundedContinuation({ bundle, route, grounding, qualification, packageSourcePath: input.packageSourcePath || '' });
   return deepFreeze({
     ...qualification,
     grounding,
@@ -768,7 +768,7 @@ function parseRoleMaterial(entry) {
   }
 }
 
-function projectGroundedContinuation({ bundle = {}, route = '', grounding = {}, qualification = {} } = {}) {
+function projectGroundedContinuation({ bundle = {}, route = '', grounding = {}, qualification = {}, packageSourcePath = '' } = {}) {
   const selectedRouteId = String(grounding.selectedRoute?.id || '');
   const requiredContext = Object.freeze((grounding.selectedRoute?.requiredClosure?.requirements || []).map((entry) => hydrateRequiredContextEntry(bundle, entry)));
   const unresolvedRequired = requiredContext.filter((entry) => entry.state !== 'qualified');
@@ -787,10 +787,31 @@ function projectGroundedContinuation({ bundle = {}, route = '', grounding = {}, 
     transfer: Object.freeze([...(grounding.handoff?.transfers || [])]),
     requiredContext,
     completionExpectation: grounding.handoff?.completionExpectation || Object.freeze({ signalKind: '', signalMeaning: '', returnTo: '' }),
+    returnPackage: projectReturnPackageContinuation(grounding, packageSourcePath),
     next: continuationReady
       ? 'Consume the qualified Required Context projection below, then continue substantive work within the grounded Handoff and Role boundaries. No Tooling API discovery is required.'
       : 'Do not begin substantive work until the selected Handoff and every Required Context dependency are qualified.',
     boundary: 'Grounded continuation projection only. Handoff Transfers and Completion Expectation come from exact selected Handoff bytes; Required Context comes from exact route closure and is not inferred from nearby Workspace material.'
+  });
+}
+
+
+function projectReturnPackageContinuation(grounding = {}, packageSourcePath = '') {
+  const lineage = grounding.orientation?.carrierLineage || {};
+  const dimension = String(lineage.dimension || '').trim();
+  const expectedChild = dimension ? `${dimension}-1` : '';
+  const returnTo = String(grounding.handoff?.completionExpectation?.returnTo || '').trim();
+  return Object.freeze({
+    expected: Boolean(returnTo),
+    returnTo,
+    parentDimension: dimension,
+    defaultMode: 'continue',
+    defaultNextDimension: expectedChild,
+    parentPackagePath: String(packageSourcePath || ''),
+    manufactureRule: packageSourcePath
+      ? `When manufacturing a return Handoff package derived from this carrier, pass --package-parent ${String(packageSourcePath)}. Tooling owns the next child dimension. Use --package-major --major-reason <milestone> only at an explicit self-contained checkpoint.`
+      : 'When manufacturing a return Handoff package, pass the received carrier as --package-parent. Tooling owns the next child dimension. Use --package-major --major-reason <milestone> only at an explicit self-contained checkpoint.',
+    boundary: 'Return carrier lineage is a human progress/retention projection only. The default is child continuation; major advancement is explicit and requires complete carried Workspace snapshots plus a meaningful closure reason.'
   });
 }
 

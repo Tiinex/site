@@ -141,7 +141,7 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
   const descriptorFile = finalizeFile({ path: HANDOFF_CLOSURE_DESCRIPTOR_PATH, kind: 'handoff-closure-descriptor', logicalKind: 'disposable-transport-control', mediaType: 'application/json', content: `${stablePrettyJson(descriptor)}\n`, boundary: descriptor.boundary });
   const projectionBundle = { ...baselineBundle, files: [...retained, ...workspaceFiles, descriptorFile], handoffClosure: descriptor };
   const provider = buildDirectArchiveProjectionProvider(records);
-  const carrierProjection = buildHandoffCarrierProjection({ bundle: projectionBundle, descriptor, workspaceByteProvider: provider, routes: input.transportRoutes || input.handoffRoutes || (baseline.carrierProjection?.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose })) });
+  const carrierProjection = buildHandoffCarrierProjection({ bundle: projectionBundle, descriptor, workspaceByteProvider: provider, carrierLineage: input.carrierLineage || baseline.carrierProjection?.lineage || null, routes: input.transportRoutes || input.handoffRoutes || (baseline.carrierProjection?.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose })) });
   const createdAt=baselineBundle.manifest?.createdAt||baselineBundle.builtAt||'';
   const transportStatus = baseline.status === 'blocked' || carrierProjection.status !== 'ready' ? 'blocked' : baseline.status;
   const transportCompanion = buildHandoffTransportCompanionProjection({ bundle: projectionBundle, descriptor, packageStatus: transportStatus, participation: input.transportParticipation || input.participation || {} });

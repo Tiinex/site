@@ -157,7 +157,8 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
   }
 
   const routeSpecs = routePointers.map((pointer) => ({ workspaceId: String(pointer.facts?.workspaceId || ''), path: String(pointer.facts?.workspaceRelativeHandoffPath || ''), purpose: '' }));
-  const carrierProjection = buildHandoffCarrierProjection({ bundle: semanticBundle, descriptor, workspaceByteProvider, routes: routeSpecs });
+  const carrierLineage = rootArtifact?.facts?.carrierLineage || legacyCarrierLineageFromRoutePointers(routePointers);
+  const carrierProjection = buildHandoffCarrierProjection({ bundle: semanticBundle, descriptor, workspaceByteProvider, carrierLineage, routes: routeSpecs });
   if (carrierProjection.status !== 'ready') findings.push(finding('error', 'portable.handoff-v2-surface.routes.unqualified', 'Recipient-facing route Pointers do not independently resolve to qualified carried Handoff bytes.', { causes: carrierProjection.findings || [] }));
   inspectRoutePointers(routePointers, carrierProjection, workspaceParts, participantRolePointers, index, findings);
   for (const route of carrierProjection.routes || []) if (route.requiredClosure?.state !== 'qualified') findings.push(finding('error', 'portable.handoff-v2-surface.required-closure.unqualified', 'Selected Handoff Required Context does not resolve entirely to exact Workspace/archive or qualified cache bytes.', { routeId: route.id || '', requirements: route.requiredClosure?.requirements || [] }));
@@ -172,7 +173,7 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
     detected,
     status,
     format: detected ? RECIPIENT_V2_FORMAT_ID : '',
-    rootArtifact: rootArtifact ? Object.freeze({ path: rootArtifact.path, schemaId: rootArtifact.schemaId, sha256: rootArtifact.sha256 }) : null,
+    rootArtifact: rootArtifact ? Object.freeze({ path: rootArtifact.path, schemaId: rootArtifact.schemaId, sha256: rootArtifact.sha256, carrierLineage: carrierProjection.lineage || null }) : null,
     readArtifact,
     workspaces: Object.freeze(workspaceParts.map((item) => Object.freeze({ workspaceId: item.workspaceId, workspaceArtifactPath: item.artifact.path, workspaceArchivePath: item.archiveFile.path, sourceWorkspaceTargetInnerPath: item.facts.sourceWorkspaceTargetInnerPath, sourceWorkspaceTargetSha256: item.facts.sourceWorkspaceTargetSha256 }))),
     routes: Object.freeze(routePointers.map((item) => Object.freeze({ pointerPath: item.path, workspaceId: String(item.facts?.workspaceId || ''), workspaceRelativeHandoffPath: String(item.facts?.workspaceRelativeHandoffPath || ''), participantRolePointers: Object.freeze(participantRoleAncestors(item, participantRolePointers)) }))),
@@ -187,6 +188,17 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
     findingSummary: Object.freeze({ errors: finalFindings.filter((item) => item.severity === 'error').length, findings: finalFindings.length }),
     boundary: 'Read-only qualification of the flat recipient-facing v2 carrier. The package-local numeric tree must mirror explicit Parent continuity; exact durable Workspace and Handoff source bytes remain independently qualified inside their owned archive representations.'
   });
+}
+
+
+function legacyCarrierLineageFromRoutePointers(routePointers = []) {
+  const dimensions = [...new Set(routePointers.map((pointer) => {
+    const name = String(pointer.facts?.workspaceRelativeHandoffPath || '').replace(/\\/g, '/').split('/').pop() || '';
+    return String(name.match(/^(\d{3}(?:-\d+)*)-/)?.[1] || '');
+  }).filter(Boolean))];
+  if (dimensions.length !== 1) return null;
+  const dimension = dimensions[0];
+  return Object.freeze({ mode: dimension.includes('-') ? 'continue' : 'root', dimension, checkpointKind: dimension.includes('-') ? 'progression' : 'major' });
 }
 
 function participantRoleAncestors(routePointer, participantPointers = []) {

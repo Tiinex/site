@@ -3,6 +3,7 @@ import { validatedC14nV2PrimarySelfDigest } from '../../../integrity/integrity.c
 import { projectHandoffMaterialRequirements, projectParticipantRoleRequirements } from './materialClosure.requirements.js';
 import { qualifyHandoffCarrierWorkspaces, selectHandoffCarrierDefaultWorkspace, handoffCarrierWorkspaceForRoute, projectHandoffCarrierWorkspace, findProjectedHandoffCarrierWorkspace } from './carrierProjection.workspaces.js';
 import { HANDOFF_HUMAN_OUTPUT_PRESENTATION, HANDOFF_NORMAL_EMISSION_BOUNDARY } from './humanOutputPresentation.js';
+import { normalizeHandoffCarrierLineage } from './carrierLineage.js';
 import { qualifySelectedHandoffArtifact } from './routeArtifactConformance.js';
 import { buildHandoffWorkspaceByteProvider, listHandoffWorkspaceEntries, resolveHandoffWorkspaceEntry } from './workspaceByteProvider.js';
 
@@ -19,8 +20,9 @@ export function buildHandoffCarrierProjection(input = {}) {
   const workspaces = qualifyHandoffCarrierWorkspaces(bundle, descriptor, byteProvider);
   const defaultWorkspace = selectHandoffCarrierDefaultWorkspace(bundle, workspaces);
   const routeSpecs = normalizeRouteSpecs(input.routes || input.handoffRoutes || [], descriptor, defaultWorkspace);
+  const lineage = normalizeHandoffCarrierLineage(input.carrierLineage || input.lineage || null);
   const shared = routeSpecs.length > 1;
-  const routes = routeSpecs.map((spec) => qualifyRoute(bundle, descriptor, byteProvider, handoffCarrierWorkspaceForRoute(workspaces, spec.workspaceId), spec, { enforceRequiredClosure: shared }));
+  const routes = routeSpecs.map((spec) => qualifyRoute(bundle, descriptor, byteProvider, handoffCarrierWorkspaceForRoute(workspaces, spec.workspaceId), spec, { enforceRequiredClosure: shared, carrierDimension: lineage.dimension }));
   const qualifiedRoutes = routes.filter((route) => route.state === 'qualified');
   const mode = routes.length > 1 ? 'shared' : 'single';
   const findings = [];
@@ -39,6 +41,7 @@ export function buildHandoffCarrierProjection(input = {}) {
     boundary: BOUNDARY,
     status,
     mode,
+    lineage,
     workspaces: Object.freeze(workspaces.map(projectHandoffCarrierWorkspace)),
     workspace: defaultWorkspace ? projectHandoffCarrierWorkspace(defaultWorkspace) : Object.freeze({ id: '', title: '', slug: '', qualification: 'unresolved' }),
     selection: Object.freeze({ policy: mode === 'shared' ? 'explicit-qualified-route-required' : 'implicit-single-qualified-route', qualifiedRouteCount: qualifiedRoutes.length }),
@@ -56,8 +59,8 @@ export function inspectHandoffCarrierProjection(bundle = {}, options = {}) {
   if (projection && projection.schema !== HANDOFF_CARRIER_PROJECTION_SCHEMA_ID) findings.push(finding('error', 'portable.handoff-carrier.schema.invalid', 'Handoff carrier projection schema/version is unsupported.'));
   if (projection && projection.boundary !== BOUNDARY) findings.push(finding('error', 'portable.handoff-carrier.boundary.invalid', 'Handoff carrier projection lost its disposable non-authoritative boundary.'));
   if (projection) {
-    const expected = buildHandoffCarrierProjection({ bundle, workspaceByteProvider: options.workspaceByteProvider || null, routes: (projection.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose, participantRoles: route.participantRoleSpecs || [] })) });
-    for (const field of ['status', 'mode', 'workspaces', 'workspace', 'selection', 'routes', 'authority']) {
+    const expected = buildHandoffCarrierProjection({ bundle, workspaceByteProvider: options.workspaceByteProvider || null, carrierLineage: projection.lineage || null, routes: (projection.routes || []).map((route) => ({ workspaceId: route.workspaceId, path: route.workspaceRelativePath, purpose: route.purpose, participantRoles: route.participantRoleSpecs || [] })) });
+    for (const field of ['status', 'mode', 'lineage', 'workspaces', 'workspace', 'selection', 'routes', 'authority']) {
       if (stableJson(expected[field]) !== stableJson(projection[field])) findings.push(finding('error', `portable.handoff-carrier.${field}.mismatch`, `Handoff carrier ${field} diverges from current package/workspace truth.`));
     }
     if (projection.authority?.semanticAuthority !== 'none' || projection.authority?.filenameAuthority !== false || projection.authority?.dimensionalParentAuthority !== false) findings.push(finding('error', 'portable.handoff-carrier.authority.promotion', 'Handoff carrier projection promotes human transport metadata into semantic authority.'));
@@ -79,7 +82,7 @@ export function projectHandoffHumanOutput(input = {}) {
   return deepFreeze({
     schema: HANDOFF_HUMAN_OUTPUT_SCHEMA_ID,
     status,
-    primary: selected.route ? Object.freeze({ kind: 'handoff-package', filename, routeId: selected.route.id, workspaceId: selected.route.workspaceId, workspaceRelativeHandoffPath: selected.route.workspaceRelativePath, collisionInstance: instance, singleHumanTransportChoice: true }) : null,
+    primary: selected.route ? Object.freeze({ kind: 'handoff-package', filename, dimension: String(projection.lineage?.dimension || selected.route.dimension || ''), parentDimension: String(projection.lineage?.parentDimension || ''), checkpointKind: String(projection.lineage?.checkpointKind || ''), routeId: selected.route.id, workspaceId: selected.route.workspaceId, workspaceRelativeHandoffPath: selected.route.workspaceRelativePath, collisionInstance: instance, singleHumanTransportChoice: true }) : null,
     normalInlineRouting: selected.route ? Object.freeze({ kind: 'transport-text', content: transportText, normalEmission: true, requiredForHumanCompletion: true, placement: 'adjacent-to-primary', authority: 'none' }) : null,
     presentation: HANDOFF_HUMAN_OUTPUT_PRESENTATION,
     normalEmissionBoundary: HANDOFF_NORMAL_EMISSION_BOUNDARY,
@@ -128,7 +131,7 @@ function qualifyRoute(bundle, descriptor, byteProvider, workspace, spec = {}, op
   const parties = parseHandoffParties(markdown);
   if (!parties.from) reasons.push('from-unresolved');
   if (!parties.to) reasons.push('to-unresolved');
-  const dimension = dimensionFromPath(routePath);
+  const dimension = String(options.carrierDimension || '').trim();
   if (!dimension) reasons.push('dimension-unresolved');
   const purpose = slug(spec.purpose || '');
   const projectedFilename = !reasons.length ? carrierFilename(workspace.slug, dimension, parties.from, parties.to) : '';

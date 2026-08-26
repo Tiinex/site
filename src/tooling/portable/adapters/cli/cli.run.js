@@ -155,6 +155,7 @@ async function commandInput(parsed, runtime = {}) {
         bundle: material,
         ingressKind: flags.ingress || flags.kind || 'routed-handoff-package',
         route: flags.route || '',
+        packageSourcePath: packagePath,
         preTakeover: flags['pre-takeover'] || 'unverified',
         hostEvidenceSource: flags['evidence-source'] || '',
         interaction: interaction.interaction || interaction,
