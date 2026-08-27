@@ -6,6 +6,7 @@ import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver
 import { executeArtifactCreationCapability, qualifyArtifactCreationCapability } from './creation.capability.js';
 import { canonicalC14nV2SelfState, verifyC14nV2TargetSelfDigest } from '../integrity/integrity.c14nV2.js';
 import { validatePortableContractInstance } from '../tooling/portable/schema/contract.validate.js';
+import { projectPortableValidationContractWithQualifiedLocalRoot } from '../tooling/portable/schema/qualifiedLocalRoot.projection.js';
 import { qualifyRootCreationRepresentation, qualifyContinuationCreationRepresentation } from './creation.representation.js';
 import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
 import { qualifySchemaReferenceValue } from './schema.reference.js';
@@ -156,7 +157,7 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
   findings.push(...validateArtifactCreationContract(contract).findings);
   findings.push(...validateTargetSchema(parsed, contract));
   findings.push(...validateCreationSchemaReferences(draft.markdown || '', contract));
-  findings.push(...validatePortableRootTargetCreationResult(draft.markdown || '', contract));
+  findings.push(...validatePortableRootTargetCreationResult(draft.markdown || '', contract, { parentRecord }));
 
   const rootCreation = String(contract?.transitionType || 'create-artifact') === 'create-artifact';
   const currentSchemaId = parsed.envelope?.current?.schema?.id || '';
@@ -181,7 +182,6 @@ export function validateArtifactCreationResult(draft = {}, parentRecord = {}, op
     const parentSchemaReference = qualifySchemaReferenceValue(parent.schema?.raw || '', parentSchemaAuthority);
     for (const [index, message] of (parentSchemaReference.findings || []).entries()) findings.push(error(`creation.parent-schema-reference.${index + 1}`, message));
     if (parentSchemaAuthority.resolutionState !== 'qualified') findings.push(error('creation.parent-schema-reference.unresolved', 'Exact continuation requires the declared Parent Schema reference authority to be resolver-qualified.'));
-    if (!parentRecord.publishedReference?.target || parentRecord.publishedReference?.state !== 'qualified') findings.push(error('creation.parent-browse-git.unresolved', 'Exact continuation requires one qualified published Parent browse + git representation.'));
   } else if (!rootCreation) findings.push(error('creation.parent.required', 'Continuation creation requires an exact supplied Parent authority.'));
 
   if (draft.status !== 'local') findings.push(error('creation.result.status.not-local', 'Creation result must stay local until explicit publication/export.'));
@@ -234,11 +234,13 @@ function validateCreationSchemaReferences(markdown = '', contract = {}) {
   return (qualification.findings || []).map((message, index) => error(`creation.schema-reference.${index + 1}`, message));
 }
 
-function validatePortableRootTargetCreationResult(markdown = '', contract = {}) {
+function validatePortableRootTargetCreationResult(markdown = '', contract = {}, options = {}) {
   const targetSchemaId = String(contract?.target?.schemaId || '').trim();
   const resolution = resolveRegisteredSchemaModule({ schemaId: targetSchemaId });
   const module = resolution?.fallbackUsed ? null : resolution?.module || null;
-  const validationContract = module?.schemaSource?.qualify?.()?.compiledContract?.validationContract || null;
+  const baseValidationContract = module?.schemaSource?.qualify?.()?.compiledContract?.validationContract || null;
+  const runtimeProjection = projectPortableValidationContractWithQualifiedLocalRoot(baseValidationContract);
+  const validationContract = runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null;
   const findings = [];
   if (!validationContract) return [error('creation.portable-contract.unavailable', `Portable Root + ${targetSchemaId || 'target'} structural validation projection is unavailable.`)];
   try {
@@ -247,7 +249,7 @@ function validatePortableRootTargetCreationResult(markdown = '', contract = {}) 
       if (item?.severity === 'error') findings.push(error(`creation.portable-contract.${item.code || 'invalid'}`, item.message || 'Portable contract validation failed.'));
       else if (item?.severity === 'warning') findings.push(warning(`creation.portable-contract.${item.code || 'warning'}`, item.message || 'Portable contract validation is degraded.'));
     }
-    if (result.status !== 'valid' && !findings.some((item) => item.severity === 'error')) findings.push(error('creation.portable-contract.not-valid', `Portable Root + target structural validation is ${result.status}.`));
+    if (result.status !== 'valid' && !(result.findings || []).some((item) => item?.severity === 'error') && !findings.some((item) => item.severity === 'error')) findings.push(error('creation.portable-contract.not-valid', `Portable Root + target structural validation is ${result.status}.`));
   } catch (exception) {
     findings.push(error('creation.portable-contract.failed', String(exception?.message || exception || 'Portable contract validation failed.')));
   }

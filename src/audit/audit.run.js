@@ -13,7 +13,7 @@ export function runAudit(scope = {}) {
   if (isPlainSupportingMarkdown(parsed, record)) return supportingMarkdownAuditResult(record, parsed, availability);
 
   const schemaId = parsed.envelope.current.schema.id || record?.schemaId || record?.currentSchemaId || '';
-  const validationResult = validateArtifact({ parsed, schemaId, record, markdown, schemaReferenceAuthorities: scope.schemaReferenceAuthorities || null });
+  const validationResult = validateArtifact({ parsed, schemaId, record, markdown, schemaReferenceAuthorities: scope.schemaReferenceAuthorities || null, validationContractOverride: scope.validationContractOverride || null });
   const findings = validationResult.findings;
   return {
     status: findings.some((finding) => finding.severity === 'error') ? 'invalid-or-incomplete' : validationResult.resolution.fallbackUsed ? 'degraded' : 'readable',

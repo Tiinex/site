@@ -5,6 +5,7 @@ import { validatePortableDraft } from './draft.operations.js';
 import { validateArtifact } from '../../../validation/validateArtifact.js';
 import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { resolveSchemaModule } from '../../../schemas/resolver.js';
+import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
 
 const root = process.cwd();
 const dogfood = path.join(root, '.topics/development/tooling/dogfood');
@@ -19,16 +20,20 @@ const taskModule = resolveSchemaModule({ schemaId: 'tiinex.task.v1' }).module;
 const compiled = taskModule.schemaSource.qualify().compiledContract.validationContract;
 assert.equal(compiled.lineageQualification.state, 'valid');
 assert.deepEqual(compiled.lineage, ['tiinex.root.v1', 'tiinex.task.v1']);
-assert(compiled.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.includes('browse + git')));
+assert(compiled.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.includes('browse + git')), 'historical published schema-source contract remains unchanged');
+const projected = portableRuntimeValidationContractForSchema('tiinex.task.v1');
+assert.equal(projected.state, 'qualified');
+assert(projected.compiledContract.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.length === 1 && item.requiredFields[0] === 'relative'));
+assert(!projected.compiledContract.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredFields.includes('browse + git')));
 
 const localOnly = validatePortableDraft({ markdown: v476, path: v476Path, schemaId: 'tiinex.task.v1' });
-assert.equal(localOnly.status, 'invalid', 'reopened v476 local continuity must not be reported clean');
+assert.equal(localOnly.status, 'clean', 'reopened v476 local continuity must qualify under the corrected local Root runtime projection');
 assert.equal(localOnly.audit.validation.readability.state, 'readable');
 assert.equal(localOnly.audit.validation.localContinuity.state, 'readable-local-continuity');
-assert.equal(localOnly.audit.validation.semanticContract.state, 'incomplete');
+assert.equal(localOnly.audit.validation.semanticContract.state, 'valid');
 assert.equal(localOnly.audit.validation.integrity.state, 'verified');
 assert.equal(localOnly.qualification.exactRuntimeValidation, false);
-assert(localOnly.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing' && item.message.includes('browse + git')));
+assert(!localOnly.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing'), 'local-only relative Parent Origin must not require fabricated publication authority');
 
 const published = validatePortableDraft({ markdown: v475, path: v475Path, schemaId: 'tiinex.task.v1' });
 assert.equal(published.status, 'clean', 'published-parent v475 oracle must remain contract-valid');
@@ -39,18 +44,21 @@ assert.equal(published.structural.authority, 'qualified-current-root-descendant-
 function validateMutation(name, mutate, code) {
   const changed = mutate(v475);
   const resealed = changed.includes('sha256-base64url-c14n-v2') ? sealC14nV2Self(changed).markdown : changed;
-  const result = validateArtifact({ markdown: resealed });
+  const result = validateArtifact({ markdown: resealed, validationContractOverride: projected.compiledContract });
   assert(result.findings.some((item) => item.code === code), `${name} must surface ${code}: ${JSON.stringify(result.findings)}`);
   return result;
 }
 
-validateMutation('duplicate browse + git', (md) => md.replace(
-  '    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)',
-  '    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)\n    - [browse + git](https://github.com/Tiinex/site/blob/32c7c291101b2a6a72c12241f3107d4a56af81fc/.topics/development/tooling/dogfood/002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)'
+validateMutation('duplicate required relative', (md) => md.replace(
+  '    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)',
+  '    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)\n    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)'
 ), 'portable.contract.conditional.field.duplicate');
 
-const alternate = validateMutation('alternate Origin label', (md) => md.replace('[browse + git](', '[archive mirror]('), 'portable.contract.conditional.field.required.missing');
+const alternate = validateMutation('alternate required relative Origin label', (md) => md.replace('[relative](', '[archive mirror]('), 'portable.contract.conditional.field.required.missing');
 assert(alternate.findings.some((item) => item.code === 'portable.contract.conditional.label.unknown.preserved'));
+assert(alternate.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing' && item.message.includes('relative')));
+
+validateMutation('browse-only Parent Origin', (md) => md.replace(/^    - \[relative\].*\n/m, ''), 'portable.contract.conditional.field.required.missing');
 
 validateMutation('record Trace', (md) => md.replace(
   '  - Trace: [002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)',
@@ -80,4 +88,4 @@ assert.equal(customValidation.validation.semanticContract.state, 'unavailable', 
 assert(customValidation.findings.some((item) => item.code === 'audit.validator.unavailable'));
 assert.equal(customValidation.parsed.body.sections.includes('Future Extension'), true, 'unknown custom material remains readable/preserved');
 
-console.log('✓ v477 runtime validation contract unification preserved through v479 historical repair: local-only v476 remains incomplete, published v475 is valid, malformed references still fail, repaired v471 reopens valid with Repairs disclosure, and custom fallback remains provider-neutral');
+console.log('✓ qualified local Root runtime projection: relative-only Parent continuity is valid, browse + git remains optional truthful publication evidence, malformed required relative continuity still fails, and historical published schema-source identity remains unchanged');

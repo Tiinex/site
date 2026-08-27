@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { createPortableLocalDraft } from './draft.create.js';
 import { createPortableLocalArtifactSet } from './draft.set.js';
 import { processPortableLiveTurn } from '../live/live.lineage.js';
+import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
+import { normalizePortableParentRecord, qualifyPortableExactParent, qualifyPortableRenderedParentRepresentation } from './draft.exact.js';
 
 const ROOT_SCHEMA_REFERENCE = 'https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/tiinex.root.v1.schema.md';
 const TASK_SCHEMA_REFERENCE = 'https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md';
@@ -88,7 +90,7 @@ const proposals = [
   }
 ];
 const set = createPortableLocalArtifactSet({ proposals }, { createdAt: '2026-08-21T15:32:00.000Z' });
-assert.equal(set.status, 'created-local-continuity', 'unpublished local Parent must carry relative continuity without forcing publication');
+assert.equal(set.status, 'created-clean', 'directly recoverable unpublished local Parent must qualify with relative continuity without forcing publication');
 assert.equal(set.artifacts.length, 2);
 const [setRoot, setChild] = set.artifacts;
 assert.equal(setRoot.draft.id, 'dogfood-root-topic');
@@ -97,18 +99,57 @@ assert.notEqual(setRoot.draft.id, setRoot.draft.path, 'logical id must not be re
 assert.equal(setRoot.draft.creationMode, 'exact-site-creation-contract');
 assert.equal(setRoot.validation.status, 'clean');
 assert(setChild.draft, 'unpublished local Parent must remain authorable through exact relative continuity representation');
-assert.equal(setChild.qualification?.parentAuthorityQualification, 'qualified-local-continuity');
-assert.equal(setChild.qualification?.parentAuthorityReason, 'continuation-parent-browse-git-root-contract-conflict');
-assert.equal(setChild.qualification?.localContinuityUsable, true);
-assert.equal(setChild.qualification?.exactCreateToolingApplied, false);
-assert.equal(setChild.qualification?.exactRuntimeValidation, false);
+assert.equal(setChild.qualification?.parentAuthorityQualification, 'qualified');
+assert.equal(setChild.qualification?.parentAuthorityReason, '');
+assert.equal(setChild.qualification?.localContinuityUsable, false);
+assert.equal(setChild.qualification?.exactCreateToolingApplied, true);
+assert.equal(setChild.qualification?.exactRuntimeValidation, true);
 assert(setChild.draft.markdown.includes(`  - Current Schema: [tiinex.task.v1](${TASK_SCHEMA_REFERENCE})`), 'local continuity preserves the caller-qualified external child schema reference');
 assert(setChild.draft.markdown.includes('  - Trace: [dogfood-root-topic.trace.md](dogfood-root-topic.trace.md)'), 'local continuity uses a real relative Parent Trace');
 assert(setChild.draft.markdown.includes('  - Origin:\n    - [relative](dogfood-root-topic.trace.md)'), 'local continuity keeps a labelled relative Origin');
 assert.equal(setChild.draft.markdown.includes('[browse + git]'), false, 'unpublished local Parent must not fabricate browse + git authority');
-assert(set.findings.some((finding) => finding.code === 'portable.draft-create.parent.root-browse-git-authority-conflict'), 'set must expose the Root browse + git exactness conflict without forcing publication');
+assert.equal(set.findings.some((finding) => finding.code === 'portable.draft-create.parent.root-browse-git-authority-conflict'), false, 'accepted local Parent Origin must no longer report a browse + git authority conflict');
 assert.equal(JSON.stringify(set).includes('record:dogfood-root-topic'), false, 'v475 must not restore record:<id> as Root Trace authority');
 assert.equal(JSON.stringify(set).includes('github.com/Tiinex/site/blob/'), false, 'v475 must not fabricate a browse + git permalink for the unpublished local Parent');
+
+const unresolvedLocalParent = createPortableLocalDraft({
+  schemaId: 'tiinex.task.v1',
+  transitionType: 'continue-from-record',
+  id: 'unresolved-local-child',
+  path: '.topics/development/tooling/dogfood/generated/unresolved-local-child.trace.md',
+  values: taskValues,
+  createdAt: '2026-08-21T15:33:00.000Z',
+  schemaReferences: taskSchemaReferences,
+  parentRecord: {
+    id: 'unresolved-local-parent',
+    path: '.topics/development/tooling/dogfood/generated/unresolved-local-parent.trace.md',
+    schemaId: 'tiinex.topic.v1',
+    schemaReferenceAuthority: { schemaId: 'tiinex.topic.v1', preferredTarget: TASK_SCHEMA_REFERENCE.replace('/core/task/tiinex.task.v1.schema.md', '/core/topic/tiinex.topic.v1.schema.md'), resolutionState: 'qualified' }
+  }
+});
+assert.equal(unresolvedLocalParent.status, 'blocked', 'relative locality alone must not qualify a Parent whose exact local bytes are unavailable');
+assert.equal(unresolvedLocalParent.draft, null);
+
+const observedSetParent = parseArtifactMarkdown(setChild.draft.markdown).envelope.parent;
+const localParentRecord = normalizePortableParentRecord({
+  id: 'dogfood-root-topic',
+  path: rootPath,
+  schemaId: observedSetParent.schema.id,
+  markdown: setRoot.draft.markdown,
+  publishedReference: { target: '', state: 'unavailable' },
+  schemaReferenceAuthority: { schemaId: observedSetParent.schema.id, preferredTarget: observedSetParent.schema.target, resolutionState: 'qualified' }
+});
+const localParentQualification = qualifyPortableExactParent(localParentRecord, 'continue-from-record');
+assert.equal(localParentQualification.state, 'qualified');
+const fabricatedForgeChild = setChild.draft.markdown.replace(
+  '    - [relative](dogfood-root-topic.trace.md)',
+  '    - [relative](dogfood-root-topic.trace.md)\n    - [browse + git](https://forge.example.invalid/fabricated-parent.trace.md)'
+);
+assert.equal(
+  qualifyPortableRenderedParentRepresentation(fabricatedForgeChild, localParentQualification.snapshot, 'continue-from-record', childPath).state,
+  'invalid',
+  'unpublished local continuity must fail closed if a fabricated forge locator is injected into Parent Origin'
+);
 
 const userMessage = 'Create a portable Topic root and a Task child in one live lineage turn.';
 const live = processPortableLiveTurn({
@@ -153,10 +194,10 @@ const liveChild = live.state.artifacts.find((artifact) => artifact.id === 'live-
 assert(liveChild?.draft?.markdown.includes('  - Trace: [live-root.trace.md](live-root.trace.md)'), 'live child must preserve a real relative Parent Trace');
 assert(liveChild?.draft?.markdown.includes('  - Origin:\n    - [relative](live-root.trace.md)'), 'live child must preserve labelled relative Origin');
 assert.equal(liveChild?.draft?.markdown.includes('[browse + git]'), false, 'live child must not fabricate publication authority');
-assert.equal(liveChild?.qualification?.localContinuityUsable, true);
-assert.equal(liveChild?.qualification?.exactRuntimeValidation, false, 'Root browse + git conflict prevents exact qualification even though local continuity is usable');
-assert.equal(liveChild?.exportReady, false, 'authority-conflicted local continuity must not be export-ready as an exact artifact');
+assert.equal(liveChild?.qualification?.localContinuityUsable, false);
+assert.equal(liveChild?.qualification?.exactRuntimeValidation, true, 'directly recoverable local Parent must qualify exactly without publication authority');
+assert.equal(liveChild?.exportReady, true, 'qualified local relative continuity may be export-ready without fabricated publication authority');
 assert.equal(JSON.stringify(live).includes('record:live-root'), false, 'live path must not synthesize record:<id> Trace authority');
 assert.equal(JSON.stringify(live).includes('github.com/Tiinex/site/blob/'), false, 'live path must not synthesize a browse + git Parent authority');
 
-console.log('✓ v471 portable lineage authoring closure preserved under v475 acceptance correction: unpublished same-set/live Parents carry relative continuity without fabricated publication, while exact Root qualification remains false');
+console.log('✓ portable lineage authoring: directly recoverable unpublished Parents qualify through exact relative continuity without fabricated publication authority');

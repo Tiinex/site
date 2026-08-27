@@ -15,7 +15,7 @@ export function validateArtifact(input = {}, options = {}) {
   const schemaId = parsed?.envelope?.current?.schema?.id || input.schemaId || input.record?.schemaId || input.record?.currentSchemaId || '';
   const resolution = input.resolution || resolveSchemaModule({ schemaId, checksum: input.checksum });
   const rootFindings = normalizeFindings(rootValidate(parsed), { schemaId: 'tiinex.root.v1', qualification: 'readability-root-diagnostic' });
-  const machineContract = runMachineContractValidation({ markdown: markdown || parsed?.markdown || '', schemaId, resolution });
+  const machineContract = runMachineContractValidation({ markdown: markdown || parsed?.markdown || '', schemaId, resolution, validationContractOverride: input.validationContractOverride || null });
   const contractFindings = normalizeFindings(machineContract.findings, { schemaId: machineContract.schemaId || schemaId, qualification: 'machine-contract' });
   const schemaReferenceFindings = normalizeFindings(validateDeclaredSchemaReferences(parsed, input.schemaReferenceAuthorities || null), { qualification: 'schema-reference' });
   const integrityFindings = normalizeFindings(validateIntegrity(parsed, options.integrity), { schemaId: 'tiinex.root.v1', qualification: 'integrity' });
@@ -83,10 +83,10 @@ function contextualSchemaReferenceAuthority(value = null, role = '', schemaId = 
   return Object.freeze({ ...raw, schemaId: id, exactTargets: Object.freeze(exactTargets), preferredTarget: String(raw.preferredTarget || raw.target || exactTargets[0] || '') });
 }
 
-function runMachineContractValidation({ markdown = '', schemaId = '', resolution = {} } = {}) {
+function runMachineContractValidation({ markdown = '', schemaId = '', resolution = {}, validationContractOverride = null } = {}) {
   if (resolution?.fallbackUsed) return Object.freeze({ available: false, state: 'unavailable', schemaId, lineage: Object.freeze([]), result: null, findings: Object.freeze([]), reason: 'fallback-resolution-has-no-target-contract-authority' });
   const qualification = typeof resolution?.module?.schemaSource?.qualify === 'function' ? resolution.module.schemaSource.qualify() : null;
-  const compiledContract = qualification?.state === 'qualified' ? qualification?.compiledContract?.validationContract || null : null;
+  const compiledContract = validationContractOverride || (qualification?.state === 'qualified' ? qualification?.compiledContract?.validationContract || null : null);
   if (!compiledContract || compiledContract?.lineageQualification?.state !== 'valid') {
     return Object.freeze({
       available: false,

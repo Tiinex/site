@@ -45,20 +45,11 @@ export function qualifyPortableExactParent(parent = {}, transitionType = 'create
   });
   const schemaReferenceQualified = Boolean(schemaReference.preferredTarget && schemaReference.resolutionState === 'qualified');
   const published = parent.publishedReference || {};
-  const publishedQualified = Boolean(published.target && published.state === 'qualified');
-  if (schemaReferenceQualified && publishedQualified) return qualified(snapshot);
+  if (schemaReferenceQualified) return qualified(snapshot);
   if (!schemaReferenceQualified) return qualifiedLocal(snapshot, 'continuation-parent-schema-reference-unqualified', {
     schemaReferenceAuthority: schemaReference,
     publishedReference: published,
     exactnessConflict: 'Local continuity can preserve the declared Parent Schema identity/reference, but exact continuation requires independently qualified Parent Schema authority.'
-  });
-  if (!published.target) return qualifiedLocal(snapshot, 'continuation-parent-browse-git-root-contract-conflict', {
-    publishedReference: published,
-    rootContractConflict: 'Parent Origin currently requires browse + git for exact Root qualification, while unpublished local continuity has no truthful published representation.'
-  });
-  return qualifiedLocal(snapshot, 'continuation-parent-browse-git-unqualified', {
-    publishedReference: published,
-    exactnessConflict: 'A supplied published Parent reference is not qualified; local continuity remains usable without promoting that reference to browse + git authority.'
   });
 }
 
@@ -117,7 +108,9 @@ export function qualifyPortableRenderedParentRepresentation(markdown = '', paren
   const hasObserved = Boolean(observed.schema?.id || observed.trace || observed.origin || observed.createdAt || observed.boundary || observed.originEntries?.length);
   if (rootCreation) return Object.freeze({ state: hasObserved ? 'invalid' : 'qualified', reason: hasObserved ? 'exact-result-parent-unexpected' : '' });
   const relative = relativePath(dirname(childPath), parent.path);
-  const published = String(parent.publishedReference?.target || '');
+  const published = parent.publishedReference || {};
+  const publishedTarget = String(published.target || '');
+  const publishedQualified = Boolean(publishedTarget && published.state === 'qualified');
   const schemaTarget = String(parent.schemaReferenceAuthority?.preferredTarget || '');
   const origins = observed.originEntries || [];
   const createdAtLines = renderedParentFieldLines(markdown, 'Created At');
@@ -125,32 +118,21 @@ export function qualifyPortableRenderedParentRepresentation(markdown = '', paren
   const createdAtExact = expectedCreatedAt ? createdAtLines.length === 1 && createdAtLines[0] === `  - Created At: ${expectedCreatedAt}` : createdAtLines.length === 0;
   const relativeOrigins = origins.filter((entry) => entry.label === 'relative');
   const browseOrigins = origins.filter((entry) => entry.label === 'browse + git');
-  const localOnly = options.allowUnpublishedLocalParent === true && !published;
-  const localExact = localOnly
-    && String(observed.schema?.id || '') === String(parent.schemaId || '')
+  const baseExact = String(observed.schema?.id || '') === String(parent.schemaId || '')
     && String(observed.schema?.target || '') === schemaTarget
     && String(observed.trace || '') === relative
     && /^\[[^\]]+\]\([^)]+\)$/.test(String(observed.traceRaw || ''))
     && relativeOrigins.length === 1 && relativeOrigins[0].target === relative
-    && browseOrigins.length === 0
-    && origins.length === 1
     && !String(observed.boundary || '')
     && createdAtExact
     && String(observed.createdAt || '') === expectedCreatedAt;
-  const exact = String(observed.schema?.id || '') === String(parent.schemaId || '')
-    && String(observed.schema?.target || '') === schemaTarget
-    && String(observed.trace || '') === relative
-    && /^\[[^\]]+\]\([^)]+\)$/.test(String(observed.traceRaw || ''))
-    && relativeOrigins.length === 1 && relativeOrigins[0].target === relative
-    && browseOrigins.length === 1 && browseOrigins[0].target === published
-    && origins.length === 2
-    && !String(observed.boundary || '')
-    && createdAtExact
-    && String(observed.createdAt || '') === expectedCreatedAt;
+  const exact = baseExact && (publishedQualified
+    ? browseOrigins.length === 1 && browseOrigins[0].target === publishedTarget && origins.length === 2
+    : browseOrigins.length === 0 && origins.length === 1);
   return Object.freeze({
-    state: exact ? 'qualified' : localExact ? 'qualified-local-continuity' : 'invalid',
-    reason: exact ? '' : localExact ? 'continuation-parent-browse-git-root-contract-conflict' : 'exact-result-parent-representation-mismatch',
-    expected: Object.freeze({ schemaId: String(parent.schemaId || ''), schemaTarget, trace: relative, relativeOrigin: relative, browseGitOrigin: published, createdAt: expectedCreatedAt }),
+    state: exact ? 'qualified' : 'invalid',
+    reason: exact ? '' : 'exact-result-parent-representation-mismatch',
+    expected: Object.freeze({ schemaId: String(parent.schemaId || ''), schemaTarget, trace: relative, relativeOrigin: relative, browseGitOrigin: publishedQualified ? publishedTarget : '', createdAt: expectedCreatedAt }),
     observed: Object.freeze({ schemaId: String(observed.schema?.id || ''), schemaTarget: String(observed.schema?.target || ''), trace: String(observed.trace || ''), traceRaw: String(observed.traceRaw || ''), origins: Object.freeze(origins), boundary: String(observed.boundary || ''), createdAt: String(observed.createdAt || ''), createdAtLines: Object.freeze(createdAtLines) })
   });
 }

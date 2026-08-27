@@ -6,6 +6,7 @@
   - Created At: 2026-06-14 00:00:00
   - Trace: [tiinex.root.v1.schema.md](../tiinex.root.v1.schema.md)
   - Origin:
+    - [relative](../tiinex.root.v1.schema.md)
     - [browse + git](https://github.com/Tiinex/site/blob/6ac71a3a3d3be0d3fc73450dc3c1d45a0a4ed94a/src/schemas/tiinex.root.v1.schema.md)
 - Current
   - Current Schema: [tiinex.workspace.v1](https://github.com/Tiinex/site/blob/17283cd2f0b9b0782a149a0cd113fb88a5a55ef3/src/schemas/workspace/tiinex.workspace.v1.schema.md)

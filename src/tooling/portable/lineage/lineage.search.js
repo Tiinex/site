@@ -1,8 +1,10 @@
 import { runAudit } from '../../../audit/audit.run.js';
 import { resolveLineage } from '../../../lineage/lineage.resolve.js';
+import { LineageResolutionStatus } from '../../../lineage/lineage.model.js';
 import { traverseLoadedLineage } from '../../../lineage/lineage.traverse.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { portableFinding } from '../findings.js';
+import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
 
 export const PORTABLE_LINEAGE_SEARCH_SCHEMA_ID = 'tiinex.portable.lineage-search.v1';
 
@@ -13,7 +15,10 @@ export function searchPortableLineage(input = {}, options = {}) {
   const resolved = resolveLineage(material.records, { depth: 'loaded-portable-search' });
   const scopedIds = resolveScopeIds(material.records, resolved, input, options);
   const relationIndex = buildRelationIndex(resolved);
-  const audits = needsAudits(filters) ? new Map(material.records.map((record) => [record.id, runAudit({ record, markdown: record.markdown })])) : new Map();
+  const audits = needsAudits(filters) ? new Map(material.records.map((record) => {
+    const runtimeProjection = portableRuntimeValidationContractForSchema(record.schemaId || record.currentSchemaId || '');
+    return [record.id, runAudit({ record, markdown: record.markdown, validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null })];
+  })) : new Map();
   const candidates = material.records.filter((record) => !scopedIds || scopedIds.has(record.id));
   const matches = [];
   for (const record of candidates) {
@@ -65,10 +70,17 @@ function resolveScopeIds(records, resolved, input, options) {
   return new Set((traversal.nodes || []).map((node) => node.id));
 }
 
+const TOPOLOGICAL_PARENT_EDGE_STATUSES = new Set([
+  LineageResolutionStatus.resolved,
+  LineageResolutionStatus.verified,
+  LineageResolutionStatus.probable,
+  LineageResolutionStatus.mismatch
+]);
+
 function buildRelationIndex(resolved = {}) {
   const map = new Map((resolved.nodes || []).map((node) => [node.id, { root: true, leaf: true, parents: [], children: [] }]));
   for (const edge of resolved.edges || []) {
-    if (edge.status !== 'resolved' || edge.kind !== 'parent') continue;
+    if (edge.kind !== 'parent' || !TOPOLOGICAL_PARENT_EDGE_STATUSES.has(edge.status) || !edge.from || !edge.to) continue;
     const parent = map.get(edge.from);
     const child = map.get(edge.to);
     if (parent && child) {

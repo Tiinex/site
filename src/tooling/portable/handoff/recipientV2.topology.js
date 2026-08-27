@@ -13,6 +13,7 @@ import {
 import { selectRecipientRoutes } from './recipientV2.routeSelection.js';
 import { recipientEntriesFingerprint, recipientPackageRootPath } from './recipientV2.topology.helpers.js';
 import { RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, RECIPIENT_V2_SIBLING_ROUTE_INFERENCE, recipientV2EntryCurrentRead } from './recipientV2.entryContract.js';
+import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
 
 export const RECIPIENT_V2_READ_PATH = '001-1-READ-BEFORE-PROCEEDING.trace.md';
 export const RECIPIENT_V2_FORMAT_ID = 'tiinex-recipient-facing-handoff-v2-flat';
@@ -56,11 +57,13 @@ export function buildRecipientFacingV2Topology(input = {}) {
     ...(bootstrapSource.length ? [{ label: 'Portable Tooling bootstrap', target: '001-2-bootstrap.trace.md' }] : []),
     ...workspacePlans.map((workspace) => ({ label: `Workspace ${workspace.workspaceId}`, target: workspace.workspacePath }))
   ];
+  const rootFacts = { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', carrierLineage: carrier.lineage || null, pathParentProjection: true, pathAuthority: false };
   const rootFile = finalizeFile({
     path: rootPath,
     kind: 'handoff-package-lineage-root',
     logicalKind: 'recipient-v2-package-root',
     mediaType: 'text/markdown',
+    transportFacts: recipientV2TransportFacts('package-root', rootFacts),
     content: renderRecipientV2Pointer({
       createdAt,
       role: 'package-root',
@@ -75,7 +78,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
         { label: 'Lineage Rule', value: 'numeric pathing mirrors declared package-local Parent continuity; filenames alone never establish the relation' }
       ],
       destinations: rootDestinations,
-      facts: { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', carrierLineage: carrier.lineage || null, pathParentProjection: true, pathAuthority: false }
+      facts: rootFacts
     })
   });
   files.push(rootFile);
@@ -120,6 +123,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
       kind: 'handoff-package-workspace-node',
       logicalKind: 'recipient-v2-workspace-node',
       mediaType: 'text/markdown',
+      transportFacts: recipientV2TransportFacts('workspace-node', facts),
       content: renderRecipientV2Workspace({
         createdAt,
         parent: rootParent,
@@ -165,7 +169,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
       archiveSha256: cacheFile.sha256,
       materials: materials.map((item, index) => ({ requirementId: item.requirementId, classification: item.classification, referenceTarget: item.referenceTarget, routeWorkspaceId: item.routeWorkspaceId, routePath: item.routePath, sourceRequirementId: item.sourceRequirementId, originalPath: item.originalPath, archiveEntry: cacheEntries[index].path, bytes: item.bytes, sha256: item.sha256 }))
     };
-    const cacheArtifact = finalizeFile({ path: artifactPath, kind: 'tiinex-external-payload-artifact', logicalKind: 'recipient-v2-workspace-dependency-cache-reference', mediaType: 'text/markdown', content: renderRecipientV2ExternalPayload({ createdAt, parent: workspace.parent, title: `Workspace Dependency Cache — ${workspace.workspaceId}`, summary: 'Exact recipient-relative dependency bytes not satisfied by any qualified Workspace archive.', label: `${workspace.workspaceId} Handoff dependency cache`, kind: 'zip export', role: 'workspace-scoped Handoff dependency cache', location: archivePath, bytes: cacheFile.bytes, sha256: cacheFile.sha256, facts: cacheFacts }) });
+    const cacheArtifact = finalizeFile({ path: artifactPath, kind: 'tiinex-external-payload-artifact', logicalKind: 'recipient-v2-workspace-dependency-cache-reference', mediaType: 'text/markdown', transportFacts: recipientV2TransportFacts('workspace-scoped Handoff dependency cache', cacheFacts), content: renderRecipientV2ExternalPayload({ createdAt, parent: workspace.parent, title: `Workspace Dependency Cache — ${workspace.workspaceId}`, summary: 'Exact recipient-relative dependency bytes not satisfied by any qualified Workspace archive.', label: `${workspace.workspaceId} Handoff dependency cache`, kind: 'zip export', role: 'workspace-scoped Handoff dependency cache', location: archivePath, bytes: cacheFile.bytes, sha256: cacheFile.sha256, facts: cacheFacts }) });
     files.push(cacheArtifact, cacheFile);
     const projection = Object.freeze({ workspaceId: workspace.workspaceId, artifactPath, archivePath, materials: cacheFacts.materials });
     topology.caches.push(projection);
@@ -216,6 +220,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
         kind: 'participant-role-pointer',
         logicalKind: 'recipient-v2-participant-role-pointer',
         mediaType: 'text/markdown',
+        transportFacts: recipientV2TransportFacts('participant-role', roleFacts),
         content: renderRecipientV2Pointer({
           createdAt,
           parent: lineageParent,
@@ -258,6 +263,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
       kind: 'handoff-route-pointer',
       logicalKind: 'recipient-v2-handoff-route-pointer',
       mediaType: 'text/markdown',
+      transportFacts: recipientV2TransportFacts('handoff-route', pointerFacts),
       content: renderRecipientV2Pointer({
         createdAt,
         parent: lineageParent,
@@ -285,11 +291,13 @@ export function buildRecipientFacingV2Topology(input = {}) {
     ...topology.participantRoles.map((role) => ({ label: `Participant Role ${role.requirementId}`, target: role.pointerPath })),
     ...topology.routes.map((route) => ({ label: `Handoff route ${route.routeId || route.workspaceRelativeHandoffPath}`, target: route.pointerPath }))
   ];
+  const readFacts = { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', routeAuthority: 'qualified-handoff-route-pointer-plus-exact-handoff-bytes', routeSelectionAuthority: RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, siblingRouteInference: RECIPIENT_V2_SIBLING_ROUTE_INFERENCE, pathParentProjection: true, pathAuthority: false };
   const readFile = finalizeFile({
     path: RECIPIENT_V2_READ_PATH,
     kind: 'handoff-recovery-pointer',
     logicalKind: 'recipient-v2-recovery-orientation',
     mediaType: 'text/markdown',
+    transportFacts: recipientV2TransportFacts('recovery-orientation', readFacts),
     content: renderRecipientV2Pointer({
       createdAt,
       parent: rootParent,
@@ -299,11 +307,14 @@ export function buildRecipientFacingV2Topology(input = {}) {
       prose: 'Read this artifact before traversing the sibling material nodes. The package-local numeric tree mirrors declared Parent continuity, while exact Workspace/archive/Handoff bytes must still independently qualify.',
       currentRead: recipientV2EntryCurrentRead(),
       destinations: readDestinations,
-      facts: { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH, artifactSurface: 'flat-qualified-tiinex-artifacts-and-explicit-payload-zips', routeAuthority: 'qualified-handoff-route-pointer-plus-exact-handoff-bytes', routeSelectionAuthority: RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, siblingRouteInference: RECIPIENT_V2_SIBLING_ROUTE_INFERENCE, pathParentProjection: true, pathAuthority: false }
+      facts: readFacts
     })
   });
   files.push(readFile);
   topology.read = Object.freeze({ path: RECIPIENT_V2_READ_PATH, sha256: readFile.sha256 });
+  const transportManifest = buildRecipientV2TransportManifestFile(files, { format: RECIPIENT_V2_FORMAT_ID, packageRootPath: rootPath, entryArtifactPath: RECIPIENT_V2_READ_PATH });
+  files.push(transportManifest);
+  topology.transportManifest = Object.freeze({ path: transportManifest.path, sha256: transportManifest.sha256 });
 
   const duplicatePaths = duplicates(files.map((file) => file.path));
   for (const path of duplicatePaths) findings.push(finding('error', 'portable.handoff-v2-surface.path-duplicate', 'Recipient-facing v2 topology generated duplicate root paths.', { path }));
@@ -347,7 +358,8 @@ function buildBootstrapCarrier(source, createdAt, findings, parent) {
   const artifactPath = '001-2-bootstrap.trace.md';
   const payload = finalizeFile({ path: payloadPath, kind: 'handoff-tooling-bootstrap-archive', logicalKind: 'recipient-v2-tooling-bootstrap-payload', mediaType: 'application/zip', data: zipBytes, boundary: 'Portable Tooling bootstrap payload. Runtime/source/JSON remain inside this explicitly referenced ZIP and gain no authority by archive placement.' });
   const identities = entries.map((entry) => ({ path: entry.path, bytes: entry.data.byteLength, sha256: sha256Hex(entry.data) }));
-  const artifact = finalizeFile({ path: artifactPath, kind: 'tiinex-external-payload-artifact', logicalKind: 'recipient-v2-tooling-bootstrap-reference', mediaType: 'text/markdown', content: renderRecipientV2ExternalPayload({
+  const bootstrapFacts = { archivePath: payloadPath, archiveBytes: payload.bytes, archiveSha256: payload.sha256, entryCount: identities.length, totalBytes: identities.reduce((sum, item) => sum + item.bytes, 0), entriesFingerprint: sha256Hex(utf8Bytes(stableJson(identities))) };
+  const artifact = finalizeFile({ path: artifactPath, kind: 'tiinex-external-payload-artifact', logicalKind: 'recipient-v2-tooling-bootstrap-reference', mediaType: 'text/markdown', transportFacts: recipientV2TransportFacts('portable Tooling bootstrap runtime for recipient orientation and verification', bootstrapFacts), content: renderRecipientV2ExternalPayload({
     createdAt,
     parent,
     title: 'Portable Tooling Bootstrap Payload',
@@ -358,7 +370,7 @@ function buildBootstrapCarrier(source, createdAt, findings, parent) {
     location: payloadPath,
     bytes: payload.bytes,
     sha256: payload.sha256,
-    facts: { archivePath: payloadPath, archiveBytes: payload.bytes, archiveSha256: payload.sha256, entryCount: identities.length, totalBytes: identities.reduce((sum, item) => sum + item.bytes, 0), entriesFingerprint: sha256Hex(utf8Bytes(stableJson(identities))) }
+    facts: bootstrapFacts
   }) });
   if (!entries.some((entry) => entry.path === 'manifest.json')) findings.push(finding('error', 'portable.handoff-v2-surface.bootstrap.manifest-missing', 'Bootstrap payload source lacks its existing manifest.json authority.'));
   return Object.freeze({ artifact, payload, projection: Object.freeze({ artifactPath, payloadPath, payloadSha256: payload.sha256, entryCount: identities.length }) });

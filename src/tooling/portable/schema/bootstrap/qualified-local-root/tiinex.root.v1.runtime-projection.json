@@ -1,0 +1,50 @@
+{
+  "schema": "tiinex.portable.qualified-local-root-runtime-projection.v1",
+  "version": 1,
+  "schemaId": "tiinex.root.v1",
+  "authority": {
+    "state": "qualified-local",
+    "source": "carried-tiinex-docs-working-snapshot",
+    "publicationState": "unpublished",
+    "publicationBindingRepin": "deferred-until-qualified-publication",
+    "boundary": "Portable runtime projection of exact carried local Root authority. It does not rewrite or supersede historical published schema-source binding identity."
+  },
+  "source": {
+    "bootstrapPath": "src/tooling/portable/schema/bootstrap/qualified-local-root/tiinex.root.v1.schema.md",
+    "bytes": 41197,
+    "sha256": "4bc6388dc375e68e9a2df2641cb8df9716ad9ef95deff22808fe78048a5d8028",
+    "c14nV2Self": "nOBWpnN-Nqn3r9yJcAg2pGx_SenALuBtE1cIqcNfIkk"
+  },
+  "lineageQualification": {
+    "state": "valid",
+    "complete": true,
+    "lineage": [
+      "tiinex.root.v1"
+    ],
+    "findings": []
+  },
+  "parentOrigin": {
+    "name": "Parent Origin",
+    "requiredWhen": [
+      "Parent exists"
+    ],
+    "requiredSections": [],
+    "requiredFields": [
+      "relative"
+    ],
+    "requiredEntries": [],
+    "allowedLabels": [
+      "relative",
+      "absolute",
+      "browse + git"
+    ],
+    "entryShapes": [
+      "Markdown Link"
+    ],
+    "ordering": [
+      "relative",
+      "absolute",
+      "browse + git"
+    ]
+  }
+}

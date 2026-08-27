@@ -18,6 +18,7 @@ import { discoverPortableHostCapabilities } from './host/host.capabilities.js';
 import { listPortableMaterialProviders, resolvePortableSchemaChainMaterial, resolvePortableSchemaMaterial } from './providers/schema.providers.js';
 import { inspectPortableAssets, preparePortableAssetAnalysis } from './assets/asset.operations.js';
 import { preparePortableTask } from './orchestration/task.prepare.js';
+import { portableRuntimeValidationContractForSchema } from './schema/qualifiedLocalRoot.runtime.js';
 export { planPortableLineageIntegrity, projectPortableLineageIntegrityRepair, applyPortableLineageIntegrity, searchPortableLineage } from './lineage/lineage.operations.js';
 
 export const PORTABLE_RESULT_SCHEMA_ID = 'tiinex.portable.operation.result.v1';
@@ -192,7 +193,10 @@ export function inspectPortableMaterial(input = {}, options = {}) {
 
 export function auditPortableMaterial(input = {}, options = {}) {
   const material = normalizePortableInput(input);
-  const audits = material.records.map((record) => sanitizeAudit(runAudit({ record, markdown: record.markdown }), record, options));
+  const audits = material.records.map((record) => {
+    const runtimeProjection = portableRuntimeValidationContractForSchema(record.schemaId || record.currentSchemaId || '');
+    return sanitizeAudit(runAudit({ record, markdown: record.markdown, validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null }), record, options);
+  });
   const findings = [...material.findings, ...audits.flatMap((audit) => audit.findings || [])];
   return operationResult('audit', {
     boundary: material.boundary,

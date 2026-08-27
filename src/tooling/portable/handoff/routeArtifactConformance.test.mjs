@@ -56,10 +56,17 @@ assert.equal(withParentQualification.parentContinuity.targetResolution.verificat
 
 const missingBrowseGit = qualifiedHandoffFixture({ parent: { ...parentBinding, includeBrowseGit: false } });
 const missingBrowseGitQualification = qualifySelectedHandoffArtifact({ markdown: missingBrowseGit, parentMarkdown });
-assert.equal(missingBrowseGitQualification.status, 'blocked');
+assert.equal(missingBrowseGitQualification.status, 'qualified', 'directly recoverable local Parent continuity requires truthful relative Origin, not fabricated publication authority');
 assert.equal(missingBrowseGitQualification.selfIntegrity.state, 'verified');
-assert.equal(missingBrowseGitQualification.parentContinuity.targetResolution.verification.state, 'verified', 'valid target/self digests must not mask missing Parent Origin authority');
-assert(missingBrowseGitQualification.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing'));
+assert.equal(missingBrowseGitQualification.parentContinuity.targetResolution.verification.state, 'verified');
+assert(!missingBrowseGitQualification.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing'));
+
+const missingRelative = qualifiedHandoffFixture({ parent: { ...parentBinding, includeRelative: false } });
+const missingRelativeQualification = qualifySelectedHandoffArtifact({ markdown: missingRelative, parentMarkdown });
+assert.equal(missingRelativeQualification.status, 'blocked', 'browse + git alone must not replace required direct Parent recovery continuity');
+assert.equal(missingRelativeQualification.selfIntegrity.state, 'verified');
+assert.equal(missingRelativeQualification.parentContinuity.targetResolution.verification.state, 'verified', 'valid target/self digests must not mask missing required relative Parent Origin authority');
+assert(missingRelativeQualification.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing' && item.message.includes('relative')));
 
 const wrongParentTarget = qualifiedHandoffFixture({ parent: { ...parentBinding, targetValue: 'A'.repeat(43) } });
 const wrongParentTargetQualification = qualifySelectedHandoffArtifact({ markdown: wrongParentTarget, parentMarkdown });

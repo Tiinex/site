@@ -1,5 +1,6 @@
 import { validateArtifact } from '../../../validation/validateArtifact.js';
 import { C14N_V2_METHOD_ID, canonicalC14nV2SelfState, verifyC14nV2TargetSelfDigest } from '../../../integrity/integrity.c14nV2.js';
+import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
 
 export const HANDOFF_ROUTE_ARTIFACT_CONFORMANCE_SCHEMA_ID = 'tiinex.portable.handoff-route-artifact-conformance.v1';
 
@@ -9,7 +10,8 @@ export function qualifyTiinexRouteArtifact(input = {}) {
   const markdown = String(input.markdown || '');
   const expectedSchemaId = String(input.expectedSchemaId || '').trim();
   const requireExactContract = input.requireExactContract !== false;
-  const validation = validateArtifact({ markdown });
+  const runtimeProjection = portableRuntimeValidationContractForSchema(expectedSchemaId);
+  const validation = validateArtifact({ markdown, validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null });
   const parsed = validation.parsed || {};
   const findings = [];
 
@@ -18,16 +20,13 @@ export function qualifyTiinexRouteArtifact(input = {}) {
 
   for (const item of validation.findings || []) {
     if (item.severity !== 'error') continue;
-    if (input.allowPackageLocalParentOrigin === true && isPackageLocalParentOriginPublicationGap(item)) continue;
     findings.push(finding('error', item.code || 'portable.route-artifact.validation.error', item.message || 'Declared Tiinex contract validation failed.', { source: item.source || '', qualification: item.qualification || '' }));
   }
 
   if (requireExactContract) {
     if (!validation.contractValidation?.available) findings.push(finding('error', 'portable.route-artifact.contract.unavailable', `Exact registered contract validation is unavailable for ${expectedSchemaId || validation.schemaId || 'the declared schema'}.`));
     else if (!QUALIFIED_CONTRACT_STATES.has(String(validation.contractValidation.state || ''))) {
-      const onlyPackageLocalOriginGap = input.allowPackageLocalParentOrigin === true
-        && (validation.contractValidation?.result?.findings || validation.findings || []).filter((item) => item?.severity === 'error').every(isPackageLocalParentOriginPublicationGap);
-      if (!onlyPackageLocalOriginGap) findings.push(finding('error', 'portable.route-artifact.contract.unqualified', `Declared Tiinex contract did not qualify: ${validation.contractValidation.state || 'unknown'}.`, { contractState: String(validation.contractValidation.state || '') }));
+      findings.push(finding('error', 'portable.route-artifact.contract.unqualified', `Declared Tiinex contract did not qualify: ${validation.contractValidation.state || 'unknown'}.`, { contractState: String(validation.contractValidation.state || '') }));
     }
   }
 
@@ -126,12 +125,6 @@ function projectTargetResolution(value = {}) {
   });
 }
 
-
-function isPackageLocalParentOriginPublicationGap(item = {}) {
-  const code = String(item?.code || '');
-  const message = String(item?.message || '');
-  return code === 'portable.contract.conditional.field.required.missing' && /Parent Origin:\s*browse \+ git/i.test(message);
-}
 
 function finding(severity, code, message, extra = {}) { return Object.freeze({ severity, code, message, ...extra }); }
 function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }

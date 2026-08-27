@@ -5,11 +5,12 @@ import { qualifyHandoffWorkspaceTarget } from './workspaceTargetConformance.js';
 import { buildHandoffCarrierProjection } from './carrierProjection.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
 import { handoffWorkspaceProviderForId } from './workspaceByteProvider.js';
-import { inspectRecipientV2Artifact, parseRecipientV2Facts } from './recipientV2.artifacts.js';
+import { inspectRecipientV2Artifact } from './recipientV2.artifacts.js';
 import { RECIPIENT_V2_FORMAT_ID, RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
 import { RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, RECIPIENT_V2_SIBLING_ROUTE_INFERENCE } from './recipientV2.entryContract.js';
 import { buildQualifiedRecipientV2WorkspaceByteProvider, dedupeFindings, deepFreeze, finding, indexRecipientFiles, inspectRecipientZipPayload, isForbiddenLegacyV2Path, oneRecipientFile, recipientColdProjection, recipientEntriesFingerprint, recipientWorkspaceDescriptor, virtualCacheMaterial } from './recipientV2.inspect.helpers.js';
 import { buildPackageLocalParentResolver, inspectPackageLocalLineage, inspectParticipantRolePointers, inspectRoutePointers, parentTrace } from './recipientV2.lineage.js';
+import { inspectRecipientV2TransportManifest, recipientV2FactsForFile, RECIPIENT_V2_TRANSPORT_MANIFEST_PATH } from './recipientV2.transportManifest.js';
 
 export const RECIPIENT_V2_TOPOLOGY_INSPECTION_SCHEMA_ID = 'tiinex.portable.recipient-facing-handoff-v2.inspection.v1';
 
@@ -38,16 +39,20 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
   for (const file of forbidden) findings.push(finding('error', 'portable.handoff-v2-surface.legacy-envelope-exposed', 'Recipient-facing v2 package exposes a rejected legacy control/envelope path.', { path: file.path || '' }));
   for (const file of files) if (String(file.path || '').includes('/')) findings.push(finding('error', 'portable.handoff-v2-surface.path-nonflat', 'Recipient-facing v2 package root must be flat.', { path: file.path || '' }));
 
+  const transportManifest = inspectRecipientV2TransportManifest(files);
+  if (transportManifest.state === 'invalid') findings.push(...transportManifest.findings);
+  if (transportManifest.state === 'valid' && String(transportManifest.manifest?.format || '') !== RECIPIENT_V2_FORMAT_ID) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.format-mismatch', 'Recipient-v2 transport manifest declares an unsupported carrier format.', { observed: String(transportManifest.manifest?.format || ''), expected: RECIPIENT_V2_FORMAT_ID }));
   const generatedFiles = [];
+  const generatedFacts = new Map();
   const untypedMarkdown = [];
   for (const file of files) {
     if (!/\.md$/i.test(String(file.path || ''))) continue;
-    const markdown = decodeUtf8(packageFileByteView(file));
-    if (parseRecipientV2Facts(markdown)) generatedFiles.push(file);
+    const facts = recipientV2FactsForFile(file, transportManifest.state === 'absent' ? null : transportManifest);
+    if (facts) { generatedFiles.push(file); generatedFacts.set(String(file.path || ''), facts); }
     else untypedMarkdown.push(file);
   }
   const resolveParent = buildPackageLocalParentResolver(index);
-  const generatedArtifacts = generatedFiles.map((file) => inspectRecipientV2Artifact(file, { resolveParent, allowPackageLocalParentOrigin: true }));
+  const generatedArtifacts = generatedFiles.map((file) => inspectRecipientV2Artifact(file, { facts: generatedFacts.get(String(file.path || '')) || null, resolveParent }));
   for (const artifact of generatedArtifacts) findings.push(...artifact.findings);
   for (const file of untypedMarkdown) findings.push(finding('error', 'portable.handoff-v2-surface.markdown-unqualified', 'Recipient-facing v2 root contains Markdown that is not one generated qualified package-local Tiinex artifact.', { path: file.path || '' }));
 
@@ -68,7 +73,7 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
     if (readArtifact.facts?.siblingRouteInference !== RECIPIENT_V2_SIBLING_ROUTE_INFERENCE) findings.push(finding('error', 'portable.handoff-v2-surface.read.sibling-route-inference-enabled', 'READ-BEFORE artifact must fail closed rather than infer among sibling Handoff routes.', { path: readArtifact.path || '' }));
     if (rootArtifact && parentTrace(readArtifact) !== rootArtifact.path) findings.push(finding('error', 'portable.handoff-v2-surface.read.parent-mismatch', 'READ-BEFORE artifact must be a direct child of the package-local root.', { path: readArtifact.path, expectedParent: rootArtifact.path, observedParent: parentTrace(readArtifact) }));
   }
-  const detected = Boolean(rootArtifact || readArtifact?.facts?.format === RECIPIENT_V2_FORMAT_ID || forbidden.length);
+  const detected = Boolean(rootArtifact || readArtifact?.facts?.format === RECIPIENT_V2_FORMAT_ID || transportManifest.state !== 'absent' || forbidden.length);
 
   const payloadArtifacts = generatedArtifacts.filter((item) => item.schemaId === 'tiinex.external.payload.v1' && item.status === 'qualified');
   const workspaceArtifacts = generatedArtifacts.filter((item) => item.schemaId === 'tiinex.workspace.v1' && item.facts?.role === 'workspace-node' && item.status === 'qualified');
@@ -138,7 +143,7 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
   for (const file of files) {
     const path = String(file.path || '');
     if (/\.zip$/i.test(path) && (archiveClaims.get(path) || []).length !== 1) findings.push(finding('error', 'portable.handoff-v2-surface.payload-unowned', 'Every visible ZIP companion must be owned by exactly one qualified package-local Markdown lineage node.', { path, claims: (archiveClaims.get(path) || []).length }));
-    if (!/\.(?:md|zip)$/i.test(path)) findings.push(finding('error', 'portable.handoff-v2-surface.root-file-kind-invalid', 'Recipient-facing v2 root may expose only qualified Tiinex Markdown artifacts and explicitly referenced ZIP companions.', { path }));
+    if (!/\.(?:md|zip)$/i.test(path) && path !== RECIPIENT_V2_TRANSPORT_MANIFEST_PATH) findings.push(finding('error', 'portable.handoff-v2-surface.root-file-kind-invalid', 'Recipient-facing v2 root may expose only qualified Tiinex Markdown artifacts, explicitly referenced ZIP companions, and the single transport-owned manifest.', { path }));
   }
 
   const descriptor = deepFreeze({
@@ -180,6 +185,8 @@ export function inspectRecipientFacingV2Topology(bundle = {}) {
     participantRoles: Object.freeze(participantRolePointers.map((item) => Object.freeze({ pointerPath: item.path, workspaceId: String(item.facts?.workspaceId || ''), routeId: String(item.facts?.routeId || ''), roleLabelHint: String(item.facts?.roleLabelHint || ''), referenceTarget: String(item.facts?.referenceTarget || ''), targetCarrierKind: String(item.facts?.targetCarrierKind || ''), targetWorkspaceId: String(item.facts?.targetWorkspaceId || ''), targetInnerPath: String(item.facts?.targetInnerPath || item.facts?.targetArchiveEntry || ''), targetSha256: String(item.facts?.targetSha256 || '') }))),
     caches: Object.freeze(caches.map((cache) => Object.freeze({ workspaceId: String(cache.facts?.workspaceId || ''), artifactPath: cache.artifact.path, archivePath: cache.file.path, materials: cache.facts.materials || [] }))),
     bootstrapInspection: bootstrap?.inspection || null,
+    transportManifest: transportManifest.state === 'absent' ? null : Object.freeze({ state: transportManifest.state, path: RECIPIENT_V2_TRANSPORT_MANIFEST_PATH, sha256: transportManifest.file ? sha256Hex(packageFileBytes(transportManifest.file)) : '', format: String(transportManifest.manifest?.format || '') }),
+    artifactFacts: Object.freeze(generatedArtifacts.map((item) => Object.freeze({ path: item.path, facts: item.facts }))),
     descriptor,
     workspaceByteProvider,
     carrierProjection,

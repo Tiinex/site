@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
-import { parseRecipientV2Facts } from './recipientV2.artifacts.js';
+import { recipientV2FactsIndex } from './recipientV2.transportManifest.js';
 
 export const HANDOFF_CARRIER_LINEAGE_SCHEMA_ID = 'tiinex.portable.handoff-carrier-lineage.v1';
 
@@ -62,10 +62,11 @@ export function normalizeHandoffCarrierLineage(value = null) {
 
 export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {}) {
   const files = Array.isArray(bundle.files) ? bundle.files : [];
+  const factsIndex = recipientV2FactsIndex({ ...bundle, files });
   const roots = [];
   for (const file of files) {
     if (!/\.md$/i.test(String(file.path || ''))) continue;
-    const facts = parseRecipientV2Facts(decodeUtf8(packageFileBytes(file)));
+    const facts = factsIndex.map.get(String(file.path || '')) || null;
     if (facts?.role === 'package-root') roots.push({ file, facts });
   }
   let lineage = null;

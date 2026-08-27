@@ -6,6 +6,7 @@ import { selectPortableLoadedSchemaMaterial } from '../providers/schema.provider
 import { buildPortableSchemaGuide } from '../schema/schema.guide.js';
 import { compilePortableSchemaContract } from '../schema/contract.compile.js';
 import { validatePortableContractInstance } from '../schema/contract.validate.js';
+import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
 
 export function validatePortableDraft(input = {}, options = {}) {
   const markdown = String(input.markdown || input.draft?.markdown || '');
@@ -14,9 +15,10 @@ export function validatePortableDraft(input = {}, options = {}) {
   const findings = [];
   if (!markdown) findings.push(portableFinding('error', 'portable.draft.markdown.required', 'Draft validation requires Markdown content.', { ref: path }));
   const record = createRecordFromMarkdown(markdown, { path, name: path, sourceMode: 'portable-local-draft', lifecycleStatus: 'draft' });
-  const audit = runAudit({ record, markdown, schemaReferenceAuthorities: input.schemaReferenceAuthorities || null });
   const parsed = safeParse(markdown);
   const declaredSchema = String(parsed.envelope?.current?.schema?.id || record.schemaId || '').trim();
+  const runtimeProjection = portableRuntimeValidationContractForSchema(requestedSchema || declaredSchema);
+  const audit = runAudit({ record, markdown, schemaReferenceAuthorities: input.schemaReferenceAuthorities || null, validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null });
   if (requestedSchema && declaredSchema !== requestedSchema) findings.push(portableFinding('error', 'portable.draft.schema.mismatch', 'Draft Current Schema does not match the requested schema.', { requestedSchema, declaredSchema, ref: path }));
   const sharedParserQuirks = detectSharedParserQuirks(markdown, parsed, audit, path);
   const suppressedAuditCodes = new Set(sharedParserQuirks.flatMap((quirk) => quirk.suppressedCodes || []));
@@ -44,6 +46,7 @@ export function validatePortableDraft(input = {}, options = {}) {
   const exactCreationValidation = input.exactCreationValidation || null;
   const exactRuntimeValidation = Boolean(
     exactCreationValidation?.ok === true
+    && runtimeProjection.state === 'qualified'
     && !audit.resolution?.fallbackUsed
     && typeof audit.resolution?.module?.validate === 'function'
     && audit.status === 'readable'
@@ -126,6 +129,7 @@ export function buildPortableRepairPlan(input = {}) {
     findingSummary: explanation.findingSummary
   });
 }
+
 
 function detectSharedParserQuirks(markdown, parsed, audit, path) {
   const quirks = [];

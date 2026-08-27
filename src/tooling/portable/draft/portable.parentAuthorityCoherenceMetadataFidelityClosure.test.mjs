@@ -64,6 +64,7 @@ assert.equal(canonical.qualification.exactCreateToolingApplied, true);
 assert.equal(canonical.qualification.exactRuntimeValidation, true);
 assert(canonical.draft.markdown.includes(`  - Created At: ${canonicalCreatedAt}\n  - Trace: [p.trace.md](p.trace.md)`));
 assert.equal(parseArtifactMarkdown(canonical.draft.markdown).envelope.parent.createdAt, canonicalCreatedAt);
+assert(canonical.draft.markdown.includes('  - Origin:\n    - [relative](p.trace.md)\n    - [browse + git](https://archive.example.test/exact/parent.trace.md)'), 'qualified published Parent must retain both truthful relative and exact browse + git recovery locators');
 
 const omitted = await continueTask({ id: 'p', path: '.topics/p.trace.md', schemaId: 'tiinex.topic.v1' });
 assert.equal(omitted.status, 'created-clean');

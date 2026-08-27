@@ -37,6 +37,8 @@ const tests = [
   './handoff/humanOutputCopyablePresentation.test.mjs',
   './handoff/coldConsumerEntrypoint.test.mjs',
   './handoff/coldStartQualification.test.mjs',
+  './handoff/recipientV2.transportPurity.test.mjs',
+  './handoff/carrierLineage.fixedWidth.test.mjs',
   './handoff/handoff.manufacture.test.mjs',
   './handoff/multiRootManufacture.test.mjs',
   './handoff/pointerEntrypoint.test.mjs',

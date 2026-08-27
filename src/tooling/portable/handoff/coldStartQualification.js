@@ -4,7 +4,7 @@ import { discoverPortableHostCapabilities } from '../host/host.capabilities.js';
 import { portableFinding, summarizePortableFindings } from '../findings.js';
 import { orientColdConsumerFromHandoffPackage } from './coldConsumerEntrypoint.js';
 import { inspectStoredWorkspaceArchive } from './workspaceByteProvider.js';
-import { parseRecipientV2Facts } from './recipientV2.artifacts.js';
+import { recipientV2FactsIndex } from './recipientV2.transportManifest.js';
 import { parseNamedDeclarationSection } from '../schema/named.declarations.js';
 
 export const PORTABLE_COLD_START_INGRESS_CONTRACT_SCHEMA_ID = 'tiinex.portable.cold-start-ingress-contract.v1';
@@ -567,7 +567,7 @@ function resolvePackageParticipantRoles(bundle = {}, orientation = null, selecte
     const pointerPath = String(pointerPaths[index] || '');
     const pointerFile = findFile(bundle, pointerPath);
     if (!pointerFile) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.missing', 'Selected Handoff route declares participant Role Pointer ancestry that is not carried.', { pointerPath })); continue; }
-    const facts = parseRecipientV2Facts(decodeUtf8(packageFileBytes(pointerFile))) || {};
+    const facts = recipientV2FactsIndex(bundle).map.get(pointerPath) || {};
     if (facts.role !== 'participant-role') { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.invalid', 'Selected route ancestor is not a participant Role Pointer.', { pointerPath })); continue; }
     const material = resolveParticipantRolePointerMaterial(bundle, facts, findings, pointerPath);
     if (!material) continue;
@@ -686,7 +686,7 @@ function resolveReferencedRoleMaterial(bundle = {}, handoff = {}, findings = [])
   for (const file of bundle.files || []) {
     if (!/\.trace\.md$/i.test(String(file.path || ''))) continue;
     const markdown = decodeUtf8(packageFileBytes(file));
-    const facts = parseRecipientV2Facts(markdown);
+    const facts = recipientV2FactsIndex(bundle).map.get(String(file.path || '')) || null;
     if (facts?.role !== 'workspace-dependency-cache' && !/dependency cache/i.test(String(facts?.role || ''))) continue;
     for (const material of facts.materials || []) {
       if (String(material.referenceTarget || '') !== reference) continue;
