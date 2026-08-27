@@ -1,0 +1,31 @@
+{
+  "type": "tiinex.github.issues.snapshot.manifest.v1",
+  "repository": "Tiinex/site",
+  "generatedAt": "2026-08-27T23:20:49.966Z",
+  "sourceUpdatedAt": "2026-08-27T23:20:34Z",
+  "issueCount": 2,
+  "commentCount": 3,
+  "truncatedIssues": false,
+  "issues": [
+    {
+      "number": 1,
+      "title": "Start",
+      "state": "open",
+      "updated_at": "2026-08-27T23:20:34Z",
+      "issue": "issues/1/issue.json",
+      "body": "issues/1/issue.md",
+      "comment_count": 3,
+      "truncated_comments": false
+    },
+    {
+      "number": 2,
+      "title": "News",
+      "state": "open",
+      "updated_at": "2026-07-20T23:45:52Z",
+      "issue": "issues/2/issue.json",
+      "body": "issues/2/issue.md",
+      "comment_count": 0,
+      "truncated_comments": false
+    }
+  ]
+}

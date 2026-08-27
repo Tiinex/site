@@ -1,0 +1,12 @@
+{
+  "type": "tiinex.repository.snapshot",
+  "version": 1,
+  "repository": "https://github.com/Tiinex/ai-provenance.git",
+  "ref": "master",
+  "commit": "ef9a07cec7cbd6cc5fa32ebecef55c7851ade580",
+  "directory": "ai-provenance/",
+  "archive": "ai-provenance.zip",
+  "sha256": "4dc38613d631012b7b3eb512506e635d70e8ac44a459f9a8f69a32b84a3a6c4a",
+  "selection": "remote-default-branch",
+  "generatedAt": "2026-07-19T09:45:12Z"
+}

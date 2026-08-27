@@ -1,0 +1,26 @@
+{
+  "type": "tiinex.github.issue.snapshot.issue.v1",
+  "repository": "Tiinex/site",
+  "number": 2,
+  "id": 4933961339,
+  "node_id": "I_kwDOSUxe-s8AAAABJhZGew",
+  "html_url": "https://github.com/Tiinex/site/issues/2",
+  "title": "News",
+  "state": "open",
+  "state_reason": "",
+  "locked": false,
+  "author_association": "CONTRIBUTOR",
+  "user": {
+    "login": "Tiinusen",
+    "id": 1564942,
+    "html_url": "https://github.com/Tiinusen"
+  },
+  "labels": [],
+  "assignees": [],
+  "created_at": "2026-07-20T23:45:52Z",
+  "updated_at": "2026-07-20T23:45:52Z",
+  "closed_at": "",
+  "comments": [],
+  "truncated_comments": false,
+  "body_path": "issue.md"
+}

@@ -1,0 +1,17 @@
+{
+  "type": "tiinex.github.issues.snapshot",
+  "version": 1,
+  "repository": "https://github.com/Tiinex/site",
+  "repo": "Tiinex/site",
+  "identity": "github.com/Tiinex/site",
+  "directory": "site/",
+  "manifest": "site/manifest.json",
+  "archive": "",
+  "sha256": "",
+  "generatedAt": "2026-08-27T23:20:49.966Z",
+  "sourceUpdatedAt": "2026-08-27T23:20:34Z",
+  "issueCount": 2,
+  "commentCount": 3,
+  "truncatedIssues": false,
+  "publicationCommit": "6691491f0450f115ecf806342afec86b3c6a4df4"
+}
