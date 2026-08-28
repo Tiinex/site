@@ -15,6 +15,7 @@ const expected = [
   'qualify-checkpoint',
   'resolve-schema-material',
   'search-lineage',
+  'project-operating-overview',
   'schema-guide',
   'create-local-draft',
   'materialize-durable-findings',

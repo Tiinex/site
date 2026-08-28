@@ -6,19 +6,29 @@ import {
   RECIPIENT_V2_EXTERNAL_PAYLOAD_SCHEMA_TARGET,
   RECIPIENT_V2_POINTER_SCHEMA_TARGET,
   RECIPIENT_V2_WORKSPACE_SCHEMA_TARGET,
+  RECIPIENT_V2_WORKSPACE_REPRESENTATION_SCHEMA_TARGET,
   renderRecipientV2ExternalPayload,
   renderRecipientV2Pointer,
-  renderRecipientV2Workspace
+  renderRecipientV2Workspace,
+  renderRecipientV2WorkspaceRepresentation
 } from './recipientV2.artifacts.js';
 import { selectRecipientRoutes } from './recipientV2.routeSelection.js';
 import { recipientEntriesFingerprint, recipientPackageRootPath } from './recipientV2.topology.helpers.js';
 import { RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, RECIPIENT_V2_SIBLING_ROUTE_INFERENCE, recipientV2EntryCurrentRead } from './recipientV2.entryContract.js';
 import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
+import { buildRecipientFacingV2ArtifactFirstPhase1, buildRecipientFacingV2ArtifactFirstPhase2Clean } from './recipientV2.artifactFirstPhase1.js';
 
 export const RECIPIENT_V2_READ_PATH = '001-1-READ-BEFORE-PROCEEDING.trace.md';
 export const RECIPIENT_V2_FORMAT_ID = 'tiinex-recipient-facing-handoff-v2-flat';
 
 export function buildRecipientFacingV2Topology(input = {}) {
+  const sourceSurface = buildRecipientFacingV2TopologyLegacy({ ...input, artifactFirstDualProjectionPhase1: false, artifactFirstCleanCarrierPhase2: false, legacyRecipientV2Compatibility: false });
+  if (input.legacyRecipientV2Compatibility === true) return sourceSurface;
+  if (input.artifactFirstDualProjectionPhase1 === true) return buildRecipientFacingV2ArtifactFirstPhase1({ ...input, sourceSurface });
+  return buildRecipientFacingV2ArtifactFirstPhase2Clean({ ...input, sourceSurface });
+}
+
+function buildRecipientFacingV2TopologyLegacy(input = {}) {
   const internalBundle = input.bundle || {};
   const descriptor = input.descriptor || internalBundle.handoffClosure || {};
   const carrier = input.carrierProjection || {};
@@ -38,7 +48,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
     const workspaceId = String(binding.workspaceId || '');
     const slug = safeToken(workspaceId || `workspace-${ordinal}`);
     const prefix = `001-${ordinal}`;
-    return Object.freeze({ binding, ordinal, workspaceId, slug, prefix, workspacePath: `${prefix}-${slug}.workspace.md`, archivePath: `${prefix}-${slug}.workspace.zip` });
+    return Object.freeze({ binding, ordinal, workspaceId, slug, prefix, workspacePath: `${prefix}-${slug}.workspace.md`, archivePath: `${prefix}-${slug}.workspace.zip`, payloadArtifactPath: `${prefix}-1-workspace-representation-payload.trace.md`, representationArtifactPath: `${prefix}-2-workspace-representation.trace.md` });
   });
   const workspaceOrdinalById = new Map(workspacePlans.map((plan) => [plan.workspaceId, plan.ordinal]));
   const routesByWorkspace = groupRoutes(routeSelection.routes);
@@ -95,18 +105,20 @@ export function buildRecipientFacingV2Topology(input = {}) {
 
   const workspaceById = new Map();
   for (const plan of workspacePlans) {
-    const { binding, ordinal, workspaceId, workspacePath, archivePath } = plan;
+    const { binding, ordinal, workspaceId, workspacePath, archivePath, payloadArtifactPath, representationArtifactPath } = plan;
     const sourceTarget = oneFile(byPath, binding.workspaceTarget?.packagePath, findings, 'workspace-target');
     const sourceArchive = oneFile(byPath, binding.representation?.packagePath, findings, 'workspace-archive');
     if (!sourceTarget || !sourceArchive) continue;
     const sourceTargetData = packageFileByteView(sourceTarget);
     const sourceTargetSha256 = sha256Hex(sourceTargetData);
-    const archiveFile = repathFinalizedFile(sourceArchive, archivePath, { kind: 'handoff-workspace-archive', logicalKind: 'recipient-v2-complete-workspace-archive', mediaType: 'application/zip', boundary: 'Exact complete Workspace archive representation. The package-local Workspace Markdown sibling owns this payload node; exact durable Workspace source bytes remain inside the archive.' });
+    const archiveFile = repathFinalizedFile(sourceArchive, archivePath, { kind: 'handoff-workspace-archive', logicalKind: 'recipient-v2-complete-workspace-archive', mediaType: 'application/zip', boundary: 'Exact complete Workspace archive representation. Its semantic provider activation is owned by the explicit Workspace Representation + External Payload artifacts; package placement is not binding authority.' });
     const facts = {
       workspaceId,
       archivePath,
       archiveBytes: archiveFile.bytes,
       archiveSha256: archiveFile.sha256,
+      representationArtifactPath,
+      payloadArtifactPath,
       sourceWorkspaceTargetInnerPath: String(binding.workspaceTarget?.innerPath || ''),
       sourceWorkspaceTargetBytes: sourceTargetData.byteLength,
       sourceWorkspaceTargetSha256: sourceTargetSha256,
@@ -129,17 +141,79 @@ export function buildRecipientFacingV2Topology(input = {}) {
         parent: rootParent,
         workspaceId,
         title: `${workspaceId || 'Workspace'} — Handoff Workspace`,
-        archivePath,
+        representationPath: representationArtifactPath,
         sourceWorkspaceInnerPath: facts.sourceWorkspaceTargetInnerPath,
         facts
       })
     });
-    files.push(workspaceFile, archiveFile);
+    const workspaceParent = parentAuthority(workspaceFile, 'tiinex.workspace.v1', RECIPIENT_V2_WORKSPACE_SCHEMA_TARGET, createdAt);
+    const payloadFacts = {
+      workspaceId,
+      payloadClass: 'workspace-representation',
+      archivePath,
+      archiveBytes: archiveFile.bytes,
+      archiveSha256: archiveFile.sha256
+    };
+    const payloadArtifact = finalizeFile({
+      path: payloadArtifactPath,
+      kind: 'tiinex-external-payload-artifact',
+      logicalKind: 'recipient-v2-workspace-representation-payload',
+      mediaType: 'text/markdown',
+      transportFacts: recipientV2TransportFacts('workspace-representation-payload', payloadFacts),
+      content: renderRecipientV2ExternalPayload({
+        createdAt,
+        parent: workspaceParent,
+        title: `Workspace Representation Payload — ${workspaceId}`,
+        summary: 'Exact complete Workspace archive payload referenced by the canonical Workspace Representation binding.',
+        label: `${workspaceId} complete Workspace archive`,
+        kind: 'zip export',
+        role: 'complete Workspace archive representation payload',
+        location: archivePath,
+        bytes: archiveFile.bytes,
+        sha256: archiveFile.sha256,
+        facts: payloadFacts
+      })
+    });
+    const representationFacts = {
+      workspaceId,
+      workspaceArtifactPath: workspacePath,
+      payloadArtifactPath,
+      sourceWorkspaceTargetInnerPath: facts.sourceWorkspaceTargetInnerPath,
+      archivePath,
+      archiveSha256: archiveFile.sha256,
+      entryCount: facts.entryCount,
+      entriesFingerprint: facts.entriesFingerprint,
+      completenessState: facts.completenessState
+    };
+    const representationArtifact = finalizeFile({
+      path: representationArtifactPath,
+      kind: 'tiinex-workspace-representation-artifact',
+      logicalKind: 'recipient-v2-workspace-representation-binding',
+      mediaType: 'text/markdown',
+      transportFacts: recipientV2TransportFacts('workspace-representation', representationFacts),
+      content: renderRecipientV2WorkspaceRepresentation({
+        createdAt,
+        parent: workspaceParent,
+        title: `Workspace Representation — ${workspaceId}`,
+        workspaceLabel: `${workspaceId} Handoff Workspace`,
+        workspaceArtifactPath: workspacePath,
+        payloadLabel: `${workspaceId} Workspace archive payload`,
+        payloadArtifactPath,
+        workspaceArtifactInnerPath: facts.sourceWorkspaceTargetInnerPath,
+        decoderRequirement: 'deterministic stored ZIP with safe-entry validation',
+        facts: representationFacts
+      })
+    });
+    files.push(workspaceFile, payloadArtifact, representationArtifact, archiveFile);
     const projection = Object.freeze({
       workspaceId,
       ordinal,
       workspacePath,
       workspaceSha256: workspaceFile.sha256,
+      representationArtifactPath,
+      representationArtifactSha256: representationArtifact.sha256,
+      payloadArtifactPath,
+      payloadArtifactSha256: payloadArtifact.sha256,
       archivePath,
       archiveSha256: archiveFile.sha256,
       sourceWorkspaceTargetInnerPath: facts.sourceWorkspaceTargetInnerPath,
@@ -147,7 +221,7 @@ export function buildRecipientFacingV2Topology(input = {}) {
       sourceWorkspaceTargetBytes: sourceTargetData.byteLength
     });
     topology.workspaces.push(projection);
-    workspaceById.set(workspaceId, { ...projection, file: workspaceFile, parent: parentAuthority(workspaceFile, 'tiinex.workspace.v1', RECIPIENT_V2_WORKSPACE_SCHEMA_TARGET, createdAt) });
+    workspaceById.set(workspaceId, { ...projection, file: workspaceFile, representationArtifact, payloadArtifact, parent: workspaceParent });
   }
 
   const cachePlanByWorkspace = new Map();

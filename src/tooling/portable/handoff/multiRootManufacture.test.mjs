@@ -7,6 +7,9 @@ import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
+import { zipBufferToImportEntries } from '../../../adapters/archive/archive.adapter.js';
+import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
 try {
@@ -20,8 +23,9 @@ try {
   const secondaryOnlyInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot: siteRoot,
     workspaceId: 'site',
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffPath: '.topics/015-handoff.trace.md',
-    additionalWorkspaces: [{ id: 'docs', root: docsRoot, title: 'Docs' }],
+    additionalWorkspaces: [{ id: 'docs', root: docsRoot, title: 'Docs', workspaceTargetPath: 'workspace.workspace.md' }],
     handoffRoutes: [{ workspaceId: 'docs', path: '.topics/015-handoff.trace.md' }],
     toolingBootstrap: 'embedded',
     runtimeRoot
@@ -29,20 +33,28 @@ try {
   assert.deepEqual(secondaryOnlyInput.workspaceMaterializations.map((item) => item.id), ['site', 'docs']);
   assert.equal(secondaryOnlyInput.manufacturingEvidence.workspaceEnumerations.length, 2);
   assert.equal(secondaryOnlyInput.workspaceMaterializations[1].source.authority, 'none');
-  const secondaryOnly = manufactureRecipientRelativeHandoffPackage(secondaryOnlyInput, { packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
+  const secondaryOnly = manufactureRecipientRelativeHandoffPackage(secondaryOnlyInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
   assert.equal(secondaryOnly.status, 'ready');
   assert.equal(secondaryOnly.carrierProjection.routes.length, 1);
   assert.equal(secondaryOnly.carrierProjection.routes[0].workspaceId, 'docs');
   assert.equal(secondaryOnly.carrierProjection.routes[0].workspaceRelativePath, '.topics/015-handoff.trace.md');
   assert.equal(secondaryOnly.carrierProjection.workspaces.length, 2, 'a carried workspace may intentionally have no route');
-  const docsBlob = secondaryOnly.bundle.files.find((file) => file.path === 'handoff.workspaces/docs/content/blob.bin');
-  assert.deepEqual([...packageFileBytes(docsBlob)], [0, 1, 2, 255, 128], 'secondary binary bytes must survive package manufacture');
+  const docsBinding = secondaryOnly.descriptor.workspaceArchiveBindings.find((binding) => binding.workspaceId === 'docs');
+  assert(docsBinding, 'secondary Workspace must have one recipient-v2 archive binding');
+  const docsArchive = secondaryOnly.bundle.files.find((file) => file.path === docsBinding.representation.packagePath);
+  assert(docsArchive, 'secondary Workspace archive must be carried');
+  const docsEntries = await zipBufferToImportEntries(packageFileBytes(docsArchive), { source: 'multi-root-docs-workspace', excludeRepositoryInternals: true });
+  assert.equal(docsEntries.errors.length, 0);
+  const docsBlob = docsEntries.entries.find((entry) => entry.path === 'content/blob.bin');
+  assert(docsBlob, 'secondary binary bytes must remain addressable inside the Workspace archive');
+  assert.deepEqual([...docsBlob.bytes], [0, 1, 2, 255, 128], 'secondary binary bytes must survive package manufacture');
 
   const twoRoutesInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot: siteRoot,
     workspaceId: 'site',
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffPath: '.topics/015-handoff.trace.md',
-    additionalWorkspaces: [{ id: 'docs', root: docsRoot }],
+    additionalWorkspaces: [{ id: 'docs', root: docsRoot, workspaceTargetPath: 'workspace.workspace.md' }],
     handoffRoutes: [
       { workspaceId: 'site', path: '.topics/015-handoff.trace.md' },
       { workspaceId: 'docs', path: '.topics/015-handoff.trace.md' }
@@ -50,7 +62,7 @@ try {
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
-  const twoRoutes = manufactureRecipientRelativeHandoffPackage(twoRoutesInput, { packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
+  const twoRoutes = manufactureRecipientRelativeHandoffPackage(twoRoutesInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
   assert.equal(twoRoutes.status, 'ready');
   assert.equal(twoRoutes.carrierProjection.mode, 'shared');
   assert.deepEqual(twoRoutes.carrierProjection.routes.map((route) => route.workspaceId).sort(), ['docs', 'site']);
@@ -81,7 +93,7 @@ try {
       workspaceRoot: siteRoot,
       workspaceId: 'site',
       handoffPath: '.topics/015-handoff.trace.md',
-      additionalWorkspaces: [{ id: 'docs', root: docsRoot }],
+      additionalWorkspaces: [{ id: 'docs', root: docsRoot, workspaceTargetPath: 'workspace.workspace.md' }],
       handoffRoutes: [{ path: '.topics/015-handoff.trace.md' }],
       runtimeRoot
     }),
@@ -90,18 +102,20 @@ try {
 
   const workspaceJson = path.join(root, 'workspaces.json');
   const routesJson = path.join(root, 'routes.json');
-  const cliZip = path.join(root, 'multi-root.zip');
-  await writeFile(workspaceJson, `${JSON.stringify({ workspaces: [{ id: 'docs', root: docsRoot, title: 'Docs' }] }, null, 2)}\n`, 'utf8');
+  const cliOutputDir = path.join(root, 'cli-output');
+  await writeFile(workspaceJson, `${JSON.stringify({ workspaces: [{ id: 'docs', root: docsRoot, title: 'Docs', workspaceTargetPath: 'workspace.workspace.md' }] }, null, 2)}\n`, 'utf8');
   await writeFile(routesJson, `${JSON.stringify({ routes: [{ workspaceId: 'site', path: '.topics/015-handoff.trace.md' }, { workspaceId: 'docs', path: '.topics/015-handoff.trace.md' }] }, null, 2)}\n`, 'utf8');
   const lines = [];
   const code = await runPortableCli([
     'manufacture-handoff-package', siteRoot,
     '--handoff', '.topics/015-handoff.trace.md',
     '--workspace-id', 'site',
+    '--workspace-target', 'workspace.workspace.md',
+    '--legacy-recipient-v2-compatibility',
     '--workspace-roots', workspaceJson,
     '--workspace-routes', routesJson,
     '--route', 'handoff-route:docs:.topics/015-handoff.trace.md',
-    '--output', cliZip,
+    '--output-dir', cliOutputDir,
     '--built-at', '2026-08-23T18:00:00.000Z',
     '--compact'
   ], { log: (value) => lines.push(value), error: (value) => lines.push(value) }, { runtimeRoot });
@@ -110,19 +124,20 @@ try {
   assert.equal(cli.status, 'ready');
   assert.deepEqual(cli.planSummary.workspaces.map((item) => item.id), ['site', 'docs']);
   assert.equal(cli.carrierProjection.routes.length, 2);
-  assert.equal((await readFile(cliZip)).byteLength > 0, true);
+  assert.equal((await readFile(cli.primaryOutput.path)).byteLength > 0, true);
 
   const legacyInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot: siteRoot,
     workspaceId: 'site',
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffPath: '.topics/015-handoff.trace.md',
     handoffRoutes: ['.topics/015-handoff.trace.md'],
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
   assert.equal(legacyInput.workspaceMaterializations.length, 1);
-  assert.equal(legacyInput.transportRoutes[0], '.topics/015-handoff.trace.md');
-  const legacy = manufactureRecipientRelativeHandoffPackage(legacyInput, { packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
+  assert.deepEqual(legacyInput.transportRoutes[0], { workspaceId: 'site', path: '.topics/015-handoff.trace.md' });
+  const legacy = manufactureRecipientRelativeHandoffPackage(legacyInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T18:00:00.000Z' } });
   assert.equal(legacy.status, 'ready');
   assert.equal(legacy.carrierProjection.routes[0].workspaceId, 'site');
 } finally {
@@ -133,9 +148,37 @@ async function makeWorkspace(rootPath, title, to, contextName, bytes) {
   await mkdir(path.join(rootPath, '.topics'), { recursive: true });
   await mkdir(path.join(rootPath, 'content'), { recursive: true });
   await writeFile(path.join(rootPath, 'package.json'), `${JSON.stringify({ name: `tiinex-${title.toLowerCase()}-fixture`, type: 'module' })}\n`, 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(title), 'utf8');
   await writeFile(path.join(rootPath, '.topics', contextName), `# ${title} context\n`, 'utf8');
   await writeFile(path.join(rootPath, '.topics', '015-handoff.trace.md'), handoffMarkdown(title, to, contextName), 'utf8');
   await writeFile(path.join(rootPath, 'content', 'blob.bin'), Uint8Array.from(bytes));
+}
+function workspaceMarkdown(title) {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-23 17:59:00
+  - Authors: Fixture
+  - Why: Qualify the exact ${title} Workspace carried by the multi-root regression.
+  - Summary: ${title} multi-root fixture Workspace.
+  - Status: active/local
+
+---
+
+# ${title} Multi-root Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}\n`;
 }
 function handoffMarkdown(title, to, contextName) {
   return qualifiedHandoffFixture({

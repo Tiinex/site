@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { sealC14nV2Self, validatedC14nV2PrimarySelfDigest } from '../../../integrity/integrity.c14nV2.js';
 import { qualifySelectedHandoffArtifact } from './routeArtifactConformance.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { readLegacyArtifactFixture } from '../fixtures/legacyArtifactFixtures.mjs';
 
 const valid = qualifiedHandoffFixture({ to: 'Loom' });
 const validQualification = qualifySelectedHandoffArtifact({ markdown: valid });
@@ -40,7 +41,8 @@ assert.equal(originalInvalidQualification.selfIntegrity.state, 'verified', 'orig
 assert(originalInvalidQualification.findings.some((item) => item.code === 'portable.contract.section.required.missing'));
 assert(originalInvalidQualification.findings.filter((item) => item.code === 'portable.contract.field-domain.value.invalid').length >= 2);
 
-const parentMarkdown = await readFile(new URL('../../../../.topics/development/tooling/dogfood/027-handoff-package-workspace-archive-and-control-plane-minimality-audit.trace.md', import.meta.url), 'utf8');
+const parentLogicalPath = '.topics/development/tooling/dogfood/027-handoff-package-workspace-archive-and-control-plane-minimality-audit.trace.md';
+const parentMarkdown = await readLegacyArtifactFixture(parentLogicalPath);
 const parentDigest = validatedC14nV2PrimarySelfDigest(parentMarkdown);
 assert.equal(parentDigest.state, 'verified');
 const parentBinding = {

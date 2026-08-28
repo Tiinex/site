@@ -153,7 +153,16 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
   // whole-archive hashing and let an implementation-only representation gate the real carrier.
   // The direct closure/carrier builders qualify exact source bytes first; the visible recipient
   // surface is then independently inspected, and optional roundtrip verifies its serialized bytes.
-  const recipientSurface = buildRecipientFacingV2Topology({ bundle: projectionBundle, descriptor, carrierProjection, routeSelector: input.recipientRouteSelector || '', createdAt });
+  const recipientSurface = buildRecipientFacingV2Topology({
+    bundle: projectionBundle,
+    descriptor,
+    carrierProjection,
+    routeSelector: input.recipientRouteSelector || '',
+    createdAt,
+    artifactFirstDualProjectionPhase1: options.artifactFirstDualProjectionPhase1 === true || input.artifactFirstDualProjectionPhase1 === true,
+    artifactFirstCleanCarrierPhase2: options.artifactFirstCleanCarrierPhase2 === true || input.artifactFirstCleanCarrierPhase2 === true,
+    legacyRecipientV2Compatibility: options.legacyRecipientV2Compatibility === true || input.legacyRecipientV2Compatibility === true
+  });
   findings.push(...(recipientSurface.findings || []));
   const bundle = deepFreeze({ ...baselineBundle, status: transportStatus, files: recipientSurface.files, fileMap: null, packageRepresentationSha256: '', handoffClosure: null, transportFormat: RECIPIENT_V2_FORMAT_ID, boundary: `${baselineBundle.boundary || ''} Recipient-facing v2 exposes a flat qualified-artifact/payload root; legacy control JSON is not serialized.` });
   const fullRecipientVerificationRequested = options.verifyRoundtrip !== false && input.verifyRoundtrip !== false;

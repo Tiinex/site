@@ -97,13 +97,16 @@ export function qualifyMajorCarrierReadiness(input = {}, lineage = {}) {
   });
 }
 
-export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', parentBytes = null, routeDimensions = [], major = false, majorReason = '' } = {}) {
+export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', parentBytes = null, routeDimensions = [], qualifiedParentLineage = null, major = false, majorReason = '' } = {}) {
   const bytes = parentBytes ? packageFileBytes({ data: parentBytes }) : new Uint8Array();
-  const parent = parentHandoffCarrierLineageFromBundle(bundle, {
-    routeDimensions,
+  const packageIdentity = Object.freeze({
     packageSha256: bytes.byteLength ? sha256Hex(bytes) : '',
     packageFilename: parentPath ? path.basename(parentPath) : ''
   });
+  const qualifiedDimension = normalizeDimension(qualifiedParentLineage?.dimension || '');
+  const parent = qualifiedDimension
+    ? Object.freeze({ ...normalizeHandoffCarrierLineage(qualifiedParentLineage), ...packageIdentity })
+    : parentHandoffCarrierLineageFromBundle(bundle, { routeDimensions, ...packageIdentity });
   return major ? advanceHandoffCarrierMajor(parent, majorReason) : continueHandoffCarrierLineage(parent);
 }
 

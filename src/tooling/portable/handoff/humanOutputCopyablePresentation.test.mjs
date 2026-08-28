@@ -36,6 +36,7 @@ try {
     '--route', route,
     '--workspace-id', 'copyable-fixture',
     '--workspace-target', 'workspace.workspace.md',
+    '--legacy-recipient-v2-compatibility',
     '--output-dir', outputDir,
     '--built-at', '2026-08-24T10:00:00.000Z',
     '--compact'

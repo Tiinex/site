@@ -150,7 +150,7 @@ export function auditHandoffPackageContextCarriage(input = {}) {
 function auditRecipientV2(bundle = {}) {
   const inspection = inspectRecipientFacingV2Topology(bundle);
   const files = bundle.files || [];
-  const workspacePayloadPaths = new Set((inspection.workspaces || []).flatMap((item) => [item.workspaceArtifactPath, item.workspaceArchivePath]));
+  const workspacePayloadPaths = new Set((inspection.workspaces || []).flatMap((item) => [item.workspaceArtifactPath, item.workspaceRepresentationArtifactPath, item.workspacePayloadArtifactPath, item.workspaceArchivePath]));
   const routePointerPaths = new Set((inspection.routes || []).map((item) => item.pointerPath));
   const participantRolePointerPaths = new Set((inspection.participantRoles || []).map((item) => item.pointerPath));
   const cachePaths = new Set((inspection.caches || []).flatMap((cache) => [cache.artifactPath, cache.archivePath]));

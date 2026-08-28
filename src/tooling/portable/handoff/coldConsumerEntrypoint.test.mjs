@@ -38,8 +38,8 @@ assert.deepEqual(built.carrierProjection.routes.map((route) => [route.workspaceI
   ['alpha', primaryPath],
   ['beta', secondaryPath]
 ]);
-assert.equal(built.carrierProjection.routes[0].projectedFilename, 'tiinex-alpha-005-anchor-to-loom.handoff-package.zip');
-assert.equal(built.carrierProjection.routes[1].projectedFilename, 'tiinex-beta-006-anchor-to-axiom.handoff-package.zip');
+assert.equal(built.carrierProjection.routes[0].projectedFilename, 'tiinex-alpha-001-anchor-to-loom.handoff-package.zip');
+assert.equal(built.carrierProjection.routes[1].projectedFilename, 'tiinex-beta-001-anchor-to-axiom.handoff-package.zip');
 
 const startFile = built.bundle.files.find((file) => file.path === 'tiinex.package/START.md');
 assert(startFile, 'manufactured package must contain the maintained cold-consumer START entrypoint');
@@ -66,7 +66,7 @@ assert.equal(orientColdConsumerFromHandoffPackage(legacyBundle).status, 'ready')
 const secondaryHuman = projectHandoffHumanOutput({ projection: built.carrierProjection, route: built.carrierProjection.routes[1].id });
 assert.equal(secondaryHuman.status, 'ready');
 assert.equal(secondaryHuman.primary.workspaceId, 'beta');
-assert.equal(secondaryHuman.primary.filename, 'tiinex-beta-006-anchor-to-axiom.handoff-package.zip');
+assert.equal(secondaryHuman.primary.filename, 'tiinex-beta-001-anchor-to-axiom.handoff-package.zip');
 assert.match(secondaryHuman.fallbackTransportText.content, /Workspace: Tiinex Beta/);
 assert.match(secondaryHuman.fallbackTransportText.content, new RegExp(escapeRegExp(secondaryPath)));
 

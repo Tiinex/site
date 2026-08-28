@@ -18,6 +18,7 @@ import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 import { projectHandoffHumanOutput } from './carrierProjection.js';
 import { materializeHandoffManufactureCliOutput } from '../adapters/cli/cli.handoff-manufacture.js';
 import { projectPortableHandoffCarrierOutputFromPackage, recipientV2StandardInvocation } from './recipientV2.humanOutput.js';
+import { buildRecipientV2TransportManifestFile, RECIPIENT_V2_TRANSPORT_MANIFEST_PATH } from './recipientV2.transportManifest.js';
 
 const ROOT_SCHEMA_TARGET = 'https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/tiinex.root.v1.schema.md';
 const HANDOFF_SCHEMA_TARGET = 'https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md';
@@ -41,7 +42,7 @@ try {
     verifyRoundtrip: true
   });
 
-  const v2 = manufactureRecipientRelativeHandoffPackage(input, { verifyRoundtrip: true, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
+  const v2 = manufactureRecipientRelativeHandoffPackage(input, { legacyRecipientV2Compatibility: true, verifyRoundtrip: true, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
   assert.equal(v2.status, 'ready');
   assert.equal(v2.verification.roundtrip, 'passed');
   assert.equal(v2.descriptor.schema, 'tiinex.transport.handoff-material-closure-descriptor.v2');
@@ -57,7 +58,8 @@ try {
   assert(v2.bundle.files.some((file) => file.path === '001-3-site.workspace.md'));
   assert(v2.bundle.files.some((file) => file.path === '001-3-site.workspace.zip'));
   assert(v2.bundle.files.some((file) => file.path === '001-3-1-handoff-pointer.trace.md'));
-  assert.equal(v2.bundle.files.some((file) => /workspace-(?:payload|representation)\.trace\.md$/i.test(String(file.path || ''))), false, 'corrected v2 keeps Workspace archive binding on the package-local Workspace node instead of extra visible payload/relation siblings');
+  assert(v2.bundle.files.some((file) => /workspace-representation-payload\.trace\.md$/i.test(String(file.path || ''))), 'recipient-v2 exposes one explicit External Payload artifact for each Workspace archive representation');
+  assert(v2.bundle.files.some((file) => /workspace-representation\.trace\.md$/i.test(String(file.path || ''))), 'recipient-v2 exposes one canonical Workspace Representation binding rather than hiding provider authority in transport metadata');
   assert(v2.bundle.files.some((file) => /\.workspace\.md$/i.test(file.path)));
   assert(v2.bundle.files.some((file) => /\.workspace\.zip$/i.test(file.path)));
   assert.equal(v2.bundle.files.some((file) => /^(?:context|handoff\.workspaces|tiinex\.bootstrap|tiinex\.package)\//.test(String(file.path || ''))), false);
@@ -81,6 +83,18 @@ try {
   assert.equal(recipientInspection.status, 'valid');
   assert.equal(recipientInspection.rootArtifact.path, '001-site-handoff-package.trace.md');
   assert.equal(recipientInspection.workspaces[0].workspaceArtifactPath, '001-3-site.workspace.md');
+  assert.equal(recipientInspection.workspaceByteProvider.status, 'ready');
+  assert.match(recipientInspection.workspaceByteProvider.workspaces[0].authority.bindingAuthority, /^schema-valid-tiinex\.workspace\.representation\.v1-visible-binding/);
+  const representationPath = recipientInspection.workspaces[0].workspaceRepresentationArtifactPath;
+  const workspacePayloadPath = recipientInspection.workspaces[0].workspacePayloadArtifactPath;
+  const staleBindingInspection = inspectRecipientFacingV2Topology(mutateRecipientV2Markdown(v2.bundle, representationPath, (markdown) => markdown.replace('- Binding State: verified', '- Binding State: stale')));
+  assert.equal(staleBindingInspection.workspaceByteProvider.status, 'blocked', 'schema-valid stale Workspace Representation must not activate a provider');
+  assert(staleBindingInspection.findings.some((item) => item.code === 'portable.handoff-v2-surface.workspace-provider.workspace-representation-not-verified-complete'));
+  const wrongIntegrityTargetInspection = inspectRecipientFacingV2Topology(mutateRecipientV2Markdown(v2.bundle, workspacePayloadPath, (markdown) => markdown.replace('- Integrity Target: exact payload bytes as carried at the declared local Location', '- Integrity Target: digest string only')));
+  assert.equal(wrongIntegrityTargetInspection.workspaceByteProvider.status, 'blocked', 'payload digest strings with the wrong integrity target must fail closed');
+  const competingBindingInspection = inspectRecipientFacingV2Topology(addCompetingWorkspaceRepresentation(v2.bundle, representationPath));
+  assert.equal(competingBindingInspection.status, 'invalid', 'competing canonical Workspace Representation bindings must fail closed');
+  assert(competingBindingInspection.findings.some((item) => item.code === 'portable.handoff-v2-surface.workspace-representation.ambiguous'));
   const lineageMarkdown = Object.fromEntries(generatedSurfaceMarkdown.map((item) => [item.path, item.markdown]));
   assert.match(lineageMarkdown['001-1-READ-BEFORE-PROCEEDING.trace.md'], /- Trace: \[001-site-handoff-package\.trace\.md\]\(001-site-handoff-package\.trace\.md\)/);
   assert.match(lineageMarkdown['001-2-bootstrap.trace.md'], /- Trace: \[001-site-handoff-package\.trace\.md\]\(001-site-handoff-package\.trace\.md\)/);
@@ -117,20 +131,20 @@ try {
   assert.equal(rejectedLegacySurface.status, 'invalid');
   assert(rejectedLegacySurface.findings.some((item) => item.code === 'portable.handoff-v2-surface.legacy-envelope-exposed'));
 
-  const v2Again = manufactureRecipientRelativeHandoffPackage(input, { verifyRoundtrip: false, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
+  const v2Again = manufactureRecipientRelativeHandoffPackage(input, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
   assert.equal(v2Again.status, 'ready');
   assert.equal(archiveBinding(v2Again).representation.digest.value, archiveBinding(v2).representation.digest.value, 'workspace archive bytes must be deterministic for the same exact workspace entry set');
 
   const scaleRoot = path.join(root, 'scale-site');
   await makeWorkspace(scaleRoot, { title: 'Scale Site', to: 'Anchor', blob: [31, 32], scaleFiles: 1300 });
   const scaleInput = await prepareNodeHandoffManufacturingInput({ workspaceRoot: scaleRoot, workspaceId: 'scale-site', workspaceTargetPath: 'workspace.workspace.md', handoffPath: '.topics/015-handoff.trace.md', toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false, maxFiles: 2000 });
-  const scaleV2 = manufactureRecipientRelativeHandoffPackage(scaleInput, { verifyRoundtrip: false, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
+  const scaleV2 = manufactureRecipientRelativeHandoffPackage(scaleInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
   assert.equal(scaleV2.status, 'ready');
   assert(scaleV2.descriptor.workspaceArchiveBindings[0].entryMap.count >= 1300, 'direct v2 scale pressure must cover at least 1,300 workspace files');
   assert.equal(scaleV2.bundle.files.filter((file) => /\.workspace\.zip$/i.test(String(file.path || ''))).length, 1, 'scale direct v2 must expose one archive payload rather than exploded workspace carriers');
   assert(scaleV2.migration.avoidedExplodedWorkspaceFiles >= 1300, 'scale direct v2 must account for avoided exploded workspace carriage');
   assert(scaleV2.descriptor.workspaceArchiveBindings[0].completeness.totalBytes > 2_000_000, 'scale pressure must include mixed non-trivial workspace payload volume');
-  assert.equal(buildHandoffWorkspaceByteProvider(providerBundle(scaleV2), scaleV2.descriptor).status, 'ready', 'mixed scale archive must re-qualify through the ordinary provider');
+  assert.equal(inspectRecipientFacingV2Topology(scaleV2.bundle).workspaceByteProvider.status, 'ready', 'mixed scale archive must re-qualify through the canonical Workspace Representation provider');
 
   const binding = archiveBinding(v2);
   assertProviderBlocked(v2, mutateDescriptor(v2.descriptor, (d) => { d.workspaceArchiveBindings[0].representation.digest.value = '0'.repeat(64); }), 'workspace-archive-digest-mismatch');
@@ -165,7 +179,7 @@ try {
   const missingTargetRoot = path.join(root, 'missing-target');
   await makeWorkspace(missingTargetRoot, { title: 'Missing target', to: 'Anchor', includeWorkspaceArtifact: false, blob: [3, 4] });
   const missingTargetInput = await prepareNodeHandoffManufacturingInput({ workspaceRoot: missingTargetRoot, workspaceId: 'missing-target', handoffPath: '.topics/015-handoff.trace.md', toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false });
-  const missingTarget = manufactureRecipientRelativeHandoffPackage(missingTargetInput, { verifyRoundtrip: false });
+  const missingTarget = manufactureRecipientRelativeHandoffPackage(missingTargetInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(missingTarget.status, 'blocked');
   assert(missingTarget.findings.some((item) => item.code === 'portable.handoff-v2.workspace-target.missing'));
   assert.equal(missingTarget.migration.state, 'blocked-before-representation-switch');
@@ -173,7 +187,7 @@ try {
   const duplicateTargetRoot = path.join(root, 'duplicate-target');
   await makeWorkspace(duplicateTargetRoot, { title: 'Duplicate target', to: 'Anchor', workspaceArtifactCount: 2, blob: [5, 6] });
   const duplicateTargetInput = await prepareNodeHandoffManufacturingInput({ workspaceRoot: duplicateTargetRoot, workspaceId: 'duplicate-target', workspaceTargetPath: 'workspace.workspace.md', workspaceTargets: [{ workspaceId: 'duplicate-target', path: 'workspace-2.workspace.md' }], handoffPath: '.topics/015-handoff.trace.md', toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false });
-  const duplicateTarget = manufactureRecipientRelativeHandoffPackage(duplicateTargetInput, { verifyRoundtrip: false });
+  const duplicateTarget = manufactureRecipientRelativeHandoffPackage(duplicateTargetInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(duplicateTarget.status, 'blocked');
   assert(duplicateTarget.findings.some((item) => item.code === 'portable.handoff-v2.workspace-target.ambiguous'));
 
@@ -208,7 +222,7 @@ try {
     verifyRoundtrip: false,
     materialBindings: { ctx: { content: 'external-exact-bytes', providerId: 'fixture-external', providerKind: 'supplied-material' } }
   });
-  const externalV2 = manufactureRecipientRelativeHandoffPackage(externalInput, { verifyRoundtrip: false });
+  const externalV2 = manufactureRecipientRelativeHandoffPackage(externalInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(externalV2.status, 'ready');
   assert.equal(externalV2.migration.deduplicatedDetachedMaterialFiles, 0);
   assert(externalV2.bundle.files.some((file) => /cache\.trace\.md$/i.test(String(file.path || ''))) && externalV2.bundle.files.some((file) => /cache\.zip$/i.test(String(file.path || ''))), 'non-workspace-qualified material must remain explicit through the qualified recipient cache artifact + payload');
@@ -226,9 +240,11 @@ try {
     runtimeRoot,
     verifyRoundtrip: false
   });
-  const multi = manufactureRecipientRelativeHandoffPackage(multiInput, { verifyRoundtrip: false });
+  const multi = manufactureRecipientRelativeHandoffPackage(multiInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(multi.status, 'ready');
-  const multiProvider = buildHandoffWorkspaceByteProvider(providerBundle(multi), multi.descriptor);
+  const multiInspection = inspectRecipientFacingV2Topology(multi.bundle);
+  assert.equal(multiInspection.workspaceByteProvider.status, 'ready');
+  const multiProvider = multiInspection.workspaceByteProvider;
   const siteRoute = resolveHandoffWorkspaceEntry(multiProvider, 'site', '.topics/015-handoff.trace.md');
   const docsRoute = resolveHandoffWorkspaceEntry(multiProvider, 'docs', '.topics/015-handoff.trace.md');
   assert.equal(siteRoute.state, 'qualified');
@@ -295,7 +311,7 @@ try {
     handoffRoutes: [{ workspaceId: 'participant-route', path: '.topics/015-handoff.trace.md', participantRoles: [{ workspaceId: 'participant-route', path: '.topics/sigma-role.trace.md', label: 'Sigma' }] }],
     toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false
   });
-  const participantPackage = manufactureRecipientRelativeHandoffPackage(participantInput, { verifyRoundtrip: false });
+  const participantPackage = manufactureRecipientRelativeHandoffPackage(participantInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(participantPackage.status, 'ready');
   assert.equal(participantPackage.inspection.participantRoles.length, 1);
   assert.equal(participantPackage.inspection.caches.length, 0, 'participant Role already present in a carried Workspace must not be duplicated into cache');
@@ -321,7 +337,7 @@ try {
     materialBindings: { Sigma: { sourcePath: detachedRolePath, referenceTarget: 'external://roles/sigma' } },
     toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false
   });
-  const externalParticipantPackage = manufactureRecipientRelativeHandoffPackage(externalParticipantInput, { verifyRoundtrip: false });
+  const externalParticipantPackage = manufactureRecipientRelativeHandoffPackage(externalParticipantInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(externalParticipantPackage.status, 'ready');
   assert.equal(externalParticipantPackage.inspection.caches.length, 1, 'external participant Role must be carried by the owning Workspace cache');
   assert.equal(externalParticipantPackage.inspection.participantRoles.length, 1);
@@ -342,7 +358,7 @@ try {
     materialBindings: { 'external://dependency/exact-asset': { content: 'external-pointer-target-bytes', providerId: 'fixture-external-pointer-target', providerKind: 'supplied-material', referenceTarget: 'external://dependency/exact-asset' } },
     toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false
   });
-  const pointerDependencyPackage = manufactureRecipientRelativeHandoffPackage(pointerDependencyInput, { verifyRoundtrip: false });
+  const pointerDependencyPackage = manufactureRecipientRelativeHandoffPackage(pointerDependencyInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(pointerDependencyPackage.status, 'ready', 'external target of a carried Pointer must be closed into the owning Workspace cache');
   assert.equal(pointerDependencyPackage.inspection.caches.length, 1);
   const pointerDependencyCache = pointerDependencyPackage.inspection.caches[0];
@@ -365,7 +381,7 @@ try {
     },
     toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false
   });
-  const recursivePointerPackage = manufactureRecipientRelativeHandoffPackage(recursivePointerInput, { verifyRoundtrip: false });
+  const recursivePointerPackage = manufactureRecipientRelativeHandoffPackage(recursivePointerInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(recursivePointerPackage.status, 'ready', 'recursive Pointer dependency closure must qualify when every exact target is supplied');
   assert.equal(recursivePointerPackage.inspection.caches.length, 1);
   const recursivePointerCache = recursivePointerPackage.inspection.caches[0];
@@ -396,7 +412,7 @@ try {
     },
     toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false
   });
-  const scopedCachePackage = manufactureRecipientRelativeHandoffPackage(scopedCacheInput, { verifyRoundtrip: false });
+  const scopedCachePackage = manufactureRecipientRelativeHandoffPackage(scopedCacheInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(scopedCachePackage.status, 'ready');
   assert.equal(scopedCachePackage.inspection.caches.length, 2, 'detached dependencies owned by different route Workspaces must produce separate Workspace-scoped caches');
   const cacheByWorkspace = new Map(scopedCachePackage.inspection.caches.map((cache) => [cache.workspaceId, cache]));
@@ -408,7 +424,7 @@ try {
   const invalidRoot = path.join(root, 'invalid-route');
   await makeWorkspace(invalidRoot, { title: 'Invalid route', to: 'Anchor', invalidHandoff: true, blob: [12] });
   const invalidInput = await prepareNodeHandoffManufacturingInput({ workspaceRoot: invalidRoot, workspaceId: 'invalid-route', workspaceTargetPath: 'workspace.workspace.md', handoffPath: '.topics/015-handoff.trace.md', toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false });
-  const invalid = manufactureRecipientRelativeHandoffPackage(invalidInput, { verifyRoundtrip: false });
+  const invalid = manufactureRecipientRelativeHandoffPackage(invalidInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
   assert.equal(invalid.status, 'blocked');
   assert.notEqual(invalid.carrierProjection?.routes?.[0]?.conformance?.status, 'qualified');
 
@@ -523,7 +539,7 @@ async function manufactureWorkspaceTargetCase(root, runtimeRoot, id, markdown, e
     await writeFile(absolute, content, 'utf8');
   }
   const input = await prepareNodeHandoffManufacturingInput({ workspaceRoot: rootPath, workspaceId: id, workspaceTargetPath: 'workspace.workspace.md', handoffPath: '.topics/015-handoff.trace.md', toolingBootstrap: 'embedded', runtimeRoot, verifyRoundtrip: false });
-  return manufactureRecipientRelativeHandoffPackage(input, { verifyRoundtrip: false });
+  return manufactureRecipientRelativeHandoffPackage(input, { legacyRecipientV2Compatibility: true, verifyRoundtrip: false });
 }
 
 function providerWithMatchingUnverifiedTarget(result, readyProvider) {
@@ -574,6 +590,33 @@ function archiveEntryFingerprint(entries = []) {
 }
 function stableJson(value) { return JSON.stringify(sortJson(value)); }
 function sortJson(value) { if (Array.isArray(value)) return value.map(sortJson); if (!value || typeof value !== 'object') return value; return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortJson(value[key])])); }
+function mutateRecipientV2Markdown(bundle, targetPath, mutate) {
+  return rebuildRecipientV2Manifest(bundle, (files) => files.map((file) => {
+    if (String(file.path || '') !== String(targetPath || '')) return file;
+    const source = new TextDecoder().decode(packageFileBytes(file));
+    const sealed = sealC14nV2Self(String(mutate(source) || ''));
+    assert.equal(sealed.state, 'sealed');
+    return { ...file, data: utf8Bytes(sealed.markdown), content: undefined, markdown: undefined };
+  }));
+}
+function addCompetingWorkspaceRepresentation(bundle, sourcePath) {
+  return rebuildRecipientV2Manifest(bundle, (files) => {
+    const source = files.find((file) => String(file.path || '') === String(sourcePath || ''));
+    assert(source);
+    const pathName = String(sourcePath || '').replace(/-2-workspace-representation\.trace\.md$/i, '-3-workspace-representation-duplicate.trace.md');
+    assert.notEqual(pathName, sourcePath);
+    return [...files, { ...source, path: pathName }];
+  });
+}
+function rebuildRecipientV2Manifest(bundle, mutateFiles) {
+  const manifestFile = (bundle.files || []).find((file) => String(file.path || '') === RECIPIENT_V2_TRANSPORT_MANIFEST_PATH);
+  assert(manifestFile);
+  const originalManifest = JSON.parse(new TextDecoder().decode(packageFileBytes(manifestFile)));
+  const semanticFiles = (bundle.files || []).filter((file) => String(file.path || '') !== RECIPIENT_V2_TRANSPORT_MANIFEST_PATH);
+  const files = mutateFiles([...semanticFiles]);
+  const manifest = buildRecipientV2TransportManifestFile(files, { format: originalManifest.format, packageRootPath: originalManifest.packageRootPath, entryArtifactPath: originalManifest.entryArtifactPath });
+  return { ...bundle, files: [...files, manifest] };
+}
 async function makeRuntime(rootPath) {
   await mkdir(path.join(rootPath, 'tools'), { recursive: true });
   await mkdir(path.join(rootPath, 'src', 'tooling', 'portable', 'bootstrap'), { recursive: true });

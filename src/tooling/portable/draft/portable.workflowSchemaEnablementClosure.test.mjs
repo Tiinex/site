@@ -5,6 +5,7 @@ import { buildPortableSchemaGuide, planPortableArtifact } from '../schema/schema
 import { parsePortableSchemaDocument } from '../schema/schema.contract.js';
 import { validateArtifact } from '../../../validation/validateArtifact.js';
 import { inspectPortableMaterial, auditPortableMaterial } from '../engine.facade.js';
+import { readLegacyArtifactFixtureSync } from '../fixtures/legacyArtifactFixtures.mjs';
 
 const DOCS_COMMIT = 'e713557f8be630967571d11a73f9ecd05ae329ce';
 const HANDOFF_DOCS_COMMIT = '3988951208eb9a8926e84ab42625d4b42fa00c2d';
@@ -76,7 +77,7 @@ assert.deepEqual(categoryItems(validationGroups.get('Reference Context'), 'Requi
 assert.equal(categoryItems(validationGroups.get('Required Context'), 'Required Fields').includes('Transfer Kind'), false, 'context membership must not become transfer semantics');
 
 const dogfoodPath = '.topics/development/handoff/tooling/001-v480-tooling-workflow-schema-enablement-handoff.trace.md';
-const dogfoodMarkdown = fs.readFileSync(dogfoodPath, 'utf8');
+const dogfoodMarkdown = readLegacyArtifactFixtureSync(dogfoodPath);
 const reopened = validateArtifact({ markdown: dogfoodMarkdown });
 assert.equal(reopened.resolution.fallbackUsed, false);
 assert.equal(reopened.validation.state, 'compiled-schema-validated');

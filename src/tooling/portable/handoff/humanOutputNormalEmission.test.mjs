@@ -38,6 +38,7 @@ try {
     '--route', selectedRoute,
     '--workspace-id', 'human-output-fixture',
     '--workspace-target', 'workspace.workspace.md',
+    '--legacy-recipient-v2-compatibility',
     '--output-dir', outputDir,
     '--built-at', '2026-08-24T06:20:00.000Z',
     '--compact'
@@ -74,7 +75,7 @@ try {
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
-  const built = manufactureRecipientRelativeHandoffPackage(prepared, { packageInput: { builtAt: '2026-08-24T06:20:00.000Z' } });
+  const built = manufactureRecipientRelativeHandoffPackage(prepared, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-24T06:20:00.000Z' } });
   const selectionRequired = projectHandoffHumanOutput({ projection: built.carrierProjection });
   assert.equal(selectionRequired.status, 'selection-required');
   assert.equal(selectionRequired.primary, null);

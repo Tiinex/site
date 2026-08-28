@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import { exportPackageZipUint8Array } from '../../../export/package.zip.js';
 import { prepareRecipientRelativeWorkspaceHandoffExport as prepareRecipientRelativeWorkspaceHandoffExportBase } from '../../../export/handoff.plan.js';
 import { validateArtifact } from '../../../validation/validateArtifact.js';
@@ -10,6 +9,7 @@ import { planRecipientRelativeHandoffMaterialClosure as planRecipientRelativeHan
 import { projectHandoffMaterialRequirements } from './materialClosure.requirements.js';
 import { buildRecipientRelativeHandoffTransportPackage as buildRecipientRelativeHandoffTransportPackageBase, roundTripRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { readLegacyArtifactFixtureSync } from '../fixtures/legacyArtifactFixtures.mjs';
 
 
 const FIXTURE_ROUTE_WORKSPACE_ID = 'handoff-fixture-workspace';
@@ -74,7 +74,7 @@ assert.equal(currentHandoff.binding.sourceCommit, '3988951208eb9a8926e84ab42625d
 assert.equal(currentHandoff.binding.sourceBlobSha, '2332023aecf690279805d34c7e512a9f9799c20d');
 assert.equal(currentHandoff.schemaSource.qualify().state, 'qualified');
 const dogfoodHandoffPath = '.topics/development/handoff/tooling/002-v481-tooling-recipient-relative-handoff-material-closure-planner-foundation-handoff.trace.md';
-const dogfoodHandoffMarkdown = fs.readFileSync(dogfoodHandoffPath, 'utf8');
+const dogfoodHandoffMarkdown = readLegacyArtifactFixtureSync(dogfoodHandoffPath);
 const dogfoodValidation = validateArtifact({ markdown: dogfoodHandoffMarkdown });
 assert.equal(dogfoodValidation.validation.semanticContract.state, 'valid');
 assert.equal(dogfoodValidation.validation.integrity.state, 'verified');

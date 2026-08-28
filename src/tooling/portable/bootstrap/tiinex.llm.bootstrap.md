@@ -139,6 +139,8 @@ It returns one explicit `nextAction`, such as collecting missing inputs, calling
 
 Use `describe-cold-start-ingress` only when the contract itself needs inspection. For a routed Handoff package, `qualify-cold-start <handoff-package.zip> --route <Continue-from> --pre-takeover minimal-bootstrap-only|none|native-archaeology` is the normal post-orientation one-shot: it generates orientation/grounding receipts itself and attributes the declared pre-takeover host behavior separately. No external qualification schema or source inspection is required for that path. `--evidence evidence.json` remains available for an externally captured or instrumented observation trace. Portable Tooling cannot independently observe native-host actions that happened before Tooling takeover, so caller-declared host evidence must never be presented as independent proof. A correct eventual answer after broad native archaeology is `recovered-not-preferred`, not a preferred-path pass.
 
+For model-facing cold-start projection, keep qualification execution and projection separate. `qualify-cold-start ... --summary` is a bounded status/route/continuation receipt and intentionally omits Required Context body text. On a fresh routed cold start where every qualified Required Context body must be read before substantive work, use `qualify-cold-start ... --summary --include-required-context all`; for a targeted follow-up, select exact requirement ids or names. A summary that reports omitted Required Context bodies is not proof that the model has read those bodies. Full qualification output remains available on demand and remains the default when `--summary` is absent.
+
 `ground-cold-consumer` does not assume that one chat channel equals one human identity or that every Handoff is one-shot execution. Declare multiple participants, identities, Roles/capacities, contributions, current speaker attribution, and interaction mode when known; preserve unknown/unverified attribution explicitly. Missing current Role material may degrade a bounded `To Kind: role` endpoint without inventing a Role artifact or silently invalidating the Handoff.
 
 When Tooling is unavailable, model the turn as degraded capture: preserve contribution/speaker attribution, make no Tooling-dependent mutation or authority claim, and require later Tooling-capable condensation/qualification for durable artifacts.
@@ -270,7 +272,7 @@ Filename matches are insufficient. The supplied schema must declare the requeste
 
 The returned cache is explicit and serializable. Reuse it through `schemaCache` or `session.withSchemaCache(...)`; do not rely on hidden process memory.
 
-## Start With Compact Operations
+## Start With Bounded Operations
 
 ```js
 await runTiinexLlmOperation('inspect', material);
@@ -282,6 +284,25 @@ await runTiinexLlmOperation('resolve-capabilities', {
 ```
 
 All operation results are JSON-serializable and expose qualification, findings, and source boundaries.
+
+When using the Node/filesystem CLI against a directory, prefer bounded receipts before requesting full record/audit bodies:
+
+```bash
+node tools/tiinex-portable.mjs inspect ./received --summary --phase-timing
+node tools/tiinex-portable.mjs audit ./received --summary --phase-timing
+node tools/tiinex-portable.mjs search-lineage ./received --query "mobile overflow" --relation leaf --summary --phase-timing
+node tools/tiinex-portable.mjs resolve-lineage ./received --depth 3 --direction both --summary --phase-timing
+```
+
+The summary projection preserves status, counts, finding summary, error/warning detail, and requested phase timing while omitting body-scale record/audit/lineage projections. Omit `--summary` only when detailed evidence is actually required. Broad directory grounding quarantines Site `.topics/development` by default; use `--include-legacy-topics` or target that subtree explicitly when historical material is required. ZIP/carrier ingress and manufacture remain full-fidelity.
+
+Inside a Site checkout, use the bounded current-source search before an unbounded repository text dump:
+
+```bash
+npm run tooling:search -- --query "recipient topology" --limit 20
+```
+
+That search reports total match cardinality while bounding returned snippets and excludes historical fixture bytes by default; use `--include-legacy-fixtures` only when those exact historical fixtures are part of the task.
 
 ## Search And Filter Loaded Lineage
 
@@ -585,7 +606,7 @@ The Node adapter manufactures the canonical recipient-facing archive-backed Hand
 
 ```bash
 node tools/tiinex-portable.mjs manufacture-handoff-package ./workspace \
-  --handoff .topics/development/handoff.trace.md \
+  --handoff .topics/handoff/001-current-handoff.trace.md \
   --workspace-id recipient-workspace \
   --workspace-target .topics/.workspaces/recipient-workspace.workspace.md \
   --output-dir ./out
@@ -724,9 +745,9 @@ node tools/tiinex-portable-verify.mjs --profile source-clean --output portable-c
 node tools/tiinex-portable.mjs prepare-task ./received --task create-artifact --schema tiinex.example.v1 --host host.json
 node tools/tiinex-portable.mjs discover-tooling --host host.json
 node tools/tiinex-portable.mjs resolve-schema-chain-material ./docs.zip --schema tiinex.example.v1
-node tools/tiinex-portable.mjs inspect ./received
-node tools/tiinex-portable.mjs audit ./received
-node tools/tiinex-portable.mjs search-lineage ./received --query "mobile overflow" --relation leaf
+node tools/tiinex-portable.mjs inspect ./received --summary --phase-timing
+node tools/tiinex-portable.mjs audit ./received --summary --phase-timing
+node tools/tiinex-portable.mjs search-lineage ./received --query "mobile overflow" --relation leaf --summary --phase-timing
 node tools/tiinex-portable.mjs schema-guide ./received --schema tiinex.example.v1 --task create
 node tools/tiinex-portable.mjs read-schema-section ./received --schema tiinex.example.v1 --section "Artifact Creation Contract,Minimal Example"
 node tools/tiinex-portable.mjs plan-artifact ./received --schema tiinex.example.v1 --values inputs.json

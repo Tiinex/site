@@ -1,0 +1,4 @@
+{
+  "schema.label": "Workspace Representation",
+  "schema.summary": "Explicit Workspace-till-representationsbindning med fail-closed leverantörskvalificering."
+}

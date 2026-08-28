@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { readLegacyArtifactFixture } from '../fixtures/legacyArtifactFixtures.mjs';
 import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { canonicalC14nV2SelfState } from '../../../integrity/integrity.c14nV2.js';
 import { validatePortableArtifactDraft } from '../engine.facade.js';
@@ -28,7 +28,7 @@ const sha = (text) => createHash('sha256').update(text).digest('hex');
 const published = (artifactPath) => `https://github.com/Tiinex/site/blob/${SITE_COMMIT}/${artifactPath}`;
 
 for (const fixture of cases) {
-  const markdown = await readFile(new URL(`../../../${fixture.path}`, import.meta.url), 'utf8').catch(async () => await readFile(fixture.path, 'utf8'));
+  const markdown = await readLegacyArtifactFixture(fixture.path);
   const parsed = parseArtifactMarkdown(markdown);
   assert.equal(sha(parsed.body.text), fixture.bodySha256, `${fixture.path}: historical body bytes/meaning drifted`);
   assert.equal(parsed.envelope.current.createdAt, fixture.createdAt, `${fixture.path}: Current Created At drifted`);

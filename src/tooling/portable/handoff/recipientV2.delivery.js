@@ -23,6 +23,8 @@ export function selectRecipientFacingV2Delivery(bundle = {}, selector = '') {
     RECIPIENT_V2_READ_PATH,
     routeMeta.pointerPath,
     workspace.workspaceArtifactPath,
+    workspace.workspaceRepresentationArtifactPath,
+    workspace.workspacePayloadArtifactPath,
     workspace.workspaceArchivePath
   ].filter(Boolean));
   addPayloadRole(bundle, paths, factsByPath, (facts) => !facts.workspaceId && !Array.isArray(facts.materials) && facts.entryCount !== undefined);

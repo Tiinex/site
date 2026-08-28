@@ -85,7 +85,7 @@ async function readSingleFile(absolute, files, findings, options = {}) {
     return;
   }
   try {
-    files.push(Object.freeze({ path: materialPath, content: await readFile(absolute, 'utf8'), size: info.size, sourceMode: 'portable-node-local' }));
+    files.push(Object.freeze({ path: materialPath, content: await readFile(absolute, 'utf8'), size: info.size, sourceMode: 'portable-node-local', locator: Object.freeze({ kind: 'node-file', localPath: absolute }) }));
   } catch (error) {
     findings.push(portableFinding('error', 'portable.node.file.read-failed', 'Text input could not be read.', { ref: materialPath, detail: String(error.message || error) }));
   }
@@ -115,7 +115,7 @@ async function readZipFile(absolute, files, findings, options = {}) {
           type: entry.type,
           kind: entry.kind,
           sourceMode: 'portable-node-zip',
-          ...(typeof textContent === 'string' ? {} : { locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path }) })
+          locator: Object.freeze({ kind: 'node-zip-entry', archivePath: absolute, entryPath: entry.path })
         }));
       }
     }
@@ -128,6 +128,8 @@ async function readZipFile(absolute, files, findings, options = {}) {
 async function walk(root, options = {}, findings = []) {
   const out = [];
   const excluded = new Set(options.excludeDirectories || DEFAULT_EXCLUDED_DIRECTORIES);
+  const excludedPathPrefixes = normalizeExcludedPathPrefixes(options.excludePathPrefixes);
+  const excludedPathRefs = new Set();
   const queue = [root];
   const maxFiles = positiveInteger(options.maxFiles, DEFAULT_MAX_FILES);
   while (queue.length && out.length < maxFiles) {
@@ -142,8 +144,17 @@ async function walk(root, options = {}, findings = []) {
     for (const entry of entries) {
       if (excluded.has(entry.name)) continue;
       const absolute = path.join(current, entry.name);
+      const relativePath = path.relative(root, absolute).replace(/\\/g, '/');
+      const excludedPrefix = excludedPathPrefixes.find((prefix) => relativePath === prefix.slice(0, -1) || relativePath.startsWith(prefix));
+      if (excludedPrefix) {
+        if (!excludedPathRefs.has(excludedPrefix)) {
+          excludedPathRefs.add(excludedPrefix);
+          findings.push(portableFinding('info', 'portable.node.directory.path-prefix-excluded', 'Configured directory material prefix was excluded from this read.', { ref: excludedPrefix.slice(0, -1) }));
+        }
+        continue;
+      }
       if (entry.isSymbolicLink()) {
-        findings.push(portableFinding('info', 'portable.node.symlink.skipped', 'Symbolic link was skipped during directory traversal.', { ref: path.relative(root, absolute).replace(/\\/g, '/') }));
+        findings.push(portableFinding('info', 'portable.node.symlink.skipped', 'Symbolic link was skipped during directory traversal.', { ref: relativePath }));
         continue;
       }
       if (entry.isDirectory()) queue.push(absolute);
@@ -152,6 +163,14 @@ async function walk(root, options = {}, findings = []) {
     }
   }
   return out;
+}
+
+function normalizeExcludedPathPrefixes(value) {
+  const list = Array.isArray(value) ? value : value ? [value] : [];
+  return list
+    .map((entry) => String(entry || '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, ''))
+    .filter(Boolean)
+    .map((entry) => `${entry}/`);
 }
 
 function normalizeTargets(targets) {

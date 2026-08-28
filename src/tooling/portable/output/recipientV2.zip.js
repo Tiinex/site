@@ -4,12 +4,22 @@ import path from 'node:path';
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { inspectRecipientFacingV2Topology } from '../handoff/recipientV2.inspect.js';
 import { RECIPIENT_V2_FORMAT_ID } from '../handoff/recipientV2.topology.js';
+import {
+  RECIPIENT_V2_ARTIFACT_FIRST_PHASE1_FORMAT_ID,
+  RECIPIENT_V2_ARTIFACT_FIRST_PHASE2_CLEAN_FORMAT_ID
+} from '../handoff/recipientV2.artifactFirstPhase1.js';
 import { createDeterministicStoredZip, safeZipPath } from './deterministic.zip.js';
 
 export function recipientFacingV2PackageZipBuffer(bundle = {}, options = {}) {
   if (String(bundle.transportFormat || '') !== RECIPIENT_V2_FORMAT_ID) throw new Error('portable.recipient-v2.zip.format.invalid');
   const inspection = options.inspection || inspectRecipientFacingV2Topology(bundle);
-  if (inspection?.status !== 'valid' || String(inspection?.format || '') !== RECIPIENT_V2_FORMAT_ID) throw new Error('portable.recipient-v2.zip.bundle.invalid');
+  const inspectionFormat = String(inspection?.format || '');
+  const serializableFormats = new Set([
+    RECIPIENT_V2_FORMAT_ID,
+    RECIPIENT_V2_ARTIFACT_FIRST_PHASE1_FORMAT_ID,
+    RECIPIENT_V2_ARTIFACT_FIRST_PHASE2_CLEAN_FORMAT_ID
+  ]);
+  if (inspection?.status !== 'valid' || !serializableFormats.has(inspectionFormat)) throw new Error('portable.recipient-v2.zip.bundle.invalid');
   const entries = (bundle.files || []).map((file) => {
     const name = safeZipPath(file.path);
     const data = bufferViewOfPackageFile(file);

@@ -1,5 +1,5 @@
 import { finalizeFile } from '../../../export/package.fileMap.js';
-import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
+import { packageFileByteView, packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { parseRecipientV2Facts } from './recipientV2.artifacts.js';
 
 export const RECIPIENT_V2_TRANSPORT_MANIFEST_PATH = 'tiinex-recipient-v2.transport.json';
@@ -12,14 +12,17 @@ export function recipientV2TransportFacts(role = '', facts = {}) {
 export function buildRecipientV2TransportManifestFile(files = [], input = {}) {
   const entries = [...files]
     .filter((file) => String(file.path || '') !== RECIPIENT_V2_TRANSPORT_MANIFEST_PATH)
-    .map((file) => Object.freeze({
-      path: String(file.path || ''),
-      bytes: packageFileBytes(file).byteLength,
-      sha256: sha256Hex(packageFileBytes(file)),
-      kind: String(file.kind || ''),
-      mediaType: String(file.mediaType || ''),
-      ...(file.transportFacts ? { facts: file.transportFacts } : {})
-    }))
+    .map((file) => {
+      const data = packageFileByteView(file);
+      return Object.freeze({
+        path: String(file.path || ''),
+        bytes: data.byteLength,
+        sha256: reusableFinalizedIdentity(file, data) || sha256Hex(data),
+        kind: String(file.kind || ''),
+        mediaType: String(file.mediaType || ''),
+        ...(file.transportFacts ? { facts: file.transportFacts } : {})
+      });
+    })
     .sort((a, b) => a.path.localeCompare(b.path));
   const manifest = Object.freeze({
     schema: RECIPIENT_V2_TRANSPORT_MANIFEST_SCHEMA_ID,
@@ -40,15 +43,15 @@ export function buildRecipientV2TransportManifestFile(files = [], input = {}) {
   });
 }
 
-export function inspectRecipientV2TransportManifest(files = []) {
+export function inspectRecipientV2TransportManifest(files = [], options = {}) {
   const findings = [];
   const candidates = files.filter((file) => String(file.path || '') === RECIPIENT_V2_TRANSPORT_MANIFEST_PATH);
-  if (!candidates.length) return Object.freeze({ state: 'absent', file: null, manifest: null, factsByPath: new Map(), findings: Object.freeze([]) });
-  if (candidates.length !== 1) return Object.freeze({ state: 'invalid', file: null, manifest: null, factsByPath: new Map(), findings: Object.freeze([finding('error', 'portable.handoff-v2-transport.manifest.duplicate', 'Recipient-v2 transport manifest must occur exactly once.', { count: candidates.length })]) });
+  if (!candidates.length) return Object.freeze({ state: 'absent', file: null, manifest: null, factsByPath: new Map(), identityByPath: new Map(), findings: Object.freeze([]) });
+  if (candidates.length !== 1) return Object.freeze({ state: 'invalid', file: null, manifest: null, factsByPath: new Map(), identityByPath: new Map(), findings: Object.freeze([finding('error', 'portable.handoff-v2-transport.manifest.duplicate', 'Recipient-v2 transport manifest must occur exactly once.', { count: candidates.length })]) });
   const file = candidates[0];
   let manifest;
   try { manifest = JSON.parse(decodeUtf8(packageFileBytes(file))); }
-  catch { return Object.freeze({ state: 'invalid', file, manifest: null, factsByPath: new Map(), findings: Object.freeze([finding('error', 'portable.handoff-v2-transport.manifest.parse-failed', 'Recipient-v2 transport manifest is not valid JSON.')]) }); }
+  catch { return Object.freeze({ state: 'invalid', file, manifest: null, factsByPath: new Map(), identityByPath: new Map(), findings: Object.freeze([finding('error', 'portable.handoff-v2-transport.manifest.parse-failed', 'Recipient-v2 transport manifest is not valid JSON.')]) }); }
   if (manifest?.schema !== RECIPIENT_V2_TRANSPORT_MANIFEST_SCHEMA_ID || Number(manifest?.version || 0) !== 1) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.schema-invalid', 'Recipient-v2 transport manifest schema/version is unsupported.'));
   if (!manifest?.format || !manifest?.packageRootPath || !manifest?.entryArtifactPath) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.identity-incomplete', 'Recipient-v2 transport manifest is missing format/root/entry identity.'));
   const physical = new Map();
@@ -61,14 +64,17 @@ export function inspectRecipientV2TransportManifest(files = []) {
   }
   const declared = new Map();
   const factsByPath = new Map();
+  const identityByPath = new Map();
   for (const entry of Array.isArray(manifest?.entries) ? manifest.entries : []) {
     const path = String(entry?.path || '');
     if (!path || declared.has(path)) { findings.push(finding('error', 'portable.handoff-v2-transport.manifest.entry-path-invalid', 'Transport manifest entry path is missing or duplicated.', { path })); continue; }
     declared.set(path, entry);
     const matches = physical.get(path) || [];
     if (matches.length !== 1) { findings.push(finding('error', 'portable.handoff-v2-transport.manifest.entry-unresolved', 'Transport manifest entry does not resolve to exactly one visible carrier.', { path, count: matches.length })); continue; }
-    const data = packageFileBytes(matches[0]);
-    if (Number(entry.bytes) !== data.byteLength || String(entry.sha256 || '') !== sha256Hex(data)) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.byte-identity-mismatch', 'Transport manifest byte identity does not match the visible carrier.', { path }));
+    const data = packageFileByteView(matches[0]);
+    const observedSha256 = reusableReceivedIdentity(options.verifiedPhysicalIdentityByPath?.get?.(path), data) || sha256Hex(data);
+    identityByPath.set(path, Object.freeze({ bytes: data.byteLength, sha256: observedSha256 }));
+    if (Number(entry.bytes) !== data.byteLength || String(entry.sha256 || '') !== observedSha256) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.byte-identity-mismatch', 'Transport manifest byte identity does not match the visible carrier.', { path }));
     if (/\.md$/i.test(path)) {
       if (!entry.facts || entry.facts.factsFormat !== 'portable-recipient-v2' || Number(entry.facts.factsVersion || 0) !== 1) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.markdown-facts-missing', 'Every generated recipient-v2 Markdown carrier requires one transport-manifest facts record.', { path }));
       else factsByPath.set(path, Object.freeze({ ...entry.facts }));
@@ -78,7 +84,7 @@ export function inspectRecipientV2TransportManifest(files = []) {
     if (matches.length !== 1) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.physical-duplicate', 'Visible recipient-v2 carrier path is duplicated.', { path, count: matches.length }));
     if (!declared.has(path)) findings.push(finding('error', 'portable.handoff-v2-transport.manifest.unmapped-carrier', 'Visible recipient-v2 carrier is absent from the transport manifest byte map.', { path }));
   }
-  return Object.freeze({ state: findings.some((item) => item.severity === 'error') ? 'invalid' : 'valid', file, manifest: manifest || null, factsByPath, findings: Object.freeze(findings) });
+  return Object.freeze({ state: findings.some((item) => item.severity === 'error') ? 'invalid' : 'valid', file, manifest: manifest || null, factsByPath, identityByPath, findings: Object.freeze(findings) });
 }
 
 export function recipientV2FactsForFile(file = {}, transportInspection = null) {
@@ -98,6 +104,17 @@ export function recipientV2FactsIndex(bundle = {}) {
     if (facts) map.set(String(file.path || ''), facts);
   }
   return Object.freeze({ transport, map });
+}
+
+function reusableFinalizedIdentity(file = {}, data = new Uint8Array()) {
+  if (!Object.isFrozen(file) || Number(file.bytes) !== data.byteLength) return '';
+  const digest = String(file.sha256 || '').toLowerCase();
+  return /^[a-f0-9]{64}$/.test(digest) ? digest : '';
+}
+function reusableReceivedIdentity(identity = null, data = new Uint8Array()) {
+  if (!identity || identity.data !== data || Number(identity.bytes) !== data.byteLength) return '';
+  const digest = String(identity.sha256 || '').toLowerCase();
+  return /^[a-f0-9]{64}$/.test(digest) ? digest : '';
 }
 
 function stableJson(value) { return JSON.stringify(sortJson(value)); }

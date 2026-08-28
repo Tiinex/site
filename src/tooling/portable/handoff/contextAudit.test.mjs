@@ -5,10 +5,12 @@ import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
-import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
+import { buildRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
 import { auditHandoffPackageContextCarriage } from './contextAudit.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-context-audit-'));
 try {
@@ -19,13 +21,14 @@ try {
   const baseInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     workspaceId: 'site',
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffPath: '.topics/handoff/017-anchor-to-loom.trace.md',
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
   const detached = Object.freeze({ path: 'transport/detached.bin', kind: 'handoff-transport-material', logicalKind: 'recipient-relative-transport-material', data: Uint8Array.from([9, 0, 255, 7]) });
   const fullInput = Object.freeze({ ...baseInput, additionalTransportFiles: Object.freeze([...(baseInput.additionalTransportFiles || []), detached]) });
-  const full = manufactureRecipientRelativeHandoffPackage(fullInput, { packageInput: { builtAt: '2026-08-23T19:00:00.000Z' } });
+  const full = buildRecipientRelativeHandoffTransportPackage(fullInput, { packageInput: { builtAt: '2026-08-23T19:00:00.000Z' } });
   assert.equal(full.status, 'ready');
   const fullAudit = auditHandoffPackageContextCarriage(full.bundle);
   assert.equal(fullAudit.status, 'ready');
@@ -55,7 +58,7 @@ try {
   const partialIncluded = complete.includedEntries.filter((entry) => keep.has(entry.path));
   const partialWorkspace = Object.freeze({ ...complete, state: 'partial', completenessEvidence: Object.freeze({}), entries: Object.freeze(partialEntries), includedEntries: Object.freeze(partialIncluded) });
   const minimalInput = Object.freeze({ ...baseInput, workspaceMaterializations: Object.freeze([partialWorkspace]) });
-  const minimal = manufactureRecipientRelativeHandoffPackage(minimalInput, { packageInput: { builtAt: '2026-08-23T19:00:00.000Z' } });
+  const minimal = buildRecipientRelativeHandoffTransportPackage(minimalInput, { packageInput: { builtAt: '2026-08-23T19:00:00.000Z' } });
   assert.equal(minimal.status, 'ready');
   const minimalAudit = auditHandoffPackageContextCarriage(minimal.bundle);
   assert.equal(minimalAudit.status, 'ready');
@@ -102,11 +105,39 @@ function replaceFile(bundle, targetPath, data) {
 async function makeWorkspace(rootPath) {
   await mkdir(path.join(rootPath, '.topics', 'handoff'), { recursive: true });
   await writeFile(path.join(rootPath, 'package.json'), '{"name":"tiinex-site-context-fixture","type":"module"}\n', 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(), 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'handoff', 'required-context.bin'), Uint8Array.from([4, 5, 6, 7, 8, 9]));
   await writeFile(path.join(rootPath, '.topics', 'handoff', '016-prior-handoff.trace.md'), '# Prior unrelated handoff\n', 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'handoff', 'decision.trace.md'), '# Unrelated decision\n', 'utf8');
   await writeFile(path.join(rootPath, 'notes.md'), '# Workspace extra\n', 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'handoff', '017-anchor-to-loom.trace.md'), handoffMarkdown(), 'utf8');
+}
+function workspaceMarkdown() {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-23 18:59:00
+  - Authors: Fixture
+  - Why: Qualify the exact Workspace carried by the context-audit regression.
+  - Summary: Context-audit fixture Workspace.
+  - Status: active/local
+
+---
+
+# Context Audit Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}\n`;
 }
 function handoffMarkdown() {
   return qualifiedHandoffFixture({

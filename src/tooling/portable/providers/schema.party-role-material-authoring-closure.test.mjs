@@ -7,6 +7,7 @@ import { buildPortableSchemaGuide } from '../schema/schema.guide.js';
 import { portableCanonicalBootstrapRuntime, PORTABLE_CANONICAL_BOOTSTRAP_DOCS_COMMIT } from '../schema/bootstrap/canonical.pack.js';
 import { markPortableBootstrapCanonicalSource } from './schema.bootstrap.provenance.js';
 import { resolvePortableSchemaMaterial } from './schema.providers.js';
+import { legacyArtifactFixturePath } from '../fixtures/legacyArtifactFixtures.mjs';
 
 const schemaId = 'tiinex.party.role.v1';
 const sourcePath = '.topics/.schemas/party/role/tiinex.party.role.v1.schema.md';
@@ -45,7 +46,7 @@ assert.deepEqual(guide.requiredFields, ['Role Label', 'Role Kind', 'In Scope', '
 
 for (const rolePath of ['.topics/development/sigma/role/001-1-sigma-role.trace.md', '.topics/development/loom/role/001-loom-role.trace.md']) {
   const output = [];
-  const rc = await runPortableCli(['validate-draft', rolePath, '--schema', schemaId, '--compact'], { log(value) { output.push(value); }, error(value) { throw new Error(String(value)); } }, portableCanonicalBootstrapRuntime);
+  const rc = await runPortableCli(['validate-draft', legacyArtifactFixturePath(rolePath), '--schema', schemaId, '--compact'], { log(value) { output.push(value); }, error(value) { throw new Error(String(value)); } }, portableCanonicalBootstrapRuntime);
   assert.equal(rc, 0);
   const validation = JSON.parse(output.at(-1)).validation;
   assert.equal(validation.structural.status, 'valid');

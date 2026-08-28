@@ -1,20 +1,18 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import { validatePortableDraft } from './draft.operations.js';
 import { validateArtifact } from '../../../validation/validateArtifact.js';
 import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { resolveSchemaModule } from '../../../schemas/resolver.js';
 import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
+import { readLegacyArtifactFixtureSync } from '../fixtures/legacyArtifactFixtures.mjs';
 
-const root = process.cwd();
-const dogfood = path.join(root, '.topics/development/tooling/dogfood');
-const v475Path = path.join(dogfood, '002-1-v475-canonical-artifact-envelope-reference-integrity-validation.trace.md');
-const v476Path = path.join(dogfood, '003-1-v476-canonical-authority-binding-integrity-method-lineage-alloca.trace.md');
-const v471Path = path.join(dogfood, '001-1-site-tooling-v471-portable-lineage-authoring-closure-result.trace.md');
-const v475 = fs.readFileSync(v475Path, 'utf8');
-const v476 = fs.readFileSync(v476Path, 'utf8');
-const v471 = fs.readFileSync(v471Path, 'utf8');
+const dogfood = '.topics/development/tooling/dogfood';
+const v475Path = `${dogfood}/002-1-v475-canonical-artifact-envelope-reference-integrity-validation.trace.md`;
+const v476Path = `${dogfood}/003-1-v476-canonical-authority-binding-integrity-method-lineage-alloca.trace.md`;
+const v471Path = `${dogfood}/001-1-site-tooling-v471-portable-lineage-authoring-closure-result.trace.md`;
+const v475 = readLegacyArtifactFixtureSync(v475Path);
+const v476 = readLegacyArtifactFixtureSync(v476Path);
+const v471 = readLegacyArtifactFixtureSync(v471Path);
 
 const taskModule = resolveSchemaModule({ schemaId: 'tiinex.task.v1' }).module;
 const compiled = taskModule.schemaSource.qualify().compiledContract.validationContract;

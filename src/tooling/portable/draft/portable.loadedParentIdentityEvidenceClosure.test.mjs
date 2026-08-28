@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { createPortableLocalArtifactSet } from './draft.set.js';
 import { sealedC14nV2FixtureMarkdown } from '../../../integrity/integrity.testFixture.js';
 import { prepareEpistemicMaterialization } from '../materialization/epistemic.plan.js';
 import { materializeLiveArtifact } from '../live/live.artifact.js';
+import { readLegacyArtifactFixture } from '../fixtures/legacyArtifactFixtures.mjs';
 
 const values = Object.freeze({
   Summary: 'Loaded Parent identity evidence closure',
@@ -36,7 +36,7 @@ function proposal(parentRef, id = 'loaded-child') {
 
 // Real dogfood pair: the result declares Parent Trace toward the task. That relationship target
 // must not index the result under the task's identity and make exact task selection ambiguous.
-const realFiles = await Promise.all([taskPath, resultPath].map(async (path) => ({ path, content: await readFile(path, 'utf8') })));
+const realFiles = await Promise.all([taskPath, resultPath].map(async (path) => ({ path, content: await readLegacyArtifactFixture(path) })));
 const realSet = createPortableLocalArtifactSet({ files: realFiles, proposals: [proposal(taskPath, 'real-v473-child')] });
 assert.equal(realSet.status, 'created-local-continuity', 'historical unpublished v473 Parent remains usable for exact relative local continuity without fabricated publication');
 assert.equal(realSet.plan.proposals[0].parentKind, 'loaded-record');

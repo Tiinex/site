@@ -38,7 +38,7 @@ try {
     verifyRoundtrip: true,
     materialBindings: { ctx: { content: 'detached-exact-context-bytes', providerId: 'fixture-external', providerKind: 'supplied-material' } }
   });
-  const result = manufactureRecipientRelativeHandoffPackage(input, { verifyRoundtrip: true, packageInput: { builtAt: '2026-08-27T00:30:00.000Z' } });
+  const result = manufactureRecipientRelativeHandoffPackage(input, { legacyRecipientV2Compatibility: true, verifyRoundtrip: true, packageInput: { builtAt: '2026-08-27T00:30:00.000Z' } });
   assert.equal(result.status, 'ready');
   assert.equal(result.verification.roundtrip, 'passed');
   assert.equal(await exists(cachePath), false, 'Handoff closure manufacture must not create durable source Workspace .topics/.cache residue');

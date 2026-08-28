@@ -21,6 +21,23 @@ import { dedupeConstraints } from './contract.compile.utils.js';
 
 export const PORTABLE_COMPILED_CONTRACT_SCHEMA_ID = 'tiinex.portable.compiled-schema-contract.v1';
 
+const STRING_CONTRACT_CACHE_LIMIT = 64;
+const stringContractCache = new Map();
+
+function compilePortableSchemaContractForChain(input = '') {
+  if (typeof input !== 'string') return compilePortableSchemaContract(input);
+  const cached = stringContractCache.get(input);
+  if (cached) {
+    stringContractCache.delete(input);
+    stringContractCache.set(input, cached);
+    return cached;
+  }
+  const compiled = compilePortableSchemaContract(input);
+  stringContractCache.set(input, compiled);
+  if (stringContractCache.size > STRING_CONTRACT_CACHE_LIMIT) stringContractCache.delete(stringContractCache.keys().next().value);
+  return compiled;
+}
+
 export function compilePortableSchemaContract(input = '') {
   const document = typeof input === 'string' ? parsePortableSchemaDocument(input) : input;
   const sourceSchemaId = document?.schemaId || '';
@@ -83,7 +100,7 @@ export function compilePortableSchemaContract(input = '') {
 
 
 export function compilePortableSchemaContractChain(inputs = []) {
-  const compiled = (Array.isArray(inputs) ? inputs : [inputs]).filter(Boolean).map((input) => compilePortableSchemaContract(input));
+  const compiled = (Array.isArray(inputs) ? inputs : [inputs]).filter(Boolean).map((input) => compilePortableSchemaContractForChain(input));
   const qualification = qualifyContractChain(compiled);
   const leaf = compiled.at(-1) || compilePortableSchemaContract('');
   const composition = qualification.state === 'contradictory' ? [leaf] : compiled;

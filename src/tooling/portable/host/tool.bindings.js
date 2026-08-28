@@ -301,7 +301,11 @@ function normalizeRepositoryFiles(normalized, findings) {
         commit: String(source.commit || ''),
         path: normalizePath(source.path || file.path),
         authority,
-        remoteFetch: true
+        remoteFetch: true,
+        receiptQualification: 'accepted-host-repository-read',
+        provenanceQualification: source.commit ? 'accepted-host-repository-pinned' : 'accepted-host-repository-moving-ref',
+        ...(source.permalink ? { permalink: String(source.permalink) } : {}),
+        ...(source.durableLocator ? { durableLocator: String(source.durableLocator) } : {})
       })
     }));
   }

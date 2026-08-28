@@ -567,7 +567,13 @@ function resolvePackageParticipantRoles(bundle = {}, orientation = null, selecte
     const pointerPath = String(pointerPaths[index] || '');
     const pointerFile = findFile(bundle, pointerPath);
     if (!pointerFile) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.missing', 'Selected Handoff route declares participant Role Pointer ancestry that is not carried.', { pointerPath })); continue; }
-    const facts = recipientV2FactsIndex(bundle).map.get(pointerPath) || {};
+    const compatibilityFacts = recipientV2FactsIndex(bundle).map.get(pointerPath) || null;
+    const projectedFacts = (orientation?.participantRoles || []).find((item) => String(item.pointerPath || '') === pointerPath) || null;
+    const facts = compatibilityFacts?.role === 'participant-role'
+      ? compatibilityFacts
+      : projectedFacts
+        ? { role: 'participant-role', ...projectedFacts }
+        : {};
     if (facts.role !== 'participant-role') { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.invalid', 'Selected route ancestor is not a participant Role Pointer.', { pointerPath })); continue; }
     const material = resolveParticipantRolePointerMaterial(bundle, facts, findings, pointerPath);
     if (!material) continue;
@@ -849,9 +855,11 @@ function hydrateRequiredContextEntry(bundle = {}, entry = {}) {
 
 function resolveQualifiedMaterialBytes(bundle = {}, resolution = {}) {
   const kind = String(resolution.kind || '');
-  if (kind === 'workspace-archive-entry') {
+  if (kind === 'workspace-archive-entry' || kind === 'workspace-cache-entry') {
     const archivePath = String(resolution.archivePackagePath || resolution.packagePath || '');
-    const innerPath = normalizePath(resolution.innerPath || resolution.workspaceRelativePath || '');
+    const innerPath = normalizePath(kind === 'workspace-cache-entry'
+      ? (resolution.archiveEntry || resolution.innerPath || '')
+      : (resolution.innerPath || resolution.workspaceRelativePath || ''));
     const archiveFile = findFile(bundle, archivePath);
     if (!archiveFile || !innerPath) return Object.freeze({ bytes: null });
     const archive = inspectStoredWorkspaceArchive(packageFileBytes(archiveFile), { ownedBytes: true });

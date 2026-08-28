@@ -20,6 +20,7 @@ export * from './schema/schema.snapshot.js';
 export * from './schema/schema.guide.js';
 export * from './schema/llm.companion.js';
 export * from './lineage/lineage.search.js';
+export * from './overview/operatingOverview.js';
 export * from './draft/draft.operations.js';
 export * from './host/host.capabilities.js';
 export * from './host/tool.bindings.js';

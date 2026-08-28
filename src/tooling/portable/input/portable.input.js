@@ -49,7 +49,7 @@ export function normalizePortableInput(input = {}) {
   }
   for (const asset of Array.isArray(input.assets) ? input.assets : []) assets.push(Object.freeze({ ...asset }));
 
-  const containsExplicitSourceMetadata = records.some((record) => record.source?.adapterId && record.source.adapterId !== 'local');
+  const containsExplicitSourceMetadata = records.some((record) => isAcceptedRepositorySource(record.source) || (record.source?.adapterId && record.source.adapterId !== 'local'));
   return Object.freeze({
     schema: PORTABLE_INPUT_SCHEMA_ID,
     boundary: Object.freeze({
@@ -126,6 +126,7 @@ function recordFromFile(file, descriptor, content) {
     ...derived,
     id: String(file.id || derived.id || descriptor.path),
     source: normalizeSuppliedSource(file.source, descriptor.path),
+    locator: descriptor.locator ? Object.freeze({ ...descriptor.locator }) : null,
     portableMaterialKind: descriptor.kind
   });
 }
@@ -147,6 +148,7 @@ function normalizeExistingRecord(raw = {}, index = 0) {
     markdown: typeof raw.markdown === 'string' ? raw.markdown : (typeof raw.content === 'string' ? raw.content : derived.markdown || ''),
     sourceMode: raw.sourceMode || derived.sourceMode || 'portable-local',
     source: normalizeSuppliedSource(raw.source, materialPath),
+    locator: raw.locator ? Object.freeze({ ...raw.locator }) : null,
     portableMaterialKind: raw.portableMaterialKind || (raw.kind === 'workspace' ? 'workspace' : 'record')
   });
 }
@@ -167,6 +169,21 @@ function schemaCandidateMaterials(input = {}) {
 }
 
 function normalizeSuppliedSource(source = {}, materialPath = '') {
+  if (isAcceptedRepositorySource(source)) {
+    return Object.freeze({
+      repository: String(source.repository || ''),
+      ref: String(source.ref || ''),
+      commit: String(source.commit || ''),
+      path: safeArchivePath(source.path || materialPath) || materialPath,
+      authority: String(source.authority || 'remote-repository-unverified'),
+      remoteFetch: source.remoteFetch === true,
+      receiptQualification: 'accepted-host-repository-read',
+      provenanceQualification: source.commit ? 'accepted-host-repository-pinned' : 'accepted-host-repository-moving-ref',
+      ...(source.permalink ? { permalink: String(source.permalink) } : {}),
+      ...(source.durableLocator ? { durableLocator: String(source.durableLocator) } : {}),
+      boundary: source.boundary || 'Accepted host repository-read receipt material. Repository/ref/commit/path facts are preserved as receipt evidence only; portable input performs no remote fetch or provenance inference.'
+    });
+  }
   if (source?.adapterId && source.adapterId !== 'local') {
     return Object.freeze({
       ...source,
@@ -181,6 +198,16 @@ function normalizeSuppliedSource(source = {}, materialPath = '') {
     path: source?.path || materialPath,
     boundary: source?.boundary || 'Portable local material; no GitHub provenance inferred.'
   });
+}
+
+function isAcceptedRepositorySource(source = {}) {
+  return Boolean(
+    source
+    && source.receiptQualification === 'accepted-host-repository-read'
+    && /^accepted-host-repository-(?:pinned|moving-ref)$/.test(String(source.provenanceQualification || ''))
+    && source.repository
+    && source.path
+  );
 }
 
 function workspaceSummary(record = {}) {

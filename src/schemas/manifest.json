@@ -151,6 +151,16 @@
       "originTrustRole": "canonical-core"
     },
     {
+      "schemaId": "tiinex.workspace.representation.v1",
+      "kind": "concrete",
+      "role": "core-workspace-representation-binding",
+      "path": "core/relation/workspace/representation/tiinex.workspace.representation.v1.schema.json",
+      "checksum": "9f8e806b365484ebdd477e16d5dd12850f8f801a648a4b8e67cc284383a45cf7",
+      "sourceBlobSha": "2962cac53b72c91d00a503a141cb01ef2a52956b",
+      "originId": "tiinex-docs-0fdce5f2-accepted-local",
+      "originTrustRole": "canonical-core"
+    },
+    {
       "schemaId": "tiinex.workspace.v1",
       "kind": "concrete",
       "role": "viewer-workspace-entrypoint",
@@ -209,6 +219,17 @@
       "sourceCommit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
       "rootPath": ".topics/.schemas",
       "trustRole": "canonical-core"
+    },
+    {
+      "id": "tiinex-docs-0fdce5f2-accepted-local",
+      "label": "Anchor-accepted local Tiinex docs Workspace Representation contract at 0fdce5f2 base",
+      "kind": "accepted-local-overlay",
+      "repository": "Tiinex/docs",
+      "ref": "master",
+      "sourceCommit": "0fdce5f265298321a41cd90cf5382bcb6ae31a13",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core",
+      "publicationState": "accepted-local-unpublished"
     }
   ]
 }

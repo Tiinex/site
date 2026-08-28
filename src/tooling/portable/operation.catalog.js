@@ -41,6 +41,7 @@ import { projectPortableHandoffCarrierOutputFromPackage } from './handoff/recipi
 import { orientColdConsumerFromHandoffPackage } from './handoff/coldConsumerEntrypoint.js';
 import { auditHandoffPackageContextCarriage } from './handoff/contextAudit.js';
 import { describePortableColdStartIngress, groundPortableColdConsumer, projectPortableColdStartHostGuidance, qualifyPortableColdStart } from './handoff/coldStartQualification.js';
+import { projectPortableOperatingOverview } from './overview/operatingOverview.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
 
@@ -153,6 +154,13 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only',
     inputSchema: 'tiinex.portable.input.v1',
     handler: auditPortableMaterial
+  }),
+  'project-operating-overview': operation({
+    name: 'project-operating-overview',
+    description: 'Project loaded Project inventory, exact-qualified Task frontier candidates, explicit blocker/resource signals, and deferred Monitoring/cross-repository capability boundaries without creating overview semantic authority.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('project-operating-overview', projectPortableOperatingOverview(input, options))
   }),
   'resolve-lineage': operation({
     name: 'resolve-lineage',

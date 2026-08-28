@@ -6,10 +6,13 @@ import { zipBufferToImportEntries } from '../../../adapters/archive/archive.adap
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { prepareNodeHandoffManufacturingInput, enumerateNodeWorkspace } from '../adapters/node/handoff.manufacture.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
-import { portableRuntimePackageZipBuffer } from '../output/node.zip.js';
+import { recipientFacingV2PackageZipBuffer } from '../output/recipientV2.zip.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
+import { qualifySelectedHandoffArtifact } from './routeArtifactConformance.js';
+import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-handoff-manufacture-'));
 try {
@@ -21,7 +24,7 @@ try {
   const firstEnumeration = await enumerateNodeWorkspace(workspaceRoot, { workspaceId: 'docs-fixture' });
   const secondEnumeration = await enumerateNodeWorkspace(workspaceRoot, { workspaceId: 'docs-fixture' });
   assert.equal(firstEnumeration.status, 'qualified-complete');
-  assert.equal(firstEnumeration.evidence.entryCount, 5);
+  assert.equal(firstEnumeration.evidence.entryCount, 6);
   assert.equal(firstEnumeration.evidence.entriesFingerprint, secondEnumeration.evidence.entriesFingerprint);
   assert.deepEqual(firstEnumeration.materialization.entries.map((entry) => entry.path), [...firstEnumeration.materialization.entries.map((entry) => entry.path)].sort());
   const bounded = await enumerateNodeWorkspace(workspaceRoot, { workspaceId: 'docs-fixture', maxFiles: 2 });
@@ -31,15 +34,18 @@ try {
   const embeddedInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     workspaceId: 'docs-fixture',
+    workspaceTargetPath: 'workspace.workspace.md',
     workspaceTitle: 'Docs Fixture',
     handoffPath: '.topics/handoff.trace.md',
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
   assert.equal(embeddedInput.manufacturingEvidence.enumeration.proof, 'deterministic-node-enumeration-v1');
-  const embedded = manufactureRecipientRelativeHandoffPackage(embeddedInput, { packageInput: { builtAt: '2026-08-23T10:50:00.000Z' } });
+  const embedded = manufactureRecipientRelativeHandoffPackage(embeddedInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T10:50:00.000Z' } });
   assert.equal(embedded.status, 'ready');
   assert.deepEqual(embedded.verification, {
+    baselineManufacture: 'ready',
+    manufacturePath: 'direct-qualified-workspace-to-archive',
     packageInspection: 'valid',
     closureInspection: 'valid',
     carrierInspection: 'valid',
@@ -54,25 +60,32 @@ try {
   assert.equal(embedded.plan.requirements.required[0].selectedMaterial.provider.id, 'node-workspace-enumerator');
 
   const byPath = new Map(embedded.bundle.files.map((file) => [file.path, file]));
-  assert(byPath.has('tiinex.package/START.md'));
+  assert(byPath.has('001-1-READ-BEFORE-PROCEEDING.trace.md'));
   assert.equal(embedded.coldConsumerEntrypointInspection.status, 'valid');
   assert.equal(embedded.coldConsumerProjection.workspaces.length, 1);
   assert.equal(embedded.coldConsumerProjection.routes[0].workspaceId, 'docs-fixture');
-  assert(byPath.has('handoff.workspaces/docs-fixture/.topics/context.md'));
-  assert(byPath.has('handoff.workspaces/docs-fixture/content/blob.bin'));
-  assert(byPath.has('handoff.workspaces/docs-fixture/tiinex.bootstrap/runtime/ordinary-workspace-byte.js'));
-  assert.equal(byPath.has('handoff.workspaces/docs-fixture/.topics/.topics/context.md'), false, 'workspace-relative Handoff routing must not gain carrier-relative path prefixes');
-  assert.deepEqual([...packageFileBytes(byPath.get('handoff.workspaces/docs-fixture/content/blob.bin'))], [0, 1, 2, 3, 255, 128, 64]);
+  const workspaceArchivePath = embedded.descriptor.workspaceArchiveBindings[0].representation.packagePath;
+  assert(byPath.has(workspaceArchivePath));
+  assert.equal([...byPath.keys()].some((entryPath) => entryPath.startsWith('handoff.workspaces/')), false, 'recipient-v2 manufacture must avoid exploded workspace carriers');
+  const workspaceArchiveEntries = await zipBufferToImportEntries(packageFileBytes(byPath.get(workspaceArchivePath)), { source: 'handoff-manufacture-workspace-archive', excludeRepositoryInternals: true });
+  assert.equal(workspaceArchiveEntries.errors.length, 0);
+  const workspaceBinary = workspaceArchiveEntries.entries.find((entry) => entry.path === 'content/blob.bin');
+  assert(workspaceBinary, 'binary workspace carrier must be present inside the exact Workspace archive');
+  assert.deepEqual([...workspaceBinary.bytes], [0, 1, 2, 3, 255, 128, 64]);
+  assert(workspaceArchiveEntries.entries.some((entry) => entry.path === 'tiinex.bootstrap/runtime/ordinary-workspace-byte.js'));
+  assert.equal(workspaceArchiveEntries.entries.some((entry) => entry.path === '.topics/.topics/context.md'), false, 'workspace-relative Handoff routing must not gain carrier-relative path prefixes');
   assert.equal(embedded.toolingBootstrapInspection.qualification.filenameOrColocationAuthority, false);
   assert.equal(embedded.toolingBootstrapInspection.counts.errors, 0);
 
-  const cliOutput = path.join(root, 'cli-handoff.zip');
+  const cliOutputDir = path.join(root, 'cli-output');
   const cliLines = [];
   const cliCode = await runPortableCli([
     'manufacture-handoff-package', workspaceRoot,
     '--handoff', '.topics/handoff.trace.md',
     '--workspace-id', 'docs-fixture',
-    '--output', cliOutput,
+    '--workspace-target', 'workspace.workspace.md',
+    '--legacy-recipient-v2-compatibility',
+    '--output-dir', cliOutputDir,
     '--built-at', '2026-08-23T10:50:00.000Z',
     '--compact'
   ], { log: (value) => cliLines.push(value), error: (value) => cliLines.push(value) }, { runtimeRoot });
@@ -82,29 +95,34 @@ try {
   assert.equal(cliResult.writeReceipt.status, 'written');
   assert.equal('bundle' in cliResult, false);
   assert.equal(cliResult.planSummary.requiredClosureReady, true);
-  assert.equal(cliResult.planSummary.workspaces[0].entryCount, 5);
+  assert.equal(cliResult.planSummary.workspaces[0].entryCount, 6);
   assert(Buffer.byteLength(cliLines.at(-1), 'utf8') < 50_000, 'ZIP-output CLI result must remain a bounded verification/receipt summary rather than reserializing carrier bytes');
 
-  const zip = portableRuntimePackageZipBuffer(embedded.bundle);
+  const zip = recipientFacingV2PackageZipBuffer(embedded.bundle, { inspection: embedded.inspection });
   const decoded = await zipBufferToImportEntries(zip, { source: 'handoff-manufacture-test', excludeRepositoryInternals: true });
   assert.equal(decoded.errors.length, 0);
-  const binaryEntry = decoded.entries.find((entry) => entry.path === 'handoff.workspaces/docs-fixture/content/blob.bin');
-  assert(binaryEntry, 'binary workspace carrier must survive Node ZIP serialization');
+  const serializedWorkspaceArchive = decoded.entries.find((entry) => entry.path === workspaceArchivePath);
+  assert(serializedWorkspaceArchive, 'Workspace archive must survive Node ZIP serialization');
+  const serializedWorkspaceEntries = await zipBufferToImportEntries(serializedWorkspaceArchive.bytes, { source: 'handoff-manufacture-test-workspace-archive', excludeRepositoryInternals: true });
+  assert.equal(serializedWorkspaceEntries.errors.length, 0);
+  const binaryEntry = serializedWorkspaceEntries.entries.find((entry) => entry.path === 'content/blob.bin');
+  assert(binaryEntry, 'binary workspace carrier must survive nested Workspace ZIP serialization');
   assert.deepEqual([...binaryEntry.bytes], [0, 1, 2, 3, 255, 128, 64]);
 
   const poisonedInspection = inspectPortableToolingBootstrap({
-    files: [...embedded.bundle.files, { path: 'tiinex.bootstrap/runtime/unlisted.js', data: new TextEncoder().encode('not authority') }]
+    files: [...embeddedInput.additionalTransportFiles, { path: 'tiinex.bootstrap/runtime/unlisted.js', data: new TextEncoder().encode('not authority') }]
   });
   assert.equal(poisonedInspection.status, 'invalid');
   assert(poisonedInspection.findings.some((finding) => finding.code === 'portable.tooling-bootstrap.runtime.unlisted'));
 
   await assert.rejects(
-    prepareNodeHandoffManufacturingInput({ workspaceRoot, workspaceId: 'docs-fixture', handoffPath: '.topics/handoff.trace.md', toolingBootstrap: 'persistent', runtimeRoot }),
+    prepareNodeHandoffManufacturingInput({ workspaceRoot, workspaceId: 'docs-fixture', workspaceTargetPath: 'workspace.workspace.md', handoffPath: '.topics/handoff.trace.md', toolingBootstrap: 'persistent', runtimeRoot }),
     /persistent-verification\.required/
   );
   const persistentInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     workspaceId: 'docs-fixture',
+    workspaceTargetPath: 'workspace.workspace.md',
     handoffPath: '.topics/handoff.trace.md',
     toolingBootstrap: 'persistent',
     runtimeRoot,
@@ -112,16 +130,17 @@ try {
   });
   assert.equal(persistentInput.toolingBootstrap.status, 'persistent-identity-verified');
   assert.equal(persistentInput.toolingBootstrap.persistentVerification.state, 'verified');
-  const persistent = manufactureRecipientRelativeHandoffPackage(persistentInput, { packageInput: { builtAt: '2026-08-23T10:50:00.000Z' } });
+  const persistent = manufactureRecipientRelativeHandoffPackage(persistentInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T10:50:00.000Z' } });
   assert.equal(persistent.status, 'ready');
   assert.equal(persistent.toolingBootstrapInspection.delivery, 'persistent');
-  assert.equal(persistent.bundle.files.some((file) => file.path.startsWith('tiinex.bootstrap/runtime/')), false);
-  assert.equal(persistent.bundle.files.some((file) => file.path === 'tiinex.bootstrap/manifest.json'), true);
+  assert.equal(persistentInput.additionalTransportFiles.some((file) => file.path.startsWith('tiinex.bootstrap/runtime/')), false);
+  assert.equal(persistentInput.additionalTransportFiles.some((file) => file.path === 'tiinex.bootstrap/manifest.json'), true);
 
   await assert.rejects(
     prepareNodeHandoffManufacturingInput({
       workspaceRoot,
       workspaceId: 'docs-fixture',
+      workspaceTargetPath: 'workspace.workspace.md',
       handoffPath: '.topics/handoff.trace.md',
       toolingBootstrap: 'persistent',
       runtimeRoot,
@@ -142,17 +161,22 @@ try {
   const invalidInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     workspaceId: 'docs-fixture',
+    workspaceTargetPath: 'workspace.workspace.md',
     workspaceTitle: 'Docs Fixture',
     handoffPath: '.topics/invalid-handoff.trace.md',
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
-  const invalidBuilt = manufactureRecipientRelativeHandoffPackage(invalidInput, { packageInput: { builtAt: '2026-08-23T10:51:00.000Z' } });
+  const invalidQualification = qualifySelectedHandoffArtifact({ markdown: await readFile(invalidHandoffPath, 'utf8') });
+  assert.equal(invalidQualification.status, 'blocked');
+  assert.equal(invalidQualification.selfIntegrity.state, 'verified');
+  assert(invalidQualification.findings.some((finding) => finding.code === 'portable.contract.field-domain.value.invalid'));
+  const invalidBuilt = manufactureRecipientRelativeHandoffPackage(invalidInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T10:51:00.000Z' } });
   assert.equal(invalidBuilt.status, 'blocked');
-  assert.equal(invalidBuilt.carrierProjection.routes[0].conformance.status, 'blocked');
-  assert.equal(invalidBuilt.carrierProjection.routes[0].conformance.selfIntegrity.state, 'verified');
-  assert(invalidBuilt.carrierProjection.routes[0].conformance.findings.some((finding) => finding.code === 'portable.contract.field-domain.value.invalid'));
-  assert(invalidBuilt.findings.some((finding) => finding.code === 'portable.contract.field-domain.value.invalid'));
+  assert.equal(invalidBuilt.verification.selectedHandoffConformance, 'blocked');
+  assert.equal(invalidBuilt.carrierProjection.status, 'blocked');
+  assert.equal(invalidBuilt.carrierProjection.routes.length, 0, 'recipient-v2 must not project an unqualified selected Handoff as a route');
+  assert(invalidBuilt.findings.some((finding) => finding.code === 'portable.handoff-v2-surface.routes.unqualified'));
 
 
   const originalInvalidReturn = await readFile(new URL('./fixtures/027-invalid-return-handoff.fixture.txt', import.meta.url), 'utf8');
@@ -166,21 +190,24 @@ try {
   const originalInvalidInput = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     workspaceId: 'docs-fixture',
+    workspaceTargetPath: 'workspace.workspace.md',
     workspaceTitle: 'Docs Fixture',
     handoffPath: originalInvalidRoute,
     toolingBootstrap: 'embedded',
     runtimeRoot
   });
-  const originalInvalidBuilt = manufactureRecipientRelativeHandoffPackage(originalInvalidInput, { packageInput: { builtAt: '2026-08-23T10:52:00.000Z' } });
-  const originalInvalidConformance = originalInvalidBuilt.carrierProjection.routes[0].conformance;
+  const originalInvalidQualification = qualifySelectedHandoffArtifact({ markdown: originalInvalidReturn, parentMarkdown: originalInvalidResult });
+  assert.equal(originalInvalidQualification.status, 'blocked');
+  assert.equal(originalInvalidQualification.selfIntegrity.state, 'verified');
+  assert.equal(originalInvalidQualification.parentContinuity.targetResolution.verification.state, 'verified');
+  assert(originalInvalidQualification.findings.some((finding) => finding.code === 'portable.contract.section.required.missing'));
+  assert(originalInvalidQualification.findings.filter((finding) => finding.code === 'portable.contract.field-domain.value.invalid').length >= 2);
+  const originalInvalidBuilt = manufactureRecipientRelativeHandoffPackage(originalInvalidInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T10:52:00.000Z' } });
   assert.equal(originalInvalidInput.plan?.requiredClosureReady ?? originalInvalidBuilt.plan.requiredClosureReady, true);
   assert.equal(originalInvalidBuilt.status, 'blocked', 'the exact original checksum-valid/schema-invalid return Handoff must suppress manufacture readiness');
   assert.equal(originalInvalidBuilt.verification.selectedHandoffConformance, 'blocked');
-  assert.equal(originalInvalidConformance.selfIntegrity.state, 'verified');
-  assert.equal(originalInvalidConformance.parentContinuity.targetResolution.verification.state, 'verified');
-  assert(originalInvalidConformance.findings.some((finding) => finding.code === 'portable.contract.section.required.missing'));
-  assert(originalInvalidConformance.findings.some((finding) => finding.code === 'portable.contract.conditional.field.required.missing'));
-  assert(originalInvalidConformance.findings.filter((finding) => finding.code === 'portable.contract.field-domain.value.invalid').length >= 2);
+  assert.equal(originalInvalidBuilt.carrierProjection.status, 'blocked');
+  assert.equal(originalInvalidBuilt.carrierProjection.routes.length, 0, 'recipient-v2 must suppress invalid selected Handoff routes rather than surface them as qualified transport routes');
 } finally {
   await rm(root, { recursive: true, force: true });
 }
@@ -190,6 +217,7 @@ async function makeWorkspace(rootPath) {
   await mkdir(path.join(rootPath, 'content'), { recursive: true });
   await mkdir(path.join(rootPath, 'tiinex.bootstrap', 'runtime'), { recursive: true });
   await writeFile(path.join(rootPath, '.topics', 'context.md'), '# Context\n\nNon-Site workspace context.\n', 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(), 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'handoff.trace.md'), qualifiedHandoffFixture({
     title: 'Non-Site handoff fixture',
     to: 'Loom',
@@ -200,6 +228,35 @@ async function makeWorkspace(rootPath) {
   await writeFile(path.join(rootPath, 'content', 'a.txt'), 'alpha\n', 'utf8');
   await writeFile(path.join(rootPath, 'content', 'blob.bin'), Uint8Array.from([0, 1, 2, 3, 255, 128, 64]));
   await writeFile(path.join(rootPath, 'tiinex.bootstrap', 'runtime', 'ordinary-workspace-byte.js'), 'export default "ordinary workspace material";\n', 'utf8');
+}
+
+
+function workspaceMarkdown() {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-23 10:39:00
+  - Authors: Fixture
+  - Why: Qualify the exact Workspace carried by the manufacture regression.
+  - Summary: Handoff manufacture fixture Workspace.
+  - Status: active/local
+
+---
+
+# Manufacture Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}\n`;
 }
 
 async function makeRuntime(rootPath) {

@@ -17,6 +17,7 @@ try {
 
   const directoryInput = await loadNodePortableInput(nested);
   assert.equal(directoryInput.files.some((file) => file.path === 'artifact.md'), true);
+  assert.equal(directoryInput.files.some((file) => file.path === 'artifact.md' && file.locator?.kind === 'node-file' && file.locator.localPath === path.join(nested, 'artifact.md')), true);
   assert.equal(directoryInput.files.some((file) => file.path === 'asset.bin' && file.kind === 'asset'), true);
   assert.equal(directoryInput.files.some((file) => file.path === 'preview.png' && file.locator?.kind === 'node-file'), true);
   assert.equal(directoryInput.files.some((file) => file.path === 'linked.md'), false);
@@ -28,6 +29,7 @@ try {
   ]));
   const zipInput = await loadNodePortableInput(zipPath);
   assert.equal(zipInput.files.some((file) => file.path === 'zip-artifact.md' && typeof file.content === 'string'), true);
+  assert.equal(zipInput.files.some((file) => file.path === 'zip-artifact.md' && file.locator?.kind === 'node-zip-entry' && file.locator.archivePath === zipPath && file.locator.entryPath === 'zip-artifact.md'), true);
   assert.equal(zipInput.files.some((file) => file.path === 'assets/pixel.bin' && file.kind === 'asset'), true);
   assert.equal(zipInput.findings.some((finding) => finding.severity === 'error'), false);
 

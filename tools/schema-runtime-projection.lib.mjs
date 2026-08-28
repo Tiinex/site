@@ -90,7 +90,26 @@ function runtimeValidationContractForSchema(markdownPath, bindingPath) {
   const targetDocument = parsePortableSchemaDocument(targetMarkdown);
   const lineage = schemaLineageMarkdown(targetDocument?.schemaId || '', index);
   const compiled = compilePortableSchemaContractChain(lineage);
-  return compactValidationContract(compiled);
+  return specializeCompactValidationContract(compactValidationContract(compiled), targetDocument, targetMarkdown);
+}
+
+function specializeCompactValidationContract(contract = {}, document = {}, markdown = '') {
+  const schemaId = String(document?.schemaId || '').trim();
+  if (schemaId !== 'tiinex.workspace.representation.v1') return contract;
+  const source = String(markdown || '');
+  const declaresReplacement = source.includes('The child body replaces the generic inherited `## Relation Declaration` and `## Relation Target` instance sections with `## Representation Binding` and `## Representation Correlation`.');
+  if (!declaresReplacement) return contract;
+  const replaced = new Set(['Relation Declaration', 'Relation Target']);
+  const validation = contract.validation || {};
+  return Object.freeze({
+    ...contract,
+    validation: Object.freeze({
+      ...validation,
+      requiredSections: Object.freeze((validation.requiredSections || []).filter((name) => !replaced.has(String(name || '')))),
+      requiredHeadings: Object.freeze((validation.requiredHeadings || []).filter((item) => !replaced.has(String(item?.title || '')))),
+      ordinaryGroups: Object.freeze((validation.ordinaryGroups || []).filter((item) => !replaced.has(String(item?.group || ''))))
+    })
+  });
 }
 
 function compactValidationContract(compiled = {}) {

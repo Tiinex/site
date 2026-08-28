@@ -34,12 +34,17 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     const parentBytes = new Uint8Array(await readFile(resolvedParent));
     const parentBundle = await loadNodePortableInput([resolvedParent], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
     const parentInspection = inspectRecipientFacingV2Topology(parentBundle);
-    if (parentInspection.status !== 'valid') throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
+    const parentLineage = parentInspection.carrierProjection?.lineage || null;
+    if (parentInspection.status !== 'valid' && !parentLineage?.dimension) throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
+    // Package-parent lineage is a human progress projection, not Workspace provider authority.
+    // A pre-canonical-representation recipient-v2 parent may remain usable for lineage continuation
+    // even when the current strict provider inspector correctly rejects it for activation.
     carrierLineage = carrierLineageFromCliParent({
       bundle: parentBundle,
       parentPath: resolvedParent,
       parentBytes,
       routeDimensions: (parentInspection.carrierProjection?.routes || []).map((route) => route.dimension),
+      qualifiedParentLineage: parentLineage,
       major: Boolean(flags['package-major']),
       majorReason: flags['major-reason'] || ''
     });
@@ -62,13 +67,14 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     maxFiles: flags['max-files'],
     bootstrapMaxFiles: flags['bootstrap-max-files'],
     verifyRoundtrip,
-    recipientRouteSelector: '',
+    recipientRouteSelector: flags.route || '',
     carrierLineage
   }, runtime);
   return {
     input,
     options: {
       verifyRoundtrip,
+      legacyRecipientV2Compatibility: Boolean(flags['legacy-recipient-v2-compatibility']),
       packageInput: { builtAt: flags['built-at'] || undefined }
     }
   };

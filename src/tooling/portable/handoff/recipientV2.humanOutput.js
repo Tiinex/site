@@ -1,6 +1,6 @@
 import { projectHandoffCarrierOutputFromPackage, projectHandoffHumanOutput } from './carrierProjection.js';
 import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
-import { RECIPIENT_V2_FORMAT_ID, RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
+import { RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
 
 export function recipientV2StandardInvocation(humanOutput = {}, inspection = {}) {
   const route = humanOutput.selectedRoute || {};
@@ -34,7 +34,7 @@ export function projectRecipientV2HumanOutput(humanOutput = {}, inspection = {})
 export function projectPortableHandoffCarrierOutputFromPackage(input = {}) {
   const bundle = input.bundle || input;
   const inspection = inspectRecipientFacingV2Topology(bundle);
-  if (!inspection.rootArtifact || inspection.readArtifact?.facts?.format !== RECIPIENT_V2_FORMAT_ID) return projectHandoffCarrierOutputFromPackage(input);
+  if (inspection.detected !== true) return projectHandoffCarrierOutputFromPackage(input);
   const humanOutput = projectRecipientV2HumanOutput(projectHandoffHumanOutput({ projection: inspection.carrierProjection || {}, route: input.route || input.routePath || input.routeId || '', collisionInstance: input.collisionInstance || input.instance || 1 }), inspection);
   const findings = Object.freeze([...(inspection.findings || []), ...(humanOutput.findings || [])]);
   const status = inspection.status === 'valid' && humanOutput.status === 'ready' ? 'ready' : humanOutput.status === 'selection-required' ? 'selection-required' : 'blocked';

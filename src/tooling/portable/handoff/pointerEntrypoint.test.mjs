@@ -3,10 +3,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
-import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
+import { buildRecipientRelativeHandoffTransportPackage } from './materialClosure.package.js';
 import { inspectHandoffPointerEntrypoints, isHandoffPointerEntrypointPath, CANONICAL_POINTER_SCHEMA_TARGET } from './pointerEntrypoint.js';
 import { orientColdConsumerFromHandoffPackage } from './coldConsumerEntrypoint.js';
 import { canonicalC14nV2SelfState, sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
+import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
 
@@ -17,8 +18,8 @@ try {
   await makeWorkspace(workspaceRoot);
   await makeRuntime(runtimeRoot);
   const routes = ['.topics/handoff/016-anchor-to-loom.trace.md', '.topics/handoff/016-anchor-to-axiom.trace.md'];
-  const input = await prepareNodeHandoffManufacturingInput({ workspaceRoot, workspaceId: 'site', handoffPath: routes[0], handoffRoutes: routes, toolingBootstrap: 'embedded', runtimeRoot });
-  const built = manufactureRecipientRelativeHandoffPackage(input, { packageInput: { builtAt: '2026-08-23T18:30:00.000Z' } });
+  const input = await prepareNodeHandoffManufacturingInput({ workspaceRoot, workspaceId: 'site', workspaceTargetPath: 'workspace.workspace.md', handoffPath: routes[0], handoffRoutes: routes, toolingBootstrap: 'embedded', runtimeRoot });
+  const built = buildRecipientRelativeHandoffTransportPackage(input, { packageInput: { builtAt: '2026-08-23T18:30:00.000Z' } });
   assert.equal(built.status, 'ready');
   assert.equal(built.pointerEntrypointInspection.status, 'valid');
   assert.equal(built.pointerEntrypointProjection.entries.length, 2);
@@ -78,8 +79,36 @@ function reseal(markdown) {
 async function makeWorkspace(rootPath) {
   await mkdir(path.join(rootPath, '.topics', 'handoff'), { recursive: true });
   await writeFile(path.join(rootPath, 'package.json'), '{"name":"tiinex-site-pointer-fixture","type":"module"}\n', 'utf8');
+  await writeFile(path.join(rootPath, 'workspace.workspace.md'), workspaceMarkdown(), 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'context.md'), '# Context\n', 'utf8');
   for (const [filename, to] of [['016-anchor-to-loom.trace.md', 'Loom'], ['016-anchor-to-axiom.trace.md', 'Axiom']]) await writeFile(path.join(rootPath, '.topics', 'handoff', filename), handoffMarkdown(to), 'utf8');
+}
+function workspaceMarkdown() {
+  const unsigned = `# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Current
+  - Current Schema: tiinex.workspace.v1
+  - Created At: 2026-08-23 18:29:00
+  - Authors: Fixture
+  - Why: Qualify the exact Workspace carried by the Pointer entrypoint regression.
+  - Summary: Pointer entrypoint fixture Workspace.
+  - Status: active/local
+
+---
+
+# Pointer Entrypoint Fixture Workspace
+
+Bounded fixture Workspace.
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})
+  - Towards: self
+  - Value: `;
+  const sealed = sealC14nV2Self(unsigned);
+  assert.equal(sealed.state, 'sealed');
+  return `${sealed.markdown}\n`;
 }
 function handoffMarkdown(to) {
   return qualifiedHandoffFixture({

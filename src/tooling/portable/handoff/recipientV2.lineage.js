@@ -94,7 +94,7 @@ export function inspectRoutePointers(pointers, carrier, workspaces, participantP
       [facts.workspaceArtifactPath, workspace.artifact.path, 'workspace-artifact-path'],
       [facts.workspaceArtifactSha256, workspace.artifact.sha256, 'workspace-artifact-sha256'],
       [facts.archivePath, workspace.archiveFile.path, 'archive-path'],
-      [facts.archiveSha256, sha256Hex(packageFileByteView(workspace.archiveFile)), 'archive-sha256'],
+      [facts.archiveSha256, String(workspace.archive?.sha256 || ''), 'archive-sha256'],
       [facts.sourceWorkspaceTargetInnerPath, workspace.facts.sourceWorkspaceTargetInnerPath, 'source-workspace-target-inner-path'],
       [facts.sourceWorkspaceTargetSha256, workspace.facts.sourceWorkspaceTargetSha256, 'source-workspace-target-sha256'],
       [facts.handoffSha256, route.sha256, 'handoff-sha256']

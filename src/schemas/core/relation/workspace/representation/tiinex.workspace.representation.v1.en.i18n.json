@@ -1,0 +1,4 @@
+{
+  "schema.label": "Workspace Representation",
+  "schema.summary": "Explicit Workspace-to-representation binding with fail-closed provider qualification."
+}

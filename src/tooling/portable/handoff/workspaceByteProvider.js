@@ -52,7 +52,7 @@ export function buildHandoffWorkspaceByteProvider(bundle = {}, descriptor = {}) 
     status,
     workspaces: Object.freeze(workspaces),
     findings: Object.freeze(dedupeFindings(findings)),
-    boundary: 'Package-local byte provider only. Workspace identity comes from an exact qualified tiinex.workspace.v1 target plus descriptor binding; archive filename, placement, declaration order, UI state, and path similarity have no semantic authority.'
+    boundary: 'Package-local manufacture/material-closure byte provider. Its tiinex.transport.handoff-workspace-archive-binding.v1 descriptor is mechanical transport evidence, not recipient semantic provider authority. Recipient-v2 archive activation separately requires a qualified tiinex.workspace.representation.v1 binding plus its explicit External Payload and exact payload bytes; filename, placement, declaration order, UI state, and path similarity have no semantic authority.'
   });
 }
 
@@ -222,7 +222,7 @@ function qualifyArchiveWorkspace(bundle, workspace, binding = {}) {
     archive: deepFreeze({ ...(binding.representation || {}), data: archiveData }),
     binding,
     reasons: Object.freeze([...new Set(reasons)]),
-    authority: Object.freeze({ locatorAuthority: false, filenameAuthority: false, packagePlacementAuthority: false, bindingAuthority: 'exact-workspace-target-plus-archive-byte-identity' })
+    authority: Object.freeze({ locatorAuthority: false, filenameAuthority: false, packagePlacementAuthority: false, bindingAuthority: 'manufacture-material-closure-transport-evidence-only', recipientSemanticActivationAuthority: false })
   });
 }
 

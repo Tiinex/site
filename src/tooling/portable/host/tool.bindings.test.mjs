@@ -65,7 +65,8 @@ const receipt = {
             ref: 'master',
             commit: 'abc123',
             path: '.topics/.schemas/experimental/tiinex.experimental.v1.schema.md',
-            authority: 'canonical-core'
+            authority: 'canonical-core',
+            permalink: 'https://evidence.example/Tiinex/docs/abc123/tiinex.experimental.v1.schema.md'
           }
         }]
       }
@@ -77,7 +78,38 @@ assert.equal(accepted.status, 'accepted');
 assert.equal(accepted.providerResponses.length, 1);
 assert.equal(accepted.providerResponses[0].files[0].source.repository, 'Tiinex/docs');
 assert.equal(accepted.providerResponses[0].files[0].source.commit, 'abc123');
+assert.equal(accepted.providerResponses[0].files[0].source.provenanceQualification, 'accepted-host-repository-pinned');
+assert.equal(accepted.providerResponses[0].files[0].source.receiptQualification, 'accepted-host-repository-read');
+assert.equal(accepted.providerResponses[0].files[0].source.permalink, 'https://evidence.example/Tiinex/docs/abc123/tiinex.experimental.v1.schema.md');
 assert.equal(accepted.material.files.length, 0);
+
+const movingReceipt = {
+  ...receipt,
+  steps: receipt.steps.map((step) => step.capability ? step : step),
+};
+movingReceipt.steps = receipt.steps.map((step) => {
+  if (step.stepId !== plan.steps[1].stepId) return step;
+  return {
+    ...step,
+    normalized: {
+      files: [{
+        path: 'moving/project.trace.md',
+        content: '# moving',
+        source: {
+          repository: 'Tiinex/business',
+          ref: 'main',
+          path: 'moving/project.trace.md',
+          authority: 'canonical-core'
+        }
+      }]
+    }
+  };
+});
+const acceptedMoving = acceptPortableHostActionReceipt({ plan, receipt: movingReceipt });
+assert.equal(acceptedMoving.status, 'accepted');
+assert.equal(acceptedMoving.providerResponses[0].files[0].source.commit, '');
+assert.equal(acceptedMoving.providerResponses[0].files[0].source.authority, 'remote-repository-unpinned');
+assert.equal(acceptedMoving.providerResponses[0].files[0].source.provenanceQualification, 'accepted-host-repository-moving-ref');
 
 const localPlan = planPortableHostAction({ tools, action: 'archive-read', request: { archivePath: '/tmp/package.zip', entryPath: 'asset.png' } });
 const localReceipt = {
