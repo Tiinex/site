@@ -5,6 +5,11 @@
   - Current Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
   - Created At: 2026-06-14 00:00:00
   - Summary: Root schema for Tiinex lineage artifacts with repair-note support.
+- Repairs
+  - Parent recovery locality correction
+    - Target: Schema Validation Contract / Parent Origin and Schema Reference Fields
+    - Note: Parent recovery no longer requires fabricated relative locality. Local recovery uses truthful relative paths; external or historical recovery uses a qualified version-stable locator when local relative recovery is unavailable. Published schema references use immutable canonical locators when available.
+    - Reason: Cross-repository lineage exposed that a universal relative requirement forced duplicate Parent material and weakened bounded transport and exact source recovery.
 
 ---
 
@@ -562,10 +567,6 @@ Required When
 
 - Parent exists
 
-Required Fields
-
-- relative
-
 Allowed Labels
 
 - relative
@@ -584,18 +585,21 @@ Ordering
 
 Rules
 
-- `Origin` supports recovery and must remain truthful to the Parent representation actually available.
+- `Origin` supports recovery and must remain truthful to the Parent representation actually available or qualified for recovery.
 - `Origin` must not replace `Trace`.
-- Every Parent must include one truthful `relative` recovery locator for the directly recoverable Parent representation in the current qualified workspace or materialization.
+- Every Parent must expose at least one truthful recovery locator.
+- When the Parent representation is directly recoverable in the same qualified materialization and source scope as the child, `relative` must identify that directly recoverable representation.
+- A local copy or recovery representation must not be manufactured solely to satisfy a `relative` requirement when the Parent is not naturally present in that materialization and source scope.
+- When no truthful directly recoverable `relative` Parent representation is available, `Origin` must include a qualified version-stable recovery locator through a supported adapter.
+- `browse + git` is one version-stable recovery form only when it identifies the exact published Parent representation through an immutable Git revision; a mutable branch or latest-style URL is not equivalent to version-stable recovery.
 - A directly recoverable local or unpublished Parent does not require a `browse + git` entry merely to satisfy continuity.
-- When a qualified published Git representation is available for the Parent and is used as publication recovery authority, `browse + git` must identify that exact published Parent representation in addition to `relative`.
+- When both a truthful local recovery route and a qualified immutable published route exist, both may be declared; Root does not require publication saturation for ordinary artifacts.
 - `browse + git` must not be invented, guessed, or synthesized when no qualified published Git representation is available.
-- Package or transport closure may prove exact carried Parent bytes but does not by itself create publication or forge provenance.
+- Package or transport closure may provide additional recovery for material omitted by transport scope, but it must not rewrite semantic Parent identity or forge source publication provenance.
 - Every origin candidate should identify the same parent artifact.
 - Origin candidates must not mix alternate parents.
-- `browse + git` gives a portable Git/forge recovery permalink for a published parent representation and should be commit-pinned when used.
-- `absolute` paths are supplemental local recovery hints, not portable authority and not a replacement for the required `relative` locator.
-- Additional origin labels may be introduced by descendant schemas as envelope extensions.
+- `absolute` paths are supplemental local recovery hints. They are not portable authority and do not replace a required truthful `relative` route or a required version-stable external recovery route.
+- Additional origin labels may be introduced by descendant schemas as envelope extensions, including other adapters that can prove version-stable recovery.
 
 ### Current
 
@@ -642,12 +646,12 @@ Rules
 - Tools must preserve the declared schema identifier separately from locator-resolution state and must not derive schema identity from a path, filename, host, repository, branch name, or other locator shape.
 - A locator that resolves successfully does not by itself prove that the resolved bytes are the exact intended schema representation; exact-representation qualification depends on the locator's own stability/identity semantics and any applicable integrity or source authority.
 - Markdown Link is preferred when a truthful useful schema representation locator is available.
-- For a published artifact that references a different already-published canonical schema representation, an immutable canonical locator should be preferred when one is available.
+- For a published artifact that references a different already-published canonical schema representation, an immutable canonical locator must be used when one is available.
 - `commit-pinned browse + git` is one current example of an immutable canonical locator; GitHub and commit hashes are not the semantic definition of immutable schema location.
 - A mutable branch/latest locator may be useful for discovery or current-material traversal, but it must not be treated as equivalent to an immutable exact-representation locator.
 - A relative self-link is valid for a schema's self-reference when it continues to resolve to that same representation as the file moves together with itself.
 - Relative or local locators are valid for local/unpublished schema material when they are the truthful available route; authors and tools must not fabricate a published immutable locator that does not yet exist.
-- A relative locator to another schema may remain useful inside one copied workspace or package, but publication tooling should prefer a stronger immutable canonical locator for a different already-published schema when that stronger route is available.
+- A relative locator to another schema may remain useful inside one copied workspace or package, but publication tooling must use a stronger immutable canonical locator for a different already-published schema when that stronger route is available.
 - Plain Schema Id is allowed when no useful locator is available or when local context already resolves the schema id.
 - Plain Schema Id preserves schema-identifier truth only; consumers must not infer one exact schema representation from the identifier alone when exact representation material matters.
 - When a Markdown Link target is resolved, a mismatch between the declared link-label schema identifier and the resolved schema representation's declared semantic identity must remain a contradiction/unresolved reference rather than being repaired from filename, path, or locator text.
@@ -810,4 +814,4 @@ Rules
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: nOBWpnN-Nqn3r9yJcAg2pGx_SenALuBtE1cIqcNfIkk
+  - Value: Lzl6eK3jilH-kAaV49PabSeKxpdHESsXIjhF7xaFb6A

@@ -65,10 +65,10 @@ assert(!missingBrowseGitQualification.findings.some((item) => item.code === 'por
 
 const missingRelative = qualifiedHandoffFixture({ parent: { ...parentBinding, includeRelative: false } });
 const missingRelativeQualification = qualifySelectedHandoffArtifact({ markdown: missingRelative, parentMarkdown });
-assert.equal(missingRelativeQualification.status, 'blocked', 'browse + git alone must not replace required direct Parent recovery continuity');
+assert.equal(missingRelativeQualification.status, 'qualified', 'qualified version-stable browse + git recovery may carry Parent continuity without fabricated relative locality');
 assert.equal(missingRelativeQualification.selfIntegrity.state, 'verified');
-assert.equal(missingRelativeQualification.parentContinuity.targetResolution.verification.state, 'verified', 'valid target/self digests must not mask missing required relative Parent Origin authority');
-assert(missingRelativeQualification.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing' && item.message.includes('relative')));
+assert.equal(missingRelativeQualification.parentContinuity.targetResolution.verification.state, 'verified');
+assert(!missingRelativeQualification.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing'));
 
 const wrongParentTarget = qualifiedHandoffFixture({ parent: { ...parentBinding, targetValue: 'A'.repeat(43) } });
 const wrongParentTargetQualification = qualifySelectedHandoffArtifact({ markdown: wrongParentTarget, parentMarkdown });

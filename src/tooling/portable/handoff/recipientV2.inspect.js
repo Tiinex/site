@@ -179,11 +179,26 @@ export function inspectRecipientFacingV2Topology(bundle = {}, options = {}) {
     if (!/\.(?:md|zip)$/i.test(path) && path !== RECIPIENT_V2_TRANSPORT_MANIFEST_PATH) findings.push(finding('error', 'portable.handoff-v2-surface.root-file-kind-invalid', 'Recipient-facing v2 root may expose only qualified Tiinex Markdown artifacts, explicitly referenced ZIP companions, and the single transport-owned manifest.', { path }));
   }
 
+  const routeWorkspaceMaterialized = routePointers.flatMap((pointer) => {
+    const facts = pointer.facts || {};
+    return (Array.isArray(facts.requiredContextBindings) ? facts.requiredContextBindings : []).map((binding) => Object.freeze({
+      requirementId: String(binding.requirementId || ''),
+      classification: 'required',
+      referenceTarget: String(binding.referenceTarget || ''),
+      routeWorkspaceId: String(facts.workspaceId || ''),
+      routePath: String(facts.workspaceRelativeHandoffPath || ''),
+      carrierKind: 'workspace-archive-entry',
+      workspaceId: String(binding.workspaceId || ''),
+      workspaceRelativePath: String(binding.workspaceRelativePath || ''),
+      bytes: Number(binding.bytes || 0),
+      sha256: String(binding.sha256 || '')
+    }));
+  });
   const descriptor = deepFreeze({
     schema: 'tiinex.transport.handoff-material-closure-descriptor.v2', version: 2,
     workspaceMaterializations: Object.freeze(workspaceDescriptors.map((item) => item.workspace)),
     workspaceArchiveBindings: Object.freeze(workspaceDescriptors.map((item) => item.binding)),
-    materialized: virtualCache.materialized,
+    materialized: Object.freeze([...virtualCache.materialized, ...routeWorkspaceMaterialized]),
     requirements: Object.freeze({ required: Object.freeze([]), reference: Object.freeze([]), endpointRoles: Object.freeze([]), participantRoles: Object.freeze([]), dependencies: Object.freeze([]) })
   });
   const semanticBundle = { ...bundle, files: Object.freeze([...files, ...virtualWorkspaceTargetFiles, ...virtualCache.files]) };

@@ -18,7 +18,7 @@ assert.equal(self.value, projection.source.c14nV2Self);
 const compiledLocalRoot = compilePortableSchemaContractChain([markdown]);
 assert.equal(compiledLocalRoot.lineageQualification.state, 'valid');
 const localParentOrigin = compiledLocalRoot.validation.conditionalRequirements.find((entry) => entry.name === 'Parent Origin');
-assert.deepEqual(localParentOrigin.requiredFields, ['relative']);
+assert.deepEqual(localParentOrigin.requiredFields, []);
 assert.deepEqual(localParentOrigin.allowedLabels, ['relative', 'absolute', 'browse + git']);
 
 const taskModule = resolveSchemaModule({ schemaId: 'tiinex.task.v1' }).module;
@@ -30,7 +30,7 @@ const bindingBefore = JSON.stringify(taskModule.binding);
 const runtime = portableRuntimeValidationContractForSchema('tiinex.task.v1');
 assert.equal(runtime.state, 'qualified');
 const runtimeParentOrigin = runtime.compiledContract.validation.conditionalRequirements.find((entry) => entry.name === 'Parent Origin');
-assert.deepEqual(runtimeParentOrigin.requiredFields, ['relative']);
+assert.deepEqual(runtimeParentOrigin.requiredFields, []);
 assert.deepEqual(runtimeParentOrigin.allowedLabels, ['relative', 'absolute', 'browse + git']);
 assert.equal(runtime.compiledContract.portableRuntimeProjection.state, 'qualified-local');
 assert.equal(runtime.compiledContract.portableRuntimeProjection.source.sha256, projection.source.sha256);

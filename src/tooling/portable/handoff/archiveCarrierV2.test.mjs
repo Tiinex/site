@@ -44,6 +44,32 @@ try {
 
   const v2 = manufactureRecipientRelativeHandoffPackage(input, { legacyRecipientV2Compatibility: true, verifyRoundtrip: true, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
   assert.equal(v2.status, 'ready');
+
+  const bindingOnlyRoot = path.join(root, 'binding-only');
+  await makeWorkspace(bindingOnlyRoot, {
+    title: 'Binding only',
+    to: 'Sigma',
+    blob: [3, 4, 5],
+    requiredContext: `- ctx
+  - Material: exact bound local context without source Material Reference
+  - Purpose: prove transport manufacture may bind exact required bytes without mutating the source Handoff to invent a locator
+  - Availability: available`
+  });
+  const bindingOnlyInput = await prepareNodeHandoffManufacturingInput({
+    workspaceRoot: bindingOnlyRoot,
+    workspaceId: 'binding-only',
+    workspaceTargetPath: 'workspace.workspace.md',
+    handoffPath: '.topics/015-handoff.trace.md',
+    materialBindings: { ctx: { workspaceId: 'binding-only', path: '.topics/context.md' } },
+    toolingBootstrap: 'embedded',
+    runtimeRoot,
+    verifyRoundtrip: true
+  });
+  const bindingOnlyV2 = manufactureRecipientRelativeHandoffPackage(bindingOnlyInput, { legacyRecipientV2Compatibility: true, verifyRoundtrip: true, packageInput: { builtAt: '2026-08-24T20:00:00.000Z' } });
+  assert.equal(bindingOnlyV2.status, 'ready', 'explicit exact material binding must survive recipient-v2 transport when source Handoff intentionally omits optional Material Reference');
+  assert.equal(bindingOnlyV2.inspection.status, 'valid');
+  assert.equal(bindingOnlyV2.carrierProjection.routes[0].requiredClosure.state, 'qualified');
+  assert.equal(bindingOnlyV2.carrierProjection.routes[0].requiredClosure.requirements[0].resolution.kind, 'workspace-archive-entry');
   assert.equal(v2.verification.roundtrip, 'passed');
   assert.equal(v2.descriptor.schema, 'tiinex.transport.handoff-material-closure-descriptor.v2');
   assert.equal(v2.migration.manufacturePath, 'direct-qualified-workspace-to-archive');
@@ -464,9 +490,10 @@ async function makeWorkspace(rootPath, options = {}) {
   for (let index = 0; index < count; index += 1) await writeFile(path.join(rootPath, index ? `workspace-${index + 1}.workspace.md` : 'workspace.workspace.md'), workspaceMarkdown(`${title}${index ? ` ${index + 1}` : ''}`), 'utf8');
   await writeFile(path.join(rootPath, '.topics', 'context.md'), '# context\n', 'utf8');
   const target = options.requiredTarget || 'context.md';
+  const requiredContext = options.requiredContext || `- ctx\n  - Material: exact context\n  - Material Reference: [Context](${target})\n  - Purpose: grounding\n  - Availability: available`;
   let handoff = qualifiedHandoffFixture({
     title: `${title} handoff`, to, purpose: 'archive carrier v2 fixture', createdAt: '2026-08-24 20:00:00',
-    requiredContext: `- ctx\n  - Material: exact context\n  - Material Reference: [Context](${target})\n  - Purpose: grounding\n  - Availability: available`
+    requiredContext
   });
   if (options.invalidHandoff) handoff = handoff.replace(/Current Schema:\s*\[tiinex\.handoff\.v1\]/, 'Current Schema: [tiinex.note.v1]');
   await writeFile(path.join(rootPath, '.topics', '015-handoff.trace.md'), handoff, 'utf8');

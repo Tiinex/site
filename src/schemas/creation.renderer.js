@@ -73,9 +73,9 @@ function renderParent(parent) {
     '- Parent',
     `  - Parent Schema: ${renderSchemaReference(parent.schemaReferenceAuthority)}`,
     ...(parent.createdAt ? [`  - Created At: ${parent.createdAt}`] : []),
-    `  - Trace: [${parent.traceLabel}](${parent.relativeReference})`,
+    `  - Trace: [${parent.traceLabel}](${parent.traceReference})`,
     '  - Origin:',
-    `    - [relative](${parent.relativeReference})`,
+    ...(parent.relativeReference ? [`    - [relative](${parent.relativeReference})`] : []),
     ...(parent.publishedReference ? [`    - [browse + git](${parent.publishedReference})`] : [])
   ];
 }
@@ -108,19 +108,24 @@ function parentEnvelope(record = {}, childPath = '') {
   const schemaId = schemaIdForRecord(record);
   const parentPath = normalizePath(record.path);
   const child = normalizePath(childPath);
-  const relativeReference = String(record.relativeReference || relativePath(dirname(child), parentPath)).trim();
+  const recoveryMode = normalizeParentRecoveryMode(record.recoveryMode || record.parentRecoveryMode || 'local-relative');
   const published = normalizePublishedReference(record.publishedReference || record.browseGitReference || record.browseGit || '');
+  const publishedReference = published.state === 'qualified' ? published.target : '';
+  const relativeReference = recoveryMode === 'external-versioned' ? '' : String(record.relativeReference || relativePath(dirname(child), parentPath)).trim();
+  const traceReference = recoveryMode === 'external-versioned' ? publishedReference : relativeReference;
   const schemaReferenceAuthority = normalizeParentSchemaReferenceAuthority(record.schemaReferenceAuthority || record.parentSchemaReferenceAuthority, schemaId);
-  if (!schemaId || !parentPath || !child || !relativeReference) throw new Error('creation-parent-identity-incomplete');
+  if (!schemaId || !parentPath || !child || !traceReference) throw new Error('creation-parent-identity-incomplete');
+  if (recoveryMode === 'external-versioned' && !publishedReference) throw new Error('creation-parent-external-versioned-reference-required');
   const parentSelf = validatedC14nV2PrimarySelfDigest(record.markdown || '');
   if (parentSelf.state !== 'verified') throw new Error(`creation-parent-primary-self-${parentSelf.reason || parentSelf.state}`);
-  const publishedReference = published.state === 'qualified' ? published.target : '';
   const integrityTarget = publishedReference || relativeReference;
   if (!integrityTarget) throw new Error('creation-parent-integrity-target-unavailable');
   return Object.freeze({
     schemaId,
     schemaReferenceAuthority,
     createdAt: String(record.createdAt || '').trim(),
+    recoveryMode,
+    traceReference,
     relativeReference,
     publishedReference,
     integrityTarget,
@@ -129,6 +134,7 @@ function parentEnvelope(record = {}, childPath = '') {
   });
 }
 
+function normalizeParentRecoveryMode(value = '') { return String(value || '').trim() === 'external-versioned' ? 'external-versioned' : 'local-relative'; }
 function normalizePublishedReference(value) {
   if (typeof value === 'string') return Object.freeze({ target: value, state: value ? 'unresolved' : 'unavailable' });
   return Object.freeze({ target: String(value?.target || value?.url || ''), state: String(value?.state || value?.resolutionState || 'unresolved') });

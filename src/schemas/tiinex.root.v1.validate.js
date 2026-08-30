@@ -15,7 +15,11 @@ export function rootValidate(artifact) {
   } else {
     if (!parent.schema?.id) findings.push(warning('root.parent.schema.missing', 'Parent edge is present but Parent Schema is missing.'));
     if (!parent.trace) findings.push(warning('root.parent.trace.missing', 'Parent edge is present but Trace is missing; lineage traversal will be degraded.'));
-    if (!parent.origin) findings.push(warning('root.parent.origin.missing', 'Parent edge is present but Origin is missing; recovery will rely on other hints.'));
+    if (!parent.origin) findings.push(error('root.parent.origin.missing', 'Parent edge is present but no truthful Origin recovery locator is declared.'));
+    const originEntries = Array.isArray(parent.originEntries) ? parent.originEntries : [];
+    const labels = originEntries.map((entry) => String(entry?.label || '').trim()).filter(Boolean);
+    const duplicateLabels = [...new Set(labels.filter((label, index) => labels.indexOf(label) !== index))];
+    for (const label of duplicateLabels) findings.push(error('root.parent.origin.label.duplicate', `Parent Origin recovery label is duplicated: ${label}.`));
   }
   if (envelope.repairsDeclared) findings.push(info('root.repairs.declared', 'Envelope declares repair notes; validators should preserve unknown repair fields.'));
   if (!findings.some((finding) => finding.severity === 'error')) findings.push(info('root.envelope.readable', 'Root envelope is readable at current validation depth.'));

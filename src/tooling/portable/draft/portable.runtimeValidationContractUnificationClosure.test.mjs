@@ -21,7 +21,7 @@ assert.deepEqual(compiled.lineage, ['tiinex.root.v1', 'tiinex.task.v1']);
 assert(compiled.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.includes('browse + git')), 'historical published schema-source contract remains unchanged');
 const projected = portableRuntimeValidationContractForSchema('tiinex.task.v1');
 assert.equal(projected.state, 'qualified');
-assert(projected.compiledContract.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.length === 1 && item.requiredFields[0] === 'relative'));
+assert(projected.compiledContract.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredWhen.includes('Parent exists') && item.requiredFields.length === 0));
 assert(!projected.compiledContract.validation.conditionalRequirements.some((item) => item.name === 'Parent Origin' && item.requiredFields.includes('browse + git')));
 
 const localOnly = validatePortableDraft({ markdown: v476, path: v476Path, schemaId: 'tiinex.task.v1' });
@@ -50,13 +50,17 @@ function validateMutation(name, mutate, code) {
 validateMutation('duplicate required relative', (md) => md.replace(
   '    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)',
   '    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)\n    - [relative](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)'
-), 'portable.contract.conditional.field.duplicate');
+), 'root.parent.origin.label.duplicate');
 
-const alternate = validateMutation('alternate required relative Origin label', (md) => md.replace('[relative](', '[archive mirror]('), 'portable.contract.conditional.field.required.missing');
+const alternateChanged = v475.replace('[relative](', '[archive mirror](');
+const alternate = validateArtifact({ markdown: sealC14nV2Self(alternateChanged).markdown, validationContractOverride: projected.compiledContract });
 assert(alternate.findings.some((item) => item.code === 'portable.contract.conditional.label.unknown.preserved'));
-assert(alternate.findings.some((item) => item.code === 'portable.contract.conditional.field.required.missing' && item.message.includes('relative')));
 
-validateMutation('browse-only Parent Origin', (md) => md.replace(/^    - \[relative\].*\n/m, ''), 'portable.contract.conditional.field.required.missing');
+const browseOnlyChanged = v475.replace(/^    - \[relative\].*\n/m, '');
+const browseOnly = validateArtifact({ markdown: sealC14nV2Self(browseOnlyChanged).markdown, validationContractOverride: projected.compiledContract });
+assert(!browseOnly.findings.some((item) => item.severity === 'error'), `browse-only external recovery shape must remain structurally valid under Root: ${JSON.stringify(browseOnly.findings)}`);
+
+validateMutation('empty Parent Origin', (md) => md.replace(/^    - \[relative\].*\n/m, '').replace(/^    - \[browse \+ git\].*\n/m, ''), 'root.parent.origin.missing');
 
 validateMutation('record Trace', (md) => md.replace(
   '  - Trace: [002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md](002-site-tooling-v475-canonical-artifact-envelope-reference-integrity-validation-closure.trace.md)',
@@ -86,4 +90,4 @@ assert.equal(customValidation.validation.semanticContract.state, 'unavailable', 
 assert(customValidation.findings.some((item) => item.code === 'audit.validator.unavailable'));
 assert.equal(customValidation.parsed.body.sections.includes('Future Extension'), true, 'unknown custom material remains readable/preserved');
 
-console.log('✓ qualified local Root runtime projection: relative-only Parent continuity is valid, browse + git remains optional truthful publication evidence, malformed required relative continuity still fails, and historical published schema-source identity remains unchanged');
+console.log('✓ qualified local Root runtime projection: relative-only local and browse-only versioned Parent recovery are structurally valid, empty recovery fails, and historical published schema-source identity remains unchanged');

@@ -4,9 +4,9 @@
 - Parent
   - Parent Schema: [tiinex.discovery.v1](https://github.com/Tiinex/docs/blob/911d4cf990e35ce25a56e8f376d296e327c48260/.topics/.schemas/discovery/tiinex.discovery.v1.schema.md)
   - Created At: 2026-08-30 17:08:35
-  - Trace: [Tooling Development Loop Efficiency Discovery](001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md)
+  - Trace: [Tooling Development Loop Efficiency Discovery](001-tooling-development-loop-efficiency-discovery.trace.md)
   - Origin:
-    - [relative](001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md)
+    - [relative](001-tooling-development-loop-efficiency-discovery.trace.md)
 - Current
   - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/911d4cf990e35ce25a56e8f376d296e327c48260/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-30 17:48:00
@@ -43,7 +43,7 @@ Make the existing focused Tooling gate, restartable validation chain, checkpoint
 
 ## Dependencies
 
-- [Tooling Development Loop Efficiency Discovery](001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md)
+- [Tooling Development Loop Efficiency Discovery](001-tooling-development-loop-efficiency-discovery.trace.md)
 - Organizational priority/acceptance remains owned by `Tiinex/business::.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md`.
 - Current Site validation/checkpoint/profile helpers and their existing deterministic tests.
 - Loom implementation/verification after Sigma lands this prepared source; Sigma human review is not a substitute for machine-verifiable Tooling checks.
@@ -51,9 +51,9 @@ Make the existing focused Tooling gate, restartable validation chain, checkpoint
 # Continuity Integrity
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
-  - Towards: [Tooling Development Loop Efficiency Discovery](001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md)
+  - Towards: [Tooling Development Loop Efficiency Discovery](001-tooling-development-loop-efficiency-discovery.trace.md)
   - Value: IK42aYEQn5yCei7G58Q6BxfhoChAdYRo7FKmGJ-2qVw
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:WivMfwL7HdP3EY3fIEZmkFhw3D_lQ0HQasLN20XyMwA
+  - Value:5C3jXAkm8Xd7f4NyfRe4vAJd0XoZQ8fhb18n_rs2Xqw

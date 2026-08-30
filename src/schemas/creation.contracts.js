@@ -221,6 +221,8 @@ function qualifiedParentIntegrityTarget(parentRecord = {}, relativeReference = '
   const published = parentRecord?.publishedReference || parentRecord?.browseGitReference || parentRecord?.browseGit || null;
   const target = typeof published === 'string' ? '' : String(published?.target || published?.url || '');
   const state = typeof published === 'string' ? 'unresolved' : String(published?.state || published?.resolutionState || 'unresolved');
+  const recoveryMode = String(parentRecord?.recoveryMode || parentRecord?.parentRecoveryMode || '').trim() === 'external-versioned' ? 'external-versioned' : 'local-relative';
+  if (recoveryMode === 'external-versioned') return state === 'qualified' && target ? target : '';
   return state === 'qualified' && target ? target : String(relativeReference || '');
 }
 

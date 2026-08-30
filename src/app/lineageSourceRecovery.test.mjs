@@ -137,15 +137,15 @@ assert.deepEqual(importedPlan[0].issueUrls, ['https://github.com/Tiinusen/social
 
 
 
-const crossRepoParentUrl = 'https://github.com/Tiinex/business/blob/master/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md';
+const crossRepoParentUrl = 'https://github.com/Tiinex/business/blob/3dac3b7ad41f307b1a3dcb70f0933f9e44a4fcd0/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md';
 const siteChildMarkdown = childMarkdown.replace('[Parent](../parent.trace.md)', `[Parent](${crossRepoParentUrl})`);
-const siteChild = Object.assign(createRecordFromMarkdown(siteChildMarkdown, { path: '.topics/tooling/001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md', name: 'Tooling Development Loop Efficiency Discovery' }), {
+const siteChild = Object.assign(createRecordFromMarkdown(siteChildMarkdown, { path: '.topics/tooling/001-tooling-development-loop-efficiency-discovery.trace.md', name: 'Tooling Development Loop Efficiency Discovery' }), {
   id: 'source:github:tiinex/site:tooling-discovery',
   source: { id: 'github:tiinex/site', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/site', ref: 'refactor', rootPath: '.topics' }
 });
 const crossRepoSource = recoverySourceForLineageTarget(crossRepoParentUrl, siteChild, { id: 'cross-repo', records: [siteChild], sources: [siteChild.source] });
 assert.equal(crossRepoSource.repo, 'Tiinex/business', 'absolute cross-repository Parent Trace must select the parent repository, not the declaring Site repository');
-assert.equal(crossRepoSource.ref, 'master', 'cross-repository Parent recovery preserves the explicit parent ref');
+assert.equal(crossRepoSource.ref, '3dac3b7ad41f307b1a3dcb70f0933f9e44a4fcd0', 'cross-repository Parent recovery preserves the exact immutable parent ref');
 const crossRepoWorkspace = { id: 'cross-repo', records: [siteChild], sources: [siteChild.source] };
 const crossRepoView = buildWorkspaceLineageView(crossRepoWorkspace, { selectedRecordId: siteChild.id });
 const crossRepoPlan = buildLineageSourceRecoveryPlan(crossRepoWorkspace, crossRepoView);

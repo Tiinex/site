@@ -11,9 +11,9 @@
   },
   "source": {
     "bootstrapPath": "src/tooling/portable/schema/bootstrap/qualified-local-root/tiinex.root.v1.schema.md",
-    "bytes": 41197,
-    "sha256": "4bc6388dc375e68e9a2df2641cb8df9716ad9ef95deff22808fe78048a5d8028",
-    "c14nV2Self": "nOBWpnN-Nqn3r9yJcAg2pGx_SenALuBtE1cIqcNfIkk"
+    "bytes": 42516,
+    "sha256": "cb7efa1f19632575262c49175ed98b56ea672b9e5f818a984a4487af5f663993",
+    "c14nV2Self": "Lzl6eK3jilH-kAaV49PabSeKxpdHESsXIjhF7xaFb6A"
   },
   "lineageQualification": {
     "state": "valid",
@@ -29,9 +29,7 @@
       "Parent exists"
     ],
     "requiredSections": [],
-    "requiredFields": [
-      "relative"
-    ],
+    "requiredFields": [],
     "requiredEntries": [],
     "allowedLabels": [
       "relative",

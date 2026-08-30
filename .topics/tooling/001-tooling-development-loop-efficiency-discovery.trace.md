@@ -4,9 +4,9 @@
 - Parent
   - Parent Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-08-27 12:25:00
-  - Trace: [Tooling And Workflow Iteration Efficiency](https://github.com/Tiinex/business/blob/master/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
+  - Trace: [Tooling And Workflow Iteration Efficiency](https://github.com/Tiinex/business/blob/3dac3b7ad41f307b1a3dcb70f0933f9e44a4fcd0/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
   - Origin:
-    - [relative](../../.tiinex/continuity/parents/tiinex-business/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
+    - [browse + git](https://github.com/Tiinex/business/blob/3dac3b7ad41f307b1a3dcb70f0933f9e44a4fcd0/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
 - Current
   - Current Schema: [tiinex.discovery.v1](https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/discovery/tiinex.discovery.v1.schema.md)
   - Created At: 2026-08-30 17:08:35
@@ -71,7 +71,7 @@
 
 - Natural Durable Repository: `Tiinex/site`, where the inspected Tooling implementation, validation/checkpoint helpers, Handoff manufacture code, parity/runtime companions, and future implementation work actually live.
 - Organizational Context: the originating Business controlling work is `Tiinex/business::.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md`. Business owns priority and acceptance; this Site lineage owns specialist technical evidence and follow-on implementation.
-- Parent Boundary: the durable Site copy declares the Business Tooling-efficiency Task as its direct semantic Parent. The canonical external source is named by `Trace`; the required relative Origin resolves to an exact recovery representation stored outside `.topics/`, and Viewer/Tooling may recover the canonical Business Parent from the external `Trace` into the same loaded workspace so the edge becomes a real source-scope transition rather than a repo-local root.
+- Parent Boundary: the durable Site copy declares the Business Tooling-efficiency Task as its direct semantic Parent. `Trace` and `browse + git` identify the exact commit-pinned external Business representation. Viewer/Tooling may recover that Parent as a distinct source so the edge becomes a real source-scope transition rather than a repo-local root.
 - Transport Boundary: the 013-1 Loom Handoff and 013-1-1 return carrier preserve session transport provenance only. They do not become this source artifact's permanent Parent.
 - Active-Lineage Boundary: the first concrete descendant is one ready Loom Task, `Validation Contract Unification`. Later efficiency recommendations remain ordered in this Discovery until the active slice is completed, parked, or consciously reframed; they are not opened as parallel sibling development work.
 
@@ -93,7 +93,7 @@
 
 - Placement: this completed specialist Discovery is retained in `Tiinex/site` because its durable value is Tooling/runtime implementation evidence.
 - Organizational Parent: `Tiinex/business::.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md` is the direct semantic Parent.
-- Parent Recovery: the canonical external Parent is named by `Trace`; an exact byte-for-byte recovery representation is stored outside `.topics/` at the declared relative Origin so standalone/source-package validation remains recoverable without creating a duplicate current lineage node.
+- Parent Recovery: the canonical external Parent is named by `Trace` and recovered through the commit-pinned `browse + git` Origin. No duplicate Parent bytes are stored in Site merely to manufacture a relative path.
 - Scope Transition: Viewer/Tooling recovery uses the external Parent `Trace` to materialize the Business source into the same loaded workspace on demand, so lineage crosses repository/source scope visibly rather than terminating at a repo-local root.
 
 ## Interpretation Limits
@@ -104,9 +104,9 @@
 # Continuity Integrity
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
-  - Towards: [Tooling And Workflow Iteration Efficiency](https://github.com/Tiinex/business/blob/master/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
+  - Towards: [Tooling And Workflow Iteration Efficiency](https://github.com/Tiinex/business/blob/3dac3b7ad41f307b1a3dcb70f0933f9e44a4fcd0/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md)
   - Value: HYsccUvA0Y3cWgJbmAOrvD5u4SdCPtbo5UTA2bhXVb4
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:IK42aYEQn5yCei7G58Q6BxfhoChAdYRo7FKmGJ-2qVw
+  - Value:QRZ5v4Q_RZEZqLFEHIfc0HzUgqGugoaYIQFm0xUtgcY

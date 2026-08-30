@@ -330,7 +330,18 @@ function buildRecipientFacingV2TopologyLegacy(input = {}) {
       handoffSha256: String(route.sha256 || ''),
       routeId: String(route.id || ''),
       parties: route.parties || {},
-      cacheArtifactPath: cache?.artifactPath || ''
+      cacheArtifactPath: cache?.artifactPath || '',
+      requiredContextBindings: Object.freeze((route.requiredClosure?.requirements || [])
+        .filter((entry) => entry.state === 'qualified' && entry.resolution?.kind === 'workspace-archive-entry')
+        .map((entry) => Object.freeze({
+          requirementId: String(entry.requirementId || ''),
+          name: String(entry.name || ''),
+          referenceTarget: String(entry.referenceTarget || ''),
+          workspaceId: String(entry.resolution?.workspaceId || ''),
+          workspaceRelativePath: String(entry.resolution?.workspaceRelativePath || entry.resolution?.innerPath || ''),
+          bytes: Number(entry.resolution?.bytes || 0),
+          sha256: String(entry.resolution?.sha256 || '')
+        })))
     };
     const pointer = finalizeFile({
       path: pointerPath,

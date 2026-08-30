@@ -15,6 +15,7 @@ export function normalizePortableParentRecord(parent = {}) {
     continuationTrace: String(parent.continuationTrace || ''),
     boundary: String(parent.boundary || parent.source?.boundary || ''),
     sourceMode: String(parent.sourceMode || ''),
+    recoveryMode: String(parent.recoveryMode || parent.parentRecoveryMode || ''),
     source: parent.source || null,
     markdown: String(parent.markdown || ''),
     integrity: parent.integrity || null,
@@ -111,6 +112,7 @@ export function qualifyPortableRenderedParentRepresentation(markdown = '', paren
   const published = parent.publishedReference || {};
   const publishedTarget = String(published.target || '');
   const publishedQualified = Boolean(publishedTarget && published.state === 'qualified');
+  const recoveryMode = String(parent.recoveryMode || '').trim() === 'external-versioned' ? 'external-versioned' : 'local-relative';
   const schemaTarget = String(parent.schemaReferenceAuthority?.preferredTarget || '');
   const origins = observed.originEntries || [];
   const createdAtLines = renderedParentFieldLines(markdown, 'Created At');
@@ -118,21 +120,24 @@ export function qualifyPortableRenderedParentRepresentation(markdown = '', paren
   const createdAtExact = expectedCreatedAt ? createdAtLines.length === 1 && createdAtLines[0] === `  - Created At: ${expectedCreatedAt}` : createdAtLines.length === 0;
   const relativeOrigins = origins.filter((entry) => entry.label === 'relative');
   const browseOrigins = origins.filter((entry) => entry.label === 'browse + git');
+  const expectedTrace = recoveryMode === 'external-versioned' ? publishedTarget : relative;
   const baseExact = String(observed.schema?.id || '') === String(parent.schemaId || '')
     && String(observed.schema?.target || '') === schemaTarget
-    && String(observed.trace || '') === relative
+    && String(observed.trace || '') === expectedTrace
     && /^\[[^\]]+\]\([^)]+\)$/.test(String(observed.traceRaw || ''))
-    && relativeOrigins.length === 1 && relativeOrigins[0].target === relative
     && !String(observed.boundary || '')
     && createdAtExact
     && String(observed.createdAt || '') === expectedCreatedAt;
-  const exact = baseExact && (publishedQualified
-    ? browseOrigins.length === 1 && browseOrigins[0].target === publishedTarget && origins.length === 2
-    : browseOrigins.length === 0 && origins.length === 1);
+  const exactOrigins = recoveryMode === 'external-versioned'
+    ? publishedQualified && relativeOrigins.length === 0 && browseOrigins.length === 1 && browseOrigins[0].target === publishedTarget && origins.length === 1
+    : relativeOrigins.length === 1 && relativeOrigins[0].target === relative && (publishedQualified
+      ? browseOrigins.length === 1 && browseOrigins[0].target === publishedTarget && origins.length === 2
+      : browseOrigins.length === 0 && origins.length === 1);
+  const exact = baseExact && exactOrigins;
   return Object.freeze({
     state: exact ? 'qualified' : 'invalid',
     reason: exact ? '' : 'exact-result-parent-representation-mismatch',
-    expected: Object.freeze({ schemaId: String(parent.schemaId || ''), schemaTarget, trace: relative, relativeOrigin: relative, browseGitOrigin: publishedQualified ? publishedTarget : '', createdAt: expectedCreatedAt }),
+    expected: Object.freeze({ schemaId: String(parent.schemaId || ''), schemaTarget, recoveryMode, trace: expectedTrace, relativeOrigin: recoveryMode === 'external-versioned' ? '' : relative, browseGitOrigin: publishedQualified ? publishedTarget : '', createdAt: expectedCreatedAt }),
     observed: Object.freeze({ schemaId: String(observed.schema?.id || ''), schemaTarget: String(observed.schema?.target || ''), trace: String(observed.trace || ''), traceRaw: String(observed.traceRaw || ''), origins: Object.freeze(origins), boundary: String(observed.boundary || ''), createdAt: String(observed.createdAt || ''), createdAtLines: Object.freeze(createdAtLines) })
   });
 }

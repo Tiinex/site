@@ -217,13 +217,17 @@ export function qualifyContinuationCreationRepresentation(markdown = '', contrac
     const publishedTarget = typeof publishedReference === 'string' ? '' : String(publishedReference?.target || publishedReference?.url || '');
     const publishedState = typeof publishedReference === 'string' ? 'unresolved' : String(publishedReference?.state || publishedReference?.resolutionState || 'unresolved');
     const publishedQualified = Boolean(publishedTarget && publishedState === 'qualified');
-    if (publishedQualified) {
-      if (origins.length !== 2 || relative.length !== 1 || browse.length !== 1) findings.push('Parent Origin must contain exactly one [relative](...) and one [browse + git](...) entry when the Parent has a qualified published representation.');
+    const recoveryMode = String(parentRecord?.recoveryMode || parentRecord?.parentRecoveryMode || '').trim() === 'external-versioned' ? 'external-versioned' : 'local-relative';
+    if (recoveryMode === 'external-versioned') {
+      if (!publishedQualified) findings.push('External Parent recovery requires one qualified version-stable published representation.');
+      if (origins.length !== 1 || relative.length !== 0 || browse.length !== 1) findings.push('External Parent Origin must contain exactly one [browse + git](...) entry and must not fabricate [relative](...).');
       if (browse[0]?.target !== publishedTarget) findings.push('Parent browse + git Origin must preserve the exact qualified published Parent representation.');
-    } else if (origins.length !== 1 || relative.length !== 1 || browse.length !== 0) {
-      findings.push('An unpublished local Parent Origin must contain exactly one [relative](...) entry and must not invent browse + git authority.');
+      if (linkTargetOrText(trace) !== publishedTarget) findings.push('External Parent Trace must target the exact qualified published Parent representation.');
+    } else {
+      if (relative.length !== 1 || origins.length < 1 || origins.length > 2 || browse.length > 1) findings.push('Directly recoverable local Parent Origin must contain exactly one [relative](...) entry and may contain at most one truthful [browse + git](...) supplement.');
+      if (relative[0]?.target !== String(options.relativeReference || '')) findings.push(`Parent relative Origin must be exactly ${options.relativeReference || '(unavailable)'}.`);
+      if (browse.length && (!publishedQualified || browse[0]?.target !== publishedTarget)) findings.push('Parent browse + git Origin must preserve qualified publication evidence and must not be invented.');
     }
-    if (relative[0]?.target !== String(options.relativeReference || '')) findings.push(`Parent relative Origin must be exactly ${options.relativeReference || '(unavailable)'}.`);
   }
   return Object.freeze({ state: findings.length ? 'ambiguous' : 'qualified', findings: Object.freeze(findings), observed });
 }

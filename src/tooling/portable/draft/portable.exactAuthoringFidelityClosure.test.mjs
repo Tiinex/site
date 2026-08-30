@@ -91,6 +91,19 @@ assert.equal(parsedChild.envelope.parent.schema.id, 'tiinex.topic.v1');
 assert.equal(parsedChild.envelope.parent.schema.target, PARENT_SCHEMA_REFERENCE);
 assert(parsedChild.envelope.parent.originEntries.some((entry) => entry.label === 'browse + git' && entry.target === PARENT_PUBLISHED_REFERENCE));
 
+const external = createPortableLocalDraft({
+  schemaId: 'tiinex.task.v1', transitionType: 'continue-from-record', values: taskValues,
+  parentRecord: qualifiedParent({ recoveryMode: 'external-versioned' }),
+  createdAt: '2026-08-21T16:25:30.000Z'
+});
+assert.equal(external.status, 'created-clean');
+assert.equal(external.qualification.exactCreateToolingApplied, true);
+const parsedExternal = parseArtifactMarkdown(external.draft.markdown);
+assert.equal(parsedExternal.envelope.parent.trace, PARENT_PUBLISHED_REFERENCE, 'external continuation Trace uses exact version-stable Parent representation');
+assert.equal(parsedExternal.envelope.parent.originEntries.some((entry) => entry.label === 'relative'), false, 'external continuation must not fabricate relative locality');
+assert.deepEqual(parsedExternal.envelope.parent.originEntries.map((entry) => entry.label), ['browse + git']);
+assert.equal(parsedExternal.envelope.parent.originEntries[0].target, PARENT_PUBLISHED_REFERENCE);
+
 const tmp = await mkdtemp(path.join(os.tmpdir(), 'tiinex-v472-exact-authoring-'));
 try {
   const valuesPath = path.join(tmp, 'topic-values.json');

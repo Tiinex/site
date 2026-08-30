@@ -176,15 +176,19 @@ function qualifyRouteRequiredClosure(bundle, descriptor, byteProvider, workspace
 
 function qualifyRequiredRequirement(bundle, descriptor, byteProvider, workspace, routePath, requirement = {}) {
   const target = String(requirement.reference?.target || '').trim();
+  const requirementId = String(requirement.id || '').trim();
   const reasons = [];
   let resolution = null;
-  if (!target || target.startsWith('#')) reasons.push('exact-required-material-reference-unresolved');
-  if (!reasons.length && !isExternalReference(target)) {
+  if (!target || target.startsWith('#')) {
+    resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target, requirementId, workspace.id, routePath);
+    if (!resolution) reasons.push('exact-required-material-reference-or-binding-unresolved');
+  }
+  if (!resolution && !reasons.length && !isExternalReference(target)) {
     const resolvedPath = resolveWorkspaceReference(routePath, target);
     if (!resolvedPath) reasons.push('workspace-reference-outside-or-invalid');
     else resolution = resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath);
   }
-  if (!resolution && !reasons.length) resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target);
+  if (!resolution && !reasons.length) resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target, requirementId, workspace.id, routePath);
   if (!resolution && !reasons.length) reasons.push('required-material-not-carried');
   if (resolution?.state !== 'qualified' && resolution?.reason) reasons.push(resolution.reason);
   return deepFreeze({
@@ -216,8 +220,18 @@ function resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath)
   });
 }
 
-function resolveDescriptorMaterial(bundle, descriptor, byteProvider, target) {
-  const matches = (descriptor.materialized || []).filter((entry) => String(entry.referenceTarget || '') === String(target || ''));
+function resolveDescriptorMaterial(bundle, descriptor, byteProvider, target = '', requirementId = '', routeWorkspaceId = '', routePath = '') {
+  const expectedTarget = String(target || '');
+  const expectedRequirementId = String(requirementId || '');
+  const expectedRouteWorkspaceId = String(routeWorkspaceId || '');
+  const expectedRoutePath = normalizeWorkspacePath(routePath || '');
+  const matches = (descriptor.materialized || []).filter((entry) => {
+    if (expectedRequirementId && String(entry.requirementId || '') !== expectedRequirementId) return false;
+    if (expectedTarget && String(entry.referenceTarget || '') !== expectedTarget) return false;
+    if (expectedRouteWorkspaceId && entry.routeWorkspaceId && String(entry.routeWorkspaceId || '') !== expectedRouteWorkspaceId) return false;
+    if (expectedRoutePath && entry.routePath && normalizeWorkspacePath(entry.routePath || '') !== expectedRoutePath) return false;
+    return Boolean(expectedTarget || expectedRequirementId);
+  });
   const byRepresentation = new Map();
   for (const entry of matches) {
     const key = entry.carrierKind === 'workspace-archive-entry'
