@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
-import { buildLineageSourceRecoveryPlan, lineageRecoveryFileRefForTarget, lineageRecoveryIssueUrlForTarget } from './lineageSourceRecovery.js';
+import { buildLineageSourceRecoveryPlan, lineageRecoveryFileRefForTarget, lineageRecoveryIssueUrlForTarget, recoverySourceForLineageTarget } from './lineageSourceRecovery.js';
 
 const childMarkdown = `# Continuity Context
 
@@ -135,5 +135,22 @@ assert.equal(importedPlan[0].sourceId, 'origin:github:tiinusen:socials');
 assert.equal(importedPlan[0].source.sourceBacked, false, 'origin recovery source should not change imported record authority');
 assert.deepEqual(importedPlan[0].issueUrls, ['https://github.com/Tiinusen/socials/issues/3'], 'explicit GitHub issue origin should drive bounded issue recovery');
 
+
+
+const crossRepoParentUrl = 'https://github.com/Tiinex/business/blob/master/.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md';
+const siteChildMarkdown = childMarkdown.replace('[Parent](../parent.trace.md)', `[Parent](${crossRepoParentUrl})`);
+const siteChild = Object.assign(createRecordFromMarkdown(siteChildMarkdown, { path: '.topics/tooling/001-2-6-1-tooling-development-loop-efficiency-discovery.trace.md', name: 'Tooling Development Loop Efficiency Discovery' }), {
+  id: 'source:github:tiinex/site:tooling-discovery',
+  source: { id: 'github:tiinex/site', adapterId: 'github', kind: 'github-tree', repo: 'Tiinex/site', ref: 'refactor', rootPath: '.topics' }
+});
+const crossRepoSource = recoverySourceForLineageTarget(crossRepoParentUrl, siteChild, { id: 'cross-repo', records: [siteChild], sources: [siteChild.source] });
+assert.equal(crossRepoSource.repo, 'Tiinex/business', 'absolute cross-repository Parent Trace must select the parent repository, not the declaring Site repository');
+assert.equal(crossRepoSource.ref, 'master', 'cross-repository Parent recovery preserves the explicit parent ref');
+const crossRepoWorkspace = { id: 'cross-repo', records: [siteChild], sources: [siteChild.source] };
+const crossRepoView = buildWorkspaceLineageView(crossRepoWorkspace, { selectedRecordId: siteChild.id });
+const crossRepoPlan = buildLineageSourceRecoveryPlan(crossRepoWorkspace, crossRepoView);
+assert.equal(crossRepoPlan.length, 1, 'missing cross-repository Parent should produce one bounded recovery plan');
+assert.equal(crossRepoPlan[0].source.repo, 'Tiinex/business', 'recovery plan must cross to the repository named by the Parent Trace');
+assert.deepEqual(crossRepoPlan[0].fileRefs.map((item) => item.ref), ['.topics/initiatives/001-2-6-tooling-workflow-iteration-efficiency-task.trace.md'], 'recovery plan targets the exact Business Parent artifact path');
 
 console.log('lineageSourceRecovery: ok');

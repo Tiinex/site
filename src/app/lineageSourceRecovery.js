@@ -3,7 +3,7 @@ import { buildSourceTransportPolicy } from '../sources/transport.policy.js';
 import { githubTransportOrderFromTier } from '../sources/github/github.transport.js';
 import { buildWorkspaceLineageView } from '../workspaces/workspace.lineageView.js';
 import { lineageBasePathForRecord } from '../lineage/lineage.pathBasis.js';
-import { githubFileRefsForRecord, githubIssueUrlsForRecord, recoverySourceForRecord } from '../sources/origin.references.js';
+import { githubFileRefsForRecord, githubIssueUrlsForRecord, parseOriginReferenceValue, recoverySourceForRecord } from '../sources/origin.references.js';
 
 const GITHUB_ADAPTER_ID = 'github';
 
@@ -109,7 +109,7 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
   const grouped = new Map();
   for (const edge of missingEdges) {
     const declaring = byId.get(String(edge.to || '').trim());
-    const source = recoverySourceForRecord(declaring, workspace);
+    const source = recoverySourceForLineageTarget(edge.target || '', declaring, workspace);
     if (!isGithubSource(source)) continue;
     const sourceId = String(source.id || '').trim();
     if (!sourceId) continue;
@@ -129,6 +129,45 @@ export function buildLineageSourceRecoveryPlan(workspace = {}, lineageView = {})
     }
   }
   return Array.from(grouped.values()).filter((entry) => entry.fileRefs.length || entry.issueUrls.length);
+}
+
+
+export function recoverySourceForLineageTarget(target = '', record = {}, workspace = {}) {
+  const ref = parseOriginReferenceValue(target);
+  if (ref?.provider === 'github' && ref.repository && ref.kind === 'github-file') {
+    const repository = String(ref.repository || '').trim();
+    const existing = (Array.isArray(workspace?.sources) ? workspace.sources : []).find((source) => {
+      const sourceRepo = String(source?.repo || source?.repository || source?.config?.repo || '').trim().toLowerCase();
+      return sourceRepo && sourceRepo === repository.toLowerCase() && isGithubSource(source);
+    });
+    if (existing) return Object.assign({}, existing, { ref: existing.ref || existing.config?.ref || ref.ref || '' });
+    const id = `origin:github:${repository.toLowerCase().replace(/[^a-z0-9/_-]+/g, '-').replace(/\//g, ':')}`;
+    const sourceRef = String(ref.ref || '').trim();
+    return {
+      id,
+      kind: 'github-tree',
+      adapterId: 'github',
+      sourceKind: 'github.origin-reference',
+      label: `GitHub parent · ${repository}`,
+      roleLabel: 'lineage recovery only',
+      repo: repository,
+      repository,
+      ref: sourceRef,
+      rootPath: '.topics',
+      config: { repo: repository, ref: sourceRef, rootPath: '.topics', issueUrls: '', fileRefs: ref.path || '' },
+      count: 0,
+      sourceBacked: false,
+      originReferenceSource: true,
+      recoveryOnly: true,
+      closeable: true,
+      discoveryState: 'deferred',
+      boundary: 'explicit external Parent Trace; recovery only until exact source material is loaded',
+      transportLabel: 'Parent recovery only',
+      loadable: false,
+      transportRefreshTier: 'direct'
+    };
+  }
+  return recoverySourceForRecord(record, workspace);
 }
 
 export function lineageRecoveryIssueUrlForTarget(target = '', declaringRecord = {}) {
