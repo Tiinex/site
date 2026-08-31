@@ -72,10 +72,13 @@ validateMutation('broken schema target', (md) => md.replace(
   '  - Current Schema: [tiinex.task.v1](tiinex.task.v1.schema.md)'
 ), 'schema.reference.locator.unresolved');
 
-validateMutation('plain maintained method id', (md) => md.replace(
+const plainMaintainedChanged = v475.replace(
   '- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/053d46ce082d4ec261b82abc44ecca403d61e240/.topics/.validators/sha256-base64url-c14n-v2.validator.md)',
   '- sha256-base64url-c14n-v2'
-), 'integrity.method-reference.unqualified');
+);
+const plainMaintained = validateArtifact({ markdown: sealC14nV2Self(plainMaintainedChanged).markdown, validationContractOverride: projected.compiledContract });
+assert(!plainMaintained.findings.some((item) => item.code === 'integrity.method-reference.unqualified'), 'Root explicitly allows a plain canonical integrity method identifier even when a maintained validator representation is available');
+assert(plainMaintained.findings.some((item) => item.code === 'integrity.method-reference.qualified'));
 
 const historical = validatePortableDraft({ markdown: v471, path: v471Path, schemaId: 'tiinex.task.v1' });
 assert.equal(historical.status, 'clean', 'v479 canonically repairs the former historical negative fixture in place');

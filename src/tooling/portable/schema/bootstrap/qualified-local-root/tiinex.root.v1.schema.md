@@ -8,7 +8,7 @@
 - Repairs
   - Parent recovery locality correction
     - Target: Schema Validation Contract / Parent Origin and Schema Reference Fields
-    - Note: Parent recovery no longer requires fabricated relative locality. Local recovery uses truthful relative paths; external or historical recovery uses a qualified version-stable locator when local relative recovery is unavailable. Published schema references use immutable canonical locators when available.
+    - Note: Parent recovery no longer requires fabricated relative locality. Local recovery uses truthful relative paths; external or historical recovery uses a qualified version-stable locator when local relative recovery is unavailable. Published schema references use immutable canonical locators when available. Transport closure may augment recovery for an already-truthful Parent edge but does not create missing source Origin authority; bounded export must preserve a usable recovery route or fail closed.
     - Reason: Cross-repository lineage exposed that a universal relative requirement forced duplicate Parent material and weakened bounded transport and exact source recovery.
 
 ---
@@ -596,6 +596,8 @@ Rules
 - When both a truthful local recovery route and a qualified immutable published route exist, both may be declared; Root does not require publication saturation for ordinary artifacts.
 - `browse + git` must not be invented, guessed, or synthesized when no qualified published Git representation is available.
 - Package or transport closure may provide additional recovery for material omitted by transport scope, but it must not rewrite semantic Parent identity or forge source publication provenance.
+- Package or transport closure is separate from the Parent artifact's own `Origin` contract. It may preserve or augment recovery for an already-truthful Parent edge, but it does not make a Parent valid when the artifact envelope itself exposes no truthful recovery locator for the source or qualified representation it declares.
+- If bounded transport would leave every declared or otherwise qualified Parent recovery route unusable to the recipient, transport tooling must preserve an exact recovery mapping or representation, rely on an already-qualified version-stable route, expand transport scope, or fail closed; it must not silently ship an unrecoverable Parent edge.
 - Every origin candidate should identify the same parent artifact.
 - Origin candidates must not mix alternate parents.
 - `absolute` paths are supplemental local recovery hints. They are not portable authority and do not replace a required truthful `relative` route or a required version-stable external recovery route.
@@ -814,4 +816,4 @@ Rules
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: Lzl6eK3jilH-kAaV49PabSeKxpdHESsXIjhF7xaFb6A
+  - Value: opA3uerTJ6TK8hyt1wbI-cZZZDgE_Z0aaFCmbAbwB4A

@@ -25,7 +25,7 @@ export function validateIntegrity(artifact = {}, options = {}) {
     for (const entry of (artifact?.integrity?.entries || []).filter((item) => item?.method === C14N_V2_METHOD_ID)) {
       const reference = qualifyIntegrityMethodReferenceValue(entry?.methodRaw || entry?.method || '', maintainedAuthority);
       if (reference.state !== 'qualified') findings.push(error('integrity.method-reference.unqualified', reference.findings.join(' ')));
-      else findings.push(info('integrity.method-reference.qualified', 'c14n-v2 integrity method reference matches the qualified maintained validator representation.'));
+      else findings.push(info('integrity.method-reference.qualified', 'c14n-v2 integrity method reference conforms to the canonical Root method-entry contract.'));
     }
     if (selfEntries.length) {
       const result = canonicalC14nV2SelfState(artifact.markdown || '');

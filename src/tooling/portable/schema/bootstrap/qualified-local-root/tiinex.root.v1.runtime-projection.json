@@ -11,9 +11,9 @@
   },
   "source": {
     "bootstrapPath": "src/tooling/portable/schema/bootstrap/qualified-local-root/tiinex.root.v1.schema.md",
-    "bytes": 42516,
-    "sha256": "cb7efa1f19632575262c49175ed98b56ea672b9e5f818a984a4487af5f663993",
-    "c14nV2Self": "Lzl6eK3jilH-kAaV49PabSeKxpdHESsXIjhF7xaFb6A"
+    "bytes": 43388,
+    "sha256": "8aeb25b97f477a45a2aab2da38090a5324aa7791c44aa92275206ba94e200519",
+    "c14nV2Self": "opA3uerTJ6TK8hyt1wbI-cZZZDgE_Z0aaFCmbAbwB4A"
   },
   "lineageQualification": {
     "state": "valid",

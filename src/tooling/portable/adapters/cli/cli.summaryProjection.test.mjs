@@ -26,7 +26,7 @@ try {
   assert.equal(summaryInspect.cliPhaseTiming.command, 'inspect');
   assert.equal(JSON.stringify(summaryInspect).length < JSON.stringify(fullInspect).length / 5, true);
 
-  const summaryAudit = await runJson(['audit', materialDir, '--summary', '--compact'], 2);
+  const summaryAudit = await runJson(['audit', materialDir, '--summary', '--compact'], 0);
   assert.equal(summaryAudit.projection, 'bounded-summary');
   assert.equal(summaryAudit.counts.audits, 20);
   assert.equal('audits' in summaryAudit, false);

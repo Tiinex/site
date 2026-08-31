@@ -58,8 +58,7 @@ export function qualifyIntegrityMethodReferenceValue(value = '', authority = {})
   const findings = [];
   if (!methodId || parsed.methodId !== methodId) findings.push(`Integrity method identifier must be exactly ${methodId || '(unavailable)'}.`);
   if (maintainedAvailable) {
-    if (parsed.form !== 'markdown-link') findings.push(`Integrity method ${methodId} must link its qualified maintained validator representation when that representation is available.`);
-    else if (!exactTargets.has(parsed.target)) findings.push(`Integrity method target is not the qualified maintained representation for ${methodId}: ${parsed.target || '(empty)'}.`);
+    if (parsed.form === 'markdown-link' && !exactTargets.has(parsed.target)) findings.push(`Integrity method target is not the qualified maintained representation for ${methodId}: ${parsed.target || '(empty)'}.`);
   } else if (parsed.form === 'markdown-link' && exactTargets.size && !exactTargets.has(parsed.target)) {
     findings.push(`Integrity method target is not qualified for ${methodId}: ${parsed.target || '(empty)'}.`);
   }

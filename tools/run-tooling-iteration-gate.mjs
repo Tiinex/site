@@ -3,25 +3,11 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-export const TOOLING_ITERATION_STEPS = Object.freeze([
-  Object.freeze({ id: 'architecture-shape', command: 'node', args: Object.freeze(['tools/check-architecture-shape.mjs']) }),
-  Object.freeze({ id: 'portable-cli', command: 'node', args: Object.freeze(['src/tooling/portable/adapters/cli/cli.run.test.mjs']) }),
-  Object.freeze({ id: 'portable-bootstrap', command: 'node', args: Object.freeze(['src/tooling/portable/bootstrap/bootstrap.test.mjs']) }),
-  Object.freeze({ id: 'portable-grounding', command: 'node', args: Object.freeze(['src/tooling/portable/adapters/cli/cli.legacyTopicsGrounding.test.mjs']) }),
-  Object.freeze({ id: 'portable-summary', command: 'node', args: Object.freeze(['src/tooling/portable/adapters/cli/cli.summaryProjection.test.mjs']) }),
-  Object.freeze({ id: 'portable-lineage-summary', command: 'node', args: Object.freeze(['src/tooling/portable/adapters/cli/cli.lineageSummaryProjection.test.mjs']) }),
-  Object.freeze({ id: 'portable-cold-start-summary', command: 'node', args: Object.freeze(['src/tooling/portable/adapters/cli/cli.coldStartSummaryProjection.test.mjs']) }),
-  Object.freeze({ id: 'legacy-artifact-fixtures', command: 'node', args: Object.freeze(['src/tooling/portable/fixtures/legacyArtifactFixtures.test.mjs']) }),
-  Object.freeze({ id: 'portable-input', command: 'node', args: Object.freeze(['src/tooling/portable/input/node.input.test.mjs']) }),
-  Object.freeze({ id: 'repository-workset', command: 'node', args: Object.freeze(['tools/measure-tooling-workset.test.mjs']) }),
-  Object.freeze({ id: 'tooling-context-search', command: 'node', args: Object.freeze(['tools/search-tooling-context.test.mjs']) }),
-  Object.freeze({ id: 'portable-input-workset', command: 'node', args: Object.freeze(['tools/measure-portable-input-workset.test.mjs']) }),
-  Object.freeze({ id: 'checkpointed-command', command: 'node', args: Object.freeze(['tools/run-checkpointed-command.test.mjs']) }),
-  Object.freeze({ id: 'checkpointed-plan', command: 'node', args: Object.freeze(['tools/run-checkpointed-plan.test.mjs']) }),
-  Object.freeze({ id: 'validation-profile', command: 'node', args: Object.freeze(['tools/profile-validation-chain.test.mjs']) })
-]);
+export { FOCUSED_TOOLING_STEPS as TOOLING_ITERATION_STEPS } from './validation-profile.contract.mjs';
+import { FOCUSED_TOOLING_STEPS } from './validation-profile.contract.mjs';
 
-export function runToolingIterationGate({ cwd = process.cwd(), steps = TOOLING_ITERATION_STEPS, spawn = spawnSync } = {}) {
+
+export function runToolingIterationGate({ cwd = process.cwd(), steps = FOCUSED_TOOLING_STEPS, spawn = spawnSync } = {}) {
   const startedAt = process.hrtime.bigint();
   const results = [];
   let status = 'passed';
