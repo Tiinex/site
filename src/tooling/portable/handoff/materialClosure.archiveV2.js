@@ -140,10 +140,19 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
   findings.push(...(recipientSurface.findings || []));
   const bundle = deepFreeze({ ...baselineBundle, status: transportStatus, files: recipientSurface.files, fileMap: null, packageRepresentationSha256: '', handoffClosure: null, transportFormat: RECIPIENT_V2_FORMAT_ID, boundary: `${baselineBundle.boundary || ''} Recipient-facing v2 exposes a flat qualified-artifact/payload root; legacy control JSON is not serialized.` });
   const fullRecipientVerificationRequested = options.verifyRoundtrip !== false && input.verifyRoundtrip !== false;
-  const inspection = fullRecipientVerificationRequested
+  const constructionInspection = constructionRecipientV2Inspection(recipientSurface, carrierProjection, descriptor);
+  const normalReadyPath = carrierProjection.status === 'ready' && constructionInspection.status === 'valid';
+  // On the normal ready path, full verification needs one independent inspection of the
+  // physically serialized carrier, not two equivalent logical inspections of the same
+  // constructed bytes. Blocked/diagnostic manufacture keeps the prior logical inspection
+  // before roundtrip so fail-closed findings and suppressed route projections remain unchanged.
+  const sourceInspection = fullRecipientVerificationRequested && !normalReadyPath
     ? inspectRecipientFacingV2Topology(bundle)
-    : constructionRecipientV2Inspection(recipientSurface, carrierProjection, descriptor);
-  const runtime = fullRecipientVerificationRequested ? roundTripRecipientFacingV2Topology(bundle, inspection) : null;
+    : constructionInspection;
+  const runtime = fullRecipientVerificationRequested ? roundTripRecipientFacingV2Topology(bundle, sourceInspection) : null;
+  const inspection = fullRecipientVerificationRequested && normalReadyPath
+    ? (runtime?.inspection || constructionInspection)
+    : sourceInspection;
   const carrierReady = carrierProjection.status === 'ready';
   const flatReady = recipientSurface.status === 'ready' && inspection.status === 'valid' && (!runtime || runtime.status === 'passed');
   const verificationReady = carrierReady && flatReady && companionInspectionRaw.status === 'valid';

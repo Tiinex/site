@@ -64,6 +64,15 @@ export function manufactureRecipientRelativeHandoffPackage(input = {}, options =
     toolingBootstrapInspection,
     carrierLineage: upgraded.carrierProjection?.lineage || baseline.carrierProjection?.lineage || input.carrierLineage || null,
     majorReadiness,
+    operationBoundary: Object.freeze({
+      operationClass: 'local-handoff-package-manufacture',
+      inputScope: 'caller-provided-local-workspace-material-and-optional-parent-package',
+      localPackageConstruction: true,
+      sourceMutation: false,
+      remoteMutation: false,
+      physicalRoundtripVerification: upgraded.roundtrip ? String(upgraded.roundtrip.status || 'unknown') : 'not-requested',
+      hostBehaviorAuthority: 'none'
+    }),
     migration: upgraded.migration || null,
     baseline: Object.freeze({ schema: baseline.schema, status: baseline.status, packageRepresentationSha256: String(baseline.bundle?.packageRepresentationSha256 || ''), representation: 'semantic-control-plus-detached-material-without-exploded-workspace-carrier' }),
     findings,

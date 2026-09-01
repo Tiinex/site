@@ -1,4 +1,8 @@
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
+import { canonicalC14nV2SelfState } from '../../../integrity/integrity.c14nV2.js';
+import { parseHandoffPackageV1, validatePackageFields } from './recipientV2.packageV1.contract.js';
+import { RECIPIENT_V2_PACKAGE_V1_SCHEMA_ID } from './recipientV2.packageV1.constants.js';
+import { currentSchemaId } from './recipientV2.packageV1.shared.js';
 import { recipientV2FactsIndex } from './recipientV2.transportManifest.js';
 
 export const HANDOFF_CARRIER_LINEAGE_SCHEMA_ID = 'tiinex.portable.handoff-carrier-lineage.v1';
@@ -71,6 +75,7 @@ export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {})
   }
   let lineage = null;
   if (roots.length === 1 && roots[0].facts.carrierLineage) lineage = normalizeHandoffCarrierLineage(roots[0].facts.carrierLineage);
+  if (!lineage) lineage = packageV1CarrierLineage(files);
   if (!lineage) {
     const dimensions = [...new Set((options.routeDimensions || []).map(normalizeDimension).filter(Boolean))];
     if (dimensions.length === 1) lineage = normalizeHandoffCarrierLineage({ mode: dimensions[0].includes('-') ? 'continue' : 'root', dimension: dimensions[0] });
@@ -80,6 +85,29 @@ export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {})
     ...lineage,
     packageSha256: normalizeSha256(options.packageSha256 || ''),
     packageFilename: String(options.packageFilename || '')
+  });
+}
+
+function packageV1CarrierLineage(files = []) {
+  const candidates = files.filter((file) => {
+    if (!/\.md$/i.test(String(file.path || ''))) return false;
+    return currentSchemaId(decodeUtf8(packageFileBytes(file))) === RECIPIENT_V2_PACKAGE_V1_SCHEMA_ID;
+  });
+  if (candidates.length !== 1) return null;
+  const file = candidates[0];
+  if (!/^\d{3}-tiinex-handoff-package\.trace\.md$/.test(String(file.path || ''))) return null;
+  const markdown = decodeUtf8(packageFileBytes(file));
+  if (canonicalC14nV2SelfState(markdown).state !== 'verified') return null;
+  const contract = parseHandoffPackageV1(markdown);
+  const findings = [];
+  validatePackageFields(contract, findings);
+  if (findings.some((item) => item.severity === 'error')) return null;
+  return normalizeHandoffCarrierLineage({
+    mode: contract.carrierCheckpoint === 'major' ? 'major' : (contract.parentCarrierDimension ? 'continue' : 'root'),
+    dimension: contract.carrierDimension,
+    parentDimension: contract.parentCarrierDimension,
+    checkpointKind: contract.carrierCheckpoint,
+    majorReason: contract.majorReason
   });
 }
 

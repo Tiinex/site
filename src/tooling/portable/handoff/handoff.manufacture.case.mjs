@@ -49,6 +49,16 @@ try {
   assert.equal(embeddedInput.manufacturingEvidence.enumeration.proof, 'deterministic-node-enumeration-v1');
   const embedded = manufactureRecipientRelativeHandoffPackage(embeddedInput, { legacyRecipientV2Compatibility: true, packageInput: { builtAt: '2026-08-23T10:50:00.000Z' } });
   assert.equal(embedded.status, 'ready');
+  assert.equal(embedded.inspection, embedded.roundtrip.inspection, 'full manufacture must expose the independent physical roundtrip re-inspection as its authoritative recipient inspection');
+  assert.deepEqual(embedded.operationBoundary, {
+    operationClass: 'local-handoff-package-manufacture',
+    inputScope: 'caller-provided-local-workspace-material-and-optional-parent-package',
+    localPackageConstruction: true,
+    sourceMutation: false,
+    remoteMutation: false,
+    physicalRoundtripVerification: 'passed',
+    hostBehaviorAuthority: 'none'
+  });
   assert.deepEqual(embedded.verification, {
     baselineManufacture: 'ready',
     manufacturePath: 'direct-qualified-workspace-to-archive',
@@ -100,6 +110,8 @@ try {
   const cliResult = JSON.parse(cliLines.at(-1));
   assert.equal(cliResult.status, 'ready');
   assert.equal(cliResult.writeReceipt.status, 'written');
+  assert.equal(cliResult.operationBoundary.operationClass, 'local-handoff-package-manufacture');
+  assert.equal(cliResult.operationBoundary.remoteMutation, false);
   assert.equal('bundle' in cliResult, false);
   assert.equal(cliResult.planSummary.requiredClosureReady, true);
   assert.equal(cliResult.planSummary.workspaces[0].entryCount, 6);

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { finalizeFile } from '../../../export/package.fileMap.js';
 import { advanceHandoffCarrierMajor, continueHandoffCarrierLineage, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle, qualifyMajorCarrierReadiness } from './carrierLineage.js';
+import { renderHandoffPackageV1 } from './recipientV2.packageV1.contract.js';
 import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
 
 const initial = initialHandoffCarrierLineage();
@@ -50,5 +51,28 @@ assert.equal(recovered.dimension, '001-1-1');
 assert.equal(recovered.major, '001');
 assert.equal(continueHandoffCarrierLineage(recovered).dimension, '001-1-1-1');
 assert.equal(advanceHandoffCarrierMajor(recovered, 'next fixed-width checkpoint').dimension, '002');
+
+const packageV1Root = finalizeFile({
+  path: '001-tiinex-handoff-package.trace.md',
+  kind: 'handoff-package-v1-root',
+  mediaType: 'text/markdown',
+  content: renderHandoffPackageV1({
+    createdAt: '2026-09-01 15:51:48',
+    carrierLineage: { mode: 'continue', dimension: '002-1', parentDimension: '002', checkpointKind: 'progression' },
+    workspaces: [{
+      workspaceId: 'site',
+      workspacePath: '001-5-site.workspace.md',
+      archivePath: '001-5-site.workspace.zip',
+      sourceWorkspaceTargetInnerPath: '.topics/.workspaces/tiinex-site.workspace.md',
+      archiveSha256: 'e'.repeat(64),
+      archiveBytes: 123
+    }]
+  })
+});
+const recoveredPackageV1 = parentHandoffCarrierLineageFromBundle({ files: [packageV1Root] });
+assert.equal(recoveredPackageV1.dimension, '002-1');
+assert.equal(recoveredPackageV1.parentDimension, '002');
+assert.equal(recoveredPackageV1.checkpointKind, 'progression');
+assert.equal(continueHandoffCarrierLineage(recoveredPackageV1).dimension, '002-1-1');
 
 console.log('✓ carrier lineage fixed-width regression: 001 is preserved through continuation and explicit major advancement');

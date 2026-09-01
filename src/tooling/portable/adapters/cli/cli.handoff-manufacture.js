@@ -180,6 +180,7 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
     toolingBootstrap: result.toolingBootstrap || null,
     carrierLineage: result.carrierLineage || projection.lineage || null,
     majorReadiness: result.majorReadiness || null,
+    operationBoundary: result.operationBoundary ? Object.freeze({ ...result.operationBoundary }) : null,
     manufacturingEvidence: result.manufacturingEvidence || null,
     toolingBootstrapInspection: Object.freeze({
       schema: String(bootstrapInspection.schema || ''),
