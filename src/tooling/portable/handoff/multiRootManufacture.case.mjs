@@ -13,6 +13,7 @@ import { zipBufferToImportEntries } from '../../../adapters/archive/archive.adap
 import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { virtualCacheMaterial } from './recipientV2.inspect.helpers.js';
 import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
+import { recipientFacingV2PackageZipBuffer } from '../output/recipientV2.zip.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
 try {
@@ -115,6 +116,11 @@ try {
   - Material: exact Site context
   - Material Reference: [Context](../site-context.md)
   - Purpose: prove Loom route-local context
+  - Availability: available
+- carried-docs-context
+  - Material: exact Docs context already present in the carried Docs Workspace
+  - Material Reference: [Docs Context](docs::.topics/docs-context.md)
+  - Purpose: prove workspace-qualified Required Context resolves directly from an already-carried complete Workspace without cache duplication
   - Availability: available`
   }), 'utf8');
   await writeFile(path.join(docsRoot, '.topics', 'axiom-one.md'), '# Axiom semantic decision\n', 'utf8');
@@ -162,16 +168,21 @@ try {
   const shared = manufactureRecipientRelativeHandoffPackage({ ...sharedInput, recipientRouteSelector: `site:${loomRoutePath}` }, { verifyRoundtrip: true, packageInput: { builtAt: '2026-08-23T18:01:00.000Z' } });
   assert.equal(shared.status, 'ready', JSON.stringify(shared.findings, null, 2));
   assert.equal(shared.verification.roundtrip, 'passed');
-  assert.equal(shared.carrierProjection.mode, 'shared');
-  assert.equal(shared.inspection.phase1.cleanCarrierPhase2, true, 'representative multi-route carrier must use the canonical artifact-first clean profile');
-  assert.deepEqual(shared.carrierProjection.workspaces.map((item) => item.id).sort(), ['business', 'docs', 'site']);
-  assert.deepEqual(shared.carrierProjection.routes.map((item) => item.workspaceId).sort(), ['docs', 'site']);
-  assert.equal(shared.inspection.routes.length, 2);
-  assert.equal(new Set(shared.inspection.routes.map((item) => item.pointerPath)).size, 2, 'each shared artifact-first route must expose one distinct Continue-from pointer');
+  assert.equal(shared.carrierProjection.mode, 'single', 'package-v1 recipient surface carries exactly one selected Handoff route');
+  assert.equal(shared.inspection.packageContract?.packageRole, 'recipient-facing-handoff-carrier');
+  assert.equal(shared.inspection.packageContract?.carrierKind, 'self-contained');
+  assert.deepEqual(shared.carrierProjection.workspaces.map((item) => item.id).sort(), ['business', 'docs', 'site'], 'package-v1 preserves the complete inherited Workspace source chain');
+  assert.deepEqual(shared.carrierProjection.routes.map((item) => item.workspaceId), ['site'], 'unselected sibling Handoff routes are not projected into the recipient closure');
+  assert.equal(shared.inspection.routes.length, 1);
+  assert.equal(shared.inspection.routes[0].workspaceId, 'site');
+  assert.equal(shared.inspection.routes[0].workspaceRelativeHandoffPath, loomRoutePath);
   assert.equal(shared.findings.some((item) => item.code === 'portable.handoff-v2.outer-file-map.duplicate-path'), false);
   assert.equal(shared.inspection.caches.length, 0, 'workspace-bound endpoint Roles must not be duplicated through detached caches');
-  assert(shared.inspection.endpointRoles.length >= 4);
+  assert.equal(shared.inspection.endpointRoles.length, 2, 'selected Loom route carries only its From/To Role pointers');
   assert(shared.inspection.endpointRoles.every((item) => item.targetCarrierKind === 'workspace-archive-entry' && item.targetWorkspaceId === 'business'));
+  assert.equal(shared.bundle.files.some((file) => String(file.path || '').includes('workspace-payload')), false, 'complete package-local Workspace bindings do not emit Workspace External Payload companions');
+  assert.equal(shared.bundle.files.some((file) => String(file.path || '').includes('workspace-representation')), false, 'complete package-local Workspace bindings do not emit Workspace Representation companions');
+  assert(recipientFacingV2PackageZipBuffer(shared.bundle, { inspection: shared.inspection }).byteLength > 0, 'package-v1 recipient bundle must serialize through the supported deterministic ZIP writer');
   for (const routeProjection of shared.carrierProjection.routes) {
     const qualification = qualifyPortableColdStart({ bundle: shared.bundle, route: routeProjection.id, preTakeover: 'minimal-bootstrap-only' });
     assert.equal(qualification.status, 'preferred-pass', JSON.stringify(qualification.findings || [], null, 2));

@@ -67,6 +67,8 @@ export function parseRecipientV2ExternalPayload(markdown = '') {
   const location = sectionText(markdown, 'Payload Location');
   const integrity = sectionText(markdown, 'Integrity Reference');
   return Object.freeze({
+    payloadRole: fieldValue(identity, 'Payload Role'),
+    workspaceId: fieldValue(identity, 'Workspace Id'),
     mediaType: fieldValue(identity, 'Media Type'),
     format: fieldValue(identity, 'Format'),
     bytes: Number(fieldValue(identity, 'Byte Size') || 0),

@@ -11,6 +11,7 @@ import { recipientPackageRootPath } from './recipientV2.topology.helpers.js';
 import { RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, RECIPIENT_V2_SIBLING_ROUTE_INFERENCE, recipientV2EntryCurrentRead } from './recipientV2.entryContract.js';
 import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
 import { buildRecipientFacingV2ArtifactFirstPhase1, buildRecipientFacingV2ArtifactFirstPhase2Clean } from './recipientV2.artifactFirstPhase1.js';
+import { buildRecipientFacingV2PackageV1 } from './recipientV2.packageV1.js';
 import { buildEndpointRolePointerChain, buildParticipantRolePointerChain } from './recipientV2.endpointRolePointers.js';
 import {
   bindingForWorkspace,
@@ -44,9 +45,13 @@ export function buildRecipientFacingV2Topology(input = {}) {
   });
   if (input.legacyRecipientV2Compatibility === true) return sourceSurface;
   if (input.artifactFirstDualProjectionPhase1 === true) return buildRecipientFacingV2ArtifactFirstPhase1({ ...input, sourceSurface });
+  if (input.artifactFirstCleanCarrierPhase2 === true) return buildRecipientFacingV2ArtifactFirstPhase2Clean({ ...input, sourceSurface });
+  const hasIndependentBoundedWorkspaceRepresentation = (input.descriptor?.workspaceArchiveBindings || input.bundle?.handoffClosure?.workspaceArchiveBindings || [])
+    .some((binding) => String(binding.coverage || '') === 'bounded' || String(binding.representation?.kind || '') === 'bounded-workspace-snapshot');
+  if (hasIndependentBoundedWorkspaceRepresentation) return buildRecipientFacingV2ArtifactFirstPhase2Clean({ ...input, sourceSurface });
   const explicitRouteSelector = String(input.routeSelector || input.routeId || '').trim();
   if (!explicitRouteSelector && (sourceSurface.topology?.routes || []).length > 1) return sourceSurface;
-  return buildRecipientFacingV2ArtifactFirstPhase2Clean({ ...input, sourceSurface });
+  return buildRecipientFacingV2PackageV1({ ...input, sourceSurface });
 }
 
 function buildRecipientFacingV2TopologyLegacy(input = {}) {

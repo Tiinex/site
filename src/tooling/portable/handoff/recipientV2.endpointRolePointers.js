@@ -47,7 +47,7 @@ export function buildEndpointRolePointerChain(input = {}) {
         summary: 'Package-local Pointer to one exact Handoff endpoint Role artifact for the selected Handoff route.',
         prose: 'This Pointer grounds one exact Handoff From/To Role endpoint in an explicit carried Workspace/cache representation. It does not prove a human holder, consent, Handoff acceptance, or Role authority beyond the referenced Role artifact.',
         currentRead: [
-          { label: 'Handoff Route', value: `\`${String(input.route?.id || '')}\`` },
+          { label: 'Route Id', value: `\`${String(input.route?.id || '')}\`` },
           { label: 'Endpoint Requirement Id', value: `\`${String(requirement.id || '')}\`` },
           { label: 'Endpoint Party', value: party },
           ...(roleFacts.roleLabelHint ? [{ label: 'Role Label Hint', value: roleFacts.roleLabelHint }] : []),
@@ -101,7 +101,7 @@ export function buildParticipantRolePointerChain(input = {}) {
   for (const requirement of input.requirements || []) {
     const target = input.resolveRoleMaterialTarget(requirement, input.descriptor, input.workspaceById, input.cache, input.route);
     if (target.state !== 'qualified') {
-      findings.push(finding('error', `portable.handoff-v2-surface.participant-role.${target.reason || 'unresolved'}`, 'Participant Role requirement did not resolve to one exact carried Workspace/cache representation.', { routeId: String(input.route?.id || ''), requirementId: String(requirement.id || '') }));
+      findings.push(finding('error', `portable.handoff-v2-surface.participant-role.${target.reason || 'unresolved'}`, 'Role grounding requirement did not resolve to one exact carried Workspace/cache representation.', { routeId: String(input.route?.id || ''), requirementId: String(requirement.id || '') }));
       continue;
     }
     const roleToken = safeToken(requirement.roleLabel || requirement.name || target.referenceTarget || 'participant-role');
@@ -131,15 +131,24 @@ export function buildParticipantRolePointerChain(input = {}) {
         createdAt: input.createdAt,
         parent: lineageParent,
         role: 'participant-role',
-        title: `Participant Role Pointer — ${String(requirement.roleLabel || requirement.name || 'Role')}`,
-        summary: 'Package-local Pointer to one exact additional interaction participant Role artifact for the selected Handoff route.',
-        prose: 'This Pointer contributes one additional participant Role to interaction grounding for its descendant Handoff route. It does not change Handoff From/To, prove a human holder, or create Role authority.',
+        title: `Role Grounding Pointer — ${String(requirement.roleLabel || requirement.name || 'Role')}`,
+        summary: 'Package-local Pointer to one exact Role artifact required for recipient grounding before the selected Handoff route.',
+        prose: 'This Pointer is recipient discovery/grounding only. It does not declare semantic participation, change Handoff From/To, prove a human holder, or create Role authority; participation meaning remains owned by authoritative Handoff/Relation/context authority.',
         currentRead: [
-          { label: 'Handoff Route', value: `\`${String(input.route?.id || '')}\`` },
+          { label: 'Route Id', value: `\`${String(input.route?.id || '')}\`` },
+          { label: 'Grounding Requirement Id', value: `\`${String(requirement.id || '')}\`` },
           ...(roleFacts.roleLabelHint ? [{ label: 'Role Label Hint', value: roleFacts.roleLabelHint }] : []),
-          { label: 'Role Reference', value: roleFacts.referenceTarget ? `\`${roleFacts.referenceTarget}\`` : 'exact carried target' }
+          { label: 'Role Reference', value: roleFacts.referenceTarget ? `\`${roleFacts.referenceTarget}\`` : 'exact carried target' },
+          { label: 'Target Carrier Kind', value: target.carrierKind },
+          { label: 'Target Payload', value: `[payload](${target.archivePath})` },
+          ...(target.carrierKind === 'workspace-archive-entry'
+            ? [{ label: 'Target Workspace Id', value: `\`${String(target.targetWorkspaceId || '')}\`` }, { label: 'Target Inner Path', value: `\`${String(target.innerPath || '')}\`` }]
+            : []),
+          ...(target.carrierKind === 'workspace-cache-entry'
+            ? [{ label: 'Target Archive Entry', value: `\`${String(target.archiveEntry || '')}\`` }]
+            : [])
         ],
-        destinations: [{ label: 'Exact participant Role carrier', display: `${target.archivePath} :: ${target.innerPath || target.archiveEntry}`, target: target.archivePath }],
+        destinations: [{ label: 'Exact Role grounding carrier', display: `${target.archivePath} :: ${target.innerPath || target.archiveEntry}`, target: target.archivePath }],
         facts: roleFacts
       })
     });

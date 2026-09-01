@@ -42,6 +42,7 @@ export function qualifyPhase1RouteBindings({ routes = [], workspaceQualification
           workspaceId: payload?.parsed?.workspaceId || routeWorkspaceId,
           archivePath: payload?.parsed?.location || '',
           entries: archive.entries,
+          workspaceArchives: [...workspaceQualifications.values()].filter((item) => item?.archive?.state === 'qualified').map((item) => Object.freeze({ workspaceId: String(item.workspaceId || item.payload?.parsed?.workspaceId || ''), archivePath: String(item.payload?.parsed?.location || ''), entries: Object.freeze([...(item.archive?.entries || [])]) })),
           caches: semanticRouteId === selectedRouteIdFromIngress ? cacheQualifications : []
         });
         findings.push(...(requiredClosure.findings || []).map((item) => Object.freeze({ ...item, routeId: semanticRouteId })));

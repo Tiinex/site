@@ -6,6 +6,7 @@ import { HANDOFF_HUMAN_OUTPUT_PRESENTATION, HANDOFF_NORMAL_EMISSION_BOUNDARY } f
 import { normalizeHandoffCarrierLineage } from './carrierLineage.js';
 import { qualifySelectedHandoffArtifact } from './routeArtifactConformance.js';
 import { buildHandoffWorkspaceByteProvider, listHandoffWorkspaceEntries, resolveHandoffWorkspaceEntry } from './workspaceByteProvider.js';
+import { parseWorkspaceQualifiedReference, SHARED_ROUTE_REQUIRED_CONTEXT_BOUNDARY } from './workspaceQualifiedReference.js';
 
 export const HANDOFF_CARRIER_PROJECTION_SCHEMA_ID = 'tiinex.portable.handoff-carrier-projection.v1';
 export const HANDOFF_CARRIER_PROJECTION_PATH = 'tiinex.package/handoff-carrier.json';
@@ -163,42 +164,22 @@ function qualifyRoute(bundle, descriptor, byteProvider, workspace, spec = {}, op
 }
 
 function qualifyRouteRequiredClosure(bundle, descriptor, byteProvider, workspace, routePath, requirements) {
-  const required = (requirements.required || []).map((requirement) => qualifyRequiredRequirement(bundle, descriptor, byteProvider, workspace, routePath, requirement));
-  const qualified = required.filter((entry) => entry.state === 'qualified').length;
-  return deepFreeze({
-    state: qualified === required.length ? 'qualified' : 'blocked',
-    requiredCount: required.length,
-    qualifiedCount: qualified,
-    requirements: Object.freeze(required),
-    boundary: 'Shared-route recipient grounding proof only. Every Required Context item must resolve to exact carried package bytes; Reference Context is intentionally excluded from this blocking projection.'
-  });
+  const required=(requirements.required||[]).map((requirement)=>qualifyRequiredRequirement(bundle,descriptor,byteProvider,workspace,routePath,requirement));
+  const qualified=required.filter((entry)=>entry.state==='qualified').length;
+  return deepFreeze({state:qualified===required.length?'qualified':'blocked',requiredCount:required.length,qualifiedCount:qualified,requirements:Object.freeze(required),boundary:SHARED_ROUTE_REQUIRED_CONTEXT_BOUNDARY});
 }
 
 function qualifyRequiredRequirement(bundle, descriptor, byteProvider, workspace, routePath, requirement = {}) {
-  const target = String(requirement.reference?.target || '').trim();
-  const requirementId = String(requirement.id || '').trim();
-  const reasons = [];
-  let resolution = null;
-  if (!target || target.startsWith('#')) {
-    resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target, requirementId, workspace.id, routePath);
-    if (!resolution) reasons.push('exact-required-material-reference-or-binding-unresolved');
-  }
-  if (!resolution && !reasons.length && !isExternalReference(target)) {
-    const resolvedPath = resolveWorkspaceReference(routePath, target);
-    if (!resolvedPath) reasons.push('workspace-reference-outside-or-invalid');
-    else resolution = resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath);
-  }
-  if (!resolution && !reasons.length) resolution = resolveDescriptorMaterial(bundle, descriptor, byteProvider, target, requirementId, workspace.id, routePath);
-  if (!resolution && !reasons.length) reasons.push('required-material-not-carried');
-  if (resolution?.state !== 'qualified' && resolution?.reason) reasons.push(resolution.reason);
-  return deepFreeze({
-    requirementId: String(requirement.id || ''),
-    name: String(requirement.name || ''),
-    referenceTarget: target,
-    state: !reasons.length && resolution?.state === 'qualified' ? 'qualified' : 'blocked',
-    resolution: resolution?.state === 'qualified' ? resolution : null,
-    reasons: Object.freeze([...new Set(reasons)])
-  });
+  const target=String(requirement.reference?.target||'').trim(), requirementId=String(requirement.id||'').trim(), reasons=[];
+  let resolution=null;
+  if (!target||target.startsWith('#')) { resolution=resolveDescriptorMaterial(bundle,descriptor,byteProvider,target,requirementId,workspace.id,routePath); if(!resolution) reasons.push('exact-required-material-reference-or-binding-unresolved'); }
+  const qualified=parseWorkspaceQualifiedReference(target);
+  if (!resolution&&!reasons.length&&qualified) resolution=resolveWorkspaceRequiredMaterial(byteProvider,{id:qualified.workspaceId},qualified.path);
+  if (!resolution&&!reasons.length&&!qualified&&!isExternalReference(target)) { const resolvedPath=resolveWorkspaceReference(routePath,target); if(!resolvedPath) reasons.push('workspace-reference-outside-or-invalid'); else resolution=resolveWorkspaceRequiredMaterial(byteProvider,workspace,resolvedPath); }
+  if (!resolution&&!reasons.length) resolution=resolveDescriptorMaterial(bundle,descriptor,byteProvider,target,requirementId,workspace.id,routePath);
+  if (!resolution&&!reasons.length) reasons.push('required-material-not-carried');
+  if (resolution?.state!=='qualified'&&resolution?.reason) reasons.push(resolution.reason);
+  return deepFreeze({requirementId:String(requirement.id||''),name:String(requirement.name||''),referenceTarget:target,state:!reasons.length&&resolution?.state==='qualified'?'qualified':'blocked',resolution:resolution?.state==='qualified'?resolution:null,reasons:Object.freeze([...new Set(reasons)])});
 }
 
 function resolveWorkspaceRequiredMaterial(byteProvider, workspace, resolvedPath) {

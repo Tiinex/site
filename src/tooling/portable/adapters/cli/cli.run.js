@@ -836,37 +836,16 @@ function mergeLoadedMaterial(primary = {}, secondary = {}) {
   };
 }
 
-function normalizeRuntimePaths(value) {
-  const paths = Array.isArray(value) ? value : value ? [value] : [];
-  return paths.map((entry) => String(entry || '').trim()).filter(Boolean);
+function normalizeRuntimePaths(value) { const paths = Array.isArray(value) ? value : value ? [value] : []; return paths.map((entry) => String(entry || '').trim()).filter(Boolean); }
+function splitFlag(value) { return !value || value === true ? [] : String(value).split(',').map((item) => item.trim()).filter(Boolean); }
+
+function parseArgs(argv=[]) {
+  const args=[...argv],first=args.shift()||'';
+  if(first==='--help'||first==='-h') return {command:'help',flags:{help:true},positionals:[]};
+  const command=({orient:'orient-handoff-package',receive:'qualify-cold-start',validate:'audit-handoff-package-context',handoff:'manufacture-handoff-package'})[first]||first;
+  const flags={},positionals=[];
+  while(args.length){const token=args.shift();if(!token.startsWith('--')){positionals.push(token);continue;}const key=token.slice(2);flags[key]=!args.length||args[0].startsWith('--')?true:args.shift();}
+  return {command,flags,positionals};
 }
 
-function splitFlag(value) {
-  if (!value || value === true) return [];
-  return String(value).split(',').map((item) => item.trim()).filter(Boolean);
-}
-
-function parseArgs(argv = []) {
-  const args = [...argv];
-  const first = args.shift() || '';
-  if (first === '--help' || first === '-h') return { command: 'help', flags: { help: true }, positionals: [] };
-  const command = first;
-  const flags = {};
-  const positionals = [];
-  while (args.length) {
-    const token = args.shift();
-    if (!token.startsWith('--')) {
-      positionals.push(token);
-      continue;
-    }
-    const key = token.slice(2);
-    if (!args.length || args[0].startsWith('--')) flags[key] = true;
-    else flags[key] = args.shift();
-  }
-  return { command, flags, positionals };
-}
-
-
-function writeJson(io, value, pretty = true) {
-  io.log(JSON.stringify(value, null, pretty ? 2 : 0));
-}
+function writeJson(io, value, pretty = true) { io.log(JSON.stringify(value, null, pretty ? 2 : 0)); }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { packageFileBytes } from '../../../export/package.bytes.js';
 import { inspectRecipientFacingV2Topology } from '../handoff/recipientV2.inspect.js';
 import { RECIPIENT_V2_FORMAT_ID } from '../handoff/recipientV2.topology.js';
+import { RECIPIENT_V2_PACKAGE_V1_FORMAT_ID } from '../handoff/recipientV2.packageV1.constants.js';
 import {
   RECIPIENT_V2_ARTIFACT_FIRST_PHASE1_FORMAT_ID,
   RECIPIENT_V2_ARTIFACT_FIRST_PHASE2_CLEAN_FORMAT_ID
@@ -17,7 +18,8 @@ export function recipientFacingV2PackageZipBuffer(bundle = {}, options = {}) {
   const serializableFormats = new Set([
     RECIPIENT_V2_FORMAT_ID,
     RECIPIENT_V2_ARTIFACT_FIRST_PHASE1_FORMAT_ID,
-    RECIPIENT_V2_ARTIFACT_FIRST_PHASE2_CLEAN_FORMAT_ID
+    RECIPIENT_V2_ARTIFACT_FIRST_PHASE2_CLEAN_FORMAT_ID,
+    RECIPIENT_V2_PACKAGE_V1_FORMAT_ID
   ]);
   if (inspection?.status !== 'valid' || !serializableFormats.has(inspectionFormat)) throw new Error('portable.recipient-v2.zip.bundle.invalid');
   const entries = (bundle.files || []).map((file) => {

@@ -5,6 +5,7 @@ import { packageFileBytes, sha256Hex } from '../../../../export/package.bytes.js
 import { parseArtifactMarkdown } from '../../../../artifacts/artifact.parse.js';
 import { projectHandoffMaterialRequirements, projectParticipantRoleRequirements } from '../../handoff/materialClosure.requirements.js';
 import { safeWorkspaceToken } from './handoff.manufacture.multiRoot.js';
+import { parseWorkspaceQualifiedReference } from '../../handoff/workspaceQualifiedReference.js';
 
 export async function projectManufacturingRequirements({ handoff, workspaceId, handoffPath, routeSpecs, workspaceRuntimeById }) {
   const primary = projectHandoffMaterialRequirements(handoff);
@@ -79,7 +80,15 @@ export async function resolveWorkspaceRequirementMaterials(requirements, workspa
       }
     }
     const target = String(requirement.reference?.target || '');
-    if (!target || isExternalReference(target) || target.startsWith('#')) continue;
+    if (!target) continue;
+    const workspaceQualified = resolveCarriedWorkspaceQualifiedReference(target, workspaceRuntimeById);
+    if (workspaceQualified) {
+      const targetRuntime = workspaceRuntimeById.get(workspaceQualified.workspaceId);
+      const entry = targetRuntime ? entryFromEnumeration(targetRuntime.enumeration, workspaceQualified.path) : null;
+      if (entry) out.push(materialCandidateFromWorkspaceEntry(requirement, workspaceQualified.workspaceId, workspaceQualified.path, entry, targetRuntime.enumeration));
+      continue;
+    }
+    if (isExternalReference(target) || target.startsWith('#')) continue;
     const routeWorkspaceId = String(requirement.routeWorkspaceId || [...workspaceRuntimeById.keys()][0] || '');
     const runtime = workspaceRuntimeById.get(routeWorkspaceId);
     if (!runtime) continue;
@@ -151,7 +160,11 @@ function derivePointerDependencyRequirement({ sourceRequirement = {}, sourceMate
   const routePath = String(sourceRequirement.routePath || '').trim();
   let targetWorkspaceId = '';
   let targetPath = '';
-  if (!isExternalReference(target) && !String(target).startsWith('#')) {
+  const workspaceQualified = resolveCarriedWorkspaceQualifiedReference(target, workspaceRuntimeById);
+  if (workspaceQualified) {
+    targetWorkspaceId = workspaceQualified.workspaceId;
+    targetPath = workspaceQualified.path;
+  } else if (!isExternalReference(target) && !String(target).startsWith('#')) {
     const sourceWorkspaceId = String(sourceMaterial.provenance?.workspaceId || '').trim();
     const sourceWorkspacePath = normalizeRelativePath(sourceMaterial.provenance?.path || sourceMaterial.path || '');
     if (sourceWorkspaceId && sourceWorkspacePath && workspaceRuntimeById.has(sourceWorkspaceId)) {
@@ -242,6 +255,12 @@ function markdownSection(markdown = '', heading = '') {
   const rest = source.slice(match.index + match[0].length);
   const next = /^#{1,2}\s+/m.exec(rest);
   return (next ? rest.slice(0, next.index) : rest).trim();
+}
+
+
+function resolveCarriedWorkspaceQualifiedReference(target = '', workspaceRuntimeById = new Map()) {
+  const parsed = parseWorkspaceQualifiedReference(target);
+  return parsed && workspaceRuntimeById?.has?.(parsed.workspaceId) ? parsed : null;
 }
 
 export function resolveRelativeWorkspaceTarget(sourcePath = '', target = '') {

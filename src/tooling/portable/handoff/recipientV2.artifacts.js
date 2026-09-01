@@ -154,7 +154,7 @@ function renderPayloadMaterialBindings(materials = []) {
     const referenceTarget = String(item?.referenceTarget || '').trim();
     const archiveEntry = String(item?.archiveEntry || '').trim();
     if (!requirementId || !referenceTarget || !archiveEntry) return '';
-    return `- Requirement Id: ${requirementId}\n  - Classification: ${classification || 'detached-material'}\n  - Material Reference: ${referenceTarget}\n  - Archive Entry: ${archiveEntry}`;
+    return `- Requirement Id: ${requirementId}\n  - Classification: ${classification || 'detached-material'}\n  - Material Reference: ${referenceTarget}\n  - Archive Entry: ${archiveEntry}${item?.routeWorkspaceId ? `\n  - Route Workspace Id: ${String(item.routeWorkspaceId)}` : ''}${item?.routePath ? `\n  - Route Path: ${String(item.routePath)}` : ''}${item?.sourceRequirementId ? `\n  - Source Requirement Id: ${String(item.sourceRequirementId)}` : ''}${item?.originalPath ? `\n  - Original Path: ${String(item.originalPath)}` : ''}${item?.bytes !== undefined ? `\n  - Byte Size: ${Number(item.bytes || 0)}` : ''}${item?.sha256 ? `\n  - SHA256: ${String(item.sha256)}` : ''}`;
   }).filter(Boolean).join('\n');
 }
 

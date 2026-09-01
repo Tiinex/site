@@ -10,6 +10,7 @@ import { buildQualifiedRecipientV2WorkspaceByteProvider, dedupeFindings, deepFre
 import { buildPackageLocalParentResolver, inspectRoutePointers, parentTrace } from './recipientV2.lineage.js';
 import { inspectRecipientV2TransportManifest, recipientV2FactsForFile, RECIPIENT_V2_TRANSPORT_MANIFEST_PATH } from './recipientV2.transportManifest.js';
 import { inspectRecipientFacingV2ArtifactFirstPhase1, isRecipientV2ArtifactFirstPhase1Surface } from './recipientV2.artifactFirstPhase1.js';
+import { inspectRecipientFacingV2PackageV1, isRecipientV2PackageV1Surface } from './recipientV2.packageV1.js';
 import { projectRecipientV2EndpointRoles, projectRecipientV2ParticipantRoles, projectRecipientV2Routes } from './recipientV2.inspect.projection.js';
 import { inspectRecipientV2WorkspaceSurface } from './recipientV2.inspect.workspaces.js';
 
@@ -38,6 +39,7 @@ export function roundTripRecipientFacingV2Topology(bundle = {}, sourceInspection
 
 export function inspectRecipientFacingV2Topology(bundle = {}, options = {}) {
   const files = Array.isArray(bundle.files) ? bundle.files : [];
+  if (isRecipientV2PackageV1Surface(files)) return inspectRecipientFacingV2PackageV1(bundle, options);
   if (isRecipientV2ArtifactFirstPhase1Surface(files)) return inspectRecipientFacingV2ArtifactFirstPhase1(bundle, options);
   const findings = [];
   const index = indexRecipientFiles(files, findings);

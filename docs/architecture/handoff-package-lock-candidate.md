@@ -1,6 +1,6 @@
 # Handoff Package Lock Candidate
 
-Status: Anchor continuity lock candidate. This records the agreed package intent and next reconciliation work. It is not Tiinex semantic authority until the owning schemas and Tooling are reconciled and the resulting carrier is qualified.
+Status: Anchor semantic lock accepted; Tooling implementation lock pending. Axiom has qualified the narrow `tiinex.handoff.package.v1` contract and its complete-only package-local Workspace snapshot binding in carried Docs. The Handoff Package is not fully locked until Loom implements the accepted grammar and Anchor qualifies the required fresh-recipient round trip.
 
 ## Why this exists
 
@@ -46,6 +46,24 @@ No empty lineage levels are reserved when an optional element is absent.
 If several routes share one package-local dependency, they may branch below that dependency.
 
 Participant Role Pointers are Pointers to authoritative Role artifacts. The package does not duplicate Party Role artifacts merely to make routing work.
+
+#### Participant Role Pointer authority boundary
+
+Package-local Role Pointers are recipient discovery/grounding prerequisites only. Their presence or ancestor position MUST NOT be interpreted as a semantic claim that the Role participates in, is required by, accepts, owns, delegates, or is an endpoint of the Handoff.
+
+If participation or required/reference context is part of the actual work meaning, that meaning must be declared by the authoritative Handoff and/or an explicit typed Relation under current Docs authority. The Handoff may then carry that Relation as Required Context or Reference Context as appropriate.
+
+Tooling may use package-local Role Pointers to ensure a cold recipient can resolve the Role before following the Handoff Pointer, but MUST NOT synthesize a canonical `participantRolePointers` semantic field, or an equivalent participant claim, from package placement or traversal order alone.
+
+In short:
+
+```text
+Package ancestor Role Pointer
+-> recipient discovery / grounding requirement
+
+Authoritative Handoff + typed Relation/context
+-> semantic meaning of participation
+```
 
 Handoff endpoint grounding remains owned by the authoritative Handoff's explicit `From` / `To` and their references/capacity references. Package participant pointers do not replace endpoint declarations.
 
@@ -141,30 +159,30 @@ Do not materialize detached copies of `tiinex.party.role.v1` into the carrier me
 - authoritative Handoff target -> `tiinex.handoff.v1` in its owning Workspace
 - authoritative Role target -> `tiinex.party.role.v1` in its owning authority/Workspace
 
-### 8. Workspace snapshot binding is the remaining semantic simplification question
+### 8. Workspace snapshot binding is semantically reconciled
 
-Current generic Core semantics can model a Workspace ZIP with separate:
+Axiom qualified one narrow `tiinex.handoff.package.v1` carrier schema in carried Docs and qualified a strict complete-only package-local Workspace snapshot binding.
 
-- `tiinex.external.payload.v1`; and
-- `tiinex.workspace.representation.v1`.
+For this exact Handoff-package relation:
 
-Those schemas solve real general problems such as external payload identity, multiple representations, bounded representations, decoder/mapping qualification, and representation relations that must survive outside a Handoff package.
+- the package artifact may bind one explicit carried `tiinex.workspace.v1` artifact to one exact package-local complete Workspace byte-tree snapshot;
+- the binding owns package-member byte identity and receiver requalification only for this carrier;
+- `Snapshot Kind` is `exact-workspace-byte-tree-archive` and `Coverage` is `complete`;
+- verified binding requires exact SHA-256 over the snapshot bytes plus exact byte equality between the carried Workspace artifact and its declared inner snapshot entry;
+- standalone `tiinex.external.payload.v1` plus `tiinex.workspace.representation.v1` companions are not semantically required for that same package-local complete binding when they have no independent semantic job.
 
-The lock target does NOT assume those schemas are wrong.
+The generic schemas remain authoritative and unchanged where their independent semantics are needed. In particular, bounded/partial/unknown Workspace representations, multiple selectable representations, independent provider activation, or payload identity/location/access/recovery outside the carrier MUST continue to use the generic External Payload / Workspace Representation model.
 
-However, a self-contained Handoff carrier deliberately manufactures one package-local Workspace snapshot next to an explicitly referenced Workspace. Requiring two additional durable companion artifacts per Workspace creates substantial carrier and Tooling overhead.
+Bootstrap and cache descriptors remain `tiinex.external.payload.v1` because they own independent package-local payload-reference jobs.
 
-Axiom/Core must therefore decide whether a Handoff-package-specific explicit Workspace -> package-local snapshot binding can own this narrow relation without also materializing standalone External Payload + Workspace Representation companions for the same snapshot.
+Do NOT overload `tiinex.semantic.package.v1`; its maintained purpose remains portable schema/Transition discovery boundaries, not recipient-facing Handoff transport.
 
-Preferred solution if semantically sound:
+Do NOT add separate `cache`, `snapshot`, `archive`, `zip`, or `workspace-payload` schemas unless a distinct semantic job is demonstrated.
 
-- introduce one narrow `tiinex.handoff.package.v1` schema for `001-tiinex-handoff-package.trace.md`;
-- let that package artifact explicitly bind each carried Workspace artifact to its package-local snapshot, including only the minimum qualification fields needed for the carrier contract (for example coverage and byte identity/status where required);
-- clarify that this package-local explicit binding is sufficient for this bounded carrier relation and does not invalidate or replace the generic `tiinex.external.payload.v1` / `tiinex.workspace.representation.v1` model elsewhere.
+Canonical semantic authority for this reconciliation is carried in Docs at:
 
-Do NOT overload `tiinex.semantic.package.v1`; its maintained purpose is portable schema/Transition discovery boundaries, not recipient-facing Handoff transport.
-
-Do NOT add separate `cache`, `bootstrap`, `snapshot`, `archive`, `zip`, or `workspace-payload` schemas unless a distinct semantic job is proven first.
+- `.topics/.schemas/coordination/handoff/package/tiinex.handoff.package.v1.schema.md`
+- `.topics/handoff-package/001-axiom-handoff-package-semantic-reconciliation.trace.md`
 
 ### 9. Outer Handoff Package artifact
 
@@ -261,7 +279,7 @@ The proof should demonstrate:
 - no alphabetic path dimensions;
 - correct one-major carrier naming;
 - correct Workspace placement of Handoff route;
-- participant pointers included before Handoff when required;
+- Role pointers included before Handoff when required for recipient grounding, without treating package placement as semantic participation;
 - cache only when needed and bounded to selected Handoff closure;
 - no exhaustive human-facing cache inventory;
 - complete three-repo source at a carrier-major boundary;
@@ -270,20 +288,15 @@ The proof should demonstrate:
 
 ## Immediate role sequence
 
-### Axiom first — bounded semantic reconciliation
+### Axiom reconciliation — complete
 
-Axiom should answer only the minimum semantic questions needed to freeze the package:
+Axiom has qualified the narrow `tiinex.handoff.package.v1`, the complete-only package-local Workspace snapshot binding, and the non-conflict boundary that package-local Parent/path traversal and Role Pointer placement are recipient discovery/grounding only. No participant/Role ontology was added and no broader transport ontology is authorized.
 
-1. Qualify or reject `tiinex.handoff.package.v1` as the narrow carrier-level schema described above.
-2. Decide whether its explicit package-local Workspace snapshot binding can replace standalone External Payload + Workspace Representation companion artifacts for that same bounded carrier relation.
-3. Preserve the generic External Payload / Workspace Representation schemas for contexts where their independent semantics are actually needed.
-4. Confirm package-local Parent/path traversal expresses closure/discovery ordering only, not semantic authority hierarchy.
-5. Confirm the listed schema mappings for Start, bootstrap, cache, Handoff Pointer, and participant Role Pointers.
-6. Do not broaden Core beyond these demonstrated package gaps.
+Reopen Axiom only for a demonstrated conflict with maintained Docs authority or an implementation blocker that cannot be solved within the accepted narrow contract.
 
-### Loom second — implement the accepted grammar
+### Loom next — implement the accepted grammar
 
-After Axiom's bounded answer, Loom should:
+Loom should:
 
 1. implement manufacture/orient/qualify around the accepted minimal tree;
 2. remove redundant Workspace companion artifacts if Axiom authorizes package-local snapshot binding;

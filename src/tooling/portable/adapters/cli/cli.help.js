@@ -5,6 +5,7 @@ export function portableCliHelpText(commandPrefix = '') {
     'Tiinex portable tooling',
     '',
     `${command} operations`,
+    `Stable Handoff aliases: ${command} orient <carrier.zip>; ${command} receive <carrier.zip> --route <Continue-from>; ${command} validate <carrier.zip>; ${command} handoff <workspace-dir> --handoff <path> ...`,
     'Global option: append --phase-timing to emit monotonic in-process input/operation/materialization timing through the pre-serialization boundary; final JSON serialization/emission are explicitly unmeasured.',
     'Grounding option: broad directory reads quarantine .topics/development by default; append --include-legacy-topics to include that legacy subtree explicitly.',
     'Output option: append --summary to inspect/audit/search-lineage/resolve-lineage/qualify-cold-start for a bounded receipt. For qualify-cold-start, append --include-required-context <requirement-id,name|all> only when exact qualified Required Context body text must be projected.',

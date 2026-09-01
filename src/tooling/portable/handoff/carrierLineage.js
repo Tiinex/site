@@ -84,15 +84,26 @@ export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {})
 }
 
 export function qualifyMajorCarrierReadiness(input = {}, lineage = {}) {
-  if (String(lineage.checkpointKind || '') !== 'major') return Object.freeze({ state: 'not-applicable', completeWorkspaceCount: 0, workspaceCount: 0, reason: '' });
+  if (String(lineage.checkpointKind || '') !== 'major') return Object.freeze({ state: 'not-applicable', completeWorkspaceCount: 0, workspaceCount: 0, requiredWorkspaceIds: Object.freeze(['business', 'docs', 'site']), missingWorkspaceIds: Object.freeze([]), reason: '' });
   const workspaces = [...(input.workspaceMaterializations || [])];
+  const requireBusinessDocsSite = input.requireBusinessDocsSiteMajorClosure === true;
+  const requiredWorkspaceIds = Object.freeze(requireBusinessDocsSite ? ['business', 'docs', 'site'] : []);
+  const completeWorkspaceIds = new Set(workspaces
+    .filter((workspace) => String(workspace.state || '') === 'complete' && String(workspace.completenessEvidence?.state || '') === 'qualified')
+    .map((workspace) => String(workspace.id || workspace.workspaceId || '').trim().toLowerCase())
+    .filter(Boolean));
+  const missingWorkspaceIds = Object.freeze(requiredWorkspaceIds.filter((workspaceId) => !completeWorkspaceIds.has(workspaceId)));
   const complete = workspaces.filter((workspace) => String(workspace.state || '') === 'complete' && String(workspace.completenessEvidence?.state || '') === 'qualified').length;
-  const ready = workspaces.length > 0 && complete === workspaces.length;
+  const ready = workspaces.length > 0 && complete === workspaces.length && (!requireBusinessDocsSite || missingWorkspaceIds.length === 0);
   return Object.freeze({
     state: ready ? 'qualified' : 'blocked',
     workspaceCount: workspaces.length,
     completeWorkspaceCount: complete,
-    reason: ready ? 'all-carried-workspaces-are-complete-replacement-capable-snapshots' : 'major-carrier-requires-complete-carried-workspaces',
+    requiredWorkspaceIds,
+    missingWorkspaceIds,
+    reason: ready
+      ? (requireBusinessDocsSite ? 'major-carrier-has-complete-business-docs-site-source-chain' : 'all-carried-workspaces-are-complete-replacement-capable-snapshots')
+      : (requireBusinessDocsSite ? 'major-carrier-requires-complete-business-docs-site-source-chain' : 'major-carrier-requires-complete-carried-workspaces'),
     semanticClosure: lineage.mode === 'major' ? 'explicit-major-reason-caller-declared' : 'initial-root'
   });
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { finalizeFile } from '../../../export/package.fileMap.js';
-import { advanceHandoffCarrierMajor, continueHandoffCarrierLineage, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle } from './carrierLineage.js';
+import { advanceHandoffCarrierMajor, continueHandoffCarrierLineage, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle, qualifyMajorCarrierReadiness } from './carrierLineage.js';
 import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
 
 const initial = initialHandoffCarrierLineage();
@@ -20,6 +20,21 @@ const major = advanceHandoffCarrierMajor({ ...grandchild, packageSha256: 'c'.rep
 assert.equal(major.dimension, '002');
 assert.equal(major.major, '002');
 assert.equal(major.parentDimension, '001-1-1');
+
+const progressionReadiness = qualifyMajorCarrierReadiness({ workspaceMaterializations: [] }, grandchild);
+assert.equal(progressionReadiness.state, 'not-applicable');
+const incompleteMajor = qualifyMajorCarrierReadiness({ requireBusinessDocsSiteMajorClosure: true, workspaceMaterializations: [
+  { id: 'site', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'business', state: 'complete', completenessEvidence: { state: 'qualified' } }
+] }, major);
+assert.equal(incompleteMajor.state, 'blocked');
+assert.deepEqual(incompleteMajor.missingWorkspaceIds, ['docs']);
+const completeMajor = qualifyMajorCarrierReadiness({ requireBusinessDocsSiteMajorClosure: true, workspaceMaterializations: [
+  { id: 'site', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'business', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'docs', state: 'complete', completenessEvidence: { state: 'qualified' } }
+] }, major);
+assert.equal(completeMajor.state, 'qualified');
 
 const rootPath = '001-package.trace.md';
 const root = finalizeFile({

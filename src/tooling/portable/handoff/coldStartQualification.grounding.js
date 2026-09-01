@@ -183,15 +183,16 @@ function groundRecipientRole(input, handoff, bundle, orientation, selectedRoute,
 
 function groundParticipation(input, handoff, bundle, orientation, selectedRoute, findings, materialContext) {
   const explicitParticipants = normalizeParticipants(input.participants || input.interaction?.participants || []);
-  const packageRoleParticipants = resolvePackageParticipantRoles(bundle, orientation, selectedRoute, findings);
-  const participants = dedupeGroundedParticipants([...explicitParticipants, ...packageRoleParticipants]);
+  const packageRoleGrounding = resolvePackageParticipantRoles(bundle, orientation, selectedRoute, findings);
+  const participants = dedupeGroundedParticipants(explicitParticipants);
   const contributions = normalizeContributions(input.contributions || input.interaction?.contributions || []);
   const currentContributionId = String(input.currentContributionId || input.interaction?.currentContributionId || '').trim();
   const current = currentContributionId ? contributions.find((entry) => entry.id === currentContributionId) || null : null;
   return deepFreeze({
     participantState: participants.length ? 'declared' : 'unresolved',
     participants: Object.freeze(participants),
-    packageRoleParticipants: Object.freeze(packageRoleParticipants),
+    packageRoleParticipants: Object.freeze(packageRoleGrounding),
+    packageRoleGrounding: Object.freeze(packageRoleGrounding),
     contributions: Object.freeze(contributions),
     currentContribution: Object.freeze({
       state: current ? (current.attribution === 'verified' ? 'verified' : 'declared-unverified') : currentContributionId ? 'unresolved' : 'not-declared',
@@ -206,7 +207,7 @@ function groundParticipation(input, handoff, bundle, orientation, selectedRoute,
     ]),
     transportIdentityAssumption: false,
     cardinality: Object.freeze({ participants: participants.length, contributions: contributions.length, oneHumanOneLlmRequired: false }),
-    boundary: 'Participants and speakers are explicit semantic declarations. Package-local participant Role Pointer ancestry may declare Role participation for interaction grounding, but never proves a human holder, speaker identity, or transport identity. One chat/account/transport channel is not treated as one human identity.'
+    boundary: 'Participants and speakers are explicit semantic declarations. Package-local Role Pointer ancestry is recipient discovery/grounding only and never declares semantic participation. Participation meaning must come from authoritative Handoff/Relation/context authority. One chat/account/transport channel is not treated as one human identity.'
   });
 }
 
@@ -216,7 +217,7 @@ function resolvePackageParticipantRoles(bundle = {}, orientation = null, selecte
   for (let index = 0; index < pointerPaths.length; index += 1) {
     const pointerPath = String(pointerPaths[index] || '');
     const pointerFile = findFile(bundle, pointerPath);
-    if (!pointerFile) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.missing', 'Selected Handoff route declares participant Role Pointer ancestry that is not carried.', { pointerPath })); continue; }
+    if (!pointerFile) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.missing', 'Selected Handoff route declares Role grounding Pointer ancestry that is not carried.', { pointerPath })); continue; }
     const compatibilityFacts = recipientV2FactsIndex(bundle).map.get(pointerPath) || null;
     const projectedFacts = (orientation?.participantRoles || []).find((item) => String(item.pointerPath || '') === pointerPath) || null;
     const facts = compatibilityFacts?.role === 'participant-role'
@@ -224,13 +225,13 @@ function resolvePackageParticipantRoles(bundle = {}, orientation = null, selecte
       : projectedFacts
         ? { role: 'participant-role', ...projectedFacts }
         : {};
-    if (facts.role !== 'participant-role') { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.invalid', 'Selected route ancestor is not a participant Role Pointer.', { pointerPath })); continue; }
+    if (facts.role !== 'participant-role') { findings.push(portableFinding('error', 'portable.cold-start.participant-role.pointer.invalid', 'Selected route ancestor is not a qualified package-local Role grounding Pointer.', { pointerPath })); continue; }
     const material = resolveParticipantRolePointerMaterial(bundle, facts, findings, pointerPath);
     if (!material) continue;
     const parsed = parseRoleMaterial({ path: material.path, markdown: material.markdown, explicit: false });
-    if (!parsed) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.material.invalid', 'Participant Role Pointer target is not one exact tiinex.party.role.v1 artifact.', { pointerPath, target: material.path })); continue; }
+    if (!parsed) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.material.invalid', 'Role grounding Pointer target is not one exact tiinex.party.role.v1 artifact.', { pointerPath, target: material.path })); continue; }
     const hint = String(facts.roleLabelHint || '').trim();
-    if (hint && parsed.label && normalizeToken(hint) !== normalizeToken(parsed.label)) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.label-mismatch', 'Participant Role Pointer label hint conflicts with the exact carried Role artifact.', { pointerPath, hint, roleLabel: parsed.label })); continue; }
+    if (hint && parsed.label && normalizeToken(hint) !== normalizeToken(parsed.label)) { findings.push(portableFinding('error', 'portable.cold-start.participant-role.label-mismatch', 'Role grounding Pointer label hint conflicts with the exact carried Role artifact.', { pointerPath, hint, roleLabel: parsed.label })); continue; }
     out.push(deepFreeze({
       id: `package-role-${index + 1}`,
       label: parsed.label || hint || parsed.title,
@@ -240,6 +241,8 @@ function resolvePackageParticipantRoles(bundle = {}, orientation = null, selecte
       transportChannel: '',
       transportChannelIsIdentityProof: false,
       packageDeclared: true,
+      groundingOnly: true,
+      semanticParticipant: false,
       roleArtifact: Object.freeze({ path: parsed.path, sha256: parsed.sha256, schemaId: parsed.schemaId, roleLabel: parsed.label, roleKind: parsed.roleKind }),
       pointerPath
     }));
