@@ -10,13 +10,17 @@ import { moduleSchemaModule } from './schema/module/tiinex.schema.module.v1.sche
 import { surfaceSchemaModule } from './presentation/surface/tiinex.presentation.surface.v1.schema.js';
 import { workspaceSchemaModule } from './workspace/tiinex.workspace.v1.schema.js';
 import { handoffSchemaModule } from './coordination/handoff/tiinex.handoff.v1.schema.js';
+import { partyRoleSchemaModule } from './party/role/tiinex.party.role.v1.schema.js';
+import { partyOrganizationSchemaModule } from './party/organization/tiinex.party.organization.v1.schema.js';
+import { projectSchemaModule } from './coordination/project/tiinex.project.v1.schema.js';
+import { reductionSchemaModule } from './reduction/tiinex.reduction.v1.schema.js';
 import { decisionSchemaModule } from './core/decision/tiinex.decision.v1.schema.js';
 import { feedbackSchemaModule } from './core/feedback/tiinex.feedback.v1.schema.js';
 import { signalSchemaModule } from './core/signal/tiinex.signal.v1.schema.js';
 import { discoverySchemaModule } from './discovery/tiinex.discovery.v1.schema.js';
 import { discoveryFindingSchemaModule } from './discovery/finding/tiinex.discovery.finding.v1.schema.js';
 
-const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, taskSchemaModule, interpretationSchemaModule, relationSchemaModule, workspaceRepresentationSchemaModule, preservationSchemaModule, evidenceSchemaModule, signalSchemaModule, feedbackSchemaModule, decisionSchemaModule, discoverySchemaModule, discoveryFindingSchemaModule, handoffSchemaModule, moduleSchemaModule, surfaceSchemaModule];
+const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, taskSchemaModule, interpretationSchemaModule, relationSchemaModule, workspaceRepresentationSchemaModule, preservationSchemaModule, evidenceSchemaModule, signalSchemaModule, feedbackSchemaModule, decisionSchemaModule, discoverySchemaModule, discoveryFindingSchemaModule, handoffSchemaModule, partyRoleSchemaModule, partyOrganizationSchemaModule, projectSchemaModule, reductionSchemaModule, moduleSchemaModule, surfaceSchemaModule];
 const byId = new Map(modules.map((module) => [module.id, module]));
 const byChecksum = new Map(modules.map((module) => [module.binding.checksum.value, module]));
 

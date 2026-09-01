@@ -8,12 +8,14 @@ import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { qualifyPortableColdStart } from './coldStartQualification.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
-import { packageFileBytes } from '../../../export/package.bytes.js';
+import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { zipBufferToImportEntries } from '../../../adapters/archive/archive.adapter.js';
 import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { virtualCacheMaterial } from './recipientV2.inspect.helpers.js';
 import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 import { recipientFacingV2PackageZipBuffer } from '../output/recipientV2.zip.js';
+import { loadNodePortableInput } from '../input/node.input.js';
+import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
 try {
@@ -188,6 +190,71 @@ try {
     assert.equal(qualification.status, 'preferred-pass', JSON.stringify(qualification.findings || [], null, 2));
   }
 
+  const packageParentPath = path.join(root, 'shared-package-parent.zip');
+  await writeFile(packageParentPath, recipientFacingV2PackageZipBuffer(shared.bundle, { inspection: shared.inspection }));
+  await writeFile(path.join(siteRoot, 'content', 'modified-site.txt'), 'current Site root must override the carried parent Site Workspace\n', 'utf8');
+  const packageParentBindingsPath = path.join(root, 'package-parent-bindings.json');
+  await writeFile(packageParentBindingsPath, `${JSON.stringify({
+    'external://roles/anchor': { workspaceId: 'business', path: '.topics/anchor-role.trace.md' },
+    'external://roles/loom': { workspaceId: 'business', path: '.topics/loom-role.trace.md' }
+  }, null, 2)}\n`, 'utf8');
+  const packageParentChildOutputDir = path.join(root, 'package-parent-child-output');
+  const packageParentLines = [];
+  const packageParentCode = await runPortableCli([
+    'manufacture-handoff-package', siteRoot,
+    '--handoff', loomRoutePath,
+    '--workspace-id', 'site',
+    '--workspace-target', 'workspace.workspace.md',
+    '--package-parent', packageParentPath,
+    '--material-bindings', packageParentBindingsPath,
+    '--output-dir', packageParentChildOutputDir,
+    '--built-at', '2026-08-23T18:02:00.000Z',
+    '--compact'
+  ], { log: (value) => packageParentLines.push(value), error: (value) => packageParentLines.push(value) }, { runtimeRoot });
+  assert.equal(packageParentCode, 0, packageParentLines.join('\n'));
+  const packageParentCli = JSON.parse(packageParentLines.at(-1));
+  assert.equal(packageParentCli.status, 'ready');
+  assert.equal(packageParentCli.verification.roundtrip, 'passed');
+  assert.deepEqual(packageParentCli.planSummary.workspaces.map((item) => item.id).sort(), ['business', 'docs', 'site']);
+  const packageParentWorkspaceSummary = new Map(packageParentCli.planSummary.workspaces.map((item) => [item.id, item]));
+  assert.equal(packageParentWorkspaceSummary.get('business')?.completenessProof, 'qualified-package-parent-workspace-reuse-v1');
+  assert.equal(packageParentWorkspaceSummary.get('docs')?.completenessProof, 'qualified-package-parent-workspace-reuse-v1');
+  assert.equal(packageParentWorkspaceSummary.get('site')?.completenessProof, 'deterministic-node-enumeration-v1');
+  assert.equal(packageParentCli.manufacturingEvidence?.packageParentWorkspaceReuse?.state, 'qualified');
+  assert.deepEqual(packageParentCli.manufacturingEvidence?.packageParentWorkspaceReuse?.inheritedWorkspaceIds?.slice().sort(), ['business', 'docs']);
+
+  const childPath = packageParentCli.primaryOutput.path;
+  const [parentBundle, childBundle] = await Promise.all([loadNodePortableInput([packageParentPath]), loadNodePortableInput([childPath])]);
+  const parentInspection = inspectRecipientFacingV2Topology(parentBundle);
+  const childInspection = inspectRecipientFacingV2Topology(childBundle);
+  assert.equal(parentInspection.status, 'valid');
+  assert.equal(childInspection.status, 'valid');
+  assert.equal(childInspection.routes.length, 1);
+  assert.equal(childInspection.routes[0].workspaceId, 'site');
+  assert.equal(childInspection.routes[0].workspaceRelativeHandoffPath, loomRoutePath);
+  assert(childInspection.endpointRoles.every((item) => item.targetCarrierKind === 'workspace-archive-entry' && item.targetWorkspaceId === 'business'));
+  for (const id of ['business', 'docs']) {
+    assert.equal(workspaceArchiveSha256(childBundle, childInspection, id), workspaceArchiveSha256(parentBundle, parentInspection, id), `${id} must reuse the exact qualified parent Workspace archive bytes`);
+  }
+  assert.notEqual(workspaceArchiveSha256(childBundle, childInspection, 'site'), workspaceArchiveSha256(parentBundle, parentInspection, 'site'), 'explicit current Site root must override stale parent Site bytes');
+  const childSiteArchive = childInspection.workspaces.find((item) => item.workspaceId === 'site')?.workspaceArchivePath;
+  assert(childSiteArchive, 'child Site Workspace archive must be addressable');
+  const childSiteFile = childBundle.files.find((file) => file.path === childSiteArchive);
+  assert(childSiteFile, 'child Site Workspace archive must be carried');
+  const childSiteEntries = await zipBufferToImportEntries(packageFileBytes(childSiteFile), { source: 'package-parent-child-site-workspace', excludeRepositoryInternals: true });
+  assert.equal(childSiteEntries.errors.length, 0);
+  assert.equal(childSiteEntries.entries.some((entry) => entry.path === 'content/modified-site.txt'), true, 'modified Site bytes must come from the explicit current root');
+  const childColdStartLines = [];
+  const childColdStartCode = await runPortableCli([
+    'qualify-cold-start', childPath,
+    '--route', childInspection.routes[0].pointerPath,
+    '--pre-takeover', 'minimal-bootstrap-only',
+    '--summary',
+    '--compact'
+  ], { log: (value) => childColdStartLines.push(value), error: (value) => childColdStartLines.push(value) }, { runtimeRoot });
+  assert.equal(childColdStartCode, 0, childColdStartLines.join('\n'));
+  assert.equal(JSON.parse(childColdStartLines.at(-1)).status, 'preferred-pass');
+
   await assert.rejects(
     prepareNodeHandoffManufacturingInput({
       workspaceRoot: siteRoot,
@@ -262,6 +329,14 @@ try {
   assert.equal(legacy.carrierProjection.routes[0].workspaceId, 'site');
 } finally {
   await rm(root, { recursive: true, force: true });
+}
+
+function workspaceArchiveSha256(bundle, inspection, workspaceId) {
+  const archivePath = inspection.workspaces.find((item) => item.workspaceId === workspaceId)?.workspaceArchivePath;
+  assert(archivePath, `${workspaceId} Workspace archive path must resolve`);
+  const file = bundle.files.find((item) => item.path === archivePath);
+  assert(file, `${workspaceId} Workspace archive bytes must resolve`);
+  return sha256Hex(packageFileBytes(file));
 }
 
 async function makeWorkspace(rootPath, title, to, contextName, bytes) {

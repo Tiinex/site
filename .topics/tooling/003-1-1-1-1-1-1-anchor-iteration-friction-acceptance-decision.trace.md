@@ -4,9 +4,9 @@
 - Parent
   - Parent Schema: [tiinex.handoff.v1](https://github.com/Tiinex/docs/blob/25cb94d68a46d8670d437869e67c4555e74b2f26/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md)
   - Created At: 2026-09-01 18:20:00
-  - Trace: [Iteration Friction Reduction — Loom To Anchor Final Return](003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
+  - Trace: [Iteration Friction Reduction — Loom To Anchor Final Return](https://github.com/Tiinex/site/blob/56ba75025b7a8fd44b5318d2560d2ec63eb0106f/.topics/tooling/003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
   - Origin:
-    - [relative](003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
+    - [browse + git](https://github.com/Tiinex/site/blob/56ba75025b7a8fd44b5318d2560d2ec63eb0106f/.topics/tooling/003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
 - Current
   - Current Schema: [tiinex.decision.v1](https://github.com/Tiinex/docs/blob/25cb94d68a46d8670d437869e67c4555e74b2f26/.topics/.schemas/core/decision/tiinex.decision.v1.schema.md)
   - Created At: 2026-09-01 18:30:00
@@ -49,9 +49,9 @@
 # Continuity Integrity
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
-  - Towards: [Iteration Friction Reduction — Loom To Anchor Final Return](003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
+  - Towards: [Iteration Friction Reduction — Loom To Anchor Final Return](https://github.com/Tiinex/site/blob/56ba75025b7a8fd44b5318d2560d2ec63eb0106f/.topics/tooling/003-1-1-1-1-1-loom-to-anchor-iteration-friction-final-return-handoff.trace.md)
   - Value: DGtZg14w3SNAOgLA0XIkF5WOf1RgsskTHgYYP9-jaNk
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:qT_RuFjMq1DUIcw2Yxq4ShnohDVAYDne--s84ev4IIc
+  - Value:foLIOsEJa7ZhCsLuntcZTAQB6nvhLfxw0MwqhZdX4e8

@@ -72,9 +72,16 @@ export function buildValidationProfileContract({ packageScripts = {} } = {}) {
   });
 
   const closureOwn = CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS.flatMap((name) => expandPackageScript(name, packageScripts));
+  const buildPublicSteps = expandPackageScript('build:public', packageScripts);
+  const dependencyBootstrap = Object.freeze({
+    ...buildPublicSteps[0],
+    id: 'dependency-bootstrap',
+    origin: 'closure:dependency-bootstrap'
+  });
   const closureSteps = dedupeSteps([
     ...integration.steps,
     step('strict-static-closure', 'node', ['tools/validate-static.mjs'], 'closure'),
+    dependencyBootstrap,
     ...closureOwn
   ]);
   const closure = profile({
@@ -95,7 +102,7 @@ export function buildValidationProfileContract({ packageScripts = {} } = {}) {
     }),
     returnFirstCheckpoint: RETURN_FIRST_CHECKPOINT_BOUNDARY,
     closureAdditionalPackageScripts: CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS,
-    boundary: 'Profiles compose one explicit smoke→focused→integration→closure spine over permanent component/use-case suites. Historical standalone test enumeration is not profile authority. Integration may continue across only exact inherited static debt; closure retains the original strict static boundary.'
+    boundary: 'Profiles compose one explicit smoke→focused→integration→closure spine over permanent component/use-case suites. Historical standalone test enumeration is not profile authority. Integration may continue across only exact inherited static debt; closure retains the original strict static boundary and bootstraps local dependencies before dependency-bound closure checks.'
   });
 }
 

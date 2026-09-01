@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.reduction.v1",
+  "kind": "concrete",
+  "role": "reduction-artifact",
+  "module": "./tiinex.reduction.v1.schema.js",
+  "snapshot": "./tiinex.reduction.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/reduction/tiinex.reduction.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/8435cd46a3773a38301659da716785dc6465072c/.topics/.schemas/reduction/tiinex.reduction.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/8435cd46a3773a38301659da716785dc6465072c/.topics/.schemas/reduction/tiinex.reduction.v1.schema.md",
+  "sourcePath": ".topics/.schemas/reduction/tiinex.reduction.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "8435cd46a3773a38301659da716785dc6465072c",
+  "sourceBlobSha": "0b628906f7877208ea444d7ed4bc9e999c62b409",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "cbfe01c4814c766a33da6284a0b0ad70d8c119e2d44a4b555c9b801d383d02dd"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-carried-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-8435cd46",
+  "originTrustRole": "canonical-core"
+}
