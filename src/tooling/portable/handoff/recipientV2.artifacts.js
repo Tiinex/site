@@ -3,6 +3,21 @@ import { sealC14nV2Self } from '../../../integrity/integrity.c14nV2.js';
 import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodReference.js';
 import { qualifyTiinexRouteArtifact } from './routeArtifactConformance.js';
 import {
+  correlateExternalPayloadFacts,
+  correlatePointerFacts,
+  correlateRelationFacts,
+  currentSchemaId,
+  decodeUtf8,
+  deepFreeze,
+  fieldValue,
+  finding,
+  inspectExternalPayloadShape,
+  inspectRelationShape,
+  markdownTarget,
+  sectionText,
+  unquoteCode
+} from './recipientV2.artifactInspection.js';
+import {
   RECIPIENT_V2_WORKSPACE_REPRESENTATION_SCHEMA_TARGET,
   correlateWorkspaceRepresentationFacts,
   inspectWorkspaceRepresentationShape,
@@ -75,35 +90,7 @@ export function parseRecipientV2Relation(markdown = '') {
   });
 }
 
-export function parseRecipientV2Pointer(markdown = '') {
-  const current = sectionText(markdown, 'Current Read');
-  const destinations = sectionText(markdown, 'Destinations');
-  return Object.freeze({
-    role: fieldValue(current, 'Carrier Role'),
-    workspaceId: unquoteCode(fieldValue(current, 'Workspace Id')),
-    workspacePayload: markdownTarget(fieldValue(current, 'Workspace Payload')),
-    handoffWorkspacePath: unquoteCode(fieldValue(current, 'Handoff Workspace Path')),
-    routeId: unquoteCode(fieldValue(current, 'Route Id')),
-    routeSelection: fieldValue(current, 'Route Selection'),
-    selectedRouteId: unquoteCode(fieldValue(current, 'Selected Route Id')),
-    candidateRouteCount: Number(unquoteCode(fieldValue(current, 'Candidate Route Count')) || 0),
-    carrierDimension: unquoteCode(fieldValue(current, 'Carrier Dimension')),
-    parentCarrierDimension: unquoteCode(fieldValue(current, 'Parent Carrier Dimension')),
-    carrierCheckpoint: fieldValue(current, 'Carrier Checkpoint'),
-    carrierProfile: fieldValue(current, 'Carrier Profile'),
-    compatibilityTransport: fieldValue(current, 'Compatibility Transport'),
-    participantRequirementId: unquoteCode(fieldValue(current, 'Participant Requirement Id')),
-    roleLabelHint: fieldValue(current, 'Role Label Hint'),
-    roleReference: unquoteCode(fieldValue(current, 'Role Reference')),
-    targetCarrierKind: unquoteCode(fieldValue(current, 'Target Carrier Kind')),
-    targetPayload: markdownTarget(fieldValue(current, 'Target Payload')),
-    targetWorkspaceId: unquoteCode(fieldValue(current, 'Target Workspace Id')),
-    targetInnerPath: unquoteCode(fieldValue(current, 'Target Inner Path')),
-    targetArchiveEntry: unquoteCode(fieldValue(current, 'Target Archive Entry')),
-    destinations: Object.freeze([...String(destinations || '').matchAll(/\[[^\]]*\]\(([^)]+)\)/g)].map((match) => String(match[1] || '')))
-  });
-}
-
+export { parseRecipientV2Pointer } from './recipientV2.pointer.js';
 export function inspectRecipientV2Artifact(file = {}, options = {}) {
   const markdown = decodeUtf8(packageFileBytes(file));
   const schemaId = currentSchemaId(markdown);
@@ -171,44 +158,6 @@ function renderPayloadMaterialBindings(materials = []) {
   }).filter(Boolean).join('\n');
 }
 
-function correlateExternalPayloadFacts(markdown, facts, findings, path) {
-  if (!facts || facts.factsFormat !== 'portable-recipient-v2' || Number(facts.factsVersion || 0) !== 1) return;
-  const identity = sectionText(markdown, 'Payload Identity');
-  const location = sectionText(markdown, 'Payload Location');
-  const integrity = sectionText(markdown, 'Integrity Reference');
-  const visiblePath = markdownTarget(fieldValue(location, 'Location'));
-  if (facts.archivePath && visiblePath !== String(facts.archivePath)) findings.push(finding('error', 'portable.handoff-v2-surface.payload.visible-location-mismatch', 'External Payload visible Location diverges from its sealed machine facts.', { path }));
-  if (facts.archiveSha256 && fieldValue(integrity, 'Integrity Value') !== String(facts.archiveSha256)) findings.push(finding('error', 'portable.handoff-v2-surface.payload.visible-integrity-mismatch', 'External Payload visible integrity value diverges from its sealed machine facts.', { path }));
-  if (facts.archiveBytes !== undefined && Number(fieldValue(identity, 'Byte Size') || -1) !== Number(facts.archiveBytes)) findings.push(finding('error', 'portable.handoff-v2-surface.payload.visible-bytes-mismatch', 'External Payload visible byte size diverges from its sealed machine facts.', { path }));
-}
-function correlateRelationFacts(markdown, facts, findings, path) {
-  if (!facts || facts.factsFormat !== 'portable-recipient-v2' || Number(facts.factsVersion || 0) !== 1) return;
-  const target = sectionText(markdown, 'Relation Target');
-  if (facts.relationDirection === 'payload artifact -> represented artifact') {
-    if (facts.payloadArtifactPath && markdownTarget(fieldValue(target, 'Source')) !== String(facts.payloadArtifactPath)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.visible-source-mismatch', 'Relation visible Source diverges from its derived compatibility facts.', { path }));
-    if (facts.workspaceArtifactInnerPath && markdownTarget(fieldValue(target, 'Target')) !== String(facts.workspaceArtifactInnerPath)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.visible-target-mismatch', 'Relation visible Target diverges from its derived compatibility facts.', { path }));
-    return;
-  }
-  if (facts.workspaceArtifactPath && markdownTarget(fieldValue(target, 'Source')) !== String(facts.workspaceArtifactPath)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.visible-source-mismatch', 'Relation visible Source diverges from its sealed machine facts.', { path }));
-  if (facts.payloadArtifactPath && markdownTarget(fieldValue(target, 'Target')) !== String(facts.payloadArtifactPath)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.visible-target-mismatch', 'Relation visible Target diverges from its sealed machine facts.', { path }));
-}
-function correlatePointerFacts(markdown, facts, findings, path) {
-  if (!facts || facts.factsFormat !== 'portable-recipient-v2' || Number(facts.factsVersion || 0) !== 1) return;
-  if (facts.role !== 'handoff-route' || !facts.archivePath) return;
-  const targets = [...sectionText(markdown, 'Destinations').matchAll(/\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
-  if (targets.length !== 1 || targets[0] !== String(facts.archivePath)) findings.push(finding('error', 'portable.handoff-v2-surface.pointer.visible-destination-mismatch', 'Route Pointer visible Destination diverges from its sealed machine facts.', { path }));
-}
-function markdownTarget(value = '') { return String(value || '').match(/\[[^\]]*\]\(([^)]+)\)/)?.[1] || String(value || '').trim(); }
-
-function inspectExternalPayloadShape(markdown, findings, path) {
-  for (const section of ['Payload Identity', 'Payload Location', 'Integrity Reference', 'Access Boundary', 'Interpretation Limits']) if (!sectionText(markdown, section)) findings.push(finding('error', 'portable.handoff-v2-surface.payload.section-missing', `External Payload artifact is missing required section ${section}.`, { path, section }));
-  const required = [['Payload Identity', 'Payload Label'], ['Payload Identity', 'Payload Kind'], ['Payload Location', 'Location'], ['Payload Location', 'Location Type'], ['Integrity Reference', 'Integrity Status'], ['Access Boundary', 'Access Boundary']];
-  for (const [section, field] of required) if (!fieldValue(sectionText(markdown, section), field)) findings.push(finding('error', 'portable.handoff-v2-surface.payload.field-missing', `External Payload artifact is missing required field ${field}.`, { path, section, field }));
-}
-function inspectRelationShape(markdown, findings, path) {
-  for (const section of ['Relation Declaration', 'Relation Target', 'Relation Boundary']) if (!sectionText(markdown, section)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.section-missing', `Relation artifact is missing required section ${section}.`, { path, section }));
-  for (const field of ['Relation Type', 'Relation Direction', 'Relation Scope']) if (!fieldValue(sectionText(markdown, 'Relation Declaration'), field)) findings.push(finding('error', 'portable.handoff-v2-surface.relation.field-missing', `Relation artifact is missing required field ${field}.`, { path, field }));
-}
 function parseFacts(markdown = '') {
   const source = String(markdown || '');
   const begin = source.indexOf(RECIPIENT_V2_FACTS_BEGIN);
@@ -219,25 +168,7 @@ function parseFacts(markdown = '') {
   if (!match) return null;
   try { return JSON.parse(match[1]); } catch { return null; }
 }
-function currentSchemaId(markdown = '') {
-  const match = String(markdown || '').match(/Current Schema:\s*(?:\[)?(tiinex\.[a-z0-9._-]+)(?:\])?/i);
-  return String(match?.[1] || '').toLowerCase();
-}
-function sectionText(markdown = '', heading = '') {
-  const re = new RegExp(`^##\\s+${escapeRe(heading)}\\s*$`, 'mi');
-  const match = re.exec(String(markdown || ''));
-  if (!match) return '';
-  const rest = String(markdown || '').slice(match.index + match[0].length);
-  const next = /^##\s+/m.exec(rest);
-  return (next ? rest.slice(0, next.index) : rest).trim();
-}
-function fieldValue(section = '', name = '') { const m = String(section || '').match(new RegExp(`^\\s*-\\s+${escapeRe(name)}:\\s*(.+?)\\s*$`, 'mi')); return String(m?.[1] || '').trim(); }
-function unquoteCode(value = '') { const text = String(value || '').trim(); return text.startsWith('`') && text.endsWith('`') ? text.slice(1, -1) : text; }
 function seal(unsigned) { const result = sealC14nV2Self(unsigned); if (result.state !== 'sealed') throw new Error(`portable.handoff-v2-surface.integrity.seal-failed:${result.reason || result.state}`); return `${result.markdown}\n`; }
 function normalizeCreatedAt(value = '') { const text = String(value || '').trim(); if (!text) return '1970-01-01 00:00:00'; return text.replace('T', ' ').replace(/\.\d{3}Z$/, '').replace(/Z$/, '').slice(0, 19); }
 function stablePrettyJson(value) { return JSON.stringify(sortJson(value), null, 2); }
 function sortJson(value) { if (Array.isArray(value)) return value.map(sortJson); if (!value || typeof value !== 'object') return value; return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortJson(value[key])])); }
-function decodeUtf8(data) { try { return new TextDecoder('utf-8', { fatal: true }).decode(data); } catch { return ''; } }
-function escapeRe(value = '') { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-function finding(severity, code, message, extra = {}) { return Object.freeze({ severity, code, message, ...extra }); }
-function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }

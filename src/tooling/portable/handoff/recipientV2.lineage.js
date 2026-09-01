@@ -48,6 +48,16 @@ export function inspectPackageLocalLineage({ generatedArtifacts = [], rootArtifa
 }
 
 export function inspectParticipantRolePointers(pointers, workspaces, caches, findings) {
+  inspectRolePointers('participant-role', pointers, workspaces, caches, findings);
+}
+
+export function inspectEndpointRolePointers(pointers, workspaces, caches, findings) {
+  inspectRolePointers('endpoint-role', pointers, workspaces, caches, findings);
+}
+
+function inspectRolePointers(roleKind, pointers, workspaces, caches, findings) {
+  const codeKind = roleKind === 'endpoint-role' ? 'endpoint-role' : 'participant-role';
+  const labelKind = roleKind === 'endpoint-role' ? 'Endpoint Role' : 'Participant Role';
   for (const pointer of pointers || []) {
     const facts = pointer.facts || {};
     const carrierKind = String(facts.targetCarrierKind || '');
@@ -62,28 +72,29 @@ export function inspectParticipantRolePointers(pointers, workspaces, caches, fin
       archivePath = String(cache?.file?.path || '');
       entry = (cache?.archive?.archive?.entries || []).find((item) => String(item.path || '') === String(facts.targetArchiveEntry || '')) || null;
     } else {
-      findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.carrier-kind-invalid', 'Participant Role Pointer declares an unsupported exact carrier kind.', { path: pointer.path || '', carrierKind }));
+      findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.carrier-kind-invalid`, `${labelKind} Pointer declares an unsupported exact carrier kind.`, { path: pointer.path || '', carrierKind }));
       continue;
     }
     if (!entry) {
-      findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.target-unresolved', 'Participant Role Pointer target does not resolve to one exact carried archive entry.', { path: pointer.path || '', carrierKind }));
+      findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.target-unresolved`, `${labelKind} Pointer target does not resolve to one exact carried archive entry.`, { path: pointer.path || '', carrierKind }));
       continue;
     }
     const data = packageFileByteView({ data: entry.data });
     const digest = sha256Hex(data);
-    if (String(facts.archivePath || '') !== archivePath) findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.archive-path-mismatch', 'Participant Role Pointer archive path diverges from the independently resolved carrier.', { path: pointer.path || '', expected: archivePath, observed: String(facts.archivePath || '') }));
-    if (Number(facts.targetBytes || 0) !== data.byteLength || String(facts.targetSha256 || '') !== digest) findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.target-identity-mismatch', 'Participant Role Pointer byte identity diverges from the exact carried Role target.', { path: pointer.path || '' }));
+    if (String(facts.archivePath || '') !== archivePath) findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.archive-path-mismatch`, `${labelKind} Pointer archive path diverges from the independently resolved carrier.`, { path: pointer.path || '', expected: archivePath, observed: String(facts.archivePath || '') }));
+    if (Number(facts.targetBytes || 0) !== data.byteLength || String(facts.targetSha256 || '') !== digest) findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.target-identity-mismatch`, `${labelKind} Pointer byte identity diverges from the exact carried Role target.`, { path: pointer.path || '' }));
     const markdown = decodeUtf8(data);
-    if (!/^\s*-\s+Current Schema:\s*(?:\[)?tiinex\.party\.role\.v1(?:\])?/mi.test(markdown)) findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.target-schema-invalid', 'Participant Role Pointer target is not a readable tiinex.party.role.v1 artifact.', { path: pointer.path || '' }));
+    if (!/^\s*-\s+Current Schema:\s*(?:\[)?tiinex\.party\.role\.v1(?:\])?/mi.test(markdown)) findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.target-schema-invalid`, `${labelKind} Pointer target is not a readable tiinex.party.role.v1 artifact.`, { path: pointer.path || '' }));
     const label = String(markdown.match(/^\s*-\s+Role Label:\s*(.+?)\s*$/mi)?.[1] || '').trim();
-    if (!label) findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.target-label-missing', 'Participant Role Pointer target lacks a readable Role Label.', { path: pointer.path || '' }));
-    if (facts.roleLabelHint && label && String(facts.roleLabelHint) !== label) findings.push(finding('error', 'portable.handoff-v2-surface.participant-role.label-hint-mismatch', 'Participant Role label hint contradicts the exact carried Role artifact.', { path: pointer.path || '', expected: label, observed: String(facts.roleLabelHint || '') }));
+    if (!label) findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.target-label-missing`, `${labelKind} Pointer target lacks a readable Role Label.`, { path: pointer.path || '' }));
+    if (facts.roleLabelHint && label && String(facts.roleLabelHint) !== label) findings.push(finding('error', `portable.handoff-v2-surface.${codeKind}.label-hint-mismatch`, `${labelKind} label hint contradicts the exact carried Role artifact.`, { path: pointer.path || '', expected: label, observed: String(facts.roleLabelHint || '') }));
+    if (roleKind === 'endpoint-role' && !['from', 'to'].includes(String(facts.endpointParty || '').toLowerCase())) findings.push(finding('error', 'portable.handoff-v2-surface.endpoint-role.party-invalid', 'Endpoint Role Pointer must visibly bind exactly one Handoff endpoint party.', { path: pointer.path || '', endpointParty: String(facts.endpointParty || '') }));
   }
 }
 
-export function inspectRoutePointers(pointers, carrier, workspaces, participantPointers, index, findings) {
+export function inspectRoutePointers(pointers, carrier, workspaces, endpointPointers, participantPointers, index, findings) {
   const byKey = new Map((carrier.routes || []).map((route) => [`${route.workspaceId}\u0000${route.workspaceRelativePath}`, route]));
-  const participantByPath = new Map((participantPointers || []).map((pointer) => [String(pointer.path || ''), pointer]));
+  const roleByPath = new Map([...(endpointPointers || []), ...(participantPointers || [])].map((pointer) => [String(pointer.path || ''), pointer]));
   for (const pointer of pointers) {
     const facts = pointer.facts || {};
     const key = `${String(facts.workspaceId || '')}\u0000${String(facts.workspaceRelativeHandoffPath || '')}`;
@@ -103,16 +114,16 @@ export function inspectRoutePointers(pointers, carrier, workspaces, participantP
     const expectedBaseParent = facts.cacheArtifactPath ? String(facts.cacheArtifactPath) : workspace.artifact.path;
     if (facts.cacheArtifactPath && !oneRecipientFile(index, facts.cacheArtifactPath)) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.cache-missing', 'Handoff route Pointer declares a package-local Workspace dependency cache ancestor that is not carried.', { path: pointer.path || '', cacheArtifactPath: facts.cacheArtifactPath }));
     let cursorParent = parentTrace(pointer);
-    const participantAncestors = [];
+    const roleAncestors = [];
     const seen = new Set();
-    while (participantByPath.has(cursorParent) && !seen.has(cursorParent)) {
+    while (roleByPath.has(cursorParent) && !seen.has(cursorParent)) {
       seen.add(cursorParent);
-      const participant = participantByPath.get(cursorParent);
-      participantAncestors.push(participant);
-      if (String(participant.facts?.routeId || '') !== String(route.id || '') || String(participant.facts?.workspaceId || '') !== String(workspace.workspaceId || '')) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.participant-route-mismatch', 'Participant Role ancestor is bound to a different Handoff route/Workspace.', { path: pointer.path || '', participantPointer: participant.path || '' }));
-      cursorParent = parentTrace(participant);
+      const rolePointer = roleByPath.get(cursorParent);
+      roleAncestors.push(rolePointer);
+      if (String(rolePointer.facts?.routeId || '') !== String(route.id || '') || String(rolePointer.facts?.workspaceId || '') !== String(workspace.workspaceId || '')) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.role-route-mismatch', 'Role Pointer ancestor is bound to a different Handoff route/Workspace.', { path: pointer.path || '', rolePointer: rolePointer.path || '' }));
+      cursorParent = parentTrace(rolePointer);
     }
-    if (cursorParent !== expectedBaseParent) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.parent-mismatch', 'Handoff route Pointer ancestry must pass only through route-bound participant Role Pointers and terminate at its Workspace dependency cache when present, otherwise its package-local Workspace node.', { path: pointer.path || '', expectedParent: expectedBaseParent, observedTerminalParent: cursorParent }));
+    if (cursorParent !== expectedBaseParent) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.parent-mismatch', 'Handoff route Pointer ancestry must pass only through route-bound endpoint/participant Role Pointers and terminate at its Workspace dependency cache when present, otherwise its package-local Workspace node.', { path: pointer.path || '', expectedParent: expectedBaseParent, observedTerminalParent: cursorParent }));
     if (Number(facts.handoffBytes || 0) && Number(facts.handoffBytes || 0) !== Number(resolveRouteBytes(workspace, facts.workspaceRelativeHandoffPath))) findings.push(finding('error', 'portable.handoff-v2-surface.route-pointer.handoff-bytes-mismatch', 'Handoff route Pointer byte count differs from exact archive entry bytes.', { path: pointer.path || '' }));
   }
 }

@@ -4,15 +4,34 @@ import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodRef
 const RECIPIENT_V2_ROOT_SCHEMA_TARGET = 'https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/tiinex.root.v1.schema.md';
 export const RECIPIENT_V2_WORKSPACE_REPRESENTATION_SCHEMA_TARGET = 'https://github.com/Tiinex/docs/blob/0fdce5f265298321a41cd90cf5382bcb6ae31a13/.topics/.schemas/relation/workspace/representation/tiinex.workspace.representation.v1.schema.md';
 
+const COMPLETE_CONTRACT = Object.freeze({
+  coverage: 'complete',
+  representationKind: 'exact-workspace-byte-tree-archive',
+  activationRule: 'verified-complete-only',
+  coverageRequirement: 'complete',
+  selectionRule: 'exactly-one-binding-per-workspace'
+});
+const BOUNDED_CONTRACT = Object.freeze({
+  coverage: 'bounded',
+  representationKind: 'exact-bounded-workspace-byte-tree-archive',
+  activationRule: 'verified-bounded-only',
+  coverageRequirement: 'bounded',
+  selectionRule: 'explicit-binding-per-bounded-scope'
+});
+
 export function renderRecipientV2WorkspaceRepresentation(input = {}) {
   const createdAt = normalizeCreatedAt(input.createdAt || '');
-  const unsigned = `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](${RECIPIENT_V2_ROOT_SCHEMA_TARGET})\n${renderParentEnvelope(input.parent)}- Current\n  - Current Schema: [tiinex.workspace.representation.v1](${RECIPIENT_V2_WORKSPACE_REPRESENTATION_SCHEMA_TARGET})\n  - Created At: ${createdAt}\n  - Summary: ${String(input.summary || 'Explicit canonical binding between one package-local Workspace artifact and one exact Workspace archive External Payload.')}\n\n---\n\n# ${String(input.title || 'Workspace Representation')}\n\n## Representation Binding\n\n- Workspace Artifact: [${String(input.workspaceLabel || 'Workspace artifact')}](${String(input.workspaceArtifactPath || '')})\n- Representation Payload: [${String(input.payloadLabel || 'Workspace representation payload')}](${String(input.payloadArtifactPath || '')})\n- Representation Kind: exact-workspace-byte-tree-archive\n- Coverage: ${String(input.coverage || 'complete')}\n- Binding State: ${String(input.bindingState || 'verified')}\n\n## Representation Correlation\n\n- Workspace Tree Root: ${String(input.workspaceTreeRoot || '.')}\n- Workspace Artifact Inner Path: ${String(input.workspaceArtifactInnerPath || '')}\n- Archive Entry Root: ${String(input.archiveEntryRoot || '.')}\n- Path Mapping: ${String(input.pathMapping || 'identity-relative-paths')}\n- Collision Policy: reject-ambiguous-or-unsafe-paths\n- Decoder Requirement: ${String(input.decoderRequirement || 'deterministic stored ZIP with safe-entry validation')}\n${input.mappingManifest ? `- Mapping Manifest: [Mapping Manifest](${String(input.mappingManifest)})\n` : ''}${input.entryIntegrityManifest ? `- Entry Integrity Manifest: [Entry Integrity Manifest](${String(input.entryIntegrityManifest)})\n` : ''}\n## Provider Qualification\n\n- Activation Rule: verified-complete-only\n- Payload Integrity Requirement: verified-exact-payload-bytes\n- Coverage Requirement: complete\n- Staleness Rule: requalify-on-binding-relevant-change\n- Selection Rule: exactly-one-binding-per-workspace\n- Multi-Workspace Isolation: independent-binding-closure\n\n## Relation Boundary\n\n- Parent Boundary: neither endpoint becomes Parent through this representation relation\n- Workspace Identity Boundary: the referenced Workspace artifact remains the semantic Workspace identity\n- Payload Identity Boundary: the referenced External Payload owns archive identity and exact payload-byte integrity\n- Transport Boundary: package location, archive adjacency, repository transport, and decoder success are not binding authority\n- Outer Integrity Boundary: package-wide exact-file/tamper authority remains separately owned\n\n## Interpretation Limits\n\n- Does Not Prove: semantic correctness, provenance, authorship, acceptance, completion, source identity, permission, consent, or truth\n- Must Not Be Used As: a replacement for Workspace identity, External Payload authority, Parent continuity, repository transport, preservation, Handoff state, or package-wide integrity authority\n\n## Evidence Basis\n\nProvider activation must requalify this visible binding, its explicit Workspace and External Payload endpoints, the exact payload bytes, decoder/mapping safety, bound Workspace inner entry, and complete archive entry set. Transport facts may detect tampering but are not semantic binding authority.\n\n---\n\n# Continuity Integrity\n\n${renderParentIntegrity(input.parent)}- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})\n  - Towards: self\n  - Value: pending\n`;
+  const contract = String(input.coverage || 'complete') === 'bounded' ? BOUNDED_CONTRACT : COMPLETE_CONTRACT;
+  const scope = contract.coverage === 'bounded'
+    ? `\n## Representation Scope\n\n- Scope Basis: exact-representation-entry-set\n- Included Entry Authority: qualified-decoded-entry-set\n- Omitted Entry Meaning: outside-representation-not-absent-from-workspace\n- Source Membership Claim: represented-entries-are-workspace-relative-source-bytes\n- Recovery Closure Boundary: separate-qualified-closure\n`
+    : '';
+  const unsigned = `# Continuity Context\n\n- Envelope Schema: [tiinex.root.v1](${RECIPIENT_V2_ROOT_SCHEMA_TARGET})\n${renderParentEnvelope(input.parent)}- Current\n  - Current Schema: [tiinex.workspace.representation.v1](${RECIPIENT_V2_WORKSPACE_REPRESENTATION_SCHEMA_TARGET})\n  - Created At: ${createdAt}\n  - Summary: ${String(input.summary || 'Explicit canonical binding between one package-local Workspace artifact and one exact Workspace archive External Payload.')}\n\n---\n\n# ${String(input.title || 'Workspace Representation')}\n\n## Representation Binding\n\n- Workspace Artifact: [${String(input.workspaceLabel || 'Workspace artifact')}](${String(input.workspaceArtifactPath || '')})\n- Representation Payload: [${String(input.payloadLabel || 'Workspace representation payload')}](${String(input.payloadArtifactPath || '')})\n- Representation Kind: ${contract.representationKind}\n- Coverage: ${contract.coverage}\n- Binding State: ${String(input.bindingState || 'verified')}\n${scope}\n## Representation Correlation\n\n- Workspace Tree Root: ${String(input.workspaceTreeRoot || '.')}\n- Workspace Artifact Inner Path: ${String(input.workspaceArtifactInnerPath || '')}\n- Archive Entry Root: ${String(input.archiveEntryRoot || '.')}\n- Path Mapping: ${String(input.pathMapping || 'identity-relative-paths')}\n- Collision Policy: reject-ambiguous-or-unsafe-paths\n- Decoder Requirement: ${String(input.decoderRequirement || 'deterministic stored ZIP with safe-entry validation')}\n${input.mappingManifest ? `- Mapping Manifest: [Mapping Manifest](${String(input.mappingManifest)})\n` : ''}${input.entryIntegrityManifest ? `- Entry Integrity Manifest: [Entry Integrity Manifest](${String(input.entryIntegrityManifest)})\n` : ''}\n## Provider Qualification\n\n- Activation Rule: ${contract.activationRule}\n- Payload Integrity Requirement: verified-exact-payload-bytes\n- Coverage Requirement: ${contract.coverageRequirement}\n- Staleness Rule: requalify-on-binding-relevant-change\n- Selection Rule: ${contract.selectionRule}\n- Multi-Workspace Isolation: independent-binding-closure\n\n## Relation Boundary\n\n- Parent Boundary: neither endpoint becomes Parent through this representation relation\n- Workspace Identity Boundary: the referenced Workspace artifact remains the semantic Workspace identity\n- Payload Identity Boundary: the referenced External Payload owns archive identity and exact payload-byte integrity\n- Transport Boundary: package location, archive adjacency, repository transport, detached Parent/recovery closure, and decoder success are not binding authority\n- Outer Integrity Boundary: package-wide exact-file/tamper authority remains separately owned\n\n## Interpretation Limits\n\n- Does Not Prove: ${contract.coverage === 'bounded' ? 'whole-Workspace completeness, absence of omitted source paths, ' : ''}semantic correctness, provenance, authorship, acceptance, completion, source identity, permission, consent, or truth\n- Must Not Be Used As: ${contract.coverage === 'bounded' ? 'a complete Workspace snapshot, ' : ''}a replacement for Workspace identity, External Payload authority, Parent continuity, repository transport, preservation, Handoff state, or package-wide integrity authority\n\n## Evidence Basis\n\nProvider activation must requalify this visible binding, its explicit Workspace and External Payload endpoints, the exact payload bytes, decoder/mapping safety, bound Workspace inner entry, and ${contract.coverage === 'bounded' ? 'exact bounded representation entry set. Detached recovery closure is qualified separately and does not enter representation scope.' : 'complete archive entry set.'} Transport facts may detect tampering but are not semantic binding authority.\n\n---\n\n# Continuity Integrity\n\n${renderParentIntegrity(input.parent)}- [sha256-base64url-c14n-v2](${C14N_V2_VALIDATOR_TARGET})\n  - Towards: self\n  - Value: pending\n`;
   return seal(unsigned);
 }
 
-
 export function parseRecipientV2WorkspaceRepresentation(markdown = '') {
   const binding = sectionText(markdown, 'Representation Binding');
+  const scope = sectionText(markdown, 'Representation Scope');
   const correlation = sectionText(markdown, 'Representation Correlation');
   const qualification = sectionText(markdown, 'Provider Qualification');
   return Object.freeze({
@@ -21,6 +40,11 @@ export function parseRecipientV2WorkspaceRepresentation(markdown = '') {
     representationKind: fieldValue(binding, 'Representation Kind'),
     coverage: fieldValue(binding, 'Coverage'),
     bindingState: fieldValue(binding, 'Binding State'),
+    scopeBasis: fieldValue(scope, 'Scope Basis'),
+    includedEntryAuthority: fieldValue(scope, 'Included Entry Authority'),
+    omittedEntryMeaning: fieldValue(scope, 'Omitted Entry Meaning'),
+    sourceMembershipClaim: fieldValue(scope, 'Source Membership Claim'),
+    recoveryClosureBoundary: fieldValue(scope, 'Recovery Closure Boundary'),
     workspaceTreeRoot: fieldValue(correlation, 'Workspace Tree Root'),
     workspaceArtifactInnerPath: fieldValue(correlation, 'Workspace Artifact Inner Path'),
     archiveEntryRoot: fieldValue(correlation, 'Archive Entry Root'),
@@ -54,18 +78,17 @@ export function parseRecipientV2ExternalPayload(markdown = '') {
   });
 }
 
-
 export function correlateWorkspaceRepresentationFacts(markdown, facts, findings, path) {
   if (!facts || facts.factsFormat !== 'portable-recipient-v2' || Number(facts.factsVersion || 0) !== 1) return;
   const visible = parseRecipientV2WorkspaceRepresentation(markdown);
   const checks = [
     ['workspaceArtifactPath', visible.workspaceArtifactPath],
     ['payloadArtifactPath', visible.payloadArtifactPath],
-    ['sourceWorkspaceTargetInnerPath', visible.workspaceArtifactInnerPath]
+    ['sourceWorkspaceTargetInnerPath', visible.workspaceArtifactInnerPath],
+    ['coverage', visible.coverage]
   ];
   for (const [key, observed] of checks) if (facts[key] && String(facts[key]) !== String(observed || '')) findings.push(finding('error', `portable.handoff-v2-surface.workspace-representation.visible-${key}-mismatch`, 'Workspace Representation visible semantic field diverges from its transport tamper-check facts.', { path, field: key }));
 }
-
 
 export function inspectWorkspaceRepresentationShape(markdown, findings, path) {
   const required = {
@@ -81,17 +104,28 @@ export function inspectWorkspaceRepresentationShape(markdown, findings, path) {
     for (const field of fields) if (!fieldValue(text, field)) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.field-missing', `Workspace Representation artifact is missing required field ${field}.`, { path, section, field }));
   }
   const parsed = parseRecipientV2WorkspaceRepresentation(markdown);
+  const contract = parsed.coverage === 'bounded' ? BOUNDED_CONTRACT : COMPLETE_CONTRACT;
   const fixed = {
-    representationKind: 'exact-workspace-byte-tree-archive',
+    representationKind: contract.representationKind,
     workspaceTreeRoot: '.', archiveEntryRoot: '.', pathMapping: 'identity-relative-paths', collisionPolicy: 'reject-ambiguous-or-unsafe-paths',
-    activationRule: 'verified-complete-only', payloadIntegrityRequirement: 'verified-exact-payload-bytes', coverageRequirement: 'complete',
-    stalenessRule: 'requalify-on-binding-relevant-change', selectionRule: 'exactly-one-binding-per-workspace', multiWorkspaceIsolation: 'independent-binding-closure'
+    activationRule: contract.activationRule, payloadIntegrityRequirement: 'verified-exact-payload-bytes', coverageRequirement: contract.coverageRequirement,
+    stalenessRule: 'requalify-on-binding-relevant-change', selectionRule: contract.selectionRule, multiWorkspaceIsolation: 'independent-binding-closure'
   };
-  for (const [key, expected] of Object.entries(fixed)) if (parsed[key] && parsed[key] !== expected) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.contract-mismatch', 'Workspace Representation artifact diverges from the canonical ready-provider contract.', { path, field: key, expected, observed: parsed[key] }));
+  if (!['complete', 'bounded', 'partial', 'unknown'].includes(parsed.coverage)) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.coverage-invalid', 'Workspace Representation coverage is outside the canonical domain.', { path, observed: parsed.coverage }));
+  if (parsed.coverage === 'bounded') {
+    const scope = {
+      scopeBasis: 'exact-representation-entry-set',
+      includedEntryAuthority: 'qualified-decoded-entry-set',
+      omittedEntryMeaning: 'outside-representation-not-absent-from-workspace',
+      sourceMembershipClaim: 'represented-entries-are-workspace-relative-source-bytes',
+      recoveryClosureBoundary: 'separate-qualified-closure'
+    };
+    for (const [key, expected] of Object.entries(scope)) if (parsed[key] !== expected) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.scope-contract-mismatch', 'Bounded Workspace Representation is missing or diverges from the canonical exact-scope contract.', { path, field: key, expected, observed: parsed[key] }));
+  }
+  for (const [key, expected] of Object.entries(fixed)) if (parsed[key] && parsed[key] !== expected) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.contract-mismatch', 'Workspace Representation artifact diverges from the canonical ready-provider contract for its coverage.', { path, field: key, expected, observed: parsed[key], coverage: parsed.coverage }));
   if (!parsed.workspaceArtifactPath || !parsed.payloadArtifactPath) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.endpoint-missing', 'Workspace Representation must expose both semantic endpoints.', { path }));
   if (parsed.pathMapping === 'manifest' && !parsed.mappingManifest) findings.push(finding('error', 'portable.handoff-v2-surface.workspace-representation.mapping-manifest-missing', 'Manifest path mapping requires an explicit Mapping Manifest.', { path }));
 }
-
 
 function renderParentEnvelope(parent = null) {
   if (!parent) return '';

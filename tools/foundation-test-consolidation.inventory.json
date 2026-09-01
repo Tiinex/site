@@ -1,0 +1,89 @@
+{
+  "schema": "tiinex.site.foundation-test-consolidation.inventory.v1",
+  "baseline": {
+    "testFiles": 338,
+    "profileSteps": {
+      "smoke": 3,
+      "focused/tooling": 8,
+      "integration": 262,
+      "closure": 273
+    },
+    "representativeTimingMs": {
+      "smoke": 1086.521,
+      "focused/tooling": 2082.55
+    },
+    "concentrations": {
+      "acceptance": 97,
+      "tooling": 82,
+      "app": 48,
+      "workspaces": 33
+    }
+  },
+  "result": {
+    "standaloneTestFiles": 1,
+    "standaloneEntrypoint": "tools/foundation-acceptance.test.mjs",
+    "suiteOwnedCases": 54,
+    "convertedExistingCases": 53,
+    "newSuiteContractCases": 1,
+    "deletedStandaloneFiles": 285,
+    "deletedHistoricalAcceptanceFiles": 90,
+    "suiteGroups": {
+      "smoke": 5,
+      "focused/tooling": 6,
+      "workspace/source": 12,
+      "schema/transition": 7,
+      "product": 7,
+      "package/publication": 7,
+      "tooling/detail": 10
+    },
+    "profileSteps": {
+      "smoke": 2,
+      "focused/tooling": 4,
+      "integration": 12,
+      "closure": 23
+    },
+    "representativeTimingMs": {
+      "smoke": 1550.665,
+      "focused/tooling": 4132.254,
+      "fullAcceptance": 10230.324
+    },
+    "fullAcceptance": {
+      "status": "passed",
+      "cases": 54
+    },
+    "staticRegression": {
+      "status": "inherited-debt-only",
+      "inheritedUnresolved": 7,
+      "resolvedInherited": 6,
+      "introducedRegressions": 0
+    }
+  },
+  "retainedExceptions": [
+    {
+      "id": "schema-binding-checksum-drift",
+      "state": "inherited-baseline",
+      "validator": "node tools/validate-schema-bindings.mjs",
+      "detail": "workspace/tiinex.workspace.v1.schema.json checksum mismatch: 425aa24f8c1fc1115eec8cb934c410f1b01b5d38e91c73e71a2de886473ebf05 != 27d73b65f745335da79a877d3678af5497b29bed4bace218a244deeb5647c4dc",
+      "baselineReproduced": true
+    },
+    {
+      "id": "workspace-runtime-projection-drift",
+      "state": "inherited-baseline",
+      "validator": "node tools/check-schema-runtime-projections.mjs",
+      "detail": "stale projection: src/schemas/workspace/tiinex.workspace.v1.schema.runtime.json",
+      "baselineReproduced": true
+    },
+    {
+      "id": "strict-static-seven-owner-debt",
+      "state": "inherited-baseline",
+      "validator": "node tools/validate-static.mjs",
+      "detail": "seven known oversized Tooling owners remain",
+      "baselineReproduced": true
+    }
+  ],
+  "interpretation": {
+    "timingBoundary": "Local child-process/checkpoint orchestration only; excludes host/model/client wait.",
+    "coverageBoundary": "The 54 cases are a curated current component/use-case spine, not a claim that every historical assertion remains separately represented.",
+    "validationBoundary": "Integration did not qualify because two schema validators reproduce inherited baseline drift; no schema bytes were changed to hide those failures."
+  }
+}

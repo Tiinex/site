@@ -1,6 +1,7 @@
 import { packageFileByteView, packageFileBytes, sha256Hex, utf8Bytes } from '../../../export/package.bytes.js';
 import { validatedC14nV2PrimarySelfDigest } from '../../../integrity/integrity.c14nV2.js';
 import { inspectStoredWorkspaceArchive, HANDOFF_WORKSPACE_BYTE_PROVIDER_SCHEMA_ID, HANDOFF_WORKSPACE_ARCHIVE_BINDING_SCHEMA_ID, HANDOFF_WORKSPACE_ARCHIVE_CODEC, HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND, HANDOFF_WORKSPACE_INNER_PATH_NORMALIZATION } from './workspaceByteProvider.js';
+import { boundedRecipientToken } from './recipientV2.inspect.pathToken.js';
 
 export function indexRecipientFiles(files = [], findings = []) {
   const map = new Map();
@@ -61,9 +62,14 @@ export function buildQualifiedRecipientV2WorkspaceByteProvider(workspaceParts = 
     if (part?.payloadArtifact?.schemaId !== 'tiinex.external.payload.v1' || part?.payloadArtifact?.status !== 'qualified') reject('workspace-representation-payload-unqualified');
     if (representation.workspaceArtifactPath !== part?.artifact?.path) reject('workspace-representation-workspace-endpoint-mismatch');
     if (representation.payloadArtifactPath !== part?.payloadArtifact?.path) reject('workspace-representation-payload-endpoint-mismatch');
-    if (representation.representationKind !== 'exact-workspace-byte-tree-archive' || representation.coverage !== 'complete' || representation.bindingState !== 'verified') reject('workspace-representation-not-verified-complete');
+    const coverage = representation.coverage === 'bounded' ? 'bounded' : representation.coverage === 'complete' ? 'complete' : '';
+    const expectedRepresentationKind = coverage === 'bounded' ? 'exact-bounded-workspace-byte-tree-archive' : 'exact-workspace-byte-tree-archive';
+    const expectedActivationRule = coverage === 'bounded' ? 'verified-bounded-only' : 'verified-complete-only';
+    const expectedSelectionRule = coverage === 'bounded' ? 'explicit-binding-per-bounded-scope' : 'exactly-one-binding-per-workspace';
+    if (!coverage || representation.representationKind !== expectedRepresentationKind || representation.bindingState !== 'verified') reject(coverage === 'bounded' ? 'workspace-representation-not-verified-bounded' : 'workspace-representation-not-verified-complete');
+    if (coverage === 'bounded' && (representation.scopeBasis !== 'exact-representation-entry-set' || representation.includedEntryAuthority !== 'qualified-decoded-entry-set' || representation.omittedEntryMeaning !== 'outside-representation-not-absent-from-workspace' || representation.sourceMembershipClaim !== 'represented-entries-are-workspace-relative-source-bytes' || representation.recoveryClosureBoundary !== 'separate-qualified-closure')) reject('workspace-representation-bounded-scope-invalid');
     if (representation.workspaceTreeRoot !== '.' || representation.archiveEntryRoot !== '.' || representation.pathMapping !== 'identity-relative-paths' || representation.collisionPolicy !== 'reject-ambiguous-or-unsafe-paths' || representation.decoderRequirement !== 'deterministic stored ZIP with safe-entry validation') reject('workspace-representation-correlation-invalid');
-    if (representation.activationRule !== 'verified-complete-only' || representation.payloadIntegrityRequirement !== 'verified-exact-payload-bytes' || representation.coverageRequirement !== 'complete' || representation.stalenessRule !== 'requalify-on-binding-relevant-change' || representation.selectionRule !== 'exactly-one-binding-per-workspace' || representation.multiWorkspaceIsolation !== 'independent-binding-closure') reject('workspace-representation-provider-contract-invalid');
+    if (representation.activationRule !== expectedActivationRule || representation.payloadIntegrityRequirement !== 'verified-exact-payload-bytes' || representation.coverageRequirement !== coverage || representation.stalenessRule !== 'requalify-on-binding-relevant-change' || representation.selectionRule !== expectedSelectionRule || representation.multiWorkspaceIsolation !== 'independent-binding-closure') reject('workspace-representation-provider-contract-invalid');
     if (representation.pathMapping === 'manifest' && !representation.mappingManifest) reject('workspace-representation-mapping-manifest-missing');
     if (payload.mediaType !== 'application/zip' || payload.format !== 'deterministic stored ZIP' || payload.integrityStatus !== 'verified' || payload.integrityMethod !== 'sha256' || payload.integrityTarget !== 'exact payload bytes as carried at the declared local Location') reject('workspace-representation-payload-contract-invalid');
     if (payload.location !== String(part?.archiveFile?.path || '')) reject('workspace-representation-payload-location-mismatch');
@@ -75,8 +81,8 @@ export function buildQualifiedRecipientV2WorkspaceByteProvider(workspaceParts = 
     const facts = part?.facts || {};
     const representationFacts = part?.representationArtifact?.facts || {};
     const payloadFacts = part?.payloadArtifact?.facts || {};
-    if (String(facts.sourceWorkspaceTargetInnerPath || '') !== String(representation.workspaceArtifactInnerPath || '') || String(facts.sourceWorkspaceTargetSha256 || '') !== String(part?.targetFile?.sha256 || '') || Number(facts.sourceWorkspaceTargetBytes || 0) !== Number(part?.targetFile?.bytes || 0) || Number(facts.entryCount || 0) !== parsedEntries.length || String(facts.entriesFingerprint || '') !== exactEntriesFingerprint || String(facts.completenessState || '') !== 'qualified') reject('workspace-transport-witness-stale');
-    if (String(representationFacts.workspaceId || '') !== workspaceId || String(representationFacts.workspaceArtifactPath || '') !== String(part?.artifact?.path || '') || String(representationFacts.payloadArtifactPath || '') !== String(part?.payloadArtifact?.path || '') || String(representationFacts.sourceWorkspaceTargetInnerPath || '') !== String(representation.workspaceArtifactInnerPath || '') || String(representationFacts.archivePath || '') !== String(payload.location || '') || String(representationFacts.archiveSha256 || '') !== String(archive.sha256 || '') || Number(representationFacts.entryCount || 0) !== parsedEntries.length || String(representationFacts.entriesFingerprint || '') !== exactEntriesFingerprint || String(representationFacts.completenessState || '') !== 'qualified') reject('workspace-representation-transport-witness-stale');
+    if (String(facts.sourceWorkspaceTargetInnerPath || '') !== String(representation.workspaceArtifactInnerPath || '') || String(facts.sourceWorkspaceTargetSha256 || '') !== String(part?.targetFile?.sha256 || '') || Number(facts.sourceWorkspaceTargetBytes || 0) !== Number(part?.targetFile?.bytes || 0) || Number(facts.entryCount || 0) !== parsedEntries.length || String(facts.entriesFingerprint || '') !== exactEntriesFingerprint || String(facts.coverage || 'complete') !== coverage || String(facts.coverageState || facts.completenessState || '') !== 'qualified') reject('workspace-transport-witness-stale');
+    if (String(representationFacts.workspaceId || '') !== workspaceId || String(representationFacts.workspaceArtifactPath || '') !== String(part?.artifact?.path || '') || String(representationFacts.payloadArtifactPath || '') !== String(part?.payloadArtifact?.path || '') || String(representationFacts.sourceWorkspaceTargetInnerPath || '') !== String(representation.workspaceArtifactInnerPath || '') || String(representationFacts.archivePath || '') !== String(payload.location || '') || String(representationFacts.archiveSha256 || '') !== String(archive.sha256 || '') || Number(representationFacts.entryCount || 0) !== parsedEntries.length || String(representationFacts.entriesFingerprint || '') !== exactEntriesFingerprint || String(representationFacts.coverage || 'complete') !== coverage || String(representationFacts.coverageState || representationFacts.completenessState || '') !== 'qualified') reject('workspace-representation-transport-witness-stale');
     if (String(payloadFacts.workspaceId || '') !== workspaceId || String(payloadFacts.archivePath || '') !== String(payload.location || '') || String(payloadFacts.archiveSha256 || '') !== String(archive.sha256 || '')) reject('workspace-representation-payload-transport-witness-stale');
     const declaredByPath = new Map((binding.entryMap?.entries || []).map((entry) => [String(entry.path || ''), entry]));
     const archivePath = String(binding.representation?.packagePath || part?.archiveFile?.path || '');
@@ -105,7 +111,7 @@ export function buildQualifiedRecipientV2WorkspaceByteProvider(workspaceParts = 
     status: workspaces.length > 0 && workspaces.every((workspace) => workspace.state === 'qualified') ? 'ready' : 'blocked',
     workspaces: Object.freeze(workspaces),
     findings: Object.freeze(providerFindings),
-    boundary: 'Recipient-v2 archive provider activation is authorized only by one schema-valid verified-complete tiinex.workspace.representation.v1 artifact, its explicitly referenced schema-valid External Payload, and exact qualified payload bytes. Hidden transport binding metadata is compatibility/materialization evidence only and has no semantic provider authority.'
+    boundary: 'Recipient-v2 archive provider activation is authorized only by one schema-valid verified complete-or-bounded tiinex.workspace.representation.v1 artifact, its explicitly referenced schema-valid External Payload, and exact qualified payload bytes. Bounded scope never implies whole-Workspace completeness; hidden transport binding metadata has no semantic provider authority.'
   });
 }
 
@@ -130,16 +136,18 @@ export function recipientWorkspaceDescriptor(input = {}) {
   const selfIntegrity = validatedC14nV2PrimarySelfDigest(input.targetMarkdown || '');
   const archiveFile = input.archiveFile || {};
   const totalBytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
-  const completenessEvidence = Object.freeze({ state: 'qualified', basis: 'canonical-verified-complete-workspace-representation-plus-exact-external-payload-and-qualified-complete-entry-set', entryCount: entries.length, totalBytes });
+  const coverage = representation.coverage === 'bounded' ? 'bounded' : 'complete';
+  const coverageEvidence = Object.freeze({ state: 'qualified', basis: coverage === 'bounded' ? 'canonical-verified-bounded-workspace-representation-plus-exact-external-payload-and-qualified-bounded-entry-set' : 'canonical-verified-complete-workspace-representation-plus-exact-external-payload-and-qualified-complete-entry-set', entryCount: entries.length, totalBytes, ...(coverage === 'bounded' ? { scopeBasis: representation.scopeBasis, includedEntryAuthority: representation.includedEntryAuthority, omittedEntryMeaning: representation.omittedEntryMeaning, sourceMembershipClaim: representation.sourceMembershipClaim, recoveryClosureBoundary: representation.recoveryClosureBoundary } : {}) });
   const transportCorrelationKey = recipientLocalWorkspaceCorrelationKey({ workspaceId, representation, payload, targetFile, entries });
   const workspace = Object.freeze({
     id: workspaceId,
     title: workspaceId,
-    materialization: 'complete',
+    materialization: coverage,
     qualification: 'qualified',
     correlationStatus: 'qualified',
     transportCorrelationKey,
-    completenessEvidence,
+    completenessEvidence: coverage === 'complete' ? coverageEvidence : Object.freeze({}),
+    scopeEvidence: coverage === 'bounded' ? coverageEvidence : Object.freeze({}),
     includedEntries: Object.freeze(entries)
   });
   const binding = Object.freeze({
@@ -148,10 +156,13 @@ export function recipientWorkspaceDescriptor(input = {}) {
     workspaceId,
     transportCorrelationKey,
     workspaceTarget: Object.freeze({ packagePath: targetPath, innerPath: targetInnerPath, bytes: Number(targetFile.bytes || 0), sha256: String(targetFile.sha256 || ''), schema: 'tiinex.workspace.v1', selfIntegrity: Object.freeze({ state: String(selfIntegrity.state || ''), value: String(selfIntegrity.value || '') }), locatorAuthority: false }),
-    representation: Object.freeze({ kind: 'complete-workspace-snapshot', packagePath: archivePath, mediaType: 'application/zip', codec: HANDOFF_WORKSPACE_ARCHIVE_CODEC, bytes: Number(archiveFile.bytes || 0), digest: Object.freeze({ method: 'sha256', value: String(archiveFile.sha256 || ''), target: 'archive-bytes-as-carried' }), deterministic: true, locatorAuthority: false }),
+    coverage,
+    representation: Object.freeze({ kind: coverage === 'bounded' ? 'bounded-workspace-snapshot' : 'complete-workspace-snapshot', packagePath: archivePath, mediaType: 'application/zip', codec: HANDOFF_WORKSPACE_ARCHIVE_CODEC, bytes: Number(archiveFile.bytes || 0), digest: Object.freeze({ method: 'sha256', value: String(archiveFile.sha256 || ''), target: 'archive-bytes-as-carried' }), deterministic: true, locatorAuthority: false }),
     entryMap: Object.freeze({ normalization: HANDOFF_WORKSPACE_INNER_PATH_NORMALIZATION, count: entries.length, entries: Object.freeze(entries) }),
-    completeness: Object.freeze({ state: 'qualified', basis: 'canonical-verified-complete-workspace-representation-plus-exact-external-payload-and-qualified-complete-entry-set', entryCount: entries.length, totalBytes, entriesFingerprint: '' }),
-    provider: Object.freeze({ kind: String(facts.providerKind || HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND), state: 'ready', addressing: 'qualified-workspace-id-plus-normalized-inner-path', fallback: 'none' }),
+    completeness: coverage === 'complete' ? Object.freeze({ ...coverageEvidence, entriesFingerprint: '' }) : Object.freeze({}),
+    scope: coverage === 'bounded' ? Object.freeze({ ...coverageEvidence, entriesFingerprint: '' }) : Object.freeze({}),
+    selection: Object.freeze({ rule: coverage === 'bounded' ? 'explicit-binding-per-bounded-scope' : 'exactly-one-binding-per-workspace', representationArtifactAuthority: 'explicit-recipient-workspace-representation-link' }),
+    provider: Object.freeze({ kind: String(facts.providerKind || HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND), state: 'ready', addressing: 'qualified-workspace-id-plus-normalized-inner-path', fallback: 'none', materialization: coverage }),
     authority: Object.freeze({ workspaceIdentity: 'explicit-canonical-workspace-representation-workspace-endpoint-plus-exact-workspace-target-byte-identity', archiveIdentity: 'explicit-external-payload-endpoint-plus-exact-archive-byte-digest', canonicalRepresentationSchema: 'tiinex.workspace.representation.v1', hiddenTransportBindingAuthority: false, pathAuthority: false, adjacencyAuthority: false, orderingAuthority: false })
   });
   return Object.freeze({ workspace, binding });
@@ -169,7 +180,8 @@ function recipientLocalWorkspaceCorrelationKey(input = {}) {
     sourceWorkspaceTargetBytes: Number(input.targetFile?.bytes || 0),
     archivePath: String(input.payload?.location || ''),
     archiveSha256: String(input.payload?.integrityValue || ''),
-    entriesFingerprint: recipientEntriesFingerprint(input.entries || [])
+    entriesFingerprint: recipientEntriesFingerprint(input.entries || []),
+    coverage: String(input.representation?.coverage || 'complete')
   };
   return `recipient-v2:${sha256Hex(utf8Bytes(stableJson(identity)))}`;
 }
@@ -186,7 +198,7 @@ export function virtualCacheMaterial(cache = {}, findings = []) {
       continue;
     }
     if (Number(item.bytes || 0) !== Number(entry.bytes || 0) || String(item.sha256 || '') !== String(entry.sha256 || '')) findings.push(finding('error', 'portable.handoff-v2-surface.cache.entry-identity-mismatch', 'Context cache entry bytes differ from its visible declaration.', { requirementId: item.requirementId || '', archiveEntry: item.archiveEntry || '' }));
-    const packagePath = `recipient.v2.cache/${safeToken(cache.facts?.workspaceId || 'workspace')}/${safeToken(item.requirementId || item.archiveEntry)}.bin`;
+    const packagePath = `recipient.v2.cache/${boundedRecipientToken(cache.facts?.workspaceId || 'workspace')}/${boundedRecipientToken(item.requirementId || item.archiveEntry)}.bin`;
     files.push(Object.freeze({ path: packagePath, data: entry.data, size: entry.bytes, kind: 'recipient-v2-virtual-cache-material' }));
     materialized.push(Object.freeze({ requirementId: String(item.requirementId || ''), classification: String(item.classification || ''), referenceTarget: String(item.referenceTarget || ''), originalPath: String(item.originalPath || ''), packagePath, carrierKind: 'detached-material', bytes: Number(entry.bytes || 0), sha256: String(entry.sha256 || ''), authority: Object.freeze({ carrierDedupBasis: 'visible-cache-artifact-plus-exact-archive-entry-byte-identity' }) }));
   }
@@ -211,4 +223,3 @@ export function stableJson(value) { return JSON.stringify(sortJson(value)); }
 export function dedupeFindings(items = []) { const map = new Map(); for (const item of items) { const key = `${item.severity || ''}:${item.code || ''}:${item.path || item.workspaceId || item.requirementId || ''}:${item.message || ''}`; if (!map.has(key)) map.set(key, item); } return [...map.values()]; }
 export function deepFreeze(value) { if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value; for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value); }
 function sortJson(value) { if (Array.isArray(value)) return value.map(sortJson); if (!value || typeof value !== 'object') return value; return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortJson(value[key])])); }
-function safeToken(value = '') { return String(value || '').trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'material'; }

@@ -6,7 +6,7 @@ import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
 import { writeRecipientFacingV2PackageZip } from '../../output/recipientV2.zip.js';
 import { projectRecipientV2HumanOutput } from '../../handoff/recipientV2.humanOutput.js';
 import { inspectRecipientFacingV2Topology } from '../../handoff/recipientV2.inspect.js';
-import { carrierLineageFromCliParent, initialHandoffCarrierLineage } from '../../handoff/carrierLineage.js';
+import { carrierLineageFromCliParent, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle } from '../../handoff/carrierLineage.js';
 import { loadNodePortableInput } from '../../input/node.input.js';
 
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
@@ -17,6 +17,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
   const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
   const workspaceTargetValue = await readOptionalJson(flags['workspace-targets']);
+  const workspaceScopeValue = await readOptionalJson(flags['workspace-scopes']);
   const routeDescriptorValue = await readOptionalJson(flags['workspace-routes'] || flags['handoff-route-descriptors']);
   const additionalWorkspaces = [
     ...splitFlag(flags['additional-workspaces']),
@@ -33,17 +34,27 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     const resolvedParent = path.resolve(parentPackagePath);
     const parentBytes = new Uint8Array(await readFile(resolvedParent));
     const parentBundle = await loadNodePortableInput([resolvedParent], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
-    const parentInspection = inspectRecipientFacingV2Topology(parentBundle);
-    const parentLineage = parentInspection.carrierProjection?.lineage || null;
-    if (parentInspection.status !== 'valid' && !parentLineage?.dimension) throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
+    let parentLineage = null;
+    let routeDimensions = [];
+    try {
+      // Modern recipient-v2 continuation needs only the qualified package-root lineage
+      // plus exact parent package identity. Avoid broad topology requalification here;
+      // manufacture performs its own full qualification on the newly produced carrier.
+      parentLineage = parentHandoffCarrierLineageFromBundle(parentBundle);
+    } catch {
+      // Explicit compatibility fallback for older carriers that lack a directly
+      // qualified package-root lineage. Preserve the prior strict inspection path.
+      const parentInspection = inspectRecipientFacingV2Topology(parentBundle);
+      parentLineage = parentInspection.carrierProjection?.lineage || null;
+      routeDimensions = (parentInspection.carrierProjection?.routes || []).map((route) => route.dimension);
+      if (parentInspection.status !== 'valid' && !parentLineage?.dimension) throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
+    }
     // Package-parent lineage is a human progress projection, not Workspace provider authority.
-    // A pre-canonical-representation recipient-v2 parent may remain usable for lineage continuation
-    // even when the current strict provider inspector correctly rejects it for activation.
     carrierLineage = carrierLineageFromCliParent({
       bundle: parentBundle,
       parentPath: resolvedParent,
       parentBytes,
-      routeDimensions: (parentInspection.carrierProjection?.routes || []).map((route) => route.dimension),
+      routeDimensions,
       qualifiedParentLineage: parentLineage,
       major: Boolean(flags['package-major']),
       majorReason: flags['major-reason'] || ''
@@ -60,6 +71,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     workspaceTitle: flags['workspace-title'] || flags.title || '',
     workspaceTargetPath: flags['workspace-target'] || flags['workspace-artifact'] || '',
     workspaceTargets: workspaceTargetValue,
+    workspaceScopes: descriptorArray(workspaceScopeValue, 'scopes').length ? descriptorArray(workspaceScopeValue, 'scopes') : workspaceScopeValue,
     toolingBootstrap: flags['tooling-bootstrap'] || 'embedded',
     expectedToolingBootstrap,
     materialBindings,
@@ -116,7 +128,9 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
     qualification: String(item.qualification || ''),
     entryCount: Array.isArray(item.includedEntries) ? item.includedEntries.length : 0,
     completenessState: String(item.completenessEvidence?.state || ''),
-    completenessProof: String(item.completenessEvidence?.proof || '')
+    completenessProof: String(item.completenessEvidence?.proof || ''),
+    scopeState: String(item.scopeEvidence?.state || ''),
+    scopeProof: String(item.scopeEvidence?.proof || '')
   });
   const bootstrapInspection = result.toolingBootstrapInspection || {};
   const projection = result.carrierProjection || {};

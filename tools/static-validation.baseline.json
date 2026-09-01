@@ -1,0 +1,46 @@
+{
+  "schema": "tiinex.site.static-validation-baseline.v1",
+  "version": 1,
+  "sourceCheckpoint": "v470",
+  "purpose": "Preserve exact inherited static-discipline failures separately from newly introduced regressions. This baseline does not make inherited debt pass final closure.",
+  "rules": [
+    {
+      "id": "uc001-architecture-document",
+      "owner": "tools/validate-static.mjs required-source presence guard",
+      "disposition": "duplicate-coverage-unresolved-debt",
+      "evidence": [
+        "tools/validate-static.mjs requires docs/architecture/uc001-workspace-lifecycle.md",
+        "tools/check-public-build.mjs independently requires docs/architecture/uc001-workspace-lifecycle.md in public output"
+      ],
+      "baselineFindings": [
+        "docs/architecture/uc001-workspace-lifecycle.md missing"
+      ]
+    },
+    {
+      "id": "source-size-v119",
+      "owner": "tools/validate-static.mjs recursive src/*.js 24000-byte guard",
+      "disposition": "still-current-regression-guard-with-inherited-debt",
+      "thresholdBytes": 24000,
+      "historicalOrigin": "v119 discipline",
+      "evidence": [
+        "src/acceptance/m3PersistenceOwnerReadabilityExtraction.test.mjs explicitly calls the 24000-byte limit the unchanged source-size guard",
+        "current Site checkpoint is v470, so the v119 label is historical provenance rather than evidence that the guard is obsolete"
+      ],
+      "inheritedFiles": [
+        { "path": "src/tooling/portable/adapters/cli/cli.run.js", "bytes": 42844 },
+        { "path": "src/tooling/portable/adapters/node/handoff.manufacture.js", "bytes": 40589 },
+        { "path": "src/tooling/portable/handoff/carrierProjection.js", "bytes": 33356 },
+        { "path": "src/tooling/portable/handoff/coldStartQualification.js", "bytes": 73856 },
+        { "path": "src/tooling/portable/handoff/materialClosure.inputBinding.js", "bytes": 24305 },
+        { "path": "src/tooling/portable/handoff/recipientV2.artifactFirstPhase1.js", "bytes": 94636 },
+        { "path": "src/tooling/portable/handoff/recipientV2.artifacts.js", "bytes": 27782 },
+        { "path": "src/tooling/portable/handoff/recipientV2.inspect.js", "bytes": 38838 },
+        { "path": "src/tooling/portable/handoff/recipientV2.topology.js", "bytes": 39195 },
+        { "path": "src/tooling/portable/host/tool.bindings.js", "bytes": 26166 },
+        { "path": "src/tooling/portable/operation.catalog.js", "bytes": 26732 },
+        { "path": "src/tooling/portable/schema/contract.compile.js", "bytes": 24631 }
+      ]
+    }
+  ],
+  "boundary": "Diagnostic/integration qualification may continue across only these exact inherited failures while they remain unchanged or improve. New static findings, new oversized files, or growth of an inherited oversized file beyond its recorded byte size are regressions. Final closure continues to run the original strict tools/validate-static.mjs gate and therefore remains blocked while any inherited finding is unresolved."
+}

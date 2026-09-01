@@ -15,7 +15,7 @@
   "originTrustRole": "viewer-extension",
   "checksum": {
     "algorithm": "sha256",
-    "value": "27d73b65f745335da79a877d3678af5497b29bed4bace218a244deeb5647c4dc"
+    "value": "425aa24f8c1fc1115eec8cb934c410f1b01b5d38e91c73e71a2de886473ebf05"
   },
   "capabilityContract": "tiinex.schema.module.v1",
   "snapshotCompleteness": "viewer-local-workspace-schema-snapshot",

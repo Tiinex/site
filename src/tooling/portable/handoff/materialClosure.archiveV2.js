@@ -1,17 +1,18 @@
 import { finalizeFile } from '../../../export/package.fileMap.js';
-import { packageFileBytes, sha256Hex, utf8Bytes } from '../../../export/package.bytes.js';
+import { packageFileBytes } from '../../../export/package.bytes.js';
 import { exportFileMapZipUint8Array } from '../../../export/package.zip.js';
 import { buildHandoffCarrierProjection, HANDOFF_CARRIER_PROJECTION_PATH, inspectHandoffCarrierProjection } from './carrierProjection.js';
 import { HANDOFF_COLD_CONSUMER_ENTRYPOINT_PATH } from './coldConsumerEntrypoint.js';
 import { HANDOFF_CLOSURE_DESCRIPTOR_PATH, HANDOFF_CLOSURE_DESCRIPTOR_V2_SCHEMA_ID } from './materialClosure.descriptor.js';
 import { HANDOFF_POINTER_ENTRYPOINT_PREFIX } from './pointerEntrypoint.js';
 import { buildHandoffTransportCompanionProjection, HANDOFF_TRANSPORT_COMPANION_PATH, inspectHandoffTransportCompanion } from './transportCompanion.js';
-import { HANDOFF_WORKSPACE_ARCHIVE_BINDING_SCHEMA_ID, HANDOFF_WORKSPACE_ARCHIVE_CODEC, HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND, HANDOFF_WORKSPACE_INNER_PATH_NORMALIZATION, normalizeHandoffWorkspaceInnerPath } from './workspaceByteProvider.js';
+import { normalizeHandoffWorkspaceInnerPath } from './workspaceByteProvider.js';
 import { indexWorkspaceTargetDeclarations, mapArchiveRequirements, qualifyDirectWorkspaceForArchive, qualifyWorkspaceForArchive } from './materialClosure.archiveV2.workspace.js';
 import { buildRecipientFacingV2Topology, RECIPIENT_V2_FORMAT_ID } from './recipientV2.topology.js';
 import { inspectRecipientFacingV2Topology, roundTripRecipientFacingV2Topology } from './recipientV2.inspect.js';
 import { indexDirectWorkspaceSources, indexUniqueArchiveBaselineFiles, resolveDirectWorkspaceSource } from './materialClosure.archiveV2.indexes.js';
 import { buildDirectArchiveProjectionProvider } from './materialClosure.archiveV2.projectionProvider.js';
+import { buildWorkspaceArchiveBinding, detachedParentCandidates } from './materialClosure.archiveV2.binding.js';
 
 export const PORTABLE_HANDOFF_TRANSPORT_PACKAGE_V2_SCHEMA_ID = 'tiinex.portable.handoff-transport-package.v2';
 
@@ -33,19 +34,22 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
   const directSourcesByCorrelation = indexDirectWorkspaceSources(baseline.directWorkspaceSources || []);
   let avoidedExplodedWorkspaceFiles = 0;
   const records = [];
+  const parentCandidates = detachedParentCandidates(baselineDescriptor.materialized || [], byPath);
 
   for (const workspace of baselineDescriptor.workspaceMaterializations || []) {
     const directSource = resolveDirectWorkspaceSource(directSourcesByCorrelation, workspace.transportCorrelationKey);
     const qualified = directSource
-      ? qualifyDirectWorkspaceForArchive(workspace, directSource.workspace, workspaceTargetDeclarations.get(String(workspace.id || '')) || [])
-      : qualifyWorkspaceForArchive(workspace, byPath, workspaceTargetDeclarations.get(String(workspace.id || '')) || []);
+      ? qualifyDirectWorkspaceForArchive(workspace, directSource.workspace, workspaceTargetDeclarations.get(String(workspace.id || '')) || [], parentCandidates)
+      : qualifyWorkspaceForArchive(workspace, byPath, workspaceTargetDeclarations.get(String(workspace.id || '')) || [], parentCandidates);
     findings.push(...qualified.findings);
     if (qualified.status !== 'qualified') continue;
     const workspaceId = String(workspace.id || '');
     const archivePath = `handoff.workspaces/${safeToken(workspaceId)}/workspace.snapshot.zip`;
     const targetPath = `handoff.workspaces/${safeToken(workspaceId)}/workspace.artifact.md`;
     const archiveBytes = exportFileMapZipUint8Array(qualified.entries.map((entry) => ({ path: entry.path, data: entry.data })), 'portable.handoff-v2.workspace-archive.path.invalid');
-    const archiveFile = finalizeFile({ path: archivePath, kind: 'handoff-workspace-archive', logicalKind: 'recipient-relative-complete-workspace-archive', mediaType: 'application/zip', data: archiveBytes, boundary: 'Exact complete Workspace snapshot representation; Workspace identity comes only from the exact qualified target plus binding, never archive name/placement.' });
+    const coverage = String(workspace.materialization || '') === 'bounded' ? 'bounded' : 'complete';
+    const coverageEvidence = coverage === 'bounded' ? (workspace.scopeEvidence || {}) : (workspace.completenessEvidence || {});
+    const archiveFile = finalizeFile({ path: archivePath, kind: 'handoff-workspace-archive', logicalKind: coverage === 'bounded' ? 'recipient-relative-bounded-workspace-archive' : 'recipient-relative-complete-workspace-archive', mediaType: 'application/zip', data: archiveBytes, boundary: coverage === 'bounded' ? 'Exact bounded Workspace Representation entry set; omitted source paths remain outside representation and detached recovery remains separate.' : 'Exact complete Workspace snapshot representation; Workspace identity comes only from the exact qualified target plus binding, never archive name/placement.' });
     const targetFile = finalizeFile({ path: targetPath, kind: 'handoff-workspace-target', logicalKind: 'recipient-relative-workspace-identity-target', mediaType: 'text/markdown', data: qualified.target.data, boundary: 'Exact tiinex.workspace.v1 target binding carrier id to Workspace identity; package name/placement have no authority.' });
     workspaceFiles.push(targetFile, archiveFile);
     for (const entry of qualified.entries) {
@@ -53,38 +57,8 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
       else avoidedExplodedWorkspaceFiles += 1;
       workspaceEntryByQualifiedPath.set(`${workspaceId}\u0000${entry.path}`, entry);
     }
-    const entries = qualified.entries.map((entry) => Object.freeze({ path: entry.path, bytes: entry.bytes, sha256: entry.sha256, referenceTarget: entry.referenceTarget }));
-    const entriesFingerprint = sha256Hex(utf8Bytes(stableJson(entries)));
-    const totalBytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
-    const binding = deepFreeze({
-      schema: HANDOFF_WORKSPACE_ARCHIVE_BINDING_SCHEMA_ID,
-      version: 1,
-      workspaceId,
-      transportCorrelationKey: String(workspace.transportCorrelationKey || ''),
-      workspaceTarget: Object.freeze({
-        packagePath: targetFile.path,
-        innerPath: qualified.target.path,
-        bytes: targetFile.bytes,
-        sha256: targetFile.sha256,
-        schema: 'tiinex.workspace.v1',
-        selfIntegrity: Object.freeze({ state: String(qualified.target.selfIntegrity.state || ''), value: String(qualified.target.selfIntegrity.value || '') }),
-        locatorAuthority: false
-      }),
-      representation: Object.freeze({
-        kind: 'complete-workspace-snapshot',
-        packagePath: archiveFile.path,
-        mediaType: 'application/zip',
-        codec: HANDOFF_WORKSPACE_ARCHIVE_CODEC,
-        bytes: archiveFile.bytes,
-        digest: Object.freeze({ method: 'sha256', value: archiveFile.sha256, target: 'archive-bytes-as-carried' }),
-        deterministic: true,
-        locatorAuthority: false
-      }),
-      entryMap: Object.freeze({ normalization: HANDOFF_WORKSPACE_INNER_PATH_NORMALIZATION, count: entries.length, entries: Object.freeze(entries) }),
-      completeness: Object.freeze({ state: 'qualified', basis: 'exact-qualified-workspace-completeness-evidence-plus-complete-archive-entry-set', entryCount: entries.length, totalBytes, entriesFingerprint }),
-      provider: Object.freeze({ kind: HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND, state: 'ready', addressing: 'qualified-workspace-id-plus-normalized-inner-path', fallback: 'none' }),
-      authority: Object.freeze({ workspaceIdentity: 'exact-workspace-target-byte-identity', archiveIdentity: 'exact-archive-byte-digest', pathAuthority: false, adjacencyAuthority: false, orderingAuthority: false, priorProvenanceAuthority: false })
-    });
+    const binding = buildWorkspaceArchiveBinding({ workspace, qualified, archiveFile, targetFile, coverage });
+    const entries = binding.entryMap.entries;
     archiveBindings.push(binding);
     workspaceMaterializations.push(deepFreeze({ ...workspace, includedEntries: Object.freeze(entries) }));
     records.push(Object.freeze({ workspace, binding, qualified, archiveFile }));
@@ -129,7 +103,7 @@ export function upgradeRecipientRelativeHandoffTransportPackageV2(baseline = {},
           Object.freeze({ packagePath: binding.representation.packagePath, bytes: binding.representation.bytes, sha256: binding.representation.digest.value })
         ])
       ]),
-      note: 'Outer file-map integrity governs package files. Workspace entry identity/completeness is independently re-established from the exact archive digest, entry map, per-entry byte identity, and exact carried Workspace target; descriptor presence alone proves neither delivery nor Handoff acceptance.'
+      note: 'Outer file-map integrity governs package files. Workspace entry identity/coverage is independently re-established from the exact archive digest, entry map, per-entry byte identity, and exact carried Workspace target; descriptor presence alone proves neither delivery nor Handoff acceptance.'
     })
   });
 
@@ -228,11 +202,16 @@ function constructionRecipientV2Inspection(recipientSurface = {}, carrierProject
       pointerPath: String(item.pointerPath || ''),
       workspaceId: String(item.workspaceId || ''),
       workspaceRelativeHandoffPath: String(item.workspaceRelativeHandoffPath || ''),
+      endpointRolePointers: Object.freeze((topology.endpointRoles || [])
+        .filter((role) => String(role.routeId || '') === String(item.routeId || ''))
+        .map((role) => String(role.pointerPath || ''))
+        .filter(Boolean)),
       participantRolePointers: Object.freeze((topology.participantRoles || [])
         .filter((role) => String(role.routeId || '') === String(item.routeId || ''))
         .map((role) => String(role.pointerPath || ''))
         .filter(Boolean))
     }))),
+    endpointRoles: Object.freeze((topology.endpointRoles || []).map((item) => Object.freeze({ ...item }))),
     participantRoles: Object.freeze((topology.participantRoles || []).map((item) => Object.freeze({ ...item }))),
     caches: Object.freeze((topology.caches || []).map((item) => Object.freeze({ ...item }))),
     descriptor,
@@ -251,7 +230,6 @@ function findFile(bundle = {}, path = '') { return (bundle.files || []).find((fi
 function parseJsonFile(file = null) { try { return file ? JSON.parse(decodeUtf8(packageFileBytes(file))) : null; } catch { return null; } }
 function decodeUtf8(data) { try { return new TextDecoder('utf-8', { fatal: true }).decode(data); } catch { return ''; } }
 function safeToken(value = '') { return String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'workspace'; }
-function stableJson(value) { return JSON.stringify(sortJson(value)); }
 function stablePrettyJson(value) { return JSON.stringify(sortJson(value), null, 2); }
 function sortJson(value) { if (Array.isArray(value)) return value.map(sortJson); if (!value || typeof value !== 'object') return value; if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return undefined; return Object.fromEntries(Object.keys(value).sort().flatMap((key) => { const sorted = sortJson(value[key]); return typeof sorted === 'undefined' ? [] : [[key, sorted]]; })); }
 function finding(severity, code, message, extra = {}) { return Object.freeze({ severity, code, message, ...extra }); }

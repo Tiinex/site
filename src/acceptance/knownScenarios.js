@@ -18,7 +18,7 @@ export const knownScenarioMatrix = Object.freeze({
       status: KnownScenarioStatus.automated,
       priority: 'critical',
       contract: 'Local tree imports must retain local/session boundaries, workspace Open/Merge candidates, ordinary tree export entries, and reimport parity without guessed GitHub provenance.',
-      automatedChecks: ['src/acceptance/recoveryAcceptance.test.mjs', 'src/app/localMaterialCommand.test.mjs', 'src/app/workspaceExportCommand.test.mjs'],
+      automatedChecks: ['node tools/run-foundation-suite.mjs --suite smoke'],
       manualChecks: ['drag/drop real gaming tree zip', 'Open candidate', 'Merge candidate', 'export tree and reimport'],
       failureMode: 'Imported material is not dropped or source-guessed; any hidden/grouped material must be visible in ledger counts.'
     }),
@@ -27,7 +27,7 @@ export const knownScenarioMatrix = Object.freeze({
       status: KnownScenarioStatus.automated,
       priority: 'critical',
       contract: 'Loading GitHub issue/source material over imported local material must make source paths canonical while retaining local continuity for source close/refresh recovery.',
-      automatedChecks: ['src/acceptance/recoveryAcceptance.test.mjs', 'src/workspaces/workspace.sourceOverImport.test.mjs', 'src/app/githubSourceMaterializationCommand.test.mjs'],
+      automatedChecks: ['node tools/run-foundation-suite.mjs --suite smoke'],
       manualChecks: ['import tree first', 'add Tiinusen/socials issue source', 'close source and confirm local continuity returns'],
       failureMode: 'No silent 5/6 -> 3 collapse; ledger must explain raw/source/visible/hidden/candidate counts.'
     }),
@@ -36,7 +36,7 @@ export const knownScenarioMatrix = Object.freeze({
       status: KnownScenarioStatus.automated,
       priority: 'critical',
       contract: 'Loaded local/imported artifacts may recover missing parents from explicit Parent/Origin boundaries without converting the declaring artifact to source-backed material.',
-      automatedChecks: ['src/acceptance/recoveryAcceptance.test.mjs', 'src/app/lineageCommand.test.mjs', 'src/app/lineageSourceRecovery.test.mjs'],
+      automatedChecks: ['node tools/run-foundation-suite.mjs --suite smoke'],
       manualChecks: ['Load full lineage on imported continuation with explicit Origin'],
       failureMode: 'Missing parents become explicit findings or recovery-only source material; no GitHub guessing from local paths.'
     }),
@@ -46,7 +46,7 @@ export const knownScenarioMatrix = Object.freeze({
       status: KnownScenarioStatus.automated,
       priority: 'supporting',
       contract: 'Clicking a schema/type badge opens or loads the reading-contract schema lineage without applying a hidden display filter or converting local/imported material to source-backed material.',
-      automatedChecks: ['src/app/schemaNavigationCommand.test.mjs'],
+      automatedChecks: ['node tools/run-foundation-suite.mjs --suite integration'],
       manualChecks: ['click topic/schema badge on imported/source artifact and confirm lineage focuses the schema record'],
       failureMode: 'Schema badge must not behave as a plain schemaFilter toggle; it must explain unavailable schemas explicitly.'
     }),

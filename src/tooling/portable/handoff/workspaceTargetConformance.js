@@ -13,7 +13,7 @@ export function qualifyHandoffWorkspaceTarget(input = {}) {
       markdown,
       expectedSchemaId: 'tiinex.workspace.v1',
       requireExactContract: true,
-      resolveParent: ({ parent, targetEntry }) => resolveWorkspaceParent({ entries: input.entries || [], targetPath, parent, targetEntry })
+      resolveParent: ({ parent, targetEntry }) => resolveWorkspaceParent({ entries: input.entries || [], parentCandidates: input.parentCandidates || input.recoveryEntries || [], targetPath, parent, targetEntry })
     });
   } catch (error) {
     return blockedTarget(targetPath, ['workspace-target-artifact-conformance-error'], String(error?.message || error || 'workspace-target-artifact-conformance-error'));
@@ -44,8 +44,9 @@ function conformanceReasons(conformance = {}) {
   return [...new Set(reasons)];
 }
 
-function resolveWorkspaceParent({ entries = [], targetPath = '', parent = {}, targetEntry = {} } = {}) {
+function resolveWorkspaceParent({ entries = [], parentCandidates = [], targetPath = '', parent = {}, targetEntry = {} } = {}) {
   const indexed = indexEntries(entries);
+  const recoveryIndexed = indexEntries(parentCandidates);
   const localCandidates = new Map();
   for (const reference of parentLocalReferences(parent)) {
     const resolvedPath = resolveRelativeReference(targetPath, reference);
@@ -61,12 +62,15 @@ function resolveWorkspaceParent({ entries = [], targetPath = '', parent = {}, ta
   const expectedDigest = String(targetEntry?.value || '').trim();
   if (!expectedDigest) return Object.freeze({ state: 'unavailable', reason: 'parent-target-digest-missing' });
   const digestCandidates = new Map();
-  for (const entry of indexed.values()) {
-    const markdown = decodeUtf8(entry.data);
-    if (!markdown) continue;
-    const self = validatedC14nV2PrimarySelfDigest(markdown);
-    if (self.state !== 'verified' || self.value !== expectedDigest) continue;
-    digestCandidates.set(entry.path, Object.freeze({ state: 'qualified', markdown, basis: 'workspace-parent-target-digest-candidate', workspaceRelativePath: entry.path, sha256: String(entry.sha256 || '') }));
+  for (const [candidateSet, basis] of [[indexed, 'workspace-parent-target-digest-candidate'], [recoveryIndexed, 'detached-parent-target-digest-candidate']]) {
+    for (const entry of candidateSet.values()) {
+      const markdown = decodeUtf8(entry.data);
+      if (!markdown) continue;
+      const self = validatedC14nV2PrimarySelfDigest(markdown);
+      if (self.state !== 'verified' || self.value !== expectedDigest) continue;
+      const key = `${entry.path}\u0000${entry.sha256 || ''}`;
+      digestCandidates.set(key, Object.freeze({ state: 'qualified', markdown, basis, workspaceRelativePath: entry.path, sha256: String(entry.sha256 || '') }));
+    }
   }
   if (digestCandidates.size === 1) return [...digestCandidates.values()][0];
   if (digestCandidates.size > 1) return Object.freeze({ state: 'ambiguous', reason: 'multiple-parent-target-digest-candidates' });

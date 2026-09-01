@@ -1,4 +1,4 @@
-import { packageFileBytes } from '../../../../export/package.bytes.js';
+import { packageFileBytes, sha256Hex, utf8Bytes } from '../../../../export/package.bytes.js';
 export function normalizeAdditionalWorkspaceDescriptors(value) {
   if (!value) return [];
   if (Array.isArray(value)) return value.map((entry) => typeof entry === 'string' ? parseWorkspaceDescriptorString(entry) : Object.freeze({ ...(entry || {}) }));
@@ -20,7 +20,11 @@ export function normalizeTransportRoute(route, defaultWorkspaceId = '') {
 }
 
 export function safeWorkspaceToken(value = '') {
-  return String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'workspace';
+  const raw = String(value || '');
+  const token = raw.trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!token) return 'workspace';
+  if (token.length <= 100) return token;
+  return `${token.slice(0, 87)}-${sha256Hex(utf8Bytes(raw)).slice(0, 12)}`;
 }
 
 export function serializableMetadata(value = {}) {

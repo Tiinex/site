@@ -25,7 +25,7 @@ export function planRecipientRelativeHandoffMaterialClosure(input = {}, options 
   const endpointRoleBlocked = endpointRoles.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
   const participantRoleBlocked = participantRoles.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
   const dependencyBlocked = dependencies.some((item) => ['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition));
-  const workspaceBlocked = workspaces.some((item) => item.qualification === 'invalid-completeness-claim');
+  const workspaceBlocked = workspaces.some((item) => String(item.qualification || '').startsWith('invalid-'));
   const ready = !requiredBlocked && !endpointRoleBlocked && !participantRoleBlocked && !dependencyBlocked && !workspaceBlocked;
   for (const item of required) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.required.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
   for (const item of endpointRoles) if (['unresolved', 'ambiguous', 'integrity-conflict'].includes(item.disposition)) findings.push(finding('error', `portable.handoff-material.endpoint-role.${item.disposition}`, item.reason, { requirementId: item.requirementId, referenceTarget: item.referenceTarget }));
@@ -91,15 +91,26 @@ function qualifyWorkspaceMaterializations(items, findings) {
 function qualifyWorkspaceMaterialization(item = {}, index = 0, findings = null) {
   const requested = String(item.state || item.materialization || 'partial');
   const completeEvidence = item.completenessEvidence?.state === 'qualified' || item.completeEvidence?.state === 'qualified';
-  const qualification = requested === 'complete' && !completeEvidence ? 'invalid-completeness-claim' : 'qualified';
-  if (qualification !== 'qualified' && findings) findings.push(finding('error', 'portable.handoff-material.workspace.complete-unproven', 'Workspace materialization claimed complete without qualified completeness evidence for the declared workspace boundary.', { workspaceId: item.id || item.workspaceId || `workspace-${index}` }));
+  const boundedEvidence = item.scopeEvidence?.state === 'qualified';
+  let qualification = 'qualified';
+  let materialization = 'partial';
+  if (requested === 'complete') {
+    qualification = completeEvidence ? 'qualified' : 'invalid-completeness-claim';
+    materialization = completeEvidence ? 'complete' : 'partial';
+  } else if (requested === 'bounded') {
+    qualification = boundedEvidence ? 'qualified' : 'invalid-bounded-scope-claim';
+    materialization = boundedEvidence ? 'bounded' : 'partial';
+  }
+  if (qualification === 'invalid-completeness-claim' && findings) findings.push(finding('error', 'portable.handoff-material.workspace.complete-unproven', 'Workspace materialization claimed complete without qualified completeness evidence for the declared workspace boundary.', { workspaceId: item.id || item.workspaceId || `workspace-${index}` }));
+  if (qualification === 'invalid-bounded-scope-claim' && findings) findings.push(finding('error', 'portable.handoff-material.workspace.bounded-unproven', 'Workspace materialization claimed bounded without qualified exact representation-entry-set scope evidence.', { workspaceId: item.id || item.workspaceId || `workspace-${index}` }));
   return deepFreeze({
     id: String(item.id || item.workspaceId || `workspace-${index}`),
     title: String(item.title || item.name || item.workspaceTitle || item.id || item.workspaceId || `workspace-${index}`),
     source: Object.freeze({ ...(item.source || {}) }),
-    materialization: requested === 'complete' && completeEvidence ? 'complete' : 'partial',
+    materialization,
     qualification,
     completenessEvidence: Object.freeze({ ...(item.completenessEvidence || item.completeEvidence || {}) }),
+    scopeEvidence: Object.freeze({ ...(item.scopeEvidence || {}) }),
     includedEntries: Object.freeze((item.includedEntries || item.entries || []).map(normalizeIncludedEntry))
   });
 }
@@ -115,11 +126,13 @@ export function workspaceMaterializationCorrelationEvidence(item = {}, prequalif
     },
     source: serializable(item.source || {}),
     completenessEvidence: serializable(item.completenessEvidence || item.completeEvidence || {}),
+    scopeEvidence: serializable(item.scopeEvidence || {}),
     carrierEntries: (item.entries || []).map((entry) => carrierCorrelationEntry(entry)),
     qualifiedTruth: {
       materialization: String(qualified.materialization || 'partial'),
       qualification: String(qualified.qualification || ''),
       completenessEvidence: serializable(qualified.completenessEvidence || {}),
+      scopeEvidence: serializable(qualified.scopeEvidence || {}),
       includedEntries: (qualified.includedEntries || []).map(normalizeIncludedEntry)
     }
   }));
@@ -147,6 +160,7 @@ export function qualifyWorkspaceMaterializationCorrelationEntry(item = {}) {
   if (String(item.materialization || '') !== String(qualifiedTruth.materialization || '')) findings.push('transport-correlation-materialization-mismatch');
   if (String(item.qualification || '') !== String(qualifiedTruth.qualification || '')) findings.push('transport-correlation-qualification-mismatch');
   if (stableJson(item.completenessEvidence || {}) !== stableJson(qualifiedTruth.completenessEvidence || {})) findings.push('transport-correlation-completeness-evidence-mismatch');
+  if (stableJson(item.scopeEvidence || {}) !== stableJson(qualifiedTruth.scopeEvidence || {})) findings.push('transport-correlation-scope-evidence-mismatch');
   if (stableJson(item.includedEntries || []) !== stableJson(qualifiedTruth.includedEntries || [])) findings.push('transport-correlation-included-entries-mismatch');
   return Object.freeze({ state: findings.length ? 'invalid' : 'qualified', key, expectedKey, evidence, findings: Object.freeze(findings) });
 }

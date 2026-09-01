@@ -2,10 +2,10 @@
   "schema": "tiinex.site.schema-runtime-projection.v1",
   "generator": "schema-runtime-projection-v1",
   "schemaId": "tiinex.workspace.representation.v1",
-  "sourceChecksum": "9f8e806b365484ebdd477e16d5dd12850f8f801a648a4b8e67cc284383a45cf7",
-  "sourceBlobSha": "2962cac53b72c91d00a503a141cb01ef2a52956b",
-  "sourceBytes": 22617,
-  "bindingChecksum": "9f8e806b365484ebdd477e16d5dd12850f8f801a648a4b8e67cc284383a45cf7",
+  "sourceChecksum": "69b7d91a8e4b64f2a1510d83e4d001a015ab723967d401dea386acc2d878e233",
+  "sourceBlobSha": "ace693274518fe3d27bd50e7023ae1e0c95bcce7",
+  "sourceBytes": 34647,
+  "bindingChecksum": "69b7d91a8e4b64f2a1510d83e4d001a015ab723967d401dea386acc2d878e233",
   "validationContract": {
     "schema": "tiinex.site.compact-portable-validation-contract.v1",
     "schemaId": "tiinex.workspace.representation.v1",
@@ -180,6 +180,48 @@
               "target": {
                 "heading": "## Representation Binding",
                 "title": "Representation Binding",
+                "level": 2,
+                "authority": "root-same-name-default",
+                "qualification": "valid"
+              }
+            }
+          ]
+        },
+        {
+          "group": "Representation Scope",
+          "qualification": "valid",
+          "target": {
+            "heading": "## Representation Scope",
+            "title": "Representation Scope",
+            "level": 2,
+            "authority": "root-same-name-default",
+            "requiredness": "optional",
+            "qualification": "valid",
+            "findings": []
+          },
+          "requiredFields": [
+            "Scope Basis",
+            "Included Entry Authority",
+            "Omitted Entry Meaning",
+            "Source Membership Claim",
+            "Recovery Closure Boundary"
+          ],
+          "optionalFields": [],
+          "contributors": [
+            {
+              "sourceSchemaId": "tiinex.workspace.representation.v1",
+              "group": "Representation Scope",
+              "requiredFields": [
+                "Scope Basis",
+                "Included Entry Authority",
+                "Omitted Entry Meaning",
+                "Source Membership Claim",
+                "Recovery Closure Boundary"
+              ],
+              "optionalFields": [],
+              "target": {
+                "heading": "## Representation Scope",
+                "title": "Representation Scope",
                 "level": 2,
                 "authority": "root-same-name-default",
                 "qualification": "valid"
@@ -437,6 +479,24 @@
           "entryShapes": [
             "Named Declaration"
           ],
+          "ordering": []
+        },
+        {
+          "name": "Representation Scope",
+          "requiredWhen": [
+            "Coverage` is `bounded"
+          ],
+          "requiredSections": [],
+          "requiredFields": [
+            "Scope Basis",
+            "Included Entry Authority",
+            "Omitted Entry Meaning",
+            "Source Membership Claim",
+            "Recovery Closure Boundary"
+          ],
+          "requiredEntries": [],
+          "allowedLabels": [],
+          "entryShapes": [],
           "ordering": []
         }
       ],
@@ -1480,7 +1540,7 @@
           "Markdown Link"
         ],
         "domainPolicy": "closed",
-        "declarationLine": 105,
+        "declarationLine": 115,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1659,7 +1719,7 @@
           "Markdown Link"
         ],
         "domainPolicy": "closed",
-        "declarationLine": 108,
+        "declarationLine": 118,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1834,11 +1894,12 @@
         "sourceGroup": "Representation Binding",
         "field": "Representation Kind",
         "allowedValues": [
-          "exact-workspace-byte-tree-archive"
+          "exact-workspace-byte-tree-archive",
+          "exact-bounded-workspace-byte-tree-archive"
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 111,
+        "declarationLine": 121,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1859,12 +1920,13 @@
         "field": "Coverage",
         "allowedValues": [
           "complete",
+          "bounded",
           "partial",
           "unknown"
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 114,
+        "declarationLine": 125,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1891,7 +1953,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 119,
+        "declarationLine": 131,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1908,6 +1970,126 @@
       {
         "kind": "field-domain",
         "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "sourceGroup": "Representation Scope",
+        "field": "Scope Basis",
+        "allowedValues": [
+          "exact-representation-entry-set"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 167,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.workspace.representation.v1"
+        ],
+        "targetGroup": "Representation Scope",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "sourceGroup": "Representation Scope",
+        "field": "Included Entry Authority",
+        "allowedValues": [
+          "qualified-decoded-entry-set"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 170,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.workspace.representation.v1"
+        ],
+        "targetGroup": "Representation Scope",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "sourceGroup": "Representation Scope",
+        "field": "Omitted Entry Meaning",
+        "allowedValues": [
+          "outside-representation-not-absent-from-workspace"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 173,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.workspace.representation.v1"
+        ],
+        "targetGroup": "Representation Scope",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "sourceGroup": "Representation Scope",
+        "field": "Source Membership Claim",
+        "allowedValues": [
+          "represented-entries-are-workspace-relative-source-bytes"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 176,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.workspace.representation.v1"
+        ],
+        "targetGroup": "Representation Scope",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "sourceGroup": "Representation Scope",
+        "field": "Recovery Closure Boundary",
+        "allowedValues": [
+          "separate-qualified-closure"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 179,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.workspace.representation.v1"
+        ],
+        "targetGroup": "Representation Scope",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
         "sourceGroup": "Representation Correlation",
         "field": "Path Mapping",
         "allowedValues": [
@@ -1916,7 +2098,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 154,
+        "declarationLine": 212,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1940,7 +2122,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 158,
+        "declarationLine": 216,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -1964,7 +2146,7 @@
           "Markdown Link"
         ],
         "domainPolicy": "closed",
-        "declarationLine": 161,
+        "declarationLine": 219,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2143,7 +2325,7 @@
           "Markdown Link"
         ],
         "domainPolicy": "closed",
-        "declarationLine": 164,
+        "declarationLine": 222,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2318,11 +2500,12 @@
         "sourceGroup": "Provider Qualification",
         "field": "Activation Rule",
         "allowedValues": [
-          "verified-complete-only"
+          "verified-complete-only",
+          "verified-bounded-only"
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 195,
+        "declarationLine": 254,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2346,7 +2529,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 198,
+        "declarationLine": 258,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2366,11 +2549,12 @@
         "sourceGroup": "Provider Qualification",
         "field": "Coverage Requirement",
         "allowedValues": [
-          "complete"
+          "complete",
+          "bounded"
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 201,
+        "declarationLine": 261,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2394,7 +2578,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 204,
+        "declarationLine": 265,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2414,11 +2598,12 @@
         "sourceGroup": "Provider Qualification",
         "field": "Selection Rule",
         "allowedValues": [
-          "exactly-one-binding-per-workspace"
+          "exactly-one-binding-per-workspace",
+          "explicit-binding-per-bounded-scope"
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 207,
+        "declarationLine": 268,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2442,7 +2627,7 @@
         ],
         "allowedShapes": [],
         "domainPolicy": "closed",
-        "declarationLine": 210,
+        "declarationLine": 272,
         "declarationQualification": "valid",
         "declarationFindings": [],
         "targetMode": "local",
@@ -2775,6 +2960,11 @@
       "Must Not Be Used As"
     ],
     "optionalInputs": [
+      "Scope Basis",
+      "Included Entry Authority",
+      "Omitted Entry Meaning",
+      "Source Membership Claim",
+      "Recovery Closure Boundary",
       "Mapping Manifest",
       "Entry Integrity Manifest",
       "Preservation Boundary",

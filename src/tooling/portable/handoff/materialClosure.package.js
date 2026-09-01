@@ -1,6 +1,6 @@
 import { buildExportPackageBundle, inspectExportPackageBundle } from '../../../export/package.builder.js';
 import { buildExportPackageFileMap, finalizeFile } from '../../../export/package.fileMap.js';
-import { packageFileBytes, stableFingerprintBytes, utf8Bytes } from '../../../export/package.bytes.js';
+import { packageFileBytes, sha256Hex, stableFingerprintBytes, utf8Bytes } from '../../../export/package.bytes.js';
 import { packageMaterialRepresentationSha256 } from '../../../export/package.controlIntegrity.js';
 import { roundTripPortableRuntimePackage } from '../package/runtime.package.js';
 import { planRecipientRelativeHandoffMaterialClosure, qualifyWorkspaceMaterializationCorrelationEntry, workspaceMaterializationCorrelationKey } from './materialClosure.plan.js';
@@ -173,7 +173,7 @@ function reservedGeneratedPath(value = '') { const path = String(value || ''); r
 function materialPackagePath(entry = {}) { return safePath(entry.requestedPackagePath || `handoff.material/${safeToken(entry.requirementId || 'material')}/material.bin`); }
 function workspacePackagePath(workspace = {}, entry = {}, qualifiedWorkspaceId = '') { return safePath(entry.packagePath || `handoff.workspaces/${safeToken(qualifiedWorkspaceId || workspace.id || workspace.workspaceId || 'workspace')}/${safePath(entry.path || 'material.bin')}`); }
 function safePath(value = '') { return String(value || '').replace(/\\/g, '/').replace(/^\/+/, '').split('/').filter((part) => part && part !== '.' && part !== '..').map((part) => part.replace(/[\u0000-\u001f<>:"|?*]/g, '_')).join('/') || 'material.bin'; }
-function safeToken(value = '') { return String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'material'; }
+function safeToken(value = '') { const raw = String(value || ''); const token = raw.trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, ''); if (!token) return 'material'; if (token.length <= 100) return token; return `${token.slice(0, 87)}-${sha256Hex(utf8Bytes(raw)).slice(0, 12)}`; }
 function hasBytes(value = {}) { return packageFileBytes(value).byteLength > 0; }
 function parseJsonFile(file = {}) { try { return JSON.parse(new TextDecoder().decode(packageFileBytes(file))); } catch { return null; } }
 function stablePrettyJson(value) { return JSON.stringify(sortJson(value), null, 2); }

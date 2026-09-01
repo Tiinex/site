@@ -2,11 +2,13 @@ import { packageFileByteView, packageFileBytes, sha256Hex, utf8Bytes } from '../
 import { normalizeHandoffWorkspaceInnerPath } from './workspaceByteProvider.js';
 import { qualifyHandoffWorkspaceTarget } from './workspaceTargetConformance.js';
 
-export function qualifyWorkspaceForArchive(workspace = {}, byPath = new Map(), targetDeclarations = []) {
+export function qualifyWorkspaceForArchive(workspace = {}, byPath = new Map(), targetDeclarations = [], parentCandidates = []) {
   const findings = [];
   const workspaceId = String(workspace.id || '');
   if (!workspaceId) findings.push(finding('error', 'portable.handoff-v2.workspace.id.unresolved', 'Archive-backed workspace binding requires an exact carrier workspace id.'));
-  if (String(workspace.materialization || '') !== 'complete' || String(workspace.qualification || '') !== 'qualified' || String(workspace.correlationStatus || '') !== 'qualified' || String(workspace.completenessEvidence?.state || '') !== 'qualified') findings.push(finding('error', 'portable.handoff-v2.workspace.completeness.unqualified', 'Archive-backed workspace representation requires explicit qualified complete-workspace evidence.', { workspaceId }));
+  const coverage = workspaceCoverage(workspace);
+  const evidence = workspaceEvidence(workspace, coverage);
+  if (!coverage || String(workspace.qualification || '') !== 'qualified' || String(workspace.correlationStatus || '') !== 'qualified' || String(evidence.state || '') !== 'qualified') findings.push(finding('error', 'portable.handoff-v2.workspace.coverage.unqualified', 'Archive-backed workspace representation requires explicit qualified complete or bounded entry-set evidence.', { workspaceId, coverage }));
   if (targetDeclarations.length !== 1) {
     findings.push(finding('error', targetDeclarations.length > 1 ? 'portable.handoff-v2.workspace-target.ambiguous' : 'portable.handoff-v2.workspace-target.missing', targetDeclarations.length > 1 ? 'More than one explicit Workspace target was declared for the carrier workspace id; v2 refuses ambiguous semantic binding.' : 'No explicit exact Workspace artifact target was declared for the carrier workspace id; v2 refuses filename/content scanning or transport-only semantic Workspace identity.', { workspaceId, targetCount: targetDeclarations.length }));
     return blocked(workspaceId, findings);
@@ -23,11 +25,11 @@ export function qualifyWorkspaceForArchive(workspace = {}, byPath = new Map(), t
 
   const entries = qualifyWorkspaceEntries(workspace, byPath, workspaceId, findings);
   const evidenceFingerprint = sha256Hex(utf8Bytes(stableJson(entries.map(projectEntryIdentity))));
-  if (String(workspace.completenessEvidence?.entriesFingerprint || '') !== evidenceFingerprint || Number(workspace.completenessEvidence?.entryCount || -1) !== entries.length || Number(workspace.completenessEvidence?.totalBytes || -1) !== entries.reduce((sum, entry) => sum + entry.bytes, 0)) findings.push(finding('error', 'portable.handoff-v2.workspace.completeness-evidence.stale', 'Workspace completeness evidence does not exactly cover the archive entry set.', { workspaceId }));
+  if (String(evidence.entriesFingerprint || '') !== evidenceFingerprint || Number(evidence.entryCount || -1) !== entries.length || Number(evidence.totalBytes || -1) !== entries.reduce((sum, entry) => sum + entry.bytes, 0)) findings.push(finding('error', `portable.handoff-v2.workspace.${coverage}-evidence.stale`, 'Workspace coverage evidence does not exactly cover the archive entry set.', { workspaceId, coverage }));
 
   const targetEntry = entries.find((entry) => entry.path === targetNormalized.path) || null;
-  if (!targetEntry) findings.push(finding('error', 'portable.handoff-v2.workspace-target.unresolvable', 'Explicit Workspace target is not present exactly once in the qualified complete workspace entry set.', { workspaceId, path: targetNormalized.path }));
-  const targetQualification = targetEntry ? qualifyHandoffWorkspaceTarget({ targetPath: targetNormalized.path, targetData: targetEntry.data, entries }) : null;
+  if (!targetEntry) findings.push(finding('error', 'portable.handoff-v2.workspace-target.unresolvable', 'Explicit Workspace target is not present exactly once in the qualified Workspace Representation entry set.', { workspaceId, path: targetNormalized.path }));
+  const targetQualification = targetEntry ? qualifyHandoffWorkspaceTarget({ targetPath: targetNormalized.path, targetData: targetEntry.data, entries, parentCandidates }) : null;
   if (targetQualification?.state !== 'qualified') {
     for (const reason of targetQualification?.reasons || ['workspace-target-artifact-conformance-unqualified']) findings.push(workspaceTargetFinding(reason, workspaceId, targetNormalized.path));
   }
@@ -38,7 +40,7 @@ export function qualifyWorkspaceForArchive(workspace = {}, byPath = new Map(), t
 }
 
 
-export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = null, targetDeclarations = []) {
+export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = null, targetDeclarations = [], parentCandidates = []) {
   const findings = [];
   const workspaceId = String(workspace.id || '');
   if (!workspaceId) findings.push(finding('error', 'portable.handoff-v2.workspace.id.unresolved', 'Archive-backed workspace binding requires an exact carrier workspace id.'));
@@ -46,8 +48,10 @@ export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = 
     findings.push(finding('error', 'portable.handoff-v2.workspace-direct-source.unavailable', 'Direct archive-backed manufacture requires the exact already-qualified workspace materialization bytes correlated to this closure workspace.', { workspaceId }));
     return blocked(workspaceId, findings);
   }
-  if (String(workspace.materialization || '') !== 'complete' || String(workspace.qualification || '') !== 'qualified' || String(workspace.correlationStatus || '') !== 'qualified' || String(workspace.completenessEvidence?.state || '') !== 'qualified') {
-    findings.push(finding('error', 'portable.handoff-v2.workspace.completeness.unqualified', 'Archive-backed workspace representation requires explicit qualified complete-workspace evidence.', { workspaceId }));
+  const coverage = workspaceCoverage(workspace);
+  const evidence = workspaceEvidence(workspace, coverage);
+  if (!coverage || String(workspace.qualification || '') !== 'qualified' || String(workspace.correlationStatus || '') !== 'qualified' || String(evidence.state || '') !== 'qualified') {
+    findings.push(finding('error', 'portable.handoff-v2.workspace.coverage.unqualified', 'Archive-backed workspace representation requires explicit qualified complete or bounded entry-set evidence.', { workspaceId, coverage }));
   }
   if (targetDeclarations.length !== 1) {
     findings.push(finding('error', targetDeclarations.length > 1 ? 'portable.handoff-v2.workspace-target.ambiguous' : 'portable.handoff-v2.workspace-target.missing', targetDeclarations.length > 1 ? 'More than one explicit Workspace target was declared for the carrier workspace id; v2 refuses ambiguous semantic binding.' : 'No explicit exact Workspace artifact target was declared for the carrier workspace id; v2 refuses filename/content scanning or transport-only semantic Workspace identity.', { workspaceId, targetCount: targetDeclarations.length }));
@@ -63,23 +67,24 @@ export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = 
     return blocked(workspaceId, findings);
   }
 
-  const rawEvidence = rawWorkspace.completenessEvidence || {};
-  const declaredEvidence = workspace.completenessEvidence || {};
-  const evidenceMatches = String(rawEvidence.state || '') === 'qualified'
+  const rawEvidence = workspaceEvidence(rawWorkspace, coverage);
+  const declaredEvidence = evidence;
+  const evidenceMatches = workspaceCoverage(rawWorkspace) === coverage
+    && String(rawEvidence.state || '') === 'qualified'
     && String(rawEvidence.entriesFingerprint || '') === String(declaredEvidence.entriesFingerprint || '')
     && Number(rawEvidence.entryCount ?? -1) === Number(declaredEvidence.entryCount ?? -2)
     && Number(rawEvidence.totalBytes ?? -1) === Number(declaredEvidence.totalBytes ?? -2);
-  if (!evidenceMatches) findings.push(finding('error', 'portable.handoff-v2.workspace-direct-source.completeness-evidence-mismatch', 'Direct Workspace source does not carry the same qualified completeness evidence as the correlated closure Workspace.', { workspaceId }));
+  if (!evidenceMatches) findings.push(finding('error', 'portable.handoff-v2.workspace-direct-source.coverage-evidence-mismatch', 'Direct Workspace source does not carry the same qualified complete-or-bounded evidence as the correlated closure Workspace.', { workspaceId, coverage }));
 
   const declaredByPath = new Map();
   for (const declared of workspace.includedEntries || []) {
     const normalized = normalizeHandoffWorkspaceInnerPath(declared.path || '');
     if (normalized.state !== 'qualified') {
-      findings.push(finding('error', `portable.handoff-v2.${normalized.reason || 'workspace-inner-path-unsafe'}`, 'Qualified complete-workspace declaration contains an unsafe path.', { workspaceId, path: declared.path || '' }));
+      findings.push(finding('error', `portable.handoff-v2.${normalized.reason || 'workspace-inner-path-unsafe'}`, 'Qualified Workspace Representation declaration contains an unsafe path.', { workspaceId, path: declared.path || '' }));
       continue;
     }
     if (declaredByPath.has(normalized.path)) {
-      findings.push(finding('error', 'portable.handoff-v2.workspace-inner-path-duplicate', 'Qualified complete-workspace declaration contains duplicate normalized inner paths.', { workspaceId, path: normalized.path }));
+      findings.push(finding('error', 'portable.handoff-v2.workspace-inner-path-duplicate', 'Qualified Workspace Representation declaration contains duplicate normalized inner paths.', { workspaceId, path: normalized.path }));
       continue;
     }
     declaredByPath.set(normalized.path, Object.freeze({ ...declared, path: normalized.path }));
@@ -110,7 +115,7 @@ export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = 
   for (const [declaredPath, declared] of declaredByPath) {
     const raw = rawByPath.get(declaredPath);
     if (!raw) {
-      findings.push(finding('error', 'portable.handoff-v2.workspace-direct-source.entry-missing', 'Qualified complete-workspace declaration is missing from the direct source byte set.', { workspaceId, path: declaredPath }));
+      findings.push(finding('error', 'portable.handoff-v2.workspace-direct-source.entry-missing', 'Qualified Workspace Representation declaration is missing from the direct source byte set.', { workspaceId, path: declaredPath }));
       continue;
     }
     if (Number(declared.bytes || 0) !== raw.bytes || String(declared.sha256 || '') !== raw.sha256) {
@@ -126,12 +131,12 @@ export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = 
   const evidenceFingerprint = sha256Hex(utf8Bytes(stableJson(entries.map(projectEntryIdentity))));
   const totalBytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
   if (String(declaredEvidence.entriesFingerprint || '') !== evidenceFingerprint || Number(declaredEvidence.entryCount ?? -1) !== entries.length || Number(declaredEvidence.totalBytes ?? -1) !== totalBytes) {
-    findings.push(finding('error', 'portable.handoff-v2.workspace.completeness-evidence.stale', 'Workspace completeness evidence does not exactly cover the direct archive entry identity set.', { workspaceId }));
+    findings.push(finding('error', `portable.handoff-v2.workspace.${coverage}-evidence.stale`, 'Workspace coverage evidence does not exactly cover the direct archive entry identity set.', { workspaceId, coverage }));
   }
 
   const targetEntry = entries.find((entry) => entry.path === targetNormalized.path) || null;
-  if (!targetEntry) findings.push(finding('error', 'portable.handoff-v2.workspace-target.unresolvable', 'Explicit Workspace target is not present exactly once in the qualified complete workspace entry set.', { workspaceId, path: targetNormalized.path }));
-  const targetQualification = targetEntry ? qualifyHandoffWorkspaceTarget({ targetPath: targetNormalized.path, targetData: targetEntry.data, entries }) : null;
+  if (!targetEntry) findings.push(finding('error', 'portable.handoff-v2.workspace-target.unresolvable', 'Explicit Workspace target is not present exactly once in the qualified Workspace Representation entry set.', { workspaceId, path: targetNormalized.path }));
+  const targetQualification = targetEntry ? qualifyHandoffWorkspaceTarget({ targetPath: targetNormalized.path, targetData: targetEntry.data, entries, parentCandidates }) : null;
   if (targetQualification?.state !== 'qualified') {
     for (const reason of targetQualification?.reasons || ['workspace-target-artifact-conformance-unqualified']) findings.push(workspaceTargetFinding(reason, workspaceId, targetNormalized.path));
   }
@@ -139,6 +144,14 @@ export function qualifyDirectWorkspaceForArchive(workspace = {}, rawWorkspace = 
     ? Object.freeze({ ...targetEntry, selfIntegrity: targetQualification.selfIntegrity, conformance: targetQualification.conformance })
     : null;
   return deepFreeze({ status: findings.some((item) => item.severity === 'error') ? 'blocked' : 'qualified', workspaceId, entries: Object.freeze(entries), target, findings: Object.freeze(findings) });
+}
+
+function workspaceCoverage(workspace = {}) {
+  const value = String(workspace.materialization || workspace.state || '');
+  return value === 'complete' || value === 'bounded' ? value : '';
+}
+function workspaceEvidence(workspace = {}, coverage = workspaceCoverage(workspace)) {
+  return coverage === 'bounded' ? (workspace.scopeEvidence || {}) : coverage === 'complete' ? (workspace.completenessEvidence || {}) : {};
 }
 
 function safeToken(value = '') { return String(value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100) || 'workspace'; }

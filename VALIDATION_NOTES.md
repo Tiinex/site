@@ -4,6 +4,14 @@ Checkpoint: `v470`
 Version: `0.2.289-v470`  
 Runtime: `react-v470-schema-reading-contract-materialization-identity-source-coalescing-authority-correction`
 
+## Foundation validation/checkpoint workflow
+
+- `npm run validate:static:diagnostic` executes the unchanged `tools/validate-static.mjs` gate, preserves its exact raw findings, and classifies them against `tools/static-validation.baseline.json`. Exact inherited findings may remain non-blocking for diagnostic/integration continuation only; new findings, newly oversized files, or growth of an inherited oversized file above its recorded byte baseline block immediately.
+- `npm run validate:integration` uses that regression-aware static diagnostic in place of the strict static step so later integration checks can be exercised without erasing inherited debt. When inherited debt remains and no new static regression appears, the profile status is `diagnostic-qualified`, not `passed` or release-qualified.
+- `npm run validate:closure` continues to execute the original strict `node tools/validate-static.mjs` gate. Existing inherited debt therefore remains a real closure blocker until it is actually resolved; the diagnostic baseline cannot convert it into closure success.
+- Current inherited static debt is two rule families: the absent `docs/architecture/uc001-workspace-lifecycle.md` requirement (also independently required by `tools/check-public-build.mjs`) and twelve source files already above the historical `v119` 24,000-byte guard. The size rule remains a current regression ceiling because `src/acceptance/m3PersistenceOwnerReadabilityExtraction.test.mjs` explicitly refers to the unchanged source-size guard; the historical label is not treated as evidence of obsolescence.
+- After substantive focused qualification, manufacture or refresh a canonical full-source Business + Docs + Site role return before starting broad/long closure. That return is a recoverability checkpoint, not acceptance, and may truthfully preserve unresolved blockers. This reduces Tiinex-owned repeated-work exposure without claiming control over host safeguards.
+
 ## v470 bounded correction
 
 - Open Schema materialization no longer uses first-hit id/path/representation collision as reading-contract authority. Collision discovery is bounded; each concrete collision candidate is independently qualified from its own Markdown bytes and, for linked declarations, its own exact representation evidence before reuse.

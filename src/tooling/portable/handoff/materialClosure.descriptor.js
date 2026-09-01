@@ -21,6 +21,7 @@ export function buildHandoffClosureDescriptor(plan = {}, packageMaterial = {}) {
       materialization: workspace.materialization,
       qualification: workspace.qualification,
       completenessEvidence: workspace.completenessEvidence,
+      scopeEvidence: workspace.scopeEvidence || Object.freeze({}),
       transportCorrelationKey: String(workspace.transportCorrelationKey || ''),
       correlationStatus,
       includedEntries: entries

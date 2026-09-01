@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runCheckpointedPlan } from './run-checkpointed-plan.mjs';
 import { buildValidationProfileContract, validationProfile } from './validation-profile.contract.mjs';
+import { STATIC_REGRESSION_MARKER } from './validate-static-regression-aware.mjs';
 
 export const VALIDATION_PROFILE_RUN_SCHEMA = 'tiinex.site.validation-profile-run.v1';
 
@@ -31,6 +32,7 @@ export async function runValidationProfile({
   if (resume && !checkpointDir) throw new Error('validation-profile.resume.checkpoint-dir.required');
   mkdirSync(absoluteCheckpointDir, { recursive: true });
   const prior = readJson(join(absoluteCheckpointDir, 'plan.json'));
+  const priorReceipt = readJson(join(absoluteCheckpointDir, 'receipt.json'));
 
   const planReport = await runPlan({
     cwd: absoluteCwd,
@@ -43,7 +45,15 @@ export async function runValidationProfile({
     ...(runStep ? { runStep } : {})
   });
   const checkpoint = readJson(join(absoluteCheckpointDir, 'plan.json'));
-  const status = planReport.status === 'completed' ? 'passed' : planReport.status;
+  const staticRegression = staticRegressionSummary(planReport.results || [])
+    || priorReceipt?.staticRegression
+    || emptyStaticRegressionSummary();
+  const baseStatus = planReport.status === 'completed' ? 'passed' : planReport.status;
+  const status = baseStatus === 'passed'
+    && selected.name === 'integration'
+    && Number(staticRegression.inheritedUnresolved || 0) > 0
+      ? 'diagnostic-qualified'
+      : baseStatus;
   const receipt = Object.freeze({
     schema: VALIDATION_PROFILE_RUN_SCHEMA,
     version: 1,
@@ -76,6 +86,8 @@ export async function runValidationProfile({
       raw: step.raw
     }))),
     results: Object.freeze((planReport.results || []).map((item) => Object.freeze({ ...item }))),
+    staticRegression: Object.freeze({ ...staticRegression }),
+    returnFirstCheckpoint: contract.returnFirstCheckpoint,
     fullValidationRequiredForClosure: selected.name !== 'closure',
     closureQualified: selected.name === 'closure' && status === 'passed',
     localTimingBoundary: 'Elapsed values are local child-process/checkpoint orchestration time only. They do not include host/model/client wait outside this process.',
@@ -107,6 +119,21 @@ function readJson(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
 }
 
+function staticRegressionSummary(results = []) {
+  for (let index = results.length - 1; index >= 0; index -= 1) {
+    const text = `${String(results[index]?.stdoutTail || '')}\n${String(results[index]?.stderrTail || '')}`;
+    const markerIndex = text.lastIndexOf(STATIC_REGRESSION_MARKER);
+    if (markerIndex === -1) continue;
+    const line = text.slice(markerIndex + STATIC_REGRESSION_MARKER.length).split(/\r?\n/, 1)[0].trim();
+    try { return Object.freeze(JSON.parse(line)); } catch { return Object.freeze({ ...emptyStaticRegressionSummary(), parseError: true }); }
+  }
+  return null;
+}
+
+function emptyStaticRegressionSummary() {
+  return Object.freeze({ status: 'not-run', baselineId: '', inheritedUnresolved: 0, introducedRegressions: 0, resolvedInherited: 0 });
+}
+
 function parseArgs(argv) {
   const out = { profileName: 'focused/tooling', checkpointDir: '', resume: false, inspect: false, json: false, heartbeatMs: 1000, timeoutMs: 0, captureLimit: 4000, help: false };
   for (let index = 0; index < argv.length; index += 1) {
@@ -128,16 +155,20 @@ function parseArgs(argv) {
 function printHuman(report) {
   console.log(`Validation profile ${report.profile}: ${report.status}; executed=${report.executedSteps}/${report.configuredSteps}; reused=${report.reusedCompletedSteps}; ${report.totalElapsedMs.toFixed(3)} ms`);
   console.log(`Checkpoint: ${report.checkpointDir}`);
+  if (report.staticRegression?.status && report.staticRegression.status !== 'not-run') {
+    console.log(`Static debt: ${report.staticRegression.status}; inherited=${report.staticRegression.inheritedUnresolved}; introduced=${report.staticRegression.introducedRegressions}; resolved=${report.staticRegression.resolvedInherited}`);
+  }
   if (report.resume.failedStep) console.log(`Resume point: step ${report.resume.failedStep} (last completed ${report.resume.lastCompletedStep})`);
   else if (report.resume.nextStep) console.log(`Next step: ${report.resume.nextStep}`);
   if (report.fullValidationRequiredForClosure) console.log('Final closure profile remains required for release qualification.');
+  if (['focused/tooling', 'integration'].includes(report.profile)) console.log(`Return-first boundary: ${report.returnFirstCheckpoint.carrierRequirement} before broad closure after substantive qualified work.`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = parseArgs(process.argv.slice(2));
     if (args.help) {
-      console.log('Usage: node tools/run-validation-profile.mjs [--profile focused/tooling|integration|closure] [--inspect] [--checkpoint-dir <dir> --resume] [--heartbeat-ms N] [--timeout-ms N] [--json]');
+      console.log('Usage: node tools/run-validation-profile.mjs [--profile smoke|focused/tooling|integration|closure] [--inspect] [--checkpoint-dir <dir> --resume] [--heartbeat-ms N] [--timeout-ms N] [--json]');
       process.exit(0);
     }
     if (args.inspect) {
@@ -148,7 +179,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     const report = await runValidationProfile(args);
     if (args.json) console.log(JSON.stringify(report, null, 2));
     else printHuman(report);
-    process.exit(report.status === 'passed' ? 0 : report.status === 'timed-out' ? 124 : 1);
+    process.exit(['passed', 'diagnostic-qualified'].includes(report.status) ? 0 : report.status === 'timed-out' ? 124 : 1);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);

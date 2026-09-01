@@ -3,24 +3,38 @@ import { splitValidationChain } from './run-validation-chain.mjs';
 
 export const VALIDATION_PROFILE_CONTRACT_SCHEMA = 'tiinex.site.validation-profile-contract.v1';
 export const VALIDATION_PROFILE_SCHEMA = 'tiinex.site.validation-profile.v1';
+export const RETURN_FIRST_CHECKPOINT_BOUNDARY = Object.freeze({
+  requiredAfterSubstantiveFocusedQualification: true,
+  beforeBroadClosure: true,
+  carrierRequirement: 'canonical full-source Business+Docs+Site role return',
+  purpose: 'Preserve a recoverable transport checkpoint before broad/long closure. This boundary does not claim host-safeguard control and does not replace final closure qualification.',
+  boundary: 'A return checkpoint may truthfully carry unresolved blockers. Final closure remains independently required and may still fail.'
+});
+
+export const SMOKE_STEPS = Object.freeze([
+  step('architecture-shape', 'node', ['tools/check-architecture-shape.mjs'], 'smoke'),
+  step('foundation-smoke-suite', 'node', ['tools/run-foundation-suite.mjs', '--suite', 'smoke'], 'smoke')
+]);
+
+export const FOCUSED_TOOLING_ADDITIONAL_STEPS = Object.freeze([
+  step('foundation-focused-tooling-suite', 'node', ['tools/run-foundation-suite.mjs', '--suite', 'focused/tooling'], 'focused/tooling'),
+  step('static-regression-diagnostic', 'node', ['tools/validate-static-regression-aware.mjs', '--mode', 'diagnostic'], 'focused/tooling')
+]);
 
 export const FOCUSED_TOOLING_STEPS = Object.freeze([
-  step('architecture-shape', 'node', ['tools/check-architecture-shape.mjs'], 'focused/tooling'),
-  step('portable-cli', 'node', ['src/tooling/portable/adapters/cli/cli.run.test.mjs'], 'focused/tooling'),
-  step('portable-bootstrap', 'node', ['src/tooling/portable/bootstrap/bootstrap.test.mjs'], 'focused/tooling'),
-  step('portable-grounding', 'node', ['src/tooling/portable/adapters/cli/cli.legacyTopicsGrounding.test.mjs'], 'focused/tooling'),
-  step('portable-summary', 'node', ['src/tooling/portable/adapters/cli/cli.summaryProjection.test.mjs'], 'focused/tooling'),
-  step('portable-lineage-summary', 'node', ['src/tooling/portable/adapters/cli/cli.lineageSummaryProjection.test.mjs'], 'focused/tooling'),
-  step('portable-cold-start-summary', 'node', ['src/tooling/portable/adapters/cli/cli.coldStartSummaryProjection.test.mjs'], 'focused/tooling'),
-  step('legacy-artifact-fixtures', 'node', ['src/tooling/portable/fixtures/legacyArtifactFixtures.test.mjs'], 'focused/tooling'),
-  step('portable-input', 'node', ['src/tooling/portable/input/node.input.test.mjs'], 'focused/tooling'),
-  step('repository-workset', 'node', ['tools/measure-tooling-workset.test.mjs'], 'focused/tooling'),
-  step('tooling-context-search', 'node', ['tools/search-tooling-context.test.mjs'], 'focused/tooling'),
-  step('portable-input-workset', 'node', ['tools/measure-portable-input-workset.test.mjs'], 'focused/tooling'),
-  step('checkpointed-command', 'node', ['tools/run-checkpointed-command.test.mjs'], 'focused/tooling'),
-  step('checkpointed-plan', 'node', ['tools/run-checkpointed-plan.test.mjs'], 'focused/tooling'),
-  step('validation-profile-contract', 'node', ['tools/validation-profile.contract.test.mjs'], 'focused/tooling'),
-  step('validation-profile-profiler', 'node', ['tools/profile-validation-chain.test.mjs'], 'focused/tooling')
+  ...SMOKE_STEPS,
+  ...FOCUSED_TOOLING_ADDITIONAL_STEPS
+]);
+
+export const INTEGRATION_TOOLING_STEPS = Object.freeze([
+  step('checkpoint-identity', 'node', ['tools/check-checkpoint-identity.mjs'], 'integration'),
+  step('icon-imports', 'node', ['tools/check-icon-imports.mjs'], 'integration'),
+  step('browser-import-boundary', 'node', ['tools/check-browser-import-boundary.mjs'], 'integration'),
+  step('package-lock-platforms', 'node', ['tools/check-package-lock-platforms.mjs'], 'integration'),
+  step('schema-bindings', 'node', ['tools/validate-schema-bindings.mjs'], 'integration'),
+  step('schema-runtime-projections', 'node', ['tools/check-schema-runtime-projections.mjs'], 'integration'),
+  step('workspace-schema', 'node', ['tools/validate-workspace-schema.mjs'], 'integration'),
+  step('foundation-integration-suite', 'node', ['tools/run-foundation-suite.mjs', '--suite', 'integration'], 'integration')
 ]);
 
 export const CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS = Object.freeze([
@@ -35,41 +49,53 @@ export const CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS = Object.freeze([
 ]);
 
 export function buildValidationProfileContract({ packageScripts = {} } = {}) {
+  const smoke = profile({
+    name: 'smoke',
+    purpose: 'Small representative Foundation acceptance gate spanning architecture shape and the durable end-to-end smoke use cases. Passing smoke is not focused, integration, or release qualification.',
+    layers: ['smoke'],
+    steps: SMOKE_STEPS
+  });
+
   const focused = profile({
     name: 'focused/tooling',
-    purpose: 'Fast deterministic Tooling development gate. Passing this profile is not release qualification.',
-    layers: ['focused/tooling'],
+    purpose: 'Fast deterministic Tooling development gate. Reuses smoke, adds the focused Tooling component suite, then executes the real regression-aware static diagnostic. Passing focused is not release qualification.',
+    layers: ['smoke', 'focused/tooling'],
     steps: FOCUSED_TOOLING_STEPS
   });
 
-  const integrationOwn = expandPackageScript('validate', packageScripts);
-  const integrationSteps = dedupeSteps([...focused.steps, ...integrationOwn]);
+  const integrationSteps = dedupeSteps([...focused.steps, ...INTEGRATION_TOOLING_STEPS]);
   const integration = profile({
     name: 'integration',
-    purpose: 'Repository integration qualification. Reuses the exact focused/tooling definition, then runs the existing validate contract as individually checkpointable commands.',
-    layers: ['focused/tooling', 'integration'],
+    purpose: 'Repository integration diagnostic qualification. Reuses smoke/focused, runs distinct repository validators once, then executes the remaining component/use-case acceptance suites without historical test-file enumeration.',
+    layers: ['smoke', 'focused/tooling', 'integration'],
     steps: integrationSteps
   });
 
   const closureOwn = CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS.flatMap((name) => expandPackageScript(name, packageScripts));
-  const closureSteps = dedupeSteps([...integration.steps, ...closureOwn]);
+  const closureSteps = dedupeSteps([
+    ...integration.steps,
+    step('strict-static-closure', 'node', ['tools/validate-static.mjs'], 'closure'),
+    ...closureOwn
+  ]);
   const closure = profile({
     name: 'closure',
-    purpose: 'Final closure qualification. Reuses focused/tooling and integration, then adds portable smoke, UI, type/runtime, use-case, storage, build, and public-build checks.',
-    layers: ['focused/tooling', 'integration', 'closure'],
+    purpose: 'Final closure qualification. Reuses the small permanent acceptance spine and integration validators, restores the strict static gate, then adds portable smoke, UI, type/runtime, use-case, storage, build, and public-build checks.',
+    layers: ['smoke', 'focused/tooling', 'integration', 'closure'],
     steps: closureSteps
   });
 
   return Object.freeze({
     schema: VALIDATION_PROFILE_CONTRACT_SCHEMA,
-    version: 1,
+    version: 2,
     profiles: Object.freeze({
+      smoke,
       'focused/tooling': focused,
       integration,
       closure
     }),
+    returnFirstCheckpoint: RETURN_FIRST_CHECKPOINT_BOUNDARY,
     closureAdditionalPackageScripts: CLOSURE_ADDITIONAL_PACKAGE_SCRIPTS,
-    boundary: 'Profiles compose existing validation checks without deleting checks or upgrading a focused pass into release qualification. Exact step reuse is checkpoint reuse only; it is not semantic authority.'
+    boundary: 'Profiles compose one explicit smoke→focused→integration→closure spine over permanent component/use-case suites. Historical standalone test enumeration is not profile authority. Integration may continue across only exact inherited static debt; closure retains the original strict static boundary.'
   });
 }
 
@@ -160,6 +186,6 @@ function step(id, command, args = [], origin = '', raw = '') {
   });
 }
 
-function safeId(value) {
-  return String(value || 'step').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'step';
+function safeId(value = '') {
+  return String(value || '').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'step';
 }

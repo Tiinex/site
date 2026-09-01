@@ -1,4 +1,10 @@
-import { WORKSPACE_REPRESENTATION_FIXED_VALUES, WORKSPACE_REPRESENTATION_REQUIRED_FIELDS, WORKSPACE_REPRESENTATION_REQUIRED_SECTIONS } from './tiinex.workspace.representation.v1.contract.js';
+import {
+  WORKSPACE_REPRESENTATION_FIXED_VALUES,
+  WORKSPACE_REPRESENTATION_READY_CONTRACTS,
+  WORKSPACE_REPRESENTATION_REQUIRED_FIELDS,
+  WORKSPACE_REPRESENTATION_REQUIRED_SECTIONS,
+  WORKSPACE_REPRESENTATION_SCOPE_FIELDS
+} from './tiinex.workspace.representation.v1.contract.js';
 
 export function workspaceRepresentationValidate(artifact = {}) {
   const findings = [];
@@ -15,19 +21,47 @@ export function workspaceRepresentationValidate(artifact = {}) {
     const text = sectionBody(body, section);
     for (const field of fields) if (!fieldValue(text, field)) findings.push(finding('error', 'workspace-representation.field.missing', `${section} is missing ${field}.`, { section, field }));
   }
+  const binding = sectionBody(body, 'Representation Binding');
+  const scope = sectionBody(body, 'Representation Scope');
+  const correlation = sectionBody(body, 'Representation Correlation');
+  const qualification = sectionBody(body, 'Provider Qualification');
+  const coverage = fieldValue(binding, 'Coverage');
+  const bindingState = fieldValue(binding, 'Binding State');
+
+  if (coverage === 'bounded') {
+    if (!scope) findings.push(finding('error', 'workspace-representation.scope.missing', 'Coverage: bounded requires an explicit Representation Scope section.'));
+    for (const field of WORKSPACE_REPRESENTATION_SCOPE_FIELDS) {
+      if (!fieldValue(scope, field)) findings.push(finding('error', 'workspace-representation.scope.field-missing', `Representation Scope is missing ${field}.`, { field }));
+    }
+  }
+
   for (const [field, allowed] of Object.entries(WORKSPACE_REPRESENTATION_FIXED_VALUES)) {
     const value = fieldValue(body, field);
     if (value && !allowed.includes(value)) findings.push(finding('error', 'workspace-representation.field.domain-invalid', `${field} is outside the canonical Workspace Representation domain.`, { field, value }));
   }
-  const binding = sectionBody(body, 'Representation Binding');
-  const correlation = sectionBody(body, 'Representation Correlation');
+
   const workspaceTarget = fieldValue(binding, 'Workspace Artifact');
   const payloadTarget = fieldValue(binding, 'Representation Payload');
   if (workspaceTarget && !markdownTarget(workspaceTarget)) findings.push(finding('error', 'workspace-representation.endpoint.workspace-invalid', 'Workspace Artifact must be one explicit Markdown-link endpoint.'));
   if (payloadTarget && !markdownTarget(payloadTarget)) findings.push(finding('error', 'workspace-representation.endpoint.payload-invalid', 'Representation Payload must be one explicit Markdown-link endpoint.'));
   if (fieldValue(correlation, 'Path Mapping') === 'manifest' && !markdownTarget(fieldValue(correlation, 'Mapping Manifest'))) findings.push(finding('error', 'workspace-representation.mapping.manifest-missing', 'Path Mapping: manifest requires one explicit Mapping Manifest reference.'));
-  if (fieldValue(binding, 'Binding State') === 'verified' && fieldValue(binding, 'Coverage') !== 'complete') findings.push(finding('error', 'workspace-representation.binding.verified-incomplete', 'A verified binding cannot claim partial or unknown coverage.'));
-  if (!findings.some((item) => item.severity === 'error')) findings.push(finding('info', 'workspace-representation.contract.readable', 'Workspace Representation exposes the exact canonical binding, correlation, qualification, and boundary contract.'));
+
+  if (bindingState === 'verified' && !['complete', 'bounded'].includes(coverage)) {
+    findings.push(finding('error', 'workspace-representation.binding.verified-nonready-coverage', 'A verified binding cannot claim partial or unknown coverage.'));
+  }
+  const ready = WORKSPACE_REPRESENTATION_READY_CONTRACTS[coverage];
+  if (ready) {
+    const observed = {
+      representationKind: fieldValue(binding, 'Representation Kind'),
+      activationRule: fieldValue(qualification, 'Activation Rule'),
+      coverageRequirement: fieldValue(qualification, 'Coverage Requirement'),
+      selectionRule: fieldValue(qualification, 'Selection Rule')
+    };
+    for (const [key, expected] of Object.entries(ready)) {
+      if (observed[key] && observed[key] !== expected) findings.push(finding('error', 'workspace-representation.ready-contract.mismatch', `Coverage: ${coverage} requires ${key}=${expected}.`, { coverage, field: key, expected, observed: observed[key] }));
+    }
+  }
+  if (!findings.some((item) => item.severity === 'error')) findings.push(finding('info', 'workspace-representation.contract.readable', 'Workspace Representation exposes the exact canonical complete-or-bounded binding, scope, correlation, qualification, and boundary contract.'));
   return findings;
 }
 
@@ -40,5 +74,5 @@ function sectionBody(body = '', name = '') {
   return match?.[1]?.trim() || '';
 }
 function markdownTarget(value = '') { return String(value || '').match(/^\[[^\]]+\]\(([^)]+)\)$/)?.[1] || ''; }
-function escapeRe(value = '') { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function escapeRe(value = '') { return String(value).replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&'); }
 function finding(severity, code, message, params = {}) { return { severity, code, messageKey: code, message, source: 'tiinex.workspace.representation.v1', params }; }

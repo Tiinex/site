@@ -146,8 +146,11 @@ function qualifyArchiveWorkspace(bundle, workspace, binding = {}) {
   if (String(binding.schema || '') !== HANDOFF_WORKSPACE_ARCHIVE_BINDING_SCHEMA_ID) reasons.push('workspace-archive-binding-schema-invalid');
   if (String(binding.workspaceId || '') !== String(workspace.id || '')) reasons.push('workspace-archive-binding-workspace-id-mismatch');
   if (String(binding.transportCorrelationKey || '') !== String(workspace.transportCorrelationKey || '')) reasons.push('workspace-archive-binding-stale');
-  if (String(workspace.materialization || '') !== 'complete' || String(workspace.qualification || '') !== 'qualified' || String(workspace.completenessEvidence?.state || '') !== 'qualified') reasons.push('workspace-archive-completeness-unqualified');
-  if (String(binding.representation?.kind || '') !== 'complete-workspace-snapshot') reasons.push('workspace-archive-representation-kind-invalid');
+  const coverage = String(workspace.materialization || '') === 'bounded' ? 'bounded' : String(workspace.materialization || '') === 'complete' ? 'complete' : '';
+  const coverageEvidence = coverage === 'bounded' ? (workspace.scopeEvidence || {}) : (workspace.completenessEvidence || {});
+  if (!coverage || String(workspace.qualification || '') !== 'qualified' || String(coverageEvidence.state || '') !== 'qualified') reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-unqualified' : 'workspace-archive-completeness-unqualified');
+  const expectedRepresentationKind = coverage === 'bounded' ? 'bounded-workspace-snapshot' : 'complete-workspace-snapshot';
+  if (String(binding.coverage || coverage) !== coverage || String(binding.representation?.kind || '') !== expectedRepresentationKind) reasons.push('workspace-archive-representation-kind-invalid');
   if (String(binding.provider?.kind || '') !== HANDOFF_WORKSPACE_ARCHIVE_PROVIDER_KIND || String(binding.provider?.state || '') !== 'ready') reasons.push('workspace-archive-provider-unavailable');
   if (String(binding.representation?.codec || '') !== HANDOFF_WORKSPACE_ARCHIVE_CODEC || String(binding.representation?.mediaType || '') !== 'application/zip') reasons.push('workspace-archive-decoder-unavailable');
   if (String(binding.entryMap?.normalization || '') !== HANDOFF_WORKSPACE_INNER_PATH_NORMALIZATION) reasons.push('workspace-archive-normalization-unqualified');
@@ -180,15 +183,19 @@ function qualifyArchiveWorkspace(bundle, workspace, binding = {}) {
   if (!sameEntryIdentitySet(declaredEntries, parsedArchive.entries || [])) reasons.push('workspace-archive-entry-map-mismatch');
   if (!sameEntryIdentitySet(declaredEntries, workspace.includedEntries || [])) reasons.push('workspace-archive-binding-stale');
 
-  const completeness = binding.completeness || {};
-  if (String(completeness.state || '') !== 'qualified') reasons.push('workspace-archive-completeness-unqualified');
-  if (Number(completeness.entryCount || 0) !== declaredEntries.length) reasons.push('workspace-archive-completeness-entry-count-mismatch');
+  const bindingEvidence = coverage === 'bounded' ? (binding.scope || {}) : (binding.completeness || {});
+  if (String(bindingEvidence.state || '') !== 'qualified') reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-unqualified' : 'workspace-archive-completeness-unqualified');
+  if (Number(bindingEvidence.entryCount || 0) !== declaredEntries.length) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-entry-count-mismatch' : 'workspace-archive-completeness-entry-count-mismatch');
   const totalBytes = declaredEntries.reduce((sum, entry) => sum + Number(entry.bytes || 0), 0);
-  if (Number(completeness.totalBytes || 0) !== totalBytes) reasons.push('workspace-archive-completeness-byte-count-mismatch');
-  if (String(completeness.entriesFingerprint || '') && String(completeness.entriesFingerprint || '') !== entrySetFingerprint(declaredEntries)) reasons.push('workspace-archive-completeness-fingerprint-mismatch');
-  if (String(workspace.completenessEvidence?.entriesFingerprint || '') && String(workspace.completenessEvidence.entriesFingerprint) !== entrySetFingerprint(declaredEntries)) reasons.push('workspace-archive-completeness-evidence-stale');
-  if (Number(workspace.completenessEvidence?.entryCount || declaredEntries.length) !== declaredEntries.length) reasons.push('workspace-archive-completeness-evidence-stale');
-  if (Number(workspace.completenessEvidence?.totalBytes || totalBytes) !== totalBytes) reasons.push('workspace-archive-completeness-evidence-stale');
+  if (Number(bindingEvidence.totalBytes || 0) !== totalBytes) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-byte-count-mismatch' : 'workspace-archive-completeness-byte-count-mismatch');
+  if (String(bindingEvidence.entriesFingerprint || '') && String(bindingEvidence.entriesFingerprint || '') !== entrySetFingerprint(declaredEntries)) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-fingerprint-mismatch' : 'workspace-archive-completeness-fingerprint-mismatch');
+  if (String(coverageEvidence.entriesFingerprint || '') && String(coverageEvidence.entriesFingerprint) !== entrySetFingerprint(declaredEntries)) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-evidence-stale' : 'workspace-archive-completeness-evidence-stale');
+  if (Number(coverageEvidence.entryCount || declaredEntries.length) !== declaredEntries.length) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-evidence-stale' : 'workspace-archive-completeness-evidence-stale');
+  if (Number(coverageEvidence.totalBytes || totalBytes) !== totalBytes) reasons.push(coverage === 'bounded' ? 'workspace-archive-bounded-scope-evidence-stale' : 'workspace-archive-completeness-evidence-stale');
+  if (coverage === 'bounded') {
+    if (String(binding.selection?.rule || '') !== 'explicit-binding-per-bounded-scope') reasons.push('workspace-archive-bounded-selection-unqualified');
+    if (String(bindingEvidence.scopeBasis || '') !== 'exact-representation-entry-set' || String(bindingEvidence.includedEntryAuthority || '') !== 'qualified-decoded-entry-set' || String(bindingEvidence.omittedEntryMeaning || '') !== 'outside-representation-not-absent-from-workspace' || String(bindingEvidence.sourceMembershipClaim || '') !== 'represented-entries-are-workspace-relative-source-bytes' || String(bindingEvidence.recoveryClosureBoundary || '') !== 'separate-qualified-closure') reasons.push('workspace-archive-bounded-scope-unqualified');
+  }
 
   const targetInner = normalizeHandoffWorkspaceInnerPath(binding.workspaceTarget?.innerPath || '');
   if (targetInner.state !== 'qualified') reasons.push('workspace-target-inner-path-unqualified');

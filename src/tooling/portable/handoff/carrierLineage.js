@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { packageFileBytes, sha256Hex } from '../../../export/package.bytes.js';
 import { recipientV2FactsIndex } from './recipientV2.transportManifest.js';
 
@@ -63,6 +62,7 @@ export function normalizeHandoffCarrierLineage(value = null) {
 export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {}) {
   const files = Array.isArray(bundle.files) ? bundle.files : [];
   const factsIndex = recipientV2FactsIndex({ ...bundle, files });
+  if (factsIndex.transport?.state === 'invalid') throw new Error('portable.handoff-carrier-lineage.parent.transport-invalid');
   const roots = [];
   for (const file of files) {
     if (!/\.md$/i.test(String(file.path || ''))) continue;
@@ -101,7 +101,7 @@ export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', pare
   const bytes = parentBytes ? packageFileBytes({ data: parentBytes }) : new Uint8Array();
   const packageIdentity = Object.freeze({
     packageSha256: bytes.byteLength ? sha256Hex(bytes) : '',
-    packageFilename: parentPath ? path.basename(parentPath) : ''
+    packageFilename: parentPath ? portableBasename(parentPath) : ''
   });
   const qualifiedDimension = normalizeDimension(qualifiedParentLineage?.dimension || '');
   const parent = qualifiedDimension
@@ -132,5 +132,6 @@ function normalizeParentLineage(value = {}) {
 }
 function normalizeDimension(value = '') { const v = String(value || '').trim(); return /^\d{3}(?:-\d+)*$/.test(v) ? v : ''; }
 function majorSegment(value = '') { return normalizeDimension(value).split('-')[0] || ''; }
+function portableBasename(value = '') { return String(value || '').replace(/\\/g, '/').split('/').filter(Boolean).pop() || ''; }
 function normalizeSha256(value = '') { const v = String(value || '').trim().toLowerCase(); return /^[a-f0-9]{64}$/.test(v) ? v : ''; }
 function decodeUtf8(data) { try { return new TextDecoder('utf-8', { fatal: true }).decode(data); } catch { return ''; } }

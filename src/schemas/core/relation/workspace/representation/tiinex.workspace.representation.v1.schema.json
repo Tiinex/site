@@ -10,13 +10,13 @@
   "sourcePath": ".topics/.schemas/relation/workspace/representation/tiinex.workspace.representation.v1.schema.md",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "0fdce5f265298321a41cd90cf5382bcb6ae31a13",
-  "sourceBlobSha": "2962cac53b72c91d00a503a141cb01ef2a52956b",
+  "sourceBlobSha": "ace693274518fe3d27bd50e7023ae1e0c95bcce7",
   "checksum": {
     "algorithm": "sha256",
-    "value": "9f8e806b365484ebdd477e16d5dd12850f8f801a648a4b8e67cc284383a45cf7"
+    "value": "69b7d91a8e4b64f2a1510d83e4d001a015ab723967d401dea386acc2d878e233"
   },
   "capabilityContract": "tiinex.schema.module.v1",
-  "snapshotCompleteness": "exact-anchor-accepted-unpublished-canonical-contract",
+  "snapshotCompleteness": "exact-axiom-canonical-unpublished-bounded-workspace-contract",
   "bindingVersion": "tiinex.web.schema-binding.v1",
   "originId": "tiinex-docs-0fdce5f2-accepted-local",
   "originTrustRole": "canonical-core",

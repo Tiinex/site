@@ -155,8 +155,8 @@
       "kind": "concrete",
       "role": "core-workspace-representation-binding",
       "path": "core/relation/workspace/representation/tiinex.workspace.representation.v1.schema.json",
-      "checksum": "9f8e806b365484ebdd477e16d5dd12850f8f801a648a4b8e67cc284383a45cf7",
-      "sourceBlobSha": "2962cac53b72c91d00a503a141cb01ef2a52956b",
+      "checksum": "69b7d91a8e4b64f2a1510d83e4d001a015ab723967d401dea386acc2d878e233",
+      "sourceBlobSha": "ace693274518fe3d27bd50e7023ae1e0c95bcce7",
       "originId": "tiinex-docs-0fdce5f2-accepted-local",
       "originTrustRole": "canonical-core"
     },
@@ -165,7 +165,7 @@
       "kind": "concrete",
       "role": "viewer-workspace-entrypoint",
       "path": "workspace/tiinex.workspace.v1.schema.json",
-      "checksum": "27d73b65f745335da79a877d3678af5497b29bed4bace218a244deeb5647c4dc",
+      "checksum": "425aa24f8c1fc1115eec8cb934c410f1b01b5d38e91c73e71a2de886473ebf05",
       "sourceBlobSha": "site-local-workspace-schema",
       "originId": "viewer-local",
       "originTrustRole": "viewer-extension"
