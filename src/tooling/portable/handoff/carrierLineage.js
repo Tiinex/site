@@ -166,6 +166,8 @@ function freezeLineage(value = {}) {
   });
 }
 function normalizeParentLineage(value = {}) {
+  const explicitDimension = String(value?.dimension || '').trim();
+  if (explicitDimension && !normalizeDimension(explicitDimension)) return Object.freeze({ dimension: '', packageSha256: normalizeSha256(value.packageSha256 || value.parentPackageSha256 || ''), packageFilename: String(value.packageFilename || value.parentPackageFilename || '') });
   const lineage = normalizeHandoffCarrierLineage(value);
   return Object.freeze({ ...lineage, packageSha256: normalizeSha256(value.packageSha256 || value.parentPackageSha256 || ''), packageFilename: String(value.packageFilename || value.parentPackageFilename || '') });
 }

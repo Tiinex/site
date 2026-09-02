@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
+import { groundInput } from './cli.ground-recovery.js';
 
 export async function commandInput(parsed, runtime = {}) {
   const flags = parsed.flags;
@@ -119,6 +120,26 @@ export async function commandInput(parsed, runtime = {}) {
     };
   }
 
+  if (parsed.command === 'project-grounding-readiness') {
+    const packagePath = String(flags.package || parsed.positionals[0] || flags.input || '').trim();
+    if (!packagePath) throw new Error('portable.cli.ground.input.required');
+    const material = await loadCliExplicitMaterial([packagePath], parsed.command, flags, { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
+    const { host, recoveryAcceptance } = await groundInput(flags, await readOptionalJson(flags.host || flags.tools));
+    return {
+      input: {
+        ...material,
+        bundle: material,
+        route: flags.route || '',
+        packageSourcePath: packagePath,
+        includeLegacyTopics: Boolean(flags['include-legacy-topics']),
+        includeRequiredContext: flags['include-required-context'] || '',
+        host,
+        recoveryAcceptance
+      },
+      options: {}
+    };
+  }
+
   if (parsed.command === 'plan-host-action') {
     const host = await readOptionalJson(flags.host || flags.tools);
     const request = await readOptionalJson(flags.request);
@@ -130,7 +151,8 @@ export async function commandInput(parsed, runtime = {}) {
   if (parsed.command === 'accept-host-receipt') {
     const plan = await readOptionalJson(flags.plan || parsed.positionals[0]);
     const receipt = await readOptionalJson(flags.receipt || parsed.positionals[1]);
-    return { input: { plan: plan.result || plan, receipt: receipt.result || receipt }, options: {} };
+    const prior = await readOptionalJson(flags.prior || flags.previous);
+    return { input: { plan: plan.result || plan, receipt: receipt.result || receipt, priorAcceptance: prior.result || prior }, options: {} };
   }
 
   if (parsed.command === 'manufacture-handoff-package') {
@@ -359,8 +381,7 @@ export async function commandInput(parsed, runtime = {}) {
 }
 
 
-
-const LEGACY_TOPICS_GROUNDING_COMMANDS = new Set(['inspect', 'audit', 'project-operating-overview', 'resolve-lineage', 'search-lineage', 'prepare-task']);
+const LEGACY_TOPICS_GROUNDING_COMMANDS = new Set(['inspect', 'audit', 'project-operating-overview', 'project-grounding-readiness', 'resolve-lineage', 'search-lineage', 'prepare-task']);
 
 async function loadCliExplicitMaterial(targets = [], command = '', flags = {}, loadOptions = {}) {
   const loaded = [];
@@ -393,6 +414,7 @@ async function readOptionalJson(file = '') {
   if (!file) return {};
   return JSON.parse(await readFile(file, 'utf8'));
 }
+
 
 function draftFromMaterial(material = {}, preferredPath = '') {
   const files = Array.isArray(material.files) ? material.files : [];

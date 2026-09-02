@@ -32,6 +32,16 @@ Some broader release/closure checks can still be blocked by host dependency avai
 
 Historical implementation notes and prior version narratives remain recoverable in Git history; they are not the current first-contact surface.
 
+## Branch roles
+
+Do not infer implementation authority from conventional Git branch names.
+
+- `refactor` — **current active implementation** for the Viewer/reference implementation and shared Tooling during Foundation work.
+- `master` — **PoC evidence**. It is a historical product/interaction baseline, not the current implementation target.
+- `poc-monolith` — **PoC evidence**. It preserves the PoC monolith lineage and is not the current implementation target.
+
+Viewer parity work compares the behavior demonstrated by the PoC evidence (`master` + `poc-monolith`) against the active `refactor` implementation. A later explicit repository decision may change these roles; branch naming alone never does.
+
 ## LLM / machine first contact
 
 Read [`llms.txt`](./llms.txt) first.
@@ -42,6 +52,14 @@ The portable bootstrap source is:
 - [`src/tooling/portable/bootstrap/tiinex.llm.bootstrap.pointer.json`](./src/tooling/portable/bootstrap/tiinex.llm.bootstrap.pointer.json)
 
 The bootstrap is a routing and Tooling aid, **not semantic authority**. Prefer an exact commit or qualified release when retrieving it remotely; disclose when a moving branch was used.
+
+For a qualified routed Handoff after Tooling orientation, the common decision-grounding path is identical for humans and LLMs:
+
+```bash
+node tools/tiinex-portable.mjs ground <handoff-package.zip> --route <Continue-from>
+```
+
+The default receipt is bounded and fail-visible: it separates `grounded-to-act`, `grounded-to-discuss`, and `insufficient-grounding`, derives leaf topology only from declared `Parent`, and keeps Required Context bodies opt-in via `--include-required-context`.
 
 ## Supported local start
 

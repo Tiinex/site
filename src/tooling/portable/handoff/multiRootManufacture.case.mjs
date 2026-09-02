@@ -5,6 +5,7 @@ import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
 import { safeWorkspaceToken } from '../adapters/node/handoff.manufacture.multiRoot.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
+import { groundContinuationOperationInput, materializeGroundWorkspaceCliOutput } from '../adapters/cli/cli.ground-materialize.js';
 import { manufactureRecipientRelativeHandoffPackage } from './manufacture.js';
 import { qualifyPortableColdStart } from './coldStartQualification.js';
 import { qualifiedHandoffFixture } from './qualifiedHandoffFixture.js';
@@ -185,6 +186,22 @@ try {
   assert.equal(shared.bundle.files.some((file) => String(file.path || '').includes('workspace-payload')), false, 'complete package-local Workspace bindings do not emit Workspace External Payload companions');
   assert.equal(shared.bundle.files.some((file) => String(file.path || '').includes('workspace-representation')), false, 'complete package-local Workspace bindings do not emit Workspace Representation companions');
   assert(recipientFacingV2PackageZipBuffer(shared.bundle, { inspection: shared.inspection }).byteLength > 0, 'package-v1 recipient bundle must serialize through the supported deterministic ZIP writer');
+  const continuationInput = groundContinuationOperationInput({ includeRequiredContext: '', includeCurrentWork: false }, { continue: path.join(root, 'continued-site') });
+  assert.equal(continuationInput.includeRequiredContext, 'all', 'common --continue path must automatically request all qualified Required Context bodies');
+  assert.equal(continuationInput.includeCurrentWork, true, 'common --continue path must automatically request the exact current-work body');
+  const continuedSiteRoot = path.join(root, 'continued-site');
+  const continued = await materializeGroundWorkspaceCliOutput({
+    readiness: { state: 'grounded-to-act' },
+    authority: { route: { workspaceId: 'site' } }
+  }, { bundle: shared.bundle }, { continue: continuedSiteRoot });
+  assert.equal(continued.continuationMaterialization.state, 'materialized');
+  assert.equal(continued.continuationMaterialization.workspaceId, 'site');
+  assert.equal(await readFile(path.join(continuedSiteRoot, '.topics', 'site-context.md'), 'utf8'), '# Site context\n', 'ground continuation must write exact qualified Workspace bytes');
+  await assert.rejects(
+    materializeGroundWorkspaceCliOutput({ readiness: { state: 'grounded-to-discuss' }, authority: { route: { workspaceId: 'site' } } }, { bundle: shared.bundle }, { continue: path.join(root, 'blocked-site') }),
+    /requires-grounded-to-act/,
+    'ground continuation must fail closed before Workspace materialization when readiness is not grounded-to-act'
+  );
   for (const routeProjection of shared.carrierProjection.routes) {
     const qualification = qualifyPortableColdStart({ bundle: shared.bundle, route: routeProjection.id, preTakeover: 'minimal-bootstrap-only' });
     assert.equal(qualification.status, 'preferred-pass', JSON.stringify(qualification.findings || [], null, 2));

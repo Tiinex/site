@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
-import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { runPortableCli } from './cli.run.js';
+import { acceptGroundHostResult, hostToolProfile } from './cli.ground-recovery.js';
 import { runPortableOperation } from '../../operation.catalog.js';
+import { materializeHandoffManufactureCliOutput, prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
+import { portableCanonicalBootstrapRuntime } from '../../schema/bootstrap/canonical.pack.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-turn-binding-'));
 try {
@@ -79,3 +82,139 @@ console.log('✓ CLI default output byte-equivalence without phase timing passed
   assert.equal(result.cliPhaseTiming.unmeasured.finalEmission, true);
 }
 console.log('✓ CLI phase timing truthfully bounds non-trivial final serialization/output passed');
+
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-ground-host-result-'));
+  try {
+    const firstPath = path.join(root, 'first.md');
+    const secondPath = path.join(root, 'second.md');
+    await writeFile(firstPath, '# First recovered Parent\n', 'utf8');
+    await writeFile(secondPath, '# Second recovered Parent\n', 'utf8');
+    const host = hostToolProfile({}, 'GitHub.fetch_file');
+    const recoveryResult = (repoPath) => Object.freeze({
+      continuity: Object.freeze({
+        recovery: Object.freeze({
+          state: 'host-action-available',
+          hostAction: Object.freeze({
+            action: 'repository-read',
+            request: Object.freeze({
+              repository: 'Tiinex/site',
+              ref: '56ba75025b7a8fd44b5318d2560d2ec63eb0106f',
+              path: repoPath,
+              purpose: 'recover exact declared Parent for cold-start continuity proof',
+              nextOperation: 'ground'
+            }),
+            selectedTool: Object.freeze({ id: 'GitHub.fetch_file', name: 'GitHub.fetch_file' })
+          })
+        })
+      })
+    });
+    const first = await acceptGroundHostResult(recoveryResult('.topics/tooling/first.trace.md'), { host, recoveryAcceptance: {} }, { 'host-result': firstPath });
+    assert.equal(first.acceptance.status, 'accepted');
+    assert.equal(first.acceptance.cumulativeRecovery.repositoryFiles, 1);
+    const second = await acceptGroundHostResult(recoveryResult('.topics/tooling/second.trace.md'), { host, recoveryAcceptance: first.acceptance }, { 'host-result': secondPath });
+    assert.equal(second.acceptance.status, 'accepted');
+    assert.equal(second.acceptance.cumulativeRecovery.priorAccepted, true);
+    assert.equal(second.acceptance.cumulativeRecovery.repositoryFiles, 2);
+    assert.deepEqual(second.acceptance.providerResponses[0].files.map((file) => file.source.path), [
+      '.topics/tooling/first.trace.md',
+      '.topics/tooling/second.trace.md'
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+console.log('✓ common ground host-result façade owns receipt normalization and cumulative prior recovery without protocol files passed');
+
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-common-author-'));
+  try {
+    const parentRelativePath = '.topics/tooling/006-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-authoring-return-common-path-ergonomics-handoff.trace.md';
+    const evidenceSource = path.resolve('.topics/tooling/006-1-1-1-1-1-1-loom-post-ground-common-path-ergonomics-correction-evidence.trace.md');
+    const parentSource = path.resolve(parentRelativePath);
+    const parentTarget = path.join(root, parentRelativePath);
+    await mkdir(path.dirname(parentTarget), { recursive: true });
+    await copyFile(parentSource, parentTarget);
+    const evidenceMarkdown = await readFile(evidenceSource, 'utf8');
+    const evidenceBody = evidenceMarkdown.split('\n---\n')[1].trim();
+    const bodyPath = path.join(root, 'body.md');
+    await writeFile(bodyPath, `${evidenceBody}\n`, 'utf8');
+    await mkdir(path.join(root, '.tiinex'), { recursive: true });
+    await writeFile(path.join(root, '.tiinex/continuation.json'), `${JSON.stringify({
+      schema: 'tiinex.portable.ground-continuation-state.v1',
+      version: 1,
+      selectedHandoffPath: parentRelativePath,
+      roleLabel: 'Loom'
+    }, null, 2)}\n`, 'utf8');
+    const artifactRelativePath = '.topics/tooling/common-author-regression-evidence.trace.md';
+    const lines = [];
+    const io = { log: (value) => lines.push(value), error: (value) => lines.push(value) };
+    const code = await runPortableCli([
+      'author', root,
+      '--schema', 'tiinex.evidence.v1',
+      '--path', artifactRelativePath,
+      '--body', bodyPath,
+      '--title', 'Common Author Regression Evidence',
+      '--summary', 'Regression coverage for the ordinary post-ground author surface.',
+      '--why', 'Prove continuity inference, c14n-v2 sealing, runtime audit, staging, and continuation-state carry-forward.',
+      '--compact'
+    ], io, portableCanonicalBootstrapRuntime);
+    assert.equal(code, 0);
+    const result = JSON.parse(lines.at(-1));
+    assert.equal(result.status, 'qualified');
+    assert.equal(result.artifact.parentPath, parentRelativePath);
+    assert.equal(result.artifact.selfIntegrity, 'verified');
+    assert.equal(result.qualification.stage, 'staged');
+    assert.equal(result.findingSummary.counts.error, 0);
+    const state = JSON.parse(await readFile(path.join(root, '.tiinex/continuation.json'), 'utf8'));
+    assert.equal(state.lastAuthoredPath, artifactRelativePath);
+    assert.equal(state.lastAuthoredSchemaId, 'tiinex.evidence.v1');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+console.log('✓ common author façade infers Parent and owns sealing, audit, staging, and continuation carry-forward passed');
+
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-low-level-handoff-'));
+  try {
+    await mkdir(path.join(root, '.tiinex'), { recursive: true });
+    await writeFile(path.join(root, '.tiinex/continuation.json'), `${JSON.stringify({
+      schema: 'tiinex.portable.ground-continuation-state.v1',
+      packageParentPath: path.join(root, 'missing-parent.handoff-package.zip')
+    }, null, 2)}\n`, 'utf8');
+    await assert.rejects(
+      () => prepareHandoffManufactureCliCommand({
+        surfaceCommand: 'manufacture-handoff-package',
+        positionals: [root],
+        flags: { 'package-major': true }
+      }),
+      /portable\.cli\.handoff-carrier\.package-major\.parent-required/,
+      'advanced manufacture must not silently consume common-path continuation state'
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+console.log('✓ advanced manufacture remains explicit even when common-path continuation state is present passed');
+
+
+{
+  const output = await materializeHandoffManufactureCliOutput({
+    schema: 'tiinex.portable.operation.result.v1',
+    operation: 'manufacture-handoff-package',
+    status: 'blocked',
+    transportExecutable: false,
+    carrierProjection: { status: 'ready', mode: 'single', routes: [], workspace: {}, workspaces: [], selection: {} },
+    findings: [{ severity: 'error', code: 'portable.handoff-material.required.unresolved', message: 'Exact required material is not currently resolvable or materialized.' }],
+    findingSummary: { status: 'invalid', counts: { error: 1, warning: 0, info: 0, total: 1 } }
+  }, { 'output-dir': '/tmp' });
+  assert.equal(output.status, 'blocked');
+  assert.equal(output.primaryOutput, null);
+  assert.equal(output.findingSummary.counts.error, 1);
+  assert.equal(output.findings[0].code, 'portable.handoff-material.required.unresolved');
+}
+console.log('✓ blocked manufacture façade preserves actionable findings instead of attempting an invalid carrier write passed');

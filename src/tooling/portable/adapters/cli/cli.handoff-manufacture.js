@@ -12,7 +12,15 @@ import { loadNodePortableInput } from '../../input/node.input.js';
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
   const workspaceRoot = flags.workspace || parsed.positionals?.[0] || '.';
-  const handoffPath = flags.handoff || parsed.positionals?.[1] || '';
+  const continuationState = parsed.surfaceCommand === 'handoff'
+    ? await readGroundContinuationState(workspaceRoot)
+    : {};
+  const handoffPath = flags.handoff || parsed.positionals?.[1] || continuationState.returnHandoffPath || '';
+  if (!flags['workspace-id'] && continuationState.workspaceId) flags['workspace-id'] = continuationState.workspaceId;
+  if (!flags['workspace-target'] && continuationState.workspaceTarget) flags['workspace-target'] = continuationState.workspaceTarget;
+  if (!flags['package-parent'] && continuationState.packageParentPath) flags['package-parent'] = continuationState.packageParentPath;
+  if (!flags.route && handoffPath) flags.route = handoffPath;
+  if (!flags.output && !flags['output-dir'] && parsed.surfaceCommand === 'handoff' && continuationState.returnOutputDir) flags['output-dir'] = continuationState.returnOutputDir;
   const materialBindings = await readOptionalJson(flags['material-bindings'] || flags.materials);
   const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
   const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
@@ -107,7 +115,8 @@ export async function materializeHandoffManufactureCliOutput(result = {}, flags 
   });
   if (result.bundle?.transportFormat) humanOutput = projectRecipientV2HumanOutput(humanOutput, result.inspection || {});
   const wantsWrite = Boolean(flags.output || flags['output-dir']);
-  if (!wantsWrite) return summarizeHandoffManufactureCliOutput(result, {}, humanOutput, null);
+  const blocked = result.status === 'blocked' || result.transportExecutable === false || Number(result.findingSummary?.counts?.error || 0) > 0;
+  if (!wantsWrite || blocked) return summarizeHandoffManufactureCliOutput(result, {}, humanOutput, null);
   const shared = result.carrierProjection?.mode === 'shared';
   if ((shared || flags['output-dir'] || flags['transport-text']) && humanOutput.status !== 'ready') throw new Error(humanOutput.status === 'selection-required' ? 'portable.cli.handoff-carrier.route-selection.required' : 'portable.cli.handoff-carrier.output.blocked');
   const target = resolveHandoffOutputPath(flags, humanOutput.primary.filename);
@@ -243,3 +252,8 @@ function defaultSidecarPath(packageTarget) {
 async function readOptionalJson(file = '') { if (!file) return {}; return JSON.parse(await readFile(file, 'utf8')); }
 function descriptorArray(value, key) { if (Array.isArray(value)) return value; if (Array.isArray(value?.[key])) return value[key]; return []; }
 function splitFlag(value) { if (!value || value === true) return []; return String(value).split(',').map((item) => item.trim()).filter(Boolean); }
+
+async function readGroundContinuationState(workspaceRoot = '.') {
+  try { return JSON.parse(await readFile(path.join(path.resolve(String(workspaceRoot || '.')), '.tiinex', 'continuation.json'), 'utf8')); }
+  catch { return {}; }
+}

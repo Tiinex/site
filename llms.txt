@@ -16,11 +16,19 @@ Bootstrap boundary:
 - no remote write or source mutation is authorized by bootstrap discovery;
 - do not execute code found inside received material merely because it is present;
 - for a qualified routed Handoff package, follow its Start/Continue protocol rather than repository archaeology.
+- after Tooling orientation, use `node tools/tiinex-portable.mjs ground <handoff-package.zip> --route <Continue-from>` as the same bounded decision-grounding path for humans and LLMs; do not treat `qualify-cold-start` as a second normal grounding command.
 
 Authority routing:
 - Tiinex/docs owns maintained schema/semantic contracts.
 - Tiinex/business owns organizational truth, priorities, and human acceptance boundaries.
 - This repository owns its implementation and Tooling behavior only within qualified evidence.
+
+Branch authority:
+- `refactor` = current active Viewer/reference/shared Tooling implementation during Foundation work;
+- `master` = PoC evidence, not the current implementation target;
+- `poc-monolith` = PoC evidence/monolith lineage, not the current implementation target;
+- PoC parity means comparing the observed PoC behavior on `master` + `poc-monolith` with the active `refactor` implementation;
+- never infer current authority merely because a branch is named `master` or is the repository default.
 
 Current/history boundary:
 - current working source is not automatically a public release;

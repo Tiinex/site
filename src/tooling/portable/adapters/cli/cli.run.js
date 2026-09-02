@@ -6,6 +6,9 @@ import { materializeCliArtifactSetResult, materializeCliLocalDraftResult } from 
 import { portableCliHelpText } from './cli.help.js';
 import { materializeHandoffManufactureCliOutput } from './cli.handoff-manufacture.js';
 import { commandInput } from './cli.command-input.js';
+import { continueGroundWithHostResult } from './cli.ground-recovery.js';
+import { groundContinuationOperationInput, materializeGroundWorkspaceCliOutput } from './cli.ground-materialize.js';
+import { runCommonAuthorCli } from './cli.common-author.js';
 
 export async function runPortableCli(argv = process.argv.slice(2), io = console, runtime = {}) {
   const parsed = parseArgs(argv);
@@ -18,21 +21,37 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
     return 0;
   }
   try {
+    if (parsed.command === 'author') {
+      const result = await runCommonAuthorCli(parsed, runtime);
+      writeJson(io, result, parsed.flags.compact !== true);
+      return result?.findingSummary?.counts?.error ? 2 : 0;
+    }
     const timingEnabled = Boolean(parsed.flags['phase-timing']);
     const totalStartedAt = timingEnabled ? monotonicNowMs() : 0;
 
     const inputStartedAt = timingEnabled ? monotonicNowMs() : 0;
     const { input, options } = await commandInput(parsed, runtime);
+    const operationInput = parsed.command === 'project-grounding-readiness'
+      ? groundContinuationOperationInput(input, parsed.flags)
+      : input;
     const inputPreparationMs = timingEnabled ? elapsedMs(inputStartedAt) : 0;
 
     const operationStartedAt = timingEnabled ? monotonicNowMs() : 0;
-    const result = await runPortableOperation(parsed.command, input, options);
+    let result = await runPortableOperation(parsed.command, operationInput, options);
+    let commonPathOutput = null;
+    if (parsed.command === 'project-grounding-readiness' && parsed.flags['host-result']) {
+      const continued = await continueGroundWithHostResult(result, operationInput, options, parsed.flags);
+      result = continued.result;
+      commonPathOutput = continued.output;
+    }
     const operationExecutionMs = timingEnabled ? elapsedMs(operationStartedAt) : 0;
 
     const materializationStartedAt = timingEnabled ? monotonicNowMs() : 0;
-    let output = result;
+    let output = commonPathOutput || result;
     if (parsed.command === 'manufacture-handoff-package' && (parsed.flags.output || parsed.flags['output-dir'])) {
       output = await materializeHandoffManufactureCliOutput(result, parsed.flags);
+    } else if (parsed.command === 'project-grounding-readiness' && (parsed.flags.continue || parsed.flags['materialize-workspace'] || parsed.flags['workspace-output'])) {
+      output = await materializeGroundWorkspaceCliOutput(output, operationInput, parsed.flags);
     } else if (parsed.command === 'build-runtime-package' && parsed.flags.output) {
       const receipt = await writePortableRuntimePackageZip(result.bundle, parsed.flags.output);
       output = Object.freeze({ ...result, bundle: undefined, writeReceipt: receipt });
@@ -404,10 +423,10 @@ function withCliPhaseTiming(result = {}, timing = {}) {
 function parseArgs(argv=[]) {
   const args=[...argv],first=args.shift()||'';
   if(first==='--help'||first==='-h') return {command:'help',flags:{help:true},positionals:[]};
-  const command=({orient:'orient-handoff-package',receive:'qualify-cold-start',validate:'audit-handoff-package-context',handoff:'manufacture-handoff-package'})[first]||first;
+  const command=({orient:'orient-handoff-package',ground:'project-grounding-readiness',receive:'qualify-cold-start',validate:'audit-handoff-package-context',handoff:'manufacture-handoff-package',author:'author'})[first]||first;
   const flags={},positionals=[];
   while(args.length){const token=args.shift();if(!token.startsWith('--')){positionals.push(token);continue;}const key=token.slice(2);flags[key]=!args.length||args[0].startsWith('--')?true:args.shift();}
-  return {command,flags,positionals};
+  return {command,flags,positionals,surfaceCommand:first};
 }
 
 function writeJson(io, value, pretty = true) { io.log(JSON.stringify(value, null, pretty ? 2 : 0)); }

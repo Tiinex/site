@@ -33,8 +33,8 @@ assert.equal(bootstrap.includes('resolve-lineage ./received --depth 3 --directio
 assert.equal(bootstrap.includes('npm run tooling:search -- --query'), true);
 assert.equal(bootstrap.includes('--include-legacy-topics'), true);
 assert.equal(bootstrap.includes('--include-legacy-fixtures'), true);
-assert.equal(bootstrap.includes('qualify-cold-start ... --summary --include-required-context all'), true);
-assert.equal(bootstrap.includes('A summary that reports omitted Required Context bodies is not proof that the model has read those bodies.'), true);
+assert.equal(bootstrap.includes('ground ... --include-required-context all'), true);
+assert.equal(bootstrap.includes('A receipt that omits Required Context bodies is not proof that the model has read those bodies.'), true);
 assert.equal(bootstrap.includes('humanOutput.normalInlineRouting.content'), true);
 assert.equal(bootstrap.includes('sole primary package'), true);
 assert.equal(bootstrap.includes('Filename or co-location under a bootstrap-like path does not grant bootstrap authority.'), true);

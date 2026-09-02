@@ -34,6 +34,7 @@ import { acceptPortableHostActionReceipt, planPortableHostAction } from './host/
 import { describePortableCheckpointGate, qualifyPortableCheckpoint } from './conformance/checkpoint.qualification.js';
 import { describePortableColdStartIngress, groundPortableColdConsumer, projectPortableColdStartHostGuidance, qualifyPortableColdStart } from './handoff/coldStartQualification.js';
 import { projectPortableOperatingOverview } from './overview/operatingOverview.js';
+import { projectPortableGroundingReadiness } from './grounding/grounding.readiness.js';
 import { createPortablePackageOperationEntries } from './operation.catalog.package.js';
 
 export const PORTABLE_OPERATION_CATALOG_SCHEMA_ID = 'tiinex.portable.operation.catalog.v1';
@@ -74,6 +75,13 @@ export const portableOperationCatalog = Object.freeze({
     safety: 'read-only',
     inputSchema: 'tiinex.portable.cold-consumer-grounding.request.v1',
     handler: (input = {}, options = {}) => wrapPortableResult('ground-cold-consumer', groundPortableColdConsumer(input, options))
+  }),
+  'project-grounding-readiness': operation({
+    name: 'project-grounding-readiness',
+    description: 'Compose bounded Handoff authority, exact declared Parent-lineage leaf topology, current-work signals, blockers, and unresolved evidence into fail-visible readiness for the next action.',
+    safety: 'read-only',
+    inputSchema: 'tiinex.portable.grounding-readiness.request.v1',
+    handler: (input = {}, options = {}) => wrapPortableResult('project-grounding-readiness', projectPortableGroundingReadiness(input, options))
   }),
   'qualify-cold-start': operation({
     name: 'qualify-cold-start',

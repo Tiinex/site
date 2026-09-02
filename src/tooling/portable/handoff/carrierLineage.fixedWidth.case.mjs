@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { finalizeFile } from '../../../export/package.fileMap.js';
+import { prepareHandoffManufactureCliCommand } from '../adapters/cli/cli.handoff-manufacture.js';
 import { advanceHandoffCarrierMajor, continueHandoffCarrierLineage, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle, qualifyMajorCarrierReadiness } from './carrierLineage.js';
 import { renderHandoffPackageV1 } from './recipientV2.packageV1.contract.js';
 import { buildRecipientV2TransportManifestFile, recipientV2TransportFacts } from './recipientV2.transportManifest.js';
@@ -16,6 +17,16 @@ assert.equal(child.parentDimension, '001');
 const grandchild = continueHandoffCarrierLineage({ ...child, packageSha256: 'b'.repeat(64), packageFilename: '001-1-parent.zip' });
 assert.equal(grandchild.dimension, '001-1-1');
 assert.equal(grandchild.major, '001');
+
+assert.throws(() => continueHandoffCarrierLineage({ dimension: '004-x' }), /portable\.handoff-carrier-lineage\.parent\.unresolved/, 'explicit malformed parent dimensions must fail closed rather than collapse to a fresh root');
+assert.throws(() => advanceHandoffCarrierMajor({ dimension: '004--1' }, 'checkpoint'), /portable\.handoff-carrier-lineage\.parent\.unresolved/, 'malformed major parent dimensions must fail closed');
+assert.throws(() => advanceHandoffCarrierMajor(grandchild, ''), /portable\.handoff-carrier-lineage\.major-reason\.required/, 'major advancement requires an explicit closure reason');
+assert.throws(() => advanceHandoffCarrierMajor({ dimension: '999' }, 'overflow checkpoint'), /portable\.handoff-carrier-lineage\.major\.invalid/, 'major progression must remain inside the fixed-width major domain');
+await assert.rejects(
+  () => prepareHandoffManufactureCliCommand({ positionals: ['.'], flags: { 'package-major': true } }),
+  /portable\.cli\.handoff-carrier\.package-major\.parent-required/,
+  'manufacture must reject major advancement without an exact package parent'
+);
 
 const major = advanceHandoffCarrierMajor({ ...grandchild, packageSha256: 'c'.repeat(64), packageFilename: '001-1-1-parent.zip' }, 'stabilization checkpoint');
 assert.equal(major.dimension, '002');

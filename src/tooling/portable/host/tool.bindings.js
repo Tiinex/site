@@ -150,6 +150,7 @@ export function planPortableHostAction(input = {}, options = {}) {
 export function acceptPortableHostActionReceipt(input = {}, options = {}) {
   const plan = input.plan || input.hostActionPlan || options.plan || {};
   const receipt = input.receipt || input.hostReceipt || {};
+  const priorAcceptance = input.priorAcceptance || input.previousAcceptance || options.priorAcceptance || {};
   const findings = [];
   const expectedSteps = Array.isArray(plan.steps) ? plan.steps : [];
   const actualSteps = Array.isArray(receipt.steps) ? receipt.steps : [];
@@ -171,24 +172,38 @@ export function acceptPortableHostActionReceipt(input = {}, options = {}) {
     if (expected.capability === 'filesystemRead' || expected.capability === 'archiveRead') normalizedFiles.push(...normalizeLocalFiles(normalized, findings, expected.capability));
     if (expected.capability === 'images' || expected.capability === 'pdf') interpretations.push(...normalizeInterpretations(normalized, findings, expected.capability));
   }
+  const prior = acceptedPriorMaterial(priorAcceptance, findings);
+  const repositoryFiles = uniqueAcceptedFiles([
+    ...prior.repositoryFiles,
+    ...normalizedFiles.filter((file) => file.source?.repository)
+  ]);
+  const localFiles = uniqueAcceptedFiles([
+    ...prior.localFiles,
+    ...normalizedFiles.filter((file) => !file.source?.repository)
+  ]);
   const summary = summarizePortableFindings(findings);
-  const providerResponses = normalizedFiles.some((file) => file.source?.repository)
+  const providerResponses = repositoryFiles.length
     ? Object.freeze([Object.freeze({
         providerId: 'host-repository',
         priority: 85,
         remoteFetch: true,
-        files: Object.freeze(normalizedFiles.filter((file) => file.source?.repository))
+        files: Object.freeze(repositoryFiles)
       })])
     : Object.freeze([]);
-  const localFiles = Object.freeze(normalizedFiles.filter((file) => !file.source?.repository));
   return Object.freeze({
     schema: PORTABLE_HOST_ACTION_ACCEPTANCE_SCHEMA_ID,
     actionId: plan.actionId || receipt.actionId || '',
     action: plan.action || receipt.action || '',
     status: summary.counts.error ? 'rejected' : 'accepted',
     providerResponses,
-    material: Object.freeze({ files: localFiles }),
+    material: Object.freeze({ files: Object.freeze(localFiles) }),
     interpretations: Object.freeze(interpretations),
+    cumulativeRecovery: Object.freeze({
+      priorAccepted: prior.accepted,
+      repositoryFiles: repositoryFiles.length,
+      localFiles: localFiles.length,
+      boundary: 'Prior accepted recovery material is carried forward only through explicit accept-host-receipt input; no hidden session memory or cache authority is used.'
+    }),
     continuation: plan.continuation || null,
     boundary: Object.freeze({
       repositorySourceRequiresExplicitReceiptMetadata: true,
@@ -199,6 +214,46 @@ export function acceptPortableHostActionReceipt(input = {}, options = {}) {
     findings: Object.freeze(findings),
     findingSummary: summary
   });
+}
+
+function acceptedPriorMaterial(value = {}, findings = []) {
+  const prior = value?.result || value || {};
+  const supplied = Boolean(prior && Object.keys(prior).length);
+  if (!supplied) return Object.freeze({ accepted: false, repositoryFiles: Object.freeze([]), localFiles: Object.freeze([]) });
+  if (String(prior.status || '') !== 'accepted') {
+    findings.push(portableFinding('error', 'portable.host-receipt.prior-unaccepted', 'Cumulative receipt acceptance requires a previously accepted host-action result.'));
+    return Object.freeze({ accepted: false, repositoryFiles: Object.freeze([]), localFiles: Object.freeze([]) });
+  }
+  const repositoryFiles = [];
+  for (const response of Array.isArray(prior.providerResponses) ? prior.providerResponses : []) {
+    for (const file of Array.isArray(response?.files) ? response.files : []) {
+      if (file?.source?.receiptQualification === 'accepted-host-repository-read') repositoryFiles.push(file);
+    }
+  }
+  const localFiles = Array.isArray(prior.material?.files) ? prior.material.files.filter(Boolean) : [];
+  return Object.freeze({
+    accepted: true,
+    repositoryFiles: Object.freeze(repositoryFiles),
+    localFiles: Object.freeze(localFiles)
+  });
+}
+
+function uniqueAcceptedFiles(files = []) {
+  const out = [];
+  const seen = new Set();
+  for (const file of files) {
+    const source = file?.source || {};
+    const key = [
+      String(source.repository || ''),
+      String(source.commit || source.ref || ''),
+      String(source.path || file?.path || ''),
+      String(file?.content || '')
+    ].join('\u0000');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(file);
+  }
+  return out;
 }
 
 function capability(name, patterns, negativePatterns = []) { return Object.freeze({ name, patterns, negativePatterns }); }
