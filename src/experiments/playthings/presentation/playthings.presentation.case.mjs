@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { resolvePlaythingsPresentationCompanion } from './playthings.presentation.js';
+const task = resolvePlaythingsPresentationCompanion('tiinex.task.v1');
+assert.equal(task.resolution, 'exact');
+assert.equal(task.companion.stationKind, 'workbench');
+const finding = resolvePlaythingsPresentationCompanion('tiinex.discovery.finding.v1');
+assert.equal(finding.resolution, 'ancestor');
+assert.equal(finding.resolvedSchemaId, 'tiinex.discovery.v1');
+assert.equal(finding.companion.stationKind, 'observatory');
+const project = resolvePlaythingsPresentationCompanion('tiinex.project.v1');
+assert.equal(project.resolution, 'exact', 'presentation companions may cover a schema before the carried viewer registry catches up');
+const unknown = resolvePlaythingsPresentationCompanion('tiinex.future.unknown.v99');
+assert.equal(unknown.resolution, 'root-fallback');
+assert.equal(unknown.semanticAuthority, 'none');
+console.log('✓ Playthings presentation companion inheritance passed');

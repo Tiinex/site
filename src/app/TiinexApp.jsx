@@ -730,10 +730,10 @@ export function TiinexApp() {
   ].join(' ');
   return (
     <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (playthingsExperiment) { setNotice('Playthings is read-only. Exit the experiment to add material.'); return; } if (activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
-      {!playthingsExperiment ? <GlobalDock
+      <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
-        pagerVisible={pagerVisible}
+        pagerVisible={!playthingsExperiment && pagerVisible}
         previousWorkspaceEnabled={workspaceWindow.previousEnabled}
         nextWorkspaceEnabled={workspaceWindow.nextEnabled}
         onPreviousWorkspace={() => pageWorkspaceWindow('previous')}
@@ -742,9 +742,11 @@ export function TiinexApp() {
         homeHref={workspaceHomeHref(activeWorkspaceConfig, typeof window !== 'undefined' ? window.location : null)}
         onShare={shareCurrent}
         onHelp={() => setDialog('help')}
-      /> : null}
+        playthingsActive={playthingsExperiment}
+        onTogglePlaythings={playthingsExperiment ? exitPlaythings : () => setPlaythingsOpen(true)}
+      />
       {playthingsExperiment ? (
-        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onExit={exitPlaythings} />
+        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} />
       ) : active ? (
         <div
           className={`${visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} ${visibleWorkspaceItems.length === 1 && visibleWorkspaceItems[0]?.layoutMode === 'compact' ? 'tx-workspace-single-stage-compact' : ''}`.trim()}
@@ -774,7 +776,6 @@ export function TiinexApp() {
                 onClose={() => openWorkspaceDialog('close-workspace', workspace.id)}
                 onRenameWorkspace={() => openWorkspaceDialog('rename-workspace', workspace.id)}
                 onVerse={(verse) => setVerse(verse, workspace.id)}
-                onOpenPlaythings={() => setPlaythingsOpen(true)}
                 onQuery={(query) => setQuery(query, workspace.id)}
                 onOpenDisplayOptions={() => openWorkspaceDialog('display-options', workspace.id)}
                 onOpenAddDialog={(sourceId = '') => openAddToWorkspace(sourceId, workspace.id)}
@@ -813,7 +814,7 @@ export function TiinexApp() {
       ) : (
         <EmptyStage workspaceConfig={activeWorkspaceConfig} />
       )}
-      {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
+      {notice && !playthingsExperiment ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}

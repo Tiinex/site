@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { fitPlaythingsCamera, panPlaythingsCamera, playthingsCameraKeyboardDelta, playthingsCameraViewBox, zoomPlaythingsCamera } from './playthings.camera.js';
+const fit = fitPlaythingsCamera(1000, 600);
+assert.equal(playthingsCameraViewBox(fit), '0 0 1000 600');
+const zoomed = zoomPlaythingsCamera(fit, 2, .5, .5);
+assert.equal(zoomed.width, 500);
+assert.equal(zoomed.height, 300);
+assert.equal(zoomed.x, 250);
+assert.equal(zoomed.y, 150);
+const panned = panPlaythingsCamera(zoomed, 9999, 9999);
+assert.equal(panned.x, 500, 'camera pan clamps at world edge');
+assert.equal(panned.y, 300);
+assert.ok(playthingsCameraKeyboardDelta(zoomed, 'w').y < 0);
+assert.ok(playthingsCameraKeyboardDelta(zoomed, 'd').x > 0);
+console.log('✓ Playthings camera pan/zoom boundaries passed');

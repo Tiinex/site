@@ -6,7 +6,7 @@ import { runtime } from './runtimeState.js';
 const LOGO_SRC = `${import.meta.env.BASE_URL}assets/tiinex-logo-white-transparent.png`;
 let emptyStageVisitCursor = 0;
 
-export function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, previousWorkspaceEnabled = true, nextWorkspaceEnabled = true, onPreviousWorkspace, onNextWorkspace, onCreate, homeHref, onShare, onHelp }) {
+export function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, previousWorkspaceEnabled = true, nextWorkspaceEnabled = true, onPreviousWorkspace, onNextWorkspace, onCreate, homeHref, onShare, onHelp, playthingsActive = false, onTogglePlaythings }) {
   const showPager = Boolean(hasWorkspace && pagerVisible);
   return (
     <nav
@@ -21,7 +21,8 @@ export function GlobalDock({ hasWorkspace, workspaceCount, pagerVisible, previou
           <img src={LOGO_SRC} alt="" />
         </a>
         <span className="tx-dock-side tx-dock-actions tx-dock-right">
-          <Button icon="create" variant={hasWorkspace ? 'primary' : 'nav'} className="tx-dock-action-button tx-dock-create-button" onClick={onCreate}>Create</Button>
+          <Button icon="create" variant={hasWorkspace ? 'primary' : 'nav'} className="tx-dock-action-button tx-dock-create-button" onClick={onCreate} disabled={playthingsActive}>Create</Button>
+          {hasWorkspace && typeof onTogglePlaythings === 'function' ? <Button icon="multiverse" variant={playthingsActive ? 'primary' : 'nav'} className="tx-dock-action-button tx-dock-playthings-button" onClick={onTogglePlaythings}>{playthingsActive ? 'Viewer' : 'Playthings'}</Button> : null}
           <Button icon="shareNodes" variant="nav" className="tx-dock-action-button tx-dock-share-button" onClick={onShare}>Share</Button>
           <Button icon="help" variant="nav" className="tx-dock-icon-button" aria-label="Help" onClick={onHelp} />
         </span>

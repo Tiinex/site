@@ -1,4 +1,5 @@
 import { resolveLineage } from '../../lineage/lineage.resolve.js';
+import { resolvePlaythingsPresentationCompanion } from './presentation/playthings.presentation.js';
 
 export const PLAYTHINGS_EXPERIMENT_ID = 'tiinex.playthings.multiverse.experimental.v1';
 
@@ -164,16 +165,7 @@ export function playthingsModelFingerprint(model = {}) {
 }
 
 export function visualKindForSchema(schemaId = '') {
-  const id = String(schemaId || '').toLowerCase();
-  if (id.includes('.project.')) return 'castle';
-  if (id.includes('.task.')) return 'plaything';
-  if (id.includes('.discovery.')) return 'observatory';
-  if (id.includes('.handoff.')) return 'gate';
-  if (id.includes('.decision.')) return 'monolith';
-  if (id.includes('.evidence.') || id.includes('.attestation.')) return 'beacon';
-  if (id.includes('.workspace.')) return 'harbor';
-  if (id.includes('.relation.')) return 'bridge-marker';
-  return 'relic';
+  return resolvePlaythingsPresentationCompanion(schemaId).companion.stationKind || 'relic';
 }
 
 export function playthingsRealmForRepo(repo = '') {
@@ -324,6 +316,7 @@ function artifactFromNode(node = {}, context = null) {
   if (!context) return null;
   const record = node.record || {};
   const createdAt = String(record.currentCreatedAt || record.createdAt || record.date || '');
+  const presentation = resolvePlaythingsPresentationCompanion(node.schemaId || record.schemaId || record.kind || '');
   return Object.freeze({
     key: String(node.id || ''),
     recordId: context.originalId,
@@ -336,7 +329,11 @@ function artifactFromNode(node = {}, context = null) {
     path: String(node.path || record.path || ''),
     schemaId: String(node.schemaId || record.schemaId || record.kind || 'unknown'),
     createdAt,
-    visualKind: visualKindForSchema(node.schemaId || record.schemaId || record.kind || ''),
+    visualKind: presentation.companion.stationKind || 'relic',
+    interactionKind: presentation.companion.interactionKind || 'inspect',
+    districtKind: presentation.companion.districtKind || 'commons',
+    presentationResolution: presentation.resolution,
+    presentationSchemaId: presentation.resolvedSchemaId,
     hasContinuityContext: Boolean(node.hasContinuityContext ?? record.hasContinuityContext),
     hasIntegrity: Boolean(node.hasIntegrity ?? record.hasIntegrity),
     sourceMode: String(node.sourceMode || record.sourceMode || ''),
