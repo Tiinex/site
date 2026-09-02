@@ -37,7 +37,7 @@ export async function runLocalMaterialImportCommand(input = {}) {
       if (!appliedHandoff?.ok) return { ok: false, error: appliedHandoff?.error || 'handoff-package.apply-failed', state, notice: appliedHandoff?.notice || 'Could not import Handoff package.', files, handoffPackage: handoff, applied: appliedHandoff };
       const canonicality = assertCanonicalWorkspaceRuntimeState(appliedHandoff.state, 'handoff-package-import');
       if (!canonicality.ok) return { ok: false, error: 'workspace.runtime-candidate-model-leak', state, notice: 'Imported Handoff package could not be normalized safely.', files, handoffPackage: handoff, applied: appliedHandoff, canonicality };
-      return { ok: true, state: appliedHandoff.state, notice: appliedHandoff.notice, files, handoffPackage: handoff, applied: appliedHandoff, materialCount: (appliedHandoff.adapterResult?.records?.length || 0) + (appliedHandoff.adapterResult?.assets?.length || 0) + (appliedHandoff.adapterResult?.workspaceEntries?.length || 0), workspaceId: appliedHandoff.workspaceId || '' };
+      return { ok: true, state: appliedHandoff.state, notice: appliedHandoff.notice, files, handoffPackage: handoff, applied: appliedHandoff, transientSession: Boolean(appliedHandoff.transientSession), materialCount: Number(appliedHandoff.materialCount || 0) || (appliedHandoff.adapterResult?.records?.length || 0) + (appliedHandoff.adapterResult?.assets?.length || 0) + (appliedHandoff.adapterResult?.workspaceEntries?.length || 0), workspaceId: appliedHandoff.workspaceId || '' };
     }
   }
   if (!adapterResult) {

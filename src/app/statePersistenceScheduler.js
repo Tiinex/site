@@ -26,7 +26,7 @@ export function createStatePersistenceScheduler(win = globalThis, options = {}) 
     if (!entry?.state?.workspaces?.length) return null;
     state.writes += 1;
     state.lastReason = reason;
-    entry.runtime?.().persistence?.writeState?.(entry.state, persistenceWriteEnvForOwnership(options.persistenceOwnership, { mode: entry.mode || 'replace' }));
+    entry.runtime?.().persistence?.writeState?.(entry.state, persistenceWriteEnvForOwnership(options.persistenceOwnership, { mode: entry.mode || 'replace', ...(entry.writeEnv || {}) }));
     return entry.state;
   }
 
@@ -93,7 +93,19 @@ export function commitStateWithPersistence({ nextState, mode = 'push', options =
     return canonicalState;
   }
   if (options.deferPersistence) {
-    scheduler?.schedule?.({ state: canonicalState, mode, runtime }, {
+    scheduler?.schedule?.({
+      state: canonicalState,
+      mode,
+      runtime,
+      // View/presentation changes must not repeatedly serialize multi-repository
+      // material or rewrite durable local recovery. The latest full material
+      // checkpoint remains authoritative until a material mutation commits.
+      writeEnv: {
+        durableLocalPolicy: 'preserve-existing',
+        sessionCachePolicy: 'preserve-existing',
+        routeMaterialPolicy: 'omit'
+      }
+    }, {
       reason: options.persistenceReason || 'view-state',
       delayMs: options.persistenceDelayMs,
       idleTimeout: options.persistenceIdleTimeout

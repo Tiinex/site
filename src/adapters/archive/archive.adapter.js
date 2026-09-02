@@ -110,6 +110,7 @@ export async function decodeZipBufferEntries(zipBuffer, options = {}) {
       warnings.push({ code: 'archive.unsafe-path-skipped', ref: central.name, message: 'Unsafe archive path skipped.' });
       continue;
     }
+    if (typeof options.entryFilter === 'function' && !options.entryFilter(path, central)) continue;
     try {
       let compressed = readLocalFileData(bytes, central);
       if (central.flag & 0x0001) {

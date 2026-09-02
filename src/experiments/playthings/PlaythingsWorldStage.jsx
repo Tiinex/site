@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { usePlaythingsCamera } from './playthings.camera.react.js';
 import { generatePlaythingsWorld, playthingsRestingAssignment, playthingsTerrainMarks, playthingsVisibleWorldBounds } from './playthings.world.js';
 import { planPlaythingsEventMotion, samplePlaythingsEventMotion } from './playthings.motion.js';
@@ -18,6 +18,18 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   const activeProjection = activeEvent ? world.eventProjection.get(activeEvent.id) || null : null;
   const hoveredActor = hoveredHead ? actorByKey.get(hoveredHead) || null : null;
   const unlockedSkills = useMemo(() => new Set(unlockedSkillIds || []), [unlockedSkillIds]);
+  // Transition qualification is intentionally lazy. With large carried workspaces
+  // resolving every living leaf on every render turns a hover affordance into an
+  // O(population × transition-qualification) render cost. Only the focused leaf
+  // asks Tiinex for currently valid transitions.
+  const hoveredTransitionOptions = useMemo(() => {
+    if (!toolsEnabled || !hoveredHead || typeof onResolveTransitions !== 'function') return [];
+    const actor = actorByKey.get(hoveredHead);
+    const artifact = actor ? artifactByKey.get(actor.headKey) : null;
+    if (!artifact) return [];
+    return (onResolveTransitions(artifact.recordId, artifact.workspaceId) || [])
+      .filter((action) => unlockedSkills.has(transitionSchemaId(action)));
+  }, [toolsEnabled, hoveredHead, onResolveTransitions, actorByKey, artifactByKey, unlockedSkills]);
   const hiddenSourceKey = activeEvent?.kind === 'advance' && activeProjection?.arrivalReason !== 'organization-receiver' ? activeProjection.sourceKey : '';
   const actorStates = useMemo(() => {
     const map = new Map();
@@ -70,9 +82,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
           const point = world.actorPositions.get(actor.headKey);
           const idle = actorStates.get(actor.headKey) || playthingsLeafIdleState(artifact?.createdAt, playheadMs);
           if (!artifact || !point || actor.headKey === hiddenSourceKey || (idle.state === 'resting' && idle.structure)) return null;
-          const transitionOptions = toolsEnabled && typeof onResolveTransitions === 'function'
-            ? (onResolveTransitions(artifact.recordId, artifact.workspaceId) || []).filter((action) => unlockedSkills.has(transitionSchemaId(action)))
-            : [];
+          const transitionOptions = hoveredHead === actor.headKey ? hoveredTransitionOptions : [];
           return <LivingPlaything key={actor.id || actor.headKey} actor={actor} artifact={artifact} point={point} idle={idle} highlighted={hoveredHead === actor.headKey} onHover={setHoveredHead} onOpen={() => onOpenRecord?.(artifact.recordId, artifact.workspaceId)} transitionOptions={transitionOptions} onActivateTransition={(action) => onActivateTransition?.(artifact.recordId, artifact.workspaceId, action)} />;
         })}
       </g>
@@ -88,7 +98,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         onComplete={onEventComplete}
       /> : null}
     </svg>
-    <div className="tx-playthings-camera-controls">
+    <div className="tx-playthings-camera-controls" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
       <button type="button" className={`tx-playthings-follow-toggle ${followPlaything ? 'is-on' : ''}`} onClick={() => onFollowPlaythingChange?.(!followPlaything)} aria-pressed={followPlaything}>{followPlaything ? 'Follow: ON' : 'Follow'}</button>
       <button type="button" className="tx-playthings-camera-reset" onClick={() => camera.fit(fitBounds)}>Fit world</button>
       <span className="tx-playthings-camera-help">{followLocked ? 'camera locked · wheel zoom' : 'WASD · drag · wheel'}</span>
@@ -138,6 +148,10 @@ function compactTransitionLabel(value = '') { const text = String(value || '').t
 function ActiveEventSequence({ event, projection, artifact, eventCount, playing, onSample, onComplete }) {
   const motion = useMemo(() => planPlaythingsEventMotion(event, projection, { eventCount }), [event, projection, eventCount]);
   const [sample, setSample] = useState(() => samplePlaythingsEventMotion(motion, 0));
+  const onSampleRef = useRef(onSample);
+  const onCompleteRef = useRef(onComplete);
+  React.useEffect(() => { onSampleRef.current = onSample; }, [onSample]);
+  React.useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   React.useEffect(() => { setSample(samplePlaythingsEventMotion(motion, 0)); }, [motion]);
   React.useEffect(() => {
     if (!playing) return undefined;
@@ -147,8 +161,8 @@ function ActiveEventSequence({ event, projection, artifact, eventCount, playing,
       const delta = Math.min(50, Math.max(0, now - last)); last = now;
       elapsed = Math.min(motion.totalMs, elapsed + delta);
       const next = samplePlaythingsEventMotion(motion, elapsed);
-      setSample(next); onSample?.(next);
-      if (next.done) { if (!done) { done = true; onComplete?.(); } return; }
+      setSample(next); onSampleRef.current?.(next);
+      if (next.done) { if (!done) { done = true; onCompleteRef.current?.(); } return; }
       frameId = window.requestAnimationFrame(tick);
     };
     frameId = window.requestAnimationFrame(tick);

@@ -2,6 +2,7 @@ import { fileToArchiveDecodedEntries, qualifyDecodedArchiveEntries } from '../ad
 import { EXPORT_PACKAGE_CONTROL_ROLES } from '../export/package.controlTopology.js';
 import { buildExportPackageApplyResult, buildExportPackageImportPlan } from '../export/package.apply.js';
 import { rehydratePortableRuntimePackage } from '../tooling/portable/package/runtime.package.js';
+import { applyRecipientFacingV2Handoff, tryReadRecipientFacingV2 } from './handoffPackageRecipientV2.js';
 
 const KNOWN_CONTROL_PATHS = new Set(EXPORT_PACKAGE_CONTROL_ROLES.map((entry) => entry.path));
 
@@ -14,6 +15,9 @@ export async function tryReadOperationalHandoffPackage(files = [], options = {})
   } catch (error) {
     return Object.freeze({ detected: false, extractionError: error });
   }
+  const recipient = await tryReadRecipientFacingV2(decoded, options);
+  if (recipient.detected) return Object.freeze(recipient);
+
   const controlPaths = (decoded.entries || []).map((entry) => String(entry.path || '')).filter((path) => KNOWN_CONTROL_PATHS.has(path));
   const packagePrefixCount = (decoded.entries || []).filter((entry) => String(entry.path || '').startsWith('tiinex.package/')).length;
   const detected = controlPaths.length >= 2 || (controlPaths.length >= 1 && packagePrefixCount >= 3);
@@ -43,6 +47,7 @@ export async function tryReadOperationalHandoffPackage(files = [], options = {})
 }
 
 export function applyOperationalHandoffPackageToWorkspace(input = {}) {
+  if (input.handoff?.kind === 'recipient-v2') return applyRecipientFacingV2Handoff(input);
   const lifecycle = input.lifecycle;
   const state = input.state;
   const handoff = input.handoff;

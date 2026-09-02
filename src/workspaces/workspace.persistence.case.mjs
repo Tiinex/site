@@ -243,6 +243,22 @@ if (preservedClear.storageMap.get(preservedClear.persistence.LOCAL_DELTA_KEY) !=
 if (preservedClear.storageMap.get(preservedClear.persistence.LOCAL_RECOVERY_INDEX_KEY) !== preservedIndex) throw new Error('public-owned empty-state clear must preserve local recovery index');
 if (preservedClear.env.location.hash !== '#public-target-proof') throw new Error('public-owned empty-state clear must preserve public route URL');
 
+// Deferred presentation/view writes keep the last material cache/recovery intact and
+// emit only a material-free route shell. This avoids serializing large repo snapshots
+// again for every query/scroll/focus interaction.
+const lightweight = loadPersistence();
+lightweight.persistence.writeState(state, { storage: lightweight.env.localStorage, location: lightweight.env.location, history: lightweight.env.history });
+const cachedBeforeViewWrite = lightweight.storageMap.get(lightweight.persistence.STORAGE_KEY);
+const deltaBeforeViewWrite = lightweight.storageMap.get(lightweight.persistence.LOCAL_DELTA_KEY);
+lightweight.persistence.writeState(state, {
+  storage: lightweight.env.localStorage, location: lightweight.env.location, history: lightweight.env.history, mode: 'replace',
+  sessionCachePolicy: 'preserve-existing', durableLocalPolicy: 'preserve-existing', routeMaterialPolicy: 'omit'
+});
+if (lightweight.storageMap.get(lightweight.persistence.STORAGE_KEY) !== cachedBeforeViewWrite) throw new Error('lightweight view persistence must preserve existing session material cache');
+if (lightweight.storageMap.get(lightweight.persistence.LOCAL_DELTA_KEY) !== deltaBeforeViewWrite) throw new Error('lightweight view persistence must preserve existing durable local delta');
+const lightweightHash = lightweight.persistence.readHashState(lightweight.env.location);
+if ((lightweightHash?.workspaces || []).some((workspace) => (workspace.records || []).length || (workspace.assets || []).length)) throw new Error('lightweight view route must omit record/asset material');
+
 persistence.clearState({ storage: env.localStorage, location: env.location, history: env.history, mode: 'push' });
 if (storageMap.has(persistence.STORAGE_KEY) || storageMap.has(persistence.LOCAL_DELTA_KEY) || storageMap.has(persistence.LOCAL_RECOVERY_INDEX_KEY) || storageMap.has(persistence.LEGACY_STORAGE_KEY)) throw new Error('ordinary explicit clear must remove all persistence domains');
 if (historyUrls.at(-1)?.[0] !== 'push') throw new Error('ordinary closing last workspace should remain push-history capable');

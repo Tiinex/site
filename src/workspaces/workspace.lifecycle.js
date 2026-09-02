@@ -76,9 +76,15 @@ function addWorkspaceRecord(state,workspaceId,input={},options={}){
 const title = normalizeRecordTitle(input.title || input.name);
 if (!title) return { ok: false, error: 'record.title.required', state };
 const next = cloneState(state);
+const result = addWorkspaceRecordMutable(next, workspaceId, input, options, title);
+return result?.ok ? result : { ...result, state };
+}
+function addWorkspaceRecordMutable(next,workspaceId,input={},options={},preparedTitle=''){
+const title = preparedTitle || normalizeRecordTitle(input.title || input.name);
+if (!title) return { ok: false, error: 'record.title.required', state: next };
 const targetId = workspaceId || next.activeWorkspaceId;
 const workspace = next.workspaces.find((item) => item.id === targetId);
-if (!workspace) return { ok: false, error: 'workspace.not.found', state };
+if (!workspace) return { ok: false, error: 'workspace.not.found', state: next };
 const createdAt = nowIso(options.clock);
 const canonicalPath = canonicalizeLocalPath(input.path || '');
 const targetIdentity = targetQualifiedMaterialIdentity(input, workspace.id);
@@ -138,19 +144,27 @@ return{ok:true,record,workspace,state:next};
 }
 function addWorkspaceRecords(state,workspaceId,inputs=[],options={}){
 const records = Array.isArray(inputs) ? inputs : [];
-let next = cloneState(state);
+if (!records.length) return { ok: false, error: 'records.empty', state };
+// Batch materialization owns one state clone. The previous implementation called
+// addWorkspaceRecord for every input, cloning the entire multi-workspace state
+// (including Markdown bodies) once per record. Large Docs snapshots made that
+// quadratic in carried material and blocked the UI thread for seconds.
+const next = cloneState(state);
+const targetId = workspaceId || next.activeWorkspaceId;
+const workspace = next.workspaces.find((item) => item.id === targetId);
+if (!workspace) return { ok: false, error: 'workspace.not.found', state };
 const added = [];
 for (const input of records) {
-const result = addWorkspaceRecord(next, workspaceId || next.activeWorkspaceId, input, options);
-if (result?.ok) {
-next = result.state;
-added.push(result.record);
-}
+  const title = normalizeRecordTitle(input?.title || input?.name);
+  if (!title) continue;
+  const result = addWorkspaceRecordMutable(next, targetId, input, options, title);
+  if (result?.ok) added.push(result.record);
 }
 if (!added.length) return { ok: false, error: 'records.empty', state };
-const workspace = activeWorkspace(next);
+next.activeWorkspaceId = workspace.id;
 return { ok: true, records: added, workspace, state: next };
 }
+
 function addWorkspaceAssets(state, workspaceId, inputs = [], options = {}) {
 const assets = Array.isArray(inputs) ? inputs : [];
 const next = cloneState(state);

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { makePastedTraceFile, runLocalMaterialImportCommand } from './localMaterialCommand.js';
 
-export function useLocalMaterialIntake({ getLifecycle, getState, getPersistenceOwnership = null, workspaceId = '', setNotice, setDialog, commit, windowObj = null } = {}) {
+export function useLocalMaterialIntake({ getLifecycle, getState, getPersistenceOwnership = null, workspaceId = '', parseWorkspaceConfig = null, setNotice, setDialog, commit, windowObj = null } = {}) {
   const [pendingLocalImport, setPendingLocalImport] = useState(null);
 
   async function addLocalFiles(fileList, options = {}, preparedAdapterResult = null) {
-    const targetWorkspaceId = String(options.workspaceId || workspaceId || '').trim();
+    const targetWorkspaceId = options.dropScope === 'global' ? '' : String(options.workspaceId || workspaceId || '').trim();
     const passwordProvider = options.passwordProvider || passwordProviderForWindow(windowObj);
-    const commandOptions = Object.assign({}, options, { passwordProvider });
+    const commandOptions = Object.assign({}, options, { passwordProvider, parseWorkspaceConfig: options.parseWorkspaceConfig || parseWorkspaceConfig });
     const result = await runLocalMaterialImportCommand({
       lifecycle: getLifecycle?.(),
       state: getState?.(),
@@ -31,7 +31,7 @@ export function useLocalMaterialIntake({ getLifecycle, getState, getPersistenceO
     setPendingLocalImport(null);
     setDialog?.(null);
     setNotice?.(result.notice || 'Import completed.');
-    commit?.(result.state, 'push');
+    commit?.(result.state, 'push', result.transientSession ? { deferPersistence: true, persistenceReason: 'transient-handoff-session' } : {});
     return true;
   }
 

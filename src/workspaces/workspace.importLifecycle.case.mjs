@@ -100,4 +100,16 @@ assert.equal(sourceClosedAfterClear.ok, true);
 assert.equal(sourceClosedAfterClear.workspace.records.length, 0, 'source close after local clear has nothing local to resurrect');
 assert.equal(sourceClosedAfterClear.workspace.assets.length, 0);
 
+// Page/Playthings global drop is an explicit new-workspace operation for ordinary material.
+// It must never silently target whichever workspace happens to be active.
+const globalDrop = applyLocalAdapterResultToWorkspace(lifecycle, state, '', {
+  schema: 'tiinex.adapter.result.v1', adapterId: 'local', sourceId: 'local',
+  records: [createRecordFromMarkdown('# Globally dropped', { path: 'global-drop.md', sourceMode: 'manual-file' })],
+  assets: [], workspaceEntries: [], warnings: [], errors: [], diagnostics: { suggestedWorkspaceName: 'Global drop' }
+}, { clock, dropScope: 'global' });
+assert.equal(globalDrop.ok, true);
+assert.equal(globalDrop.state.workspaces.length, state.workspaces.length + 1, 'ordinary global drop creates a separate workspace');
+assert.notEqual(globalDrop.workspaceId, workspaceId, 'ordinary global drop must not inherit active workspace identity');
+assert.equal(globalDrop.state.workspaces.find((workspace) => workspace.id === globalDrop.workspaceId)?.records.length, 1);
+
 console.log('✓ workspace import lifecycle tests passed');

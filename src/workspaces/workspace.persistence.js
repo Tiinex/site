@@ -67,10 +67,9 @@
     const locationLike = env.location || global.location;
     const historyLike = env.history || global.history;
     const normalizedState = normalizeLegacyWorkspaceCandidateState(state);
-    const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(normalizedState) || normalizedState;
-    const sessionCache = createSessionCacheEnvelope(normalizedState, routeState);
+    const routeState = global.TiinexWorkspaceRoute?.makeRouteState?.(normalizedState, env) || normalizedState;
     const encoded = encodeState(routeState);
-    try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(sessionCache)); } catch (_) {}
+    if (env.sessionCachePolicy !== 'preserve-existing') { const sessionCache = createSessionCacheEnvelope(normalizedState, routeState); try { storage?.setItem?.(STORAGE_KEY, JSON.stringify(sessionCache)); } catch (_) {} }
     if (env.durableLocalPolicy !== 'preserve-existing') {
       const localDeltaEnvelope = createLocalDeltaEnvelope(normalizedState);
       const localRecoveryIndex = createLocalRecoveryIndex(normalizedState, localDeltaEnvelope.state);

@@ -1,0 +1,16 @@
+import fs from 'fs';
+await import('./src/sources/source.identity.js');
+await import('./src/workspaces/workspace.lifecycle.js');
+await import('./src/workspaces/workspace.config.js');
+import { tryReadOperationalHandoffPackage, applyOperationalHandoffPackageToWorkspace } from './src/app/handoffPackageImportCommand.js';
+const bytes=fs.readFileSync('/mnt/data/tiinex-site-001-1-1-1-1-1-1-1-anchor-to-anchor.handoff-package.zip');
+const file={name:'handoff.zip', async arrayBuffer(){return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)}};
+const t=Date.now();
+const handoff=await tryReadOperationalHandoffPackage([file]);
+console.log('read',Date.now()-t,handoff.detected,handoff.ok,handoff.kind,handoff.recipientWorkspaces?.map(w=>[w.descriptor.workspaceId,w.adapterResult.records.length,w.adapterResult.workspaceEntries.length]));
+const lifecycle=globalThis.TiinexWorkspaceLifecycle;
+let state=lifecycle.makeEmptyAppState();
+let applied=applyOperationalHandoffPackageToWorkspace({lifecycle,state,handoff,options:{clock:()=> '2026-09-02T20:00:00.000Z',parseWorkspaceConfig:globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig}});
+console.log('apply',applied.ok,applied.notice, applied.state.workspaces.map(w=>[w.id,w.records.length,w.sources.map(s=>[s.id,s.repository||s.repo,s.discoveryState]),w.workspaceImport?.handoffWorkspaceId]));
+let applied2=applyOperationalHandoffPackageToWorkspace({lifecycle,state:applied.state,handoff,options:{clock:()=> '2026-09-02T20:01:00.000Z',parseWorkspaceConfig:globalThis.TiinexWorkspaceConfig.parseWorkspaceConfig}});
+console.log('reapply',applied2.ok,applied2.state.workspaces.map(w=>[w.id,w.records.length,w.workspaceImport?.handoffWorkspaceId]), applied2.appliedWorkspaces);

@@ -290,6 +290,7 @@ export function TiinexApp() {
     getLifecycle: () => runtime().lifecycle,
     getState: () => latestStateRef.current || state,
     workspaceId: active?.id || '',
+    parseWorkspaceConfig: runtime().config?.parseWorkspaceConfig,
     setNotice,
     setDialog,
     commit,
@@ -380,7 +381,6 @@ export function TiinexApp() {
     setNotice(result.notice || 'URL material added.');
     commitSemanticNavigation(result.state, 'push');
   }
-
   async function addGitHubSource(input = {}, options = {}) {
     const isCurrentOwner = typeof options.isCurrentOwner === 'function' ? options.isCurrentOwner : null;
     const ownerAllows = () => !isCurrentOwner || isCurrentOwner();
@@ -741,7 +741,7 @@ export function TiinexApp() {
     active ? 'tx-workspace-mode' : 'tx-empty-stage-mode'
   ].join(' ');
   return (
-    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (playthingsExperiment) { setNotice('Playthings is read-only. Exit the experiment to add material.'); return; } if (activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (!playthingsExperiment && activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void addLocalFiles(event.dataTransfer, { sourceMode: playthingsExperiment ? 'playthings-global-drop' : 'stage-drop', fromDataTransfer: true, dropScope: 'global' }); } }}>
       <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}

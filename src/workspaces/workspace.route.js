@@ -5,13 +5,14 @@
   const STATE_VERSION = 2;
   const ROUTE_ISSUE_MARKDOWN_LIMIT = 120000;
 
-  function makeRouteState(appState) {
+  function makeRouteState(appState, options = {}) {
     const state = appState && typeof appState === 'object' ? appState : {};
+    const materialPolicy = String(options.routeMaterialPolicy || options.materialPolicy || '').trim() === 'omit' ? 'omit' : 'metadata';
     return {
       v: STATE_VERSION,
       activeWorkspaceId: state.activeWorkspaceId || '',
       view: semanticRouteView(state.view || {}),
-      workspaces: Array.isArray(state.workspaces) ? state.workspaces.map(compactWorkspace) : []
+      workspaces: Array.isArray(state.workspaces) ? state.workspaces.map((workspace) => compactWorkspace(workspace, { materialPolicy })) : []
     };
   }
 
@@ -35,7 +36,8 @@
     return out;
   }
 
-  function compactWorkspace(workspace) {
+  function compactWorkspace(workspace, options = {}) {
+    const omitMaterial = options.materialPolicy === 'omit';
     return {
       id: workspace.id || '',
       name: workspace.name || workspace.title || 'Workspace',
@@ -45,8 +47,8 @@
       source: compactSource(workspace.source || {}),
       sources: Array.isArray(workspace.sources) ? workspace.sources.map(compactSource) : [],
       sourceOrder: Array.isArray(workspace.sourceOrder) ? workspace.sourceOrder.slice() : [],
-      records: Array.isArray(workspace.records) ? workspace.records.map(compactRecord) : [],
-      assets: Array.isArray(workspace.assets) ? workspace.assets.map(compactAsset) : [],
+      records: omitMaterial ? [] : (Array.isArray(workspace.records) ? workspace.records.map(compactRecord) : []),
+      assets: omitMaterial ? [] : (Array.isArray(workspace.assets) ? workspace.assets.map(compactAsset) : []),
       workspaceMemberBindings: compactWorkspaceMemberBindings(workspace.workspaceMemberBindings),
       importLog: Array.isArray(workspace.importLog) ? workspace.importLog.slice(0, 10).map(compactImportLogEntry) : [],
       mode: workspace.mode || 'feed'

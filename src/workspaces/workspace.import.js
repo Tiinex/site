@@ -3,7 +3,7 @@ import { createRecordFromMarkdown } from '../artifacts/artifact.record.js';
 import { resolveLocalImportConflicts } from './workspace.importConflicts.js';
 export function ensureWorkspaceForLocalMaterial(lifecycle, state, workspaceId = '', input = {}, options = {}) {
   const current = lifecycle?.cloneState?.(state) || state;
-  const targetId = workspaceId || current?.activeWorkspaceId || '';
+  const targetId = options.forceCreateWorkspace ? '' : (workspaceId || current?.activeWorkspaceId || '');
   const existing = targetId && Array.isArray(current?.workspaces)
     ? current.workspaces.find((item) => item.id === targetId)
     : null;
@@ -59,7 +59,8 @@ export function applyLocalAdapterResultToWorkspace(lifecycle, state, workspaceId
   let addedRecords = 0;
   let addedAssets = 0;
   let workspaceOpened = false;
-  const targetWorkspaceId = workspaceId || nextState?.activeWorkspaceId || '';
+  const globalNewWorkspace = options.dropScope === 'global';
+  const targetWorkspaceId = globalNewWorkspace ? '' : (workspaceId || nextState?.activeWorkspaceId || '');
   const diagnostics = Object.assign({}, adapterResult.diagnostics || {});
 
   if (targetWorkspaceId) {
@@ -113,11 +114,11 @@ export function applyLocalAdapterResultToWorkspace(lifecycle, state, workspaceId
     workspaceArtifactRecords = workspaces.map(workspaceArtifactRecordFromEntry);
   }
 
-  let finalWorkspaceId = lifecycle.activeWorkspace?.(nextState)?.id || targetWorkspaceId;
+  let finalWorkspaceId = workspaceOpened ? (lifecycle.activeWorkspace?.(nextState)?.id || targetWorkspaceId) : (globalNewWorkspace ? '' : (lifecycle.activeWorkspace?.(nextState)?.id || targetWorkspaceId));
   if (!finalWorkspaceId && hasMaterial) {
     const ensured = ensureWorkspaceForLocalMaterial(lifecycle, nextState, '', {
       name: diagnostics.suggestedWorkspaceName || options.workspaceName || 'Local import'
-    }, options);
+    }, { ...options, forceCreateWorkspace: globalNewWorkspace });
     if (ensured?.ok) {
       nextState = ensured.state;
       finalWorkspaceId = ensured.workspaceId;

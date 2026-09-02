@@ -1,0 +1,14 @@
+import assert from 'assert';
+await import('./src/sources/source.identity.js');
+await import('./src/workspaces/workspace.lifecycle.js');
+import { applyLocalAdapterResultToWorkspace } from './src/workspaces/workspace.import.js';
+import { createRecordFromMarkdown } from './src/artifacts/artifact.record.js';
+const lifecycle=globalThis.TiinexWorkspaceLifecycle;
+let state=lifecycle.createWorkspace(lifecycle.makeEmptyAppState(),{name:'Existing',id:'existing'}).state;
+const rec=createRecordFromMarkdown('# Dropped',{path:'drop.md'});
+const result=applyLocalAdapterResultToWorkspace(lifecycle,state,'',{records:[rec],assets:[],workspaceEntries:[],warnings:[],errors:[],diagnostics:{suggestedWorkspaceName:'Dropped files'}},{dropScope:'global',clock:()=> '2026-09-02T22:00:00.000Z'});
+assert(result.ok);
+assert.equal(result.state.workspaces.length,2);
+assert.notEqual(result.workspaceId,'existing');
+assert.equal(result.state.workspaces.find(w=>w.id===result.workspaceId).records.length,1);
+console.log('global-drop-pass',result.workspaceId,result.state.workspaces.map(w=>[w.id,w.records.length]));
