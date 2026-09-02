@@ -225,7 +225,7 @@ export function WorkspaceDropHint({ workspace, hasMaterial }) {
   );
 }
 
-export function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage, readOnly = false }) {
+export function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onOpenPlaythings, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage, readOnly = false }) {
   const requestedVerse = state.view?.workspaceVerse || 'feed';
   const verse = readOnly && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const discoveryVerse = verse === 'feed' || verse === 'tree';
@@ -249,6 +249,7 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
         <div className="tx-segment" aria-label="Discovery view">
           <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
           <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
+          {!readOnly && typeof onOpenPlaythings === 'function' ? <button type="button" onClick={onOpenPlaythings} title="Open the read-only Playthings multiverse using the currently configured workspaces">Playthings</button> : null}
         </div>
       ) : (
         <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>

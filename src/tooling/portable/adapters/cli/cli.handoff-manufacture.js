@@ -29,14 +29,11 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   ];
   const verifyRoundtrip = !flags['no-roundtrip'];
   const parentPackagePath = String(flags['package-parent'] || '').trim();
-  let packageParentBundle = null;
-  let packageParentSha256 = '';
   let carrierLineage = initialHandoffCarrierLineage();
   if (parentPackagePath) {
     const resolvedParent = path.resolve(parentPackagePath);
     const parentBytes = new Uint8Array(await readFile(resolvedParent));
     const parentBundle = await loadNodePortableInput([resolvedParent], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
-    packageParentBundle = parentBundle;
     let parentLineage = null;
     let routeDimensions = [];
     try {
@@ -62,7 +59,6 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
       major: Boolean(flags['package-major']),
       majorReason: flags['major-reason'] || ''
     });
-    packageParentSha256 = String(carrierLineage.parentPackageSha256 || '');
   } else if (flags['package-major']) {
     throw new Error('portable.cli.handoff-carrier.package-major.parent-required');
   }
@@ -84,10 +80,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     bootstrapMaxFiles: flags['bootstrap-max-files'],
     verifyRoundtrip,
     recipientRouteSelector: flags.route || '',
-    carrierLineage,
-    packageParentBundle,
-    packageParentPath: parentPackagePath ? path.resolve(parentPackagePath) : '',
-    packageParentSha256
+    carrierLineage
   }, runtime);
   return {
     input,

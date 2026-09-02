@@ -4,7 +4,6 @@ import { inferWorkspaceTitle, normalizeAdditionalWorkspaceDescriptors, normalize
 import { buildToolingBootstrapTransportFiles, PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID } from './handoff.manufacture.bootstrap.js';
 import { normalizeHandoffCarrierLineage } from '../../handoff/carrierLineage.js';
 import { enumerateNodeWorkspace, PORTABLE_NODE_WORKSPACE_ENUMERATION_SCHEMA_ID } from './handoff.manufacture.enumeration.js';
-import { preparePackageParentWorkspaceReuse } from './handoff.manufacture.packageParent.js';
 import {
   assertInside,
   expandPointerDependencyClosure,
@@ -62,12 +61,6 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
       requestedTitle: String(descriptor.title || descriptor.name || descriptor.workspaceTitle || '').trim()
     });
   });
-  const packageParentReuse = preparePackageParentWorkspaceReuse({
-    bundle: input.packageParentBundle || null,
-    currentWorkspaceIds: [...seenWorkspaceIds],
-    parentPackagePath: input.packageParentPath || '',
-    parentPackageSha256: input.packageParentSha256 || ''
-  });
   const additionalEnumerationsPromise = Promise.all(additionalWorkspaceInputs.map(async ({ descriptor, id, root, requestedTitle }) => {
     const enumerated = await enumerateNodeWorkspace(root, {
       workspaceId: id,
@@ -104,21 +97,13 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
     workspaceEnumerations.push(Object.freeze({ id, root, evidence: enumerated.evidence }));
     workspaceRuntimeById.set(id, Object.freeze({ id, root, enumeration: enumerated }));
   }
-  for (const inherited of packageParentReuse.inherited || []) {
-    const id = safeWorkspaceToken(inherited.id || inherited.enumeration?.materialization?.id || '');
-    if (!id || workspaceRuntimeById.has(id)) throw new Error(`portable.handoff-manufacture.package-parent.workspace-precedence.invalid:${id || 'unresolved'}`);
-    const inheritedEnumeration = inherited.enumeration;
-    workspaceMaterializations.push(inheritedEnumeration.materialization);
-    workspaceEnumerations.push(Object.freeze({ id, root: '', evidence: inheritedEnumeration.evidence, provider: 'qualified-package-parent-workspace' }));
-    workspaceRuntimeById.set(id, Object.freeze({ id, root: '', enumeration: inheritedEnumeration, provider: 'qualified-package-parent-workspace' }));
-  }
   const transportRoutes = Object.freeze([...(input.transportRoutes || input.handoffRoutes || [])].map((route) => normalizeTransportRoute(route, workspaceId)).filter(Boolean));
-  const workspaceTargets = mergeWorkspaceTargetBindings(normalizeWorkspaceTargetBindings({
+  const workspaceTargets = normalizeWorkspaceTargetBindings({
     primaryWorkspaceId: workspaceId,
     primaryTargetPath: input.workspaceTargetPath || input.workspaceArtifactPath || '',
     explicitBindings: input.workspaceTargets || input.workspaceTargetBindings || [],
     additionalWorkspaceDescriptors
-  }), packageParentReuse.workspaceTargets || []);
+  });
   const workspaceScopes = normalizeWorkspaceScopes(input.workspaceScopes || input.workspaceScopeBindings || []);
   for (let index = 0; index < workspaceMaterializations.length; index += 1) {
     const materialization = workspaceMaterializations[index];
@@ -162,30 +147,9 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
       enumeration: enumeration.evidence,
       workspaceEnumerations: Object.freeze(workspaceEnumerations),
       toolingBootstrap: toolingBootstrap.summary,
-      packageParentWorkspaceReuse: Object.freeze({
-        state: String(packageParentReuse.state || ''),
-        inspectionStatus: String(packageParentReuse.inspectionStatus || ''),
-        inheritedWorkspaceIds: Object.freeze((packageParentReuse.inherited || []).map((item) => String(item.id || ''))),
-        boundary: String(packageParentReuse.boundary || '')
-      }),
       carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null), boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
     }),
     verifyRoundtrip: input.verifyRoundtrip !== false
   });
 }
 
-
-function mergeWorkspaceTargetBindings(explicit = [], inherited = []) {
-  const out = [];
-  const seen = new Set();
-  for (const item of [...explicit, ...inherited]) {
-    const workspaceId = String(item?.workspaceId || '').trim();
-    const targetPath = String(item?.path || '').trim();
-    if (!workspaceId || !targetPath) continue;
-    const key = `${workspaceId}\u0000${targetPath}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(Object.freeze({ ...item, workspaceId, path: targetPath }));
-  }
-  return Object.freeze(out);
-}

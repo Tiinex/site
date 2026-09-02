@@ -63,7 +63,11 @@ import { projectShareTruth, ShareScope } from './shareProjection.js';
 import { executeShareProjectionAction } from './shareActionCommand.js';
 import { stateAfterWorkspaceClosePresentation, stateWithRecordLineageFocused, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById } from './workspaceScopedInteraction.js';
 import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWindow.js';
+import { PlaythingsMultiverse } from '../experiments/playthings/PlaythingsMultiverse.jsx';
+import { playthingsExperimentRequested } from '../experiments/playthings/playthings.model.js';
+import { refreshPlaythingsRepositoryMaterial } from '../experiments/playthings/playthings.refresh.js';
 export function TiinexApp() {
+  const playthingsUrlExperiment = playthingsExperimentRequested(typeof window !== 'undefined' ? window.location : null);
   const initialRuntimeRef = useRef(null);
   if (!initialRuntimeRef.current) initialRuntimeRef.current = initialRuntimeSnapshot();
   const startupOwnershipRef = useRef(null);
@@ -71,6 +75,7 @@ export function TiinexApp() {
   const [state, setState] = useState(() => initialRuntimeRef.current.state);
   const [startupPhase, setStartupPhase] = useState(() => initialStartupRenderPhase({ locationLike: typeof window !== 'undefined' ? window.location : null, routeResolved: initialRuntimeRef.current.routeResolved }));
   const [dialog, setDialog] = useState(null);
+  const [playthingsOpen, setPlaythingsOpen] = useState(false);
   const [dialogWorkspaceId, setDialogWorkspaceId] = useState('');
   const [notice, setNotice] = useState('');
   const [createError, setCreateError] = useState('');
@@ -91,6 +96,7 @@ export function TiinexApp() {
   const workspaceConfig = useMemo(() => runtime().config?.createDefaultWorkspaceConfig?.(), []);
   const startupPresentation = useMemo(() => startupPresentationFor({ startupPhase, state }), [startupPhase, state]);
   const active = activeWorkspace(state);
+  const playthingsExperiment = playthingsUrlExperiment || playthingsOpen;
   const referenceParticipantRecords = useMemo(() => (state.workspaces || []).flatMap((workspace) => (workspace.records || []).map((record) => ({ ...record, workspaceIds: [...new Set([...(record.workspaceIds || []), workspace.id].filter(Boolean))] }))), [state.workspaces]);
   const activeWorkspaceConfig = active?.workspaceConfig || workspaceConfig;
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
@@ -418,6 +424,20 @@ export function TiinexApp() {
     setNotice(`${source.label || 'Source'} trying ${refresh.nextTier} transport.`);
     await addGitHubSource(Object.assign({}, refresh.input, { preserveView: true, resetSourceMaterial: true, resetSourceCache: false, abortPreviousGithubOperation: Boolean(refresh.replacingPending) }), { state: operationState, workspaceId: targetId });
   }
+  async function refreshPlaythingsMaterial() {
+    const out = await refreshPlaythingsRepositoryMaterial({ state: latestStateRef.current || state, addGitHubSource });
+    if (!out.attempted) setNotice('Playthings found no configured repository source to refresh.');
+    return out.state;
+  }
+  function exitPlaythings() {
+    if (playthingsUrlExperiment && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('experiment');
+      window.location.assign(url.toString());
+      return;
+    }
+    setPlaythingsOpen(false);
+  }
   function openRecord(recordId, workspaceId = active?.id || '') {
     const id = String(recordId || '');
     if (workspaceId) focusWorkspaceForInteraction(workspaceId);
@@ -705,11 +725,12 @@ export function TiinexApp() {
     'tx-shell-scroll-owned',
     'tx-shell-footer-row-owned',
     'tx-schema-companion-runtime',
+    playthingsExperiment ? 'tx-playthings-mode' : '',
     active ? 'tx-workspace-mode' : 'tx-empty-stage-mode'
   ].join(' ');
   return (
-    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
-      <GlobalDock
+    <main className={shellClasses} data-runtime={TIINEX_RUNTIME_ID} data-source-boundary={CLEAN_URL_BOUNDARY} data-uc="UC-001-empty-create-local-workspace-add-flow" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { if (event.dataTransfer) { event.preventDefault(); if (playthingsExperiment) { setNotice('Playthings is read-only. Exit the experiment to add material.'); return; } if (activeTemporal?.mode === 'historical') { setNotice('Return to latest before importing material.'); return; } void handleGlobalWorkspaceDrop(event.dataTransfer, { sourceMode: 'stage-drop', fromDataTransfer: true }); } }}>
+      {!playthingsExperiment ? <GlobalDock
         hasWorkspace={Boolean(active)}
         workspaceCount={state.workspaces.length}
         pagerVisible={pagerVisible}
@@ -721,8 +742,10 @@ export function TiinexApp() {
         homeHref={workspaceHomeHref(activeWorkspaceConfig, typeof window !== 'undefined' ? window.location : null)}
         onShare={shareCurrent}
         onHelp={() => setDialog('help')}
-      />
-      {active ? (
+      /> : null}
+      {playthingsExperiment ? (
+        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onExit={exitPlaythings} />
+      ) : active ? (
         <div
           className={`${visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} ${visibleWorkspaceItems.length === 1 && visibleWorkspaceItems[0]?.layoutMode === 'compact' ? 'tx-workspace-single-stage-compact' : ''}`.trim()}
           data-workspace-columns={visibleWorkspaceItems.length}
@@ -751,6 +774,7 @@ export function TiinexApp() {
                 onClose={() => openWorkspaceDialog('close-workspace', workspace.id)}
                 onRenameWorkspace={() => openWorkspaceDialog('rename-workspace', workspace.id)}
                 onVerse={(verse) => setVerse(verse, workspace.id)}
+                onOpenPlaythings={() => setPlaythingsOpen(true)}
                 onQuery={(query) => setQuery(query, workspace.id)}
                 onOpenDisplayOptions={() => openWorkspaceDialog('display-options', workspace.id)}
                 onOpenAddDialog={(sourceId = '') => openAddToWorkspace(sourceId, workspace.id)}

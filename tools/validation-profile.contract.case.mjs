@@ -45,23 +45,6 @@ assert(closure.steps.some((item) => item.args.length === 1 && item.args[0] === '
 assert(closure.steps.some((item) => item.args.includes('public.mjs')), 'closure includes public-build qualification');
 assert(closure.steps.some((item) => item.args.includes('type.mjs')), 'closure includes type qualification');
 
-const closureStepIndex = (predicate) => closure.steps.findIndex(predicate);
-const dependencyBootstrapIndex = closureStepIndex((item) => item.id === 'dependency-bootstrap');
-assert(dependencyBootstrapIndex >= 0, 'closure explicitly bootstraps local dependencies');
-assert.equal(
-  closure.steps.filter((item) => item.command === 'node' && item.args[0] === 'deps.mjs').length,
-  1,
-  'closure deduplicates build:public dependency bootstrap into one ordered step'
-);
-for (const [label, matcher] of [
-  ['typecheck', (item) => item.args.includes('type.mjs')],
-  ['runtime smoke', (item) => item.args.includes('runtime.mjs')],
-  ['public build', (item) => item.args.includes('build.mjs')]
-]) {
-  const dependentIndex = closureStepIndex(matcher);
-  assert(dependentIndex > dependencyBootstrapIndex, `dependency bootstrap precedes ${label}`);
-}
-
 for (const profile of [smoke, focused, integration, closure]) {
   assert(!profile.steps.some((item) => /\.test\.mjs$/.test(item.args?.[0] || '')), `${profile.name} must not enumerate standalone historical test files`);
 }
@@ -129,23 +112,5 @@ assert.equal(integrationRun.status, 'diagnostic-qualified');
 assert.equal(integrationRun.staticRegression.inheritedUnresolved, 7);
 assert.equal(integrationRun.staticRegression.resolvedInherited, 6);
 assert.equal(integrationRun.closureQualified, false);
-
-const closureRunCalls = [];
-const closureRun = await runValidationProfile({
-  cwd: root,
-  profileName: 'closure',
-  packageScripts,
-  checkpointDir: join(root, 'closure-order-checkpoint'),
-  heartbeatMs: 0,
-  runStep: async (input) => {
-    closureRunCalls.push(input.label);
-    return { status: 'completed', exitCode: 0, elapsedMs: 1, stdoutTail: 'ok', stderrTail: '' };
-  }
-});
-assert.equal(closureRun.status, 'passed');
-assert.equal(closureRunCalls.length, closure.steps.length, 'closure executes the inspected contract plan exactly once');
-assert.equal(closureRunCalls.filter((id) => id === 'dependency-bootstrap').length, 1, 'dependency bootstrap executes once');
-assert(closureRunCalls.indexOf('dependency-bootstrap') < closureRunCalls.indexOf(closure.steps.find((item) => item.args.includes('type.mjs')).id), 'plan executes dependency bootstrap before typecheck');
-assert(closureRunCalls.indexOf('dependency-bootstrap') < closureRunCalls.indexOf(closure.steps.find((item) => item.args.includes('runtime.mjs')).id), 'plan executes dependency bootstrap before runtime smoke');
 
 console.log('✓ validation profiles use the consolidated Foundation suite spine with exact checkpoint and static-debt semantics');

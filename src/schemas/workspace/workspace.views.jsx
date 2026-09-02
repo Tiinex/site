@@ -40,7 +40,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], selectionSession = null, onSelectionChoose, onSelectionCancel, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], selectionSession = null, onSelectionChoose, onSelectionCancel, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onOpenPlaythings, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -155,7 +155,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       {selectionActive ? <WorkspaceSelectionSurface session={selectionSession} onCancel={onSelectionCancel} /> : null}
       {!readOnlyHistorical && !selectionActive ? <WorkspaceDropHint workspace={workspace} hasMaterial={hasMaterial} /> : null}
       <WorkspaceMaterialSummary summary={materialSummary} />
-      <ModeToolbar readOnly={readOnlyHistorical} state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
+      <ModeToolbar readOnly={readOnlyHistorical} state={state} query={query} displayOptions={displayOptions} selectedRecord={selectedRecord} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} onVerse={onVerse} onOpenPlaythings={onOpenPlaythings} onQuery={onQuery} onOpenDisplayOptions={onOpenDisplayOptions} onRunLineageAudit={onRunLineageAudit} onLoadFullLineage={onLoadFullLineage} />
       <ProgressStrip workspace={workspace} />
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
