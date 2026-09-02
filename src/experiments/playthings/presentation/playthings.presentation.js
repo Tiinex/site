@@ -11,6 +11,13 @@ import { workspacePlaythingsPresentationCompanion } from './playthings.presentat
 import { relationPlaythingsPresentationCompanion } from './playthings.presentation.relation.js';
 import { topicPlaythingsPresentationCompanion } from './playthings.presentation.topic.js';
 import { preservationPlaythingsPresentationCompanion } from './playthings.presentation.preservation.js';
+import { signalPlaythingsPresentationCompanion } from './playthings.presentation.signal.js';
+import { feedbackPlaythingsPresentationCompanion } from './playthings.presentation.feedback.js';
+import { interpretationPlaythingsPresentationCompanion } from './playthings.presentation.interpretation.js';
+import { schemaModulePlaythingsPresentationCompanion } from './playthings.presentation.schemaModule.js';
+import { findingPlaythingsPresentationCompanion } from './playthings.presentation.finding.js';
+import { surfacePlaythingsPresentationCompanion } from './playthings.presentation.surface.js';
+import { workspaceRepresentationPlaythingsPresentationCompanion } from './playthings.presentation.workspaceRepresentation.js';
 
 const companions = Object.freeze([
   rootPlaythingsPresentationCompanion,
@@ -24,7 +31,14 @@ const companions = Object.freeze([
   workspacePlaythingsPresentationCompanion,
   relationPlaythingsPresentationCompanion,
   topicPlaythingsPresentationCompanion,
-  preservationPlaythingsPresentationCompanion
+  preservationPlaythingsPresentationCompanion,
+  signalPlaythingsPresentationCompanion,
+  feedbackPlaythingsPresentationCompanion,
+  interpretationPlaythingsPresentationCompanion,
+  schemaModulePlaythingsPresentationCompanion,
+  findingPlaythingsPresentationCompanion,
+  surfacePlaythingsPresentationCompanion,
+  workspaceRepresentationPlaythingsPresentationCompanion
 ]);
 
 const bySchemaId = new Map(companions.map((companion) => [companion.targetSchemaId, companion]));

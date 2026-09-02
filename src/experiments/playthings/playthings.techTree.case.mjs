@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { buildPlaythingsTechTree } from './playthings.techTree.js';
+
+const rootSchema = { key: 'root-schema', recordId: 'root-record', workspaceId: 'site', path: 'src/schemas/tiinex.root.v1.schema.md', schemaId: 'tiinex.root.v1', isSchemaArtifact: true };
+const taskSchema = { key: 'task-schema', recordId: 'task-record', workspaceId: 'site', path: 'src/schemas/core/task/tiinex.task.v1.schema.md', schemaId: 'tiinex.task.v1', isSchemaArtifact: true };
+const futureSchema = { key: 'future-schema', recordId: 'future-record', workspaceId: 'docs', path: '.schemas/tiinex.future.widget.v1.schema.md', schemaId: 'tiinex.future.widget.v1', isSchemaArtifact: true, summary: 'Observed elsewhere.' };
+const tree = buildPlaythingsTechTree({ artifacts: [rootSchema, taskSchema, futureSchema], edges: [{ kind: 'parent', from: 'root-schema', to: 'future-schema' }] });
+const root = tree.byId.get('tiinex.root.v1');
+const task = tree.byId.get('tiinex.task.v1');
+const future = tree.byId.get('tiinex.future.widget.v1');
+assert.equal(root.abstract, true);
+assert.equal(root.creatable, false, 'abstract schemas never yield Create skills');
+assert.equal(task.implemented, true);
+assert.equal(task.creatable, true, 'Site creatability remains the authority for Create skills');
+assert.equal(task.openAvailable, true);
+assert.equal(future.locked, true, 'observed external schema absent from Site remains locked');
+assert.equal(future.openAvailable, true, 'locked observed schema can still open its detailed artifact');
+assert.equal(future.parentSchemaId, 'tiinex.root.v1', 'observed lineage may place an external blueprint under its resolved parent');
+assert.equal(tree.semanticAuthority, 'none');
+console.log('✓ Playthings schema tech-tree projection passed');

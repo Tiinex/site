@@ -4,5 +4,8 @@ export const rootPlaythingsPresentationCompanion = Object.freeze({
   stationKind: 'relic',
   interactionKind: 'inspect',
   districtKind: 'commons',
-  summary: 'Fallback Playthings presentation only; carries no Tiinex semantic authority.'
+  worldRole: 'scene',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Fallback Playthings scene only; carries no Tiinex semantic authority and leaves no persistent world object by default.'
 });

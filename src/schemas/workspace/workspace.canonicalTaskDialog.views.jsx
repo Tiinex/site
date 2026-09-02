@@ -80,9 +80,10 @@ function authoringInputId(name = '') { return `canonicalAuthoring-${String(name)
 function authoringFieldLabel(name = '', schemaLabel = 'Artifact') { return name === 'Summary' ? `${schemaLabel} title` : name; }
 
 
-export function WorkspaceCanonicalCreateDialog({ workspace, actions = [], placementTargets = [], selectionSession = null, selectionResult = null, onBeginSelection, onSelectionConsumed, onDismiss, onCreate }) {
+export function WorkspaceCanonicalCreateDialog({ workspace, actions = [], preferredSchemaId = '', placementTargets = [], selectionSession = null, selectionResult = null, onBeginSelection, onSelectionConsumed, onDismiss, onCreate }) {
   const qualifiedActions = (Array.isArray(actions) ? actions : []).filter((action) => action?.productCapable === true && action?.enabled !== false && action?.productScope === 'workspace');
-  const [selectedDefinitionKey, setSelectedDefinitionKey] = useState('');
+  const preferredAction = qualifiedActions.find((action) => String(action.authoring?.schemaId || action.targetSchemaId || '') === String(preferredSchemaId || '')) || null;
+  const [selectedDefinitionKey, setSelectedDefinitionKey] = useState(() => preferredAction?.definitionKey || '');
   const selected = qualifiedActions.find((action) => action.definitionKey === selectedDefinitionKey) || null;
   if (selected) {
     return <CanonicalAuthoringDialog record={null} action={selected} workspaceId={workspace?.id || ''} placementTargets={placementTargets} selectionSession={selectionSession} selectionResult={selectionResult} onBeginSelection={onBeginSelection} onSelectionConsumed={onSelectionConsumed} onDismiss={onDismiss} onBack={() => setSelectedDefinitionKey('')} onCreate={onCreate} />;

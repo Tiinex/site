@@ -1,8 +1,11 @@
 export const discoveryPlaythingsPresentationCompanion = Object.freeze({
   schema: 'tiinex.playthings.presentation.companion.experimental.v1',
   targetSchemaId: 'tiinex.discovery.v1',
-  stationKind: 'observatory',
+  stationKind: 'observation-scene',
   interactionKind: 'observe',
   districtKind: 'watch',
-  summary: 'Discovery presentation: an observation station.'
+  worldRole: 'activity',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Discovery presentation: an observation scene performed by the living leaf; it leaves no durable landmark by default.'
 });

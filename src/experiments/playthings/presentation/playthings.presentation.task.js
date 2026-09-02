@@ -4,5 +4,8 @@ export const taskPlaythingsPresentationCompanion = Object.freeze({
   stationKind: 'workbench',
   interactionKind: 'work',
   districtKind: 'commons',
-  summary: 'Task presentation: a small worksite a lineage leaf can visit.'
+  worldRole: 'activity',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Task presentation: the leaf finds nearby working space and visibly works there; the Task does not become a permanent world object by default.'
 });

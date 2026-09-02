@@ -1,8 +1,11 @@
 export const topicPlaythingsPresentationCompanion = Object.freeze({
   schema: 'tiinex.playthings.presentation.companion.experimental.v1',
   targetSchemaId: 'tiinex.topic.v1',
-  stationKind: 'signpost',
+  stationKind: 'topic-scene',
   interactionKind: 'read',
   districtKind: 'commons',
-  summary: 'Topic presentation: a small signpost or shared subject marker.'
+  worldRole: 'context',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Topic presentation: contextual attention around the living leaf; no permanent signpost is implied.'
 });

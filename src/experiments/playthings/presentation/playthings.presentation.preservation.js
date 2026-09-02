@@ -1,8 +1,11 @@
 export const preservationPlaythingsPresentationCompanion = Object.freeze({
   schema: 'tiinex.playthings.presentation.companion.experimental.v1',
   targetSchemaId: 'tiinex.preservation.v1',
-  stationKind: 'archive-stone',
+  stationKind: 'preservation-scene',
   interactionKind: 'preserve',
-  districtKind: 'watch',
-  summary: 'Preservation presentation: an archive marker; it does not imply evidence or truth.'
+  districtKind: 'commons',
+  worldRole: 'activity',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Preservation presentation: a preservation activity; it does not itself imply evidence, truth, or a permanent monument.'
 });

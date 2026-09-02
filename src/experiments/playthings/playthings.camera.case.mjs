@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fitPlaythingsCamera, panPlaythingsCamera, playthingsCameraKeyboardDelta, playthingsCameraViewBox, zoomPlaythingsCamera } from './playthings.camera.js';
+import { centerPlaythingsCamera, fitPlaythingsCamera, fitPlaythingsCameraToBounds, panPlaythingsCamera, playthingsCameraKeyboardDelta, playthingsCameraViewBox, zoomPlaythingsCamera } from './playthings.camera.js';
 const fit = fitPlaythingsCamera(1000, 600);
 assert.equal(playthingsCameraViewBox(fit), '0 0 1000 600');
 const zoomed = zoomPlaythingsCamera(fit, 2, .5, .5);
@@ -12,4 +12,8 @@ assert.equal(panned.x, 500, 'camera pan clamps at world edge');
 assert.equal(panned.y, 300);
 assert.ok(playthingsCameraKeyboardDelta(zoomed, 'w').y < 0);
 assert.ok(playthingsCameraKeyboardDelta(zoomed, 'd').x > 0);
+const contentFit = fitPlaythingsCameraToBounds(fit, { x: 400, y: 240, width: 200, height: 120 }, 800, 600);
+assert.ok(contentFit.width < 1000 && contentFit.height < 600, 'Fit world frames visible content instead of the whole empty earth');
+const followed = centerPlaythingsCamera(contentFit, { x: 520, y: 310 });
+assert.ok(followed.x <= 520 && followed.x + followed.width >= 520, 'follow centering keeps the active Plaything in view');
 console.log('✓ Playthings camera pan/zoom boundaries passed');

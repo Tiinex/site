@@ -13,9 +13,6 @@ export function planPlaythingsHistory(model = {}) {
   for (const children of childrenByParent.values()) children.sort();
 
   const orderedArtifacts = topologicalChronologicalOrder(artifacts, parentByChild);
-  const portalEdges = (model.portals || []).filter((edge) => byKey.has(edge.from) && byKey.has(edge.to));
-  const pendingPortals = new Map(portalEdges.map((edge) => [edge.key, edge]));
-  const visibleArtifactKeys = new Set();
   const seenChildren = new Map();
   const events = [];
 
@@ -23,7 +20,6 @@ export function planPlaythingsHistory(model = {}) {
     const parentKey = parentByChild.get(artifact.key) || '';
     const siblingIndex = parentKey ? Number(seenChildren.get(parentKey) || 0) : 0;
     const kind = !parentKey ? 'spawn' : siblingIndex > 0 ? 'split' : 'advance';
-    visibleArtifactKeys.add(artifact.key);
     if (parentKey) seenChildren.set(parentKey, siblingIndex + 1);
     events.push(Object.freeze({
       id: `artifact:${artifact.key}`,
@@ -34,26 +30,10 @@ export function planPlaythingsHistory(model = {}) {
       at: artifact.createdAt || '',
       label: artifact.title || artifact.path || artifact.key,
       interactionKind: artifact.interactionKind || 'inspect',
-      stationKind: artifact.visualKind || 'relic'
+      stationKind: artifact.visualKind || 'relic',
+      persistenceKind: artifact.persistenceKind || 'none',
+      arrivalKind: artifact.arrivalKind || ''
     }));
-
-    const newlyResolvedPortals = Array.from(pendingPortals.values())
-      .filter((edge) => visibleArtifactKeys.has(edge.from) && visibleArtifactKeys.has(edge.to))
-      .sort((a, b) => String(a.key).localeCompare(String(b.key)));
-    for (const edge of newlyResolvedPortals) {
-      events.push(Object.freeze({
-        id: `portal:${edge.key}`,
-        kind: 'portal',
-        edgeKey: edge.key,
-        from: edge.from,
-        to: edge.to,
-        fromVerseId: edge.fromVerseId,
-        toVerseId: edge.toVerseId,
-        at: artifact.createdAt || '',
-        label: `${repoLabel(edge.fromVerseId)} ↔ ${repoLabel(edge.toVerseId)}`
-      }));
-      pendingPortals.delete(edge.key);
-    }
   }
 
   return Object.freeze({
@@ -62,7 +42,7 @@ export function planPlaythingsHistory(model = {}) {
     verseIds: Object.freeze((model.verses || []).map((verse) => verse.id)),
     events: Object.freeze(events),
     artifactEventCount: orderedArtifacts.length,
-    portalEventCount: events.length - orderedArtifacts.length
+    portalEventCount: 0
   });
 }
 
@@ -83,6 +63,24 @@ export function playthingsProjectionAtCursor(history = {}, cursorInput = 0) {
     verseIds: new Set(history.verseIds || []),
     activeEvent: cursor > 0 ? events[cursor - 1] || null : null,
     atNow: cursor >= events.length
+  });
+}
+
+export function playthingsObservationAtCursor(history = {}, model = {}, cursorInput = 0) {
+  const projection = playthingsProjectionAtCursor(history, cursorInput);
+  const artifactKeys = Array.from(projection.artifactKeys).sort();
+  const artifactSet = new Set(artifactKeys);
+  const portalKeys = Array.from(projection.portalKeys).sort();
+  const edgeKeys = (model.edges || []).filter((edge) => artifactSet.has(edge.from) && artifactSet.has(edge.to)).map((edge) => edge.key).sort();
+  return Object.freeze({
+    schema: 'tiinex.playthings.observation-cache.v1',
+    verseIds: Object.freeze((model.verses || []).map((verse) => verse.id).sort()),
+    artifactKeys: Object.freeze(artifactKeys),
+    portalKeys: Object.freeze(portalKeys),
+    edgeKeys: Object.freeze(edgeKeys),
+    modelFingerprint: model.fingerprint || '',
+    observedAt: new Date().toISOString(),
+    semanticAuthority: 'none'
   });
 }
 

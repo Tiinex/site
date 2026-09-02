@@ -1,8 +1,11 @@
 export const decisionPlaythingsPresentationCompanion = Object.freeze({
   schema: 'tiinex.playthings.presentation.companion.experimental.v1',
   targetSchemaId: 'tiinex.decision.v1',
-  stationKind: 'monolith',
+  stationKind: 'decision-scene',
   interactionKind: 'decide',
-  districtKind: 'crown',
-  summary: 'Decision presentation: a decision stone or monolith.'
+  districtKind: 'commons',
+  worldRole: 'transition',
+  persistenceKind: 'none',
+  placementKind: 'nearest-free',
+  summary: 'Decision presentation: a visible decision moment in the lineage, not a permanent monument by default.'
 });

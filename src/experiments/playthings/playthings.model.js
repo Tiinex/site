@@ -1,4 +1,5 @@
 import { resolveLineage } from '../../lineage/lineage.resolve.js';
+import { selfIntegrityValuesForNode } from '../../lineage/lineage.integrity.js';
 import { resolvePlaythingsPresentationCompanion } from './presentation/playthings.presentation.js';
 
 export const PLAYTHINGS_EXPERIMENT_ID = 'tiinex.playthings.multiverse.experimental.v1';
@@ -317,6 +318,11 @@ function artifactFromNode(node = {}, context = null) {
   const record = node.record || {};
   const createdAt = String(record.currentCreatedAt || record.createdAt || record.date || '');
   const presentation = resolvePlaythingsPresentationCompanion(node.schemaId || record.schemaId || record.kind || '');
+  const selfIntegritySeed = selfIntegrityValuesForNode(node)[0] || String(node.id || '');
+  const path = String(node.path || record.path || '');
+  const isSchemaArtifact = /\.schema\.md$/i.test(path);
+  const isWorkspaceArtifact = /\.workspace\.md$/i.test(path) || String(node.schemaId || record.schemaId || '') === 'tiinex.workspace.v1';
+  const presentationCompanion = presentation.companion || {};
   return Object.freeze({
     key: String(node.id || ''),
     recordId: context.originalId,
@@ -326,12 +332,21 @@ function artifactFromNode(node = {}, context = null) {
     repo: context.repo,
     title: String(node.title || record.title || record.summary || record.path || 'Artifact'),
     summary: String(record.summary || ''),
-    path: String(node.path || record.path || ''),
+    path,
     schemaId: String(node.schemaId || record.schemaId || record.kind || 'unknown'),
     createdAt,
-    visualKind: presentation.companion.stationKind || 'relic',
-    interactionKind: presentation.companion.interactionKind || 'inspect',
-    districtKind: presentation.companion.districtKind || 'commons',
+    presentationSeed: selfIntegritySeed,
+    visualKind: isSchemaArtifact ? 'blueprint-scene' : presentationCompanion.stationKind || 'relic',
+    interactionKind: isSchemaArtifact ? 'blueprint' : presentationCompanion.interactionKind || 'inspect',
+    districtKind: presentationCompanion.districtKind || 'commons',
+    worldRole: isSchemaArtifact ? 'blueprint' : presentationCompanion.worldRole || 'scene',
+    persistenceKind: presentationCompanion.persistenceKind || 'none',
+    placementKind: presentationCompanion.placementKind || 'nearest-free',
+    spawnCapability: presentationCompanion.spawnCapability || '',
+    arrivalKind: presentationCompanion.arrivalKind || '',
+    isSchemaArtifact,
+    isWorkspaceArtifact,
+    workspaceClusterSize: isWorkspaceArtifact ? workspaceClusterSizeForRecord(record) : 0,
     presentationResolution: presentation.resolution,
     presentationSchemaId: presentation.resolvedSchemaId,
     hasContinuityContext: Boolean(node.hasContinuityContext ?? record.hasContinuityContext),
@@ -340,6 +355,16 @@ function artifactFromNode(node = {}, context = null) {
     bindingMethod: context.bindingMethod || 'record-source',
     projectionBound: Boolean(context.inferred)
   });
+}
+
+
+function workspaceClusterSizeForRecord(record = {}) {
+  const candidates = [record.workspaceEntries, record.workspaceEntrypoints, record.workspaces].find((value) => Array.isArray(value));
+  if (candidates?.length) return Math.max(1, Math.min(5, candidates.length));
+  const markdown = String(record.markdown || record.raw || record.content || '');
+  if (!markdown) return 1;
+  const paths = new Set(Array.from(markdown.matchAll(/(?:\(|\s)([^\s)]+\.workspace\.md)(?:\)|\s|$)/gi)).map((match) => String(match[1] || '').trim()).filter(Boolean));
+  return Math.max(1, Math.min(5, paths.size || 1));
 }
 
 function lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent) {
@@ -362,6 +387,7 @@ function lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByPa
     label: head.title || head.path || headKey,
     schemaId: head.schemaId || '',
     visualKind: head.visualKind || 'relic',
+    presentationSeed: (artifactByKey.get(ancestry[0]) || head).presentationSeed || ancestry[0] || headKey,
     ancestry: Object.freeze(ancestry),
     generations: Math.max(0, ancestry.length - 1),
     branchDepth: branchPoints.length

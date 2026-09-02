@@ -24,9 +24,9 @@ assert.equal(baseline.verses.length, 2, 'one repository should project to one Ve
 assert.deepEqual(baseline.verses.map((verse) => verse.repo), ['Tiinex/business', 'Tiinex/site']);
 assert.equal(baseline.portals.length, 1, 'a resolved cross-repository Parent should become one portal projection');
 assert.equal(baseline.portals[0].crossVerse, true);
-assert.equal(baseline.verses.find((verse) => verse.repo === 'Tiinex/business')?.artifacts[0]?.visualKind, 'castle', 'project artifacts should project as original castle-like structures');
+assert.equal(baseline.verses.find((verse) => verse.repo === 'Tiinex/business')?.artifacts[0]?.visualKind, 'project-scene', 'project artifacts are scenes rather than pre-existing castle structures');
 assert.equal(baseline.verses.find((verse) => verse.repo === 'Tiinex/site')?.artifacts[0]?.visualKind, 'workbench', 'task artifacts should project as workbench stations while lineage leaves remain Playthings');
-assert.equal(visualKindForSchema('tiinex.handoff.v1'), 'gate');
+assert.equal(visualKindForSchema('tiinex.handoff.v1'), 'handoff-scene');
 assert.deepEqual(playthingsArtifactPosition(baseline.artifacts[0]), playthingsArtifactPosition(baseline.artifacts[0]), 'artifact positions must be stable from identity alone');
 
 const unchanged = planPlaythingsDelta(baseline, projectPlaythingsMultiverse([

@@ -66,6 +66,7 @@ import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWin
 import { PlaythingsMultiverse } from '../experiments/playthings/PlaythingsMultiverse.jsx';
 import { playthingsExperimentRequested } from '../experiments/playthings/playthings.model.js';
 import { refreshPlaythingsRepositoryMaterial } from '../experiments/playthings/playthings.refresh.js';
+import { playthingsTransitionOptionsFor, playthingsTransitionTargetFor } from './playthingsInteractionBridge.js';
 export function TiinexApp() {
   const playthingsUrlExperiment = playthingsExperimentRequested(typeof window !== 'undefined' ? window.location : null);
   const initialRuntimeRef = useRef(null);
@@ -80,6 +81,7 @@ export function TiinexApp() {
   const [notice, setNotice] = useState('');
   const [createError, setCreateError] = useState('');
   const [activeRecordId, setActiveRecordId] = useState('');
+  const [activeRecordWorkspaceId, setActiveRecordWorkspaceId] = useState(''); const [preferredCreateSchemaId, setPreferredCreateSchemaId] = useState('');
   const [activeAssetId, setActiveAssetId] = useState('');
   const [recordAction, setRecordAction] = useState(null);
   const [githubRequestPending, setGithubRequestPending] = useState(false);
@@ -346,6 +348,7 @@ export function TiinexApp() {
     selection.reset();
     setDialog(null);
     setDialogWorkspaceId('');
+    setPreferredCreateSchemaId('');
     setSourceContinuationId('');
   }
   function createWorkspace(name) {
@@ -440,10 +443,18 @@ export function TiinexApp() {
   }
   function openRecord(recordId, workspaceId = active?.id || '') {
     const id = String(recordId || '');
-    if (workspaceId) focusWorkspaceForInteraction(workspaceId);
+    const ownerWorkspaceId = String(workspaceId || active?.id || '');
+    if (ownerWorkspaceId && !playthingsExperiment) focusWorkspaceForInteraction(ownerWorkspaceId);
     setRecordAction(null);
     setActiveAssetId('');
+    setActiveRecordWorkspaceId(ownerWorkspaceId);
     setActiveRecordId(id);
+  }
+  function playthingsTransitionOptions(recordId, workspaceId) { return playthingsTransitionOptionsFor(latestStateRef.current || state, recordId, workspaceId, referenceParticipantRecords); }
+  function activatePlaythingsTransition(recordId, workspaceId, action) { const target = playthingsTransitionTargetFor(latestStateRef.current || state, recordId, workspaceId); if (target.record && action) openRecordAction(target.record, action, target.workspace?.id || workspaceId); }
+  function openPlaythingsCreateSkill(schemaId) {
+    const targetWorkspaceId = String((latestStateRef.current || state).activeWorkspaceId || active?.id || ''); if (!targetWorkspaceId) return setNotice('Playthings needs an active workspace before creating an artifact.');
+    setPreferredCreateSchemaId(String(schemaId || '')); setDialogWorkspaceId(targetWorkspaceId); setDialog('create-artifact');
   }
   function focusRecordLineage(recordId, workspaceId = active?.id || '') {
     const id = String(recordId || '');
@@ -456,6 +467,7 @@ export function TiinexApp() {
   }
   function dismissRecord() {
     setActiveRecordId('');
+    setActiveRecordWorkspaceId('');
   }
   function openAsset(assetId, workspaceId = active?.id || '') {
     if (workspaceId) focusWorkspaceForInteraction(workspaceId);
@@ -696,9 +708,9 @@ export function TiinexApp() {
   const activeTemporal = active ? timePortalViewFor(activeWorkspaceViewFor(state, active.id)) : null;
   const activeHistoricalRead = active ? timePortalReadFor(active, activeWorkspaceViewFor(state, active.id)) : null;
   const activeHistoricalWorkspace = activeHistoricalRead ? historicalWorkspaceForReadModel(active, activeHistoricalRead) : null;
-  const activeRecord = activeRecordId
-    ? hydrateUiRecord((activeHistoricalWorkspace?.records || activeUi?.records || []).find((record) => record.id === activeRecordId))
-    : null;
+  const activeRecordOwner = activeRecordWorkspaceId ? workspaceById(state, activeRecordWorkspaceId) : null;
+  const activeRecordOwnerUi = activeRecordOwner ? hydrateUiWorkspace(activeRecordOwner) : null;
+  const activeRecord = activeRecordId ? hydrateUiRecord((activeRecordOwnerUi?.records || activeHistoricalWorkspace?.records || activeUi?.records || []).find((record) => record.id === activeRecordId)) : null;
   const activeAsset = activeAssetId && activeUi?.assets ? activeUi.assets.find((asset) => asset.id === activeAssetId || asset.path === activeAssetId) : null;
   const actionWorkspace = recordAction?.workspaceId ? workspaceById(state, recordAction.workspaceId) : active;
   const actionWorkspaceUi = hydrateUiWorkspace(actionWorkspace);
@@ -746,7 +758,7 @@ export function TiinexApp() {
         onTogglePlaythings={playthingsExperiment ? exitPlaythings : () => setPlaythingsOpen(true)}
       />
       {playthingsExperiment ? (
-        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} />
+        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onCreateSkill={openPlaythingsCreateSkill} onResolveTransitions={playthingsTransitionOptions} onActivateTransition={activatePlaythingsTransition} />
       ) : active ? (
         <div
           className={`${visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} ${visibleWorkspaceItems.length === 1 && visibleWorkspaceItems[0]?.layoutMode === 'compact' ? 'tx-workspace-single-stage-compact' : ''}`.trim()}
@@ -817,7 +829,7 @@ export function TiinexApp() {
       {notice && !playthingsExperiment ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
-      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}
+      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} preferredSchemaId={preferredCreateSchemaId} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}
       {dialog === 'rename-workspace' && dialogWorkspace ? <RenameWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}
