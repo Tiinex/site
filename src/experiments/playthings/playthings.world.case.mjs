@@ -41,6 +41,9 @@ assert.equal(worldA.structures.length, 0, 'ordinary Tasks must not become perman
 const splitProjection = worldA.eventProjection.get('artifact:sibling');
 assert.equal(splitProjection.motionPoints.length >= 2, true, 'a sibling split has a real movement path');
 assert.deepEqual(splitProjection.branchPoint, worldA.actorPositions.get('root'), 'sibling placement is generated from the actual branch point');
+assert.equal(splitProjection.fork?.arms?.length, 3, 'a sibling fork produces one synchronized three-arm presentation: sleep return, continuation return, and new sibling');
+assert.deepEqual(splitProjection.fork.arms.map((arm) => arm.kind), ['sleep-return', 'continuation', 'sibling']);
+assert.ok(splitProjection.fork.arms.every((arm) => arm.points.length >= 1 && JSON.stringify(arm.points[0]) === JSON.stringify(splitProjection.branchPoint)), 'all three fork actors depart from the same actual branch point');
 
 const prefixModel = { ...baseModel, fingerprint: 'prefix', artifacts: [root, child], edges: baseModel.edges.slice(0, 1) };
 const prefix = generatePlaythingsWorld(prefixModel);
@@ -130,6 +133,6 @@ assert.ok(migrations.some((migration) => migration.headKey === 'old-leaf'), 'a l
 assert.ok(migrations.find((migration) => migration.headKey === 'old-leaf').durationMs >= 520, 'resting migration has visible bounded travel time rather than zero-duration disappearance');
 assert.ok(['old-leaf','old-leaf-two','old-leaf-three'].every((key) => migrations.some((migration) => migration.headKey === key)), 'all leaves crossing the same relative-time threshold migrate in one concurrent lifecycle batch');
 const wornRoads = playthingsVisibleRoads(restingWorld, new Set(['rest-habitat','old-leaf','old-leaf-two','old-leaf-three','clock-advance']));
-assert.ok(wornRoads.some((road) => road.kind === 'trail'), 'repeated completed traffic through the shared habitat approach deterministically wears a visible trail');
+assert.ok(wornRoads.some((road) => ['wear','trail','path','road'].includes(road.kind)), 'repeated completed traffic through the shared habitat approach deterministically wears visible ground; isolated fragments remain wear rather than fake road sticks');
 
 console.log('✓ Playthings deterministic shared-earth growth projection passed');

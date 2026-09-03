@@ -1206,3 +1206,59 @@ main.tx-react-runtime.tx-playthings-mode > .tx-toast { display: none !important;
   .tx-playthings-lineage-dialog-body { grid-template-columns: 1fr; }
   .tx-playthings-lineage-inspector { border-left: 0; border-top: 1px solid #42503c; max-height: 260px; }
 }
+
+/* 001-16 fantasy-MMO readability: connected traffic graduates into roads;
+   isolated wear stays an entrance/yard patch instead of becoming a road stick. */
+.tx-playthings-road-underlay.is-wear { stroke: rgba(74,58,34,.28); stroke-width: 10; stroke-dasharray: 1 7; }
+.tx-playthings-road-core.is-wear { stroke: rgba(135,107,62,.48); stroke-width: 5; stroke-dasharray: 1 7; }
+.tx-playthings-fork-actor .tx-playthings-fork-purpose {
+  fill: #fff0a0; text-anchor: middle; font: 900 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  paint-order: stroke; stroke: #172018; stroke-width: 2px; letter-spacing: .04em;
+}
+.tx-playthings-fork-actor.is-sleep-return .tx-playthings-fork-purpose { fill: #b7d6ff; }
+.tx-playthings-fork-actor.is-continuation .tx-playthings-fork-purpose { fill: #dce9c9; }
+.tx-playthings-fork-actor.is-sibling .tx-playthings-fork-purpose { fill: #ffd86e; }
+
+/* A settlement opens like an RPG location inventory: the residents are still
+   living lineage leaves, merely compressed inside a presentation habitat. */
+.tx-playthings-location-dialog-backdrop {
+  position: absolute; inset: 0; z-index: 44; display: grid; place-items: center;
+  padding: 54px 58px 70px; background: rgba(5,12,8,.56); backdrop-filter: blur(2px);
+  pointer-events: auto; cursor: default;
+}
+.tx-playthings-location-dialog {
+  width: min(920px, 100%); max-height: 100%; overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0,1fr) auto;
+  border: 2px solid #796d3f; background: rgba(12,20,14,.985); color: #e8efdf;
+  box-shadow: 8px 8px 0 rgba(0,0,0,.45); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.tx-playthings-location-dialog > header,
+.tx-playthings-location-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; background: #111d14; border-bottom: 1px solid #48523f; }
+.tx-playthings-location-dialog > footer { border-bottom: 0; border-top: 1px solid #48523f; color: #8e9a88; font-size: .67rem; }
+.tx-playthings-location-dialog > header > div { display: grid; gap: 2px; }
+.tx-playthings-location-dialog > header small { color: #d9c75f; font-size: .62rem; letter-spacing: .08em; }
+.tx-playthings-location-dialog > header strong { color: #fff0a0; font-size: 1.05rem; }
+.tx-playthings-location-dialog > header span { color: #91a08c; font-size: .65rem; }
+.tx-playthings-location-dialog button { min-height: 32px; border: 1px solid #5d694f; background: #1a271c; color: #e9f0df; padding: 7px 10px; font: 800 .65rem/1 ui-monospace, monospace; cursor: pointer; }
+.tx-playthings-location-dialog button:hover,
+.tx-playthings-location-dialog button:focus-visible { border-color: #e0cd67; color: #fff2a6; outline: none; }
+.tx-playthings-location-room { overflow: auto; padding: 18px; display: grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 12px; background-image: linear-gradient(rgba(130,148,116,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(130,148,116,.06) 1px,transparent 1px); background-size: 24px 24px; }
+.tx-playthings-resident-slot { display: grid; grid-template-columns: 86px minmax(0,1fr); grid-template-rows: auto auto; gap: 8px 10px; padding: 10px; border: 1px solid #4b5945; background: #162219; }
+.tx-playthings-resident-slot .bed { position: relative; grid-row: 1 / span 2; min-height: 105px; border: 1px solid #594b36; background: linear-gradient(#263a29 0 54%,#5d4932 54% 100%); overflow: hidden; }
+.tx-playthings-resident-slot .bed svg { position: absolute; inset: 15px 8px 4px; width: calc(100% - 16px); height: calc(100% - 19px); }
+.tx-playthings-resident-slot .bed .pillow { position: absolute; left: 9px; top: 8px; width: 30px; height: 13px; border: 1px solid #6e725f; background: #a6a98c; }
+.tx-playthings-resident-slot .bed .zzz { position: absolute; right: 7px; top: 5px; color: #c9daf0; font-size: .7rem; }
+.tx-playthings-resident-slot .copy { min-width: 0; display: grid; align-content: start; gap: 4px; }
+.tx-playthings-resident-slot .copy strong { color: #f3efd2; font-size: .74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-playthings-resident-slot .copy small { color: #c4b85f; font-size: .57rem; }
+.tx-playthings-resident-slot .copy span { color: #899784; font-size: .56rem; }
+.tx-playthings-resident-slot .actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 4px; align-self: end; }
+.tx-playthings-resident-slot .actions button { min-height: 28px; padding: 5px 4px; font-size: .54rem; }
+.tx-playthings-location-empty { grid-column: 1 / -1; min-height: 190px; display: grid; place-items: center; align-content: center; gap: 7px; color: #8c9a87; text-align: center; border: 1px dashed #4a5845; background: rgba(19,30,21,.88); }
+.tx-playthings-location-empty > span { color: #ddca62; font-size: 2rem; }
+.tx-playthings-location-empty strong { color: #dde5d4; font-size: .8rem; }
+.tx-playthings-location-empty p { margin: 0; max-width: 430px; font-size: .65rem; }
+@media (max-width: 760px) {
+  .tx-playthings-location-dialog-backdrop { padding: 44px 12px 62px; }
+  .tx-playthings-location-room { grid-template-columns: 1fr; }
+}

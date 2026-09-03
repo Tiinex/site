@@ -7,6 +7,7 @@ import { playthingsLeafIdleState } from './playthings.clock.js';
 import { isPlaythingsLocalArtifact } from './playthings.find.js';
 import { InteractionSpark, PixelOrganizationPlace, PixelPlaything, PixelWorkspacePlace, PlaythingsSceneArtwork, TerrainMark } from './playthings.artwork.jsx';
 import { PlaythingsLineageDialog } from './PlaythingsLineageDialog.jsx';
+import { PlaythingsLocationDialog } from './PlaythingsLocationDialog.jsx';
 
 export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, onResolveLineage = null, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null, focusRequest = null }) {
   const world = useMemo(() => generatePlaythingsWorld(fullModel), [fullModel]);
@@ -16,7 +17,8 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   const [hoveredHead, setHoveredHead] = useState('');
   const [selection, setSelection] = useState(null);
   const [lineageDialog, setLineageDialog] = useState(null);
-  React.useEffect(() => { const close = (event) => { if (event.key !== 'Escape') return; if (lineageDialog) setLineageDialog(null); else setSelection(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [lineageDialog]);
+  const [locationDialogKey, setLocationDialogKey] = useState('');
+  React.useEffect(() => { const close = (event) => { if (event.key !== 'Escape') return; if (lineageDialog) setLineageDialog(null); else if (locationDialogKey) setLocationDialogKey(''); else setSelection(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [lineageDialog]);
   const artifactByKey = useMemo(() => new Map((fullModel.artifacts || []).map((artifact) => [artifact.key, artifact])), [fullModel.artifacts]);
   const actorByKey = useMemo(() => new Map((model.actors || []).map((actor) => [actor.headKey, actor])), [model.actors]);
   const actorById = useMemo(() => new Map((model.actors || []).map((actor) => [actor.id, actor])), [model.actors]);
@@ -44,7 +46,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
     return (onResolveTransitions(artifact.recordId, artifact.workspaceId) || [])
       .filter((action) => unlockedSkills.has(transitionSchemaId(action)));
   }, [toolsEnabled, hoveredHead, selectedActor?.headKey, onResolveTransitions, actorByKey, artifactByKey, unlockedSkills]);
-  const hiddenSourceKey = activeEvent?.kind === 'advance' && activeProjection?.arrivalReason !== 'organization-receiver' ? activeProjection.sourceKey : '';
+  const hiddenSourceKey = activeEvent?.kind && ['advance', 'split'].includes(activeEvent.kind) && activeProjection?.arrivalReason !== 'organization-receiver' ? activeProjection.sourceKey : '';
   const actorStates = useMemo(() => {
     const map = new Map();
     for (const actor of model.actors || []) {
@@ -64,6 +66,14 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
     }
     return map;
   }, [actorStates, migratingKeys]);
+  const locationResidents = useMemo(() => {
+    if (!locationDialogKey) return [];
+    return (restingByStructure.get(locationDialogKey) || []).map((headKey) => {
+      const actor = actorByKey.get(headKey) || null;
+      const leafArtifact = artifactByKey.get(headKey) || null;
+      return actor && leafArtifact ? { actor, leafArtifact, idle: actorStates.get(headKey) || null } : null;
+    }).filter(Boolean);
+  }, [locationDialogKey, restingByStructure, actorByKey, artifactByKey, actorStates]);
   const visibleActorKeys = useMemo(() => (model.actors || []).map((actor) => actor.headKey).filter((headKey) => headKey !== hiddenSourceKey && !migratingKeys.has(headKey) && !(actorStates.get(headKey)?.state === 'resting' && actorStates.get(headKey)?.structure)), [model.actors, hiddenSourceKey, migratingKeys, actorStates]);
   const visibleRoads = useMemo(() => playthingsVisibleRoads(world, visibleKeys), [world, visibleKeys]);
   const fitBounds = useMemo(() => playthingsVisibleWorldBounds(world, visibleKeys, visibleActorKeys, activeProjection), [world, visibleKeys, visibleActorKeys, activeProjection]);
@@ -175,6 +185,8 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         artifactPoint={selectedArtifactKey ? world.scenePositions.get(selectedArtifactKey) || null : null}
         onCenter={(point) => camera.follow(point)}
         onActivateTransition={onActivateTransition}
+        restingCount={selectedStructure ? (restingByStructure.get(selectedStructure.artifactKey) || []).length : 0}
+        onLookInside={() => selectedStructure && setLocationDialogKey(selectedStructure.artifactKey)}
         onClose={() => setSelection(null)}
       /> : null}
     </svg>
@@ -185,6 +197,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
       <span className="tx-playthings-camera-help">{followLocked ? 'camera locked · wheel zoom' : 'WASD · drag · wheel'}</span>
     </div>
     {lineageDialog ? <PlaythingsLineageDialog snapshot={lineageDialog} onClose={() => setLineageDialog(null)} onLocateArtifact={locateLineageRecord} onOpenRecord={onOpenRecord} onOpenViewerLineage={onOpenLineage} /> : null}
+    {locationDialogKey ? <PlaythingsLocationDialog structure={world.structuresByArtifact?.get(locationDialogKey) || null} artifact={artifactByKey.get(locationDialogKey) || null} residents={locationResidents} onClose={() => setLocationDialogKey('')} onSelectResident={(actor, leafArtifact) => { setSelection({ kind: 'actor', id: actor.id, artifactKey: leafArtifact.key }); const point = world.actorPositions.get(actor.headKey) || world.scenePositions.get(leafArtifact.key); if (point) camera.follow(point); }} onOpenLineage={openLineageDialog} onOpenRecord={onOpenRecord} /> : null}
   </div>;
 }
 
@@ -210,7 +223,7 @@ function LivingPlaything({ actor, artifact, point, idle, suppressed = false, sel
   </g>;
 }
 
-function WorldSelectionMenu({ actor, structure, artifact, artifactPoint = null, transitionOptions = [], onOpenRecord, onOpenLineage, onCenter, onActivateTransition, onClose }) {
+function WorldSelectionMenu({ actor, structure, artifact, artifactPoint = null, transitionOptions = [], restingCount = 0, onOpenRecord, onOpenLineage, onCenter, onLookInside, onActivateTransition, onClose }) {
   if (!artifact) return null;
   const point = actor ? null : structure?.point || artifactPoint || null;
   const anchor = actor ? null : point;
@@ -221,6 +234,7 @@ function WorldSelectionMenu({ actor, structure, artifact, artifactPoint = null, 
   // When an actor is selected the caller attaches its current point for menu placement.
   const resolved = actor?.menuPoint || menuPoint;
   const rows = [
+    ...(structure ? [{ id: 'inside', label: `LOOK INSIDE${restingCount ? ` · ${restingCount}` : ''}`, run: () => onLookInside?.() }] : []),
     { id: 'lineage', label: 'LINEAGE VERSE', run: () => onOpenLineage?.(artifact) },
     { id: 'detail', label: 'ARTIFACT DETAIL', run: () => onOpenRecord?.(artifact.recordId, artifact.workspaceId) },
     { id: 'center', label: 'CENTER CAMERA', run: () => onCenter?.(resolved) }
@@ -269,9 +283,10 @@ function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', e
   const seed = projection.visualSeed || artifact.presentationSeed || artifact.key;
   const structure = projection.structure;
   const scenePoint = projection.scenePoint || projection.actorPoint || { x: 0, y: 0 };
-  const splitPoint = projection.sourcePoint || projection.branchPoint || scenePoint;
+  const splitPoint = projection.branchPoint || projection.sourcePoint || scenePoint;
   return <g className={`tx-playthings-active-sequence is-${event.kind} arrival-${projection.arrivalReason || event.kind}`}>
     {event.kind === 'split' && sample.splitFlash > 0 ? <g className="tx-playthings-split-flash" transform={`translate(${splitPoint.x} ${splitPoint.y}) scale(${0.5 + sample.splitFlash * 0.9}) rotate(${sample.splitFlash * 80})`} opacity={sample.splitFlash}><rect x="-15" y="-15" width="30" height="30" /></g> : null}
+    {event.kind === 'split' && ['fork', 'fork-travel'].includes(sample.phase) && sample.forkActors?.length ? <ForkFanoutLayer sample={sample} projection={projection} artifact={artifact} actorByKey={actorByKey} artifactByKey={artifactByKey} /> : null}
     {structure && sample.structureProgress > 0 ? <g className={`tx-playthings-persistent-structure is-${structure.kind} is-building-live`} transform={`translate(${structure.point.x} ${structure.point.y})`} opacity="1" aria-hidden="true">
       <ellipse className="tx-playthings-structure-shadow" cx="0" cy="22" rx="31" ry="7" />
       <g className="tx-playthings-live-build-art" transform={`scale(${0.72 + sample.structureProgress * 0.28} ${Math.max(0.04, sample.structureProgress)})`}>
@@ -286,7 +301,7 @@ function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', e
     <g className={`tx-playthings-event-focus ${event.localArtifact ? 'is-local' : ''}`} transform={`translate(${artifact.isSchemaArtifact ? scenePoint.x : sample.position.x} ${artifact.isSchemaArtifact ? scenePoint.y : sample.position.y}) scale(${focusScale})`} opacity={Math.max(0.3, 1 - sample.progress * 0.62)} aria-hidden="true"><circle r="26" /><circle className="outer" r="38" /><path className="beacon" d="M 0 -42 V -76 M -7 -69 L 0 -78 L 7 -69" />{event.localArtifact ? <text className="beacon-label" x="0" y="-84">NEW LOCAL</text> : <text className="beacon-label" x="0" y="-84">ACTIVE</text>}</g>
     {!artifact.isSchemaArtifact && sample.dustOpacity > 0 ? <g className="tx-playthings-motion-dust" transform={`translate(${sample.position.x} ${sample.position.y + 13})`} opacity={sample.dustOpacity} aria-hidden="true"><rect x="-12" y="0" width="4" height="2" /><rect x="7" y="-2" width="3" height="2" /></g> : null}
     {restingMigrations.length ? <RestingMigrationLayer migrations={restingMigrations} elapsedMs={sample.elapsedMs} actorByKey={actorByKey} artifactByKey={artifactByKey} /> : null}
-    {!artifact.isSchemaArtifact ? <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
+    {!artifact.isSchemaArtifact && !(event.kind === 'split' && ['fork', 'fork-travel'].includes(sample.phase)) ? <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
       <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
       <g className="tx-playthings-live-sprite-transform" transform={`translate(0 ${sample.bob}) scale(${sample.scaleX} ${sample.scaleY}) skewX(${sample.lean * 18})`}>
         <PixelPlaything role={artifact.visualKind} roleIdentity={roleIdentity || artifact.roleIdentity || ''} branchDepth={event.kind === 'split' ? 1 : 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} />
@@ -295,6 +310,24 @@ function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', e
   </g>;
 }
 
+
+function ForkFanoutLayer({ sample, projection, artifact, actorByKey, artifactByKey }) {
+  const sourceActor = actorByKey?.get(projection.sourceKey) || null;
+  const sourceArtifact = artifactByKey?.get(projection.sourceKey) || artifact;
+  return <g className="tx-playthings-fork-fanout" aria-hidden="true">
+    {(sample.forkActors || []).map((arm, index) => {
+      const sibling = arm.kind === 'sibling';
+      const actorArtifact = sibling ? artifact : sourceArtifact;
+      const seed = sibling ? (projection.visualSeed || artifact.presentationSeed || artifact.key) : (sourceActor?.presentationSeed || sourceArtifact?.presentationSeed || projection.sourceKey);
+      if (!actorArtifact) return null;
+      return <g key={`${arm.kind}:${index}`} className={`tx-playthings-fork-actor is-${arm.kind}`} transform={`translate(${arm.position.x} ${arm.position.y})`}>
+        <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
+        <PixelPlaything role={actorArtifact.visualKind} roleIdentity={(sibling ? artifact.roleIdentity : sourceActor?.roleIdentity) || actorArtifact.roleIdentity || ''} branchDepth={(sourceActor?.branchDepth || 0) + (sibling ? 1 : 0)} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} idleState={arm.kind === 'sleep-return' && arm.progress > .78 ? 'resting' : 'normal'} />
+        {arm.kind === 'sleep-return' ? <text className="tx-playthings-fork-purpose" x="0" y="-27">REST</text> : arm.kind === 'continuation' ? <text className="tx-playthings-fork-purpose" x="0" y="-27">RETURN</text> : <text className="tx-playthings-fork-purpose" x="0" y="-27">NEW BRANCH</text>}
+      </g>;
+    })}
+  </g>;
+}
 
 function RestingMigrationLayer({ migrations = [], elapsedMs = 0, actorByKey, artifactByKey }) {
   return <g className="tx-playthings-resting-migrations" aria-hidden="true">

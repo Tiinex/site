@@ -52,9 +52,9 @@ export function recordRouteTraffic(roads, points = [], artifactKey = '') {
     const key = roadSegmentKey(a, b);
     const prior = roads.get(key) || { key, a: freezePoint(a), b: freezePoint(b), count: 0, trailFromArtifactKey: '', pathFromArtifactKey: '', roadFromArtifactKey: '' };
     const next = { ...prior, count: prior.count + 1 };
-    if (!next.trailFromArtifactKey && next.count >= 3) next.trailFromArtifactKey = artifactKey;
-    if (!next.pathFromArtifactKey && next.count >= 6) next.pathFromArtifactKey = artifactKey;
-    if (!next.roadFromArtifactKey && next.count >= 12) next.roadFromArtifactKey = artifactKey;
+    if (!next.trailFromArtifactKey && next.count >= 2) next.trailFromArtifactKey = artifactKey;
+    if (!next.pathFromArtifactKey && next.count >= 4) next.pathFromArtifactKey = artifactKey;
+    if (!next.roadFromArtifactKey && next.count >= 8) next.roadFromArtifactKey = artifactKey;
     roads.set(key, next);
   }
 }
@@ -75,15 +75,27 @@ function sampledTrafficCorridor(points = []) {
 }
 
 export function playthingsVisibleRoads(world, visibleArtifactKeys = new Set()) {
-  const roads = [];
+  const qualified = [];
   for (const segment of world?.roadSegments || []) {
     let kind = '';
     if (segment.roadFromArtifactKey && visibleArtifactKeys.has(segment.roadFromArtifactKey)) kind = 'road';
     else if (segment.pathFromArtifactKey && visibleArtifactKeys.has(segment.pathFromArtifactKey)) kind = 'path';
     else if (segment.trailFromArtifactKey && visibleArtifactKeys.has(segment.trailFromArtifactKey)) kind = 'trail';
-    if (kind) roads.push(Object.freeze({ ...segment, kind }));
+    if (kind) qualified.push({ ...segment, kind });
   }
-  return Object.freeze(roads);
+  const endpointCounts = new Map();
+  for (const segment of qualified) {
+    for (const point of [segment.a, segment.b]) {
+      const key = pointKey(point);
+      endpointCounts.set(key, (endpointCounts.get(key) || 0) + 1);
+    }
+  }
+  return Object.freeze(qualified.map((segment) => {
+    const connected = (endpointCounts.get(pointKey(segment.a)) || 0) > 1 || (endpointCounts.get(pointKey(segment.b)) || 0) > 1;
+    // Isolated high-wear fragments read as worn earth / entrance aprons. Only
+    // connected corridors are allowed to visually graduate into path/road.
+    return Object.freeze({ ...segment, kind: connected ? segment.kind : 'wear' });
+  }));
 }
 
 function routeBetween(start, end, structures = [], roads = new Map()) {
@@ -175,12 +187,13 @@ function simplifyCollinear(points = []) {
   return out;
 }
 function trafficPoint(point) { return { x: Math.round(Number(point?.x || 0) / 8) * 8, y: Math.round(Number(point?.y || 0) / 8) * 8 }; }
+function pointKey(point) { const snapped = trafficPoint(point); return `${snapped.x}:${snapped.y}`; }
 function roadSegmentKey(a, b) {
   const left = trafficPoint(a), right = trafficPoint(b);
   const ak = `${left.x}:${left.y}`, bk = `${right.x}:${right.y}`;
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
 }
-function roadTravelFactor(count = 0) { return count >= 12 ? .52 : count >= 6 ? .66 : count >= 3 ? .82 : 1; }
+function roadTravelFactor(count = 0) { return count >= 8 ? .46 : count >= 4 ? .62 : count >= 2 ? .78 : 1; }
 function routeHeuristic(a, b) { return Math.sqrt(distanceSquared(a, b)) * .52; }
 function isOrganizationArtifact(artifact = {}) { return artifact.presentationSchemaId === 'tiinex.party.organization.v1' || artifact.schemaId === 'tiinex.party.organization.v1'; }
 function uniquePoints(points = []) {

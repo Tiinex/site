@@ -1,7 +1,7 @@
 import { planPlaythingsHistory } from './playthings.timeline.js';
-import { playthingsSeedAngle, playthingsSeedUnit } from './playthings.seed.js';
 import { parsePlaythingsTime, playthingsLeafIdleState } from './playthings.clock.js';
 import { footprintObstacle, navigatePlaythingsRoute, playthingsVisibleRoads, polylineDistance, recordRouteTraffic, structureFootprintFor } from './playthings.navigation.js';
+import { nearestOrganicFreePoint, nearestTrafficAnchor, rootGrowthBase } from './playthings.placement.js';
 
 export { playthingsVisibleRoads };
 
@@ -11,8 +11,6 @@ export const PLAYTHINGS_WORLD_HEIGHT = 1350;
 
 const WORLD_PADDING = 85;
 const BLOCK_RADIUS = 34;
-const ORGANIC_STEP = 38;
-const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
 /**
  * Presentation-only deterministic geography.
@@ -57,6 +55,9 @@ export function generatePlaythingsWorld(model = {}) {
       branchPoint = scenePositions.get(parentKey) || actorPositions.get(parentKey) || branchPoint;
     }
 
+    const sourceLeafPoint = sourceKey ? actorPositions.get(sourceKey) || sourcePoint || null : null;
+    const sourceRestingHabitatKey = sourceKey ? restedHabitatByLeaf.get(sourceKey) || '' : '';
+    const sourceRestingHabitat = sourceRestingHabitatKey ? structuresByArtifact.get(sourceRestingHabitatKey) || null : null;
     const eventMs = parsePlaythingsTime(event.at);
 
     // Idle is presentation-time state. When several already-living leaves cross
@@ -122,11 +123,14 @@ export function generatePlaythingsWorld(model = {}) {
     const occupied = occupiedPoints(activeLeaves, actorPositions, structures, excludedSource);
     const lineagePlace = nearestAncestorStructure(parentKey, structuresByArtifact, parentByChild);
     const base = event.kind === 'spawn' ? rootGrowthBase(seed, occupied) : branchPoint || sourcePoint || worldCenter();
+    const trafficAnchor = event.kind === 'spawn' ? null : nearestTrafficAnchor(base, roadSegments);
     const scenePoint = nearestOrganicFreePoint(base, `${event.kind}:${seed}`, occupied, {
       minimumRadius: event.kind === 'spawn' ? 0 : 36,
       candidateRadius: Number(plannedFootprint?.radius || 0),
       placeAnchor: lineagePlace?.point || null,
-      placeWeight: lineagePlace ? 0.42 : 0
+      placeWeight: lineagePlace ? 0.52 : 0,
+      trafficAnchor,
+      trafficWeight: trafficAnchor ? 0.14 : 0
     });
     const actorPoint = persistent
       ? nearestOrganicFreePoint(scenePoint, `stand:${seed}`, [...occupied, footprintObstacle(scenePoint, plannedFootprint)], { minimumRadius: Math.max(42, Number(plannedFootprint?.radius || 0) + 18), maximumShell: 5, placeAnchor: scenePoint, placeWeight: 0.528 })
@@ -168,11 +172,39 @@ export function generatePlaythingsWorld(model = {}) {
     const rawMotionPoints = event.kind === 'spawn'
       ? [actorPoint]
       : event.kind === 'split'
-        ? uniquePoints([arrivalSource, branchPoint, actorPoint])
+        ? uniquePoints([arrivalSource, branchPoint])
         : uniquePoints([arrivalSource, actorPoint]);
     const routeStructures = structure ? structures.filter((candidate) => candidate.artifactKey !== structure.artifactKey) : structures;
     const motionPoints = event.kind === 'spawn' ? rawMotionPoints : navigatePlaythingsRoute(rawMotionPoints, routeStructures, roadSegments);
     if (motionPoints.length > 1) recordRouteTraffic(roadSegments, motionPoints, artifact.key);
+
+    let fork = null;
+    if (event.kind === 'split' && branchPoint && sourceKey) {
+      const approachStart = arrivalSource || sourceLeafPoint || branchPoint;
+      const approach = navigatePlaythingsRoute(uniquePoints([approachStart, branchPoint]), routeStructures, roadSegments);
+      const continuationTarget = sourceLeafPoint || approachStart || branchPoint;
+      const sleepHabitat = sourceRestingHabitat || nearestHabitatStructure(continuationTarget, structures);
+      const sleepTarget = sleepHabitat ? structureDoorPoint(sleepHabitat) : continuationTarget;
+      const sleepApproach = sleepHabitat ? structureApproachPoint(sleepHabitat) : sleepTarget;
+      const sleepRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, sleepApproach, sleepTarget]), routeStructures, roadSegments);
+      const continuationRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, continuationTarget]), routeStructures, roadSegments);
+      const siblingRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, actorPoint]), routeStructures, roadSegments);
+      // All three fan-out routes are one presentation event. The sleep-return
+      // route never changes occupancy; resting counts are derived from the real
+      // living leaf state after the event, not from this choreography echo.
+      fork = Object.freeze({
+        branchPoint: freezePoint(branchPoint),
+        sourceArtifactKey: sourceKey,
+        sourceRestingHabitatKey: sleepHabitat?.artifactKey || '',
+        approachPoints: Object.freeze(approach.map(freezePoint)),
+        arms: Object.freeze([
+          Object.freeze({ kind: 'sleep-return', artifactKey: sourceKey, points: Object.freeze(sleepRoute.map(freezePoint)) }),
+          Object.freeze({ kind: 'continuation', artifactKey: sourceKey, points: Object.freeze(continuationRoute.map(freezePoint)) }),
+          Object.freeze({ kind: 'sibling', artifactKey: artifact.key, points: Object.freeze(siblingRoute.map(freezePoint)) })
+        ])
+      });
+      for (const arm of fork.arms) if (arm.points.length > 1) recordRouteTraffic(roadSegments, arm.points, artifact.key);
+    }
 
     eventProjection.set(event.id, Object.freeze({
       eventId: event.id,
@@ -188,7 +220,8 @@ export function generatePlaythingsWorld(model = {}) {
       placementReason: lineagePlace ? `near-place:${lineagePlace.artifactKey}` : event.kind === 'spawn' ? 'root-growth' : 'nearest-free-from-lineage',
       visualSeed: lineagePresentationSeed(artifact.key, byKey, parentByChild),
       persistent,
-      structure
+      structure,
+      fork
     }));
   }
 
@@ -251,76 +284,6 @@ function occupiedPoints(activeLeaves, actorPositions, structures, excludedLeaves
   for (const key of activeLeaves || []) { if (excludedLeaves?.has(key)) continue; const point = actorPositions.get(key); if (point) points.push(point); }
   for (const structure of structures || []) if (structure?.point) points.push(footprintObstacle(structure.point, structure.footprint));
   return points;
-}
-
-function nearestOrganicFreePoint(baseInput, seed, blocked = [], options = {}) {
-  const base = clampPoint(baseInput || worldCenter());
-  const minimumRadius = Math.max(0, Number(options.minimumRadius ?? 0));
-  const maximumShell = Math.max(1, Number(options.maximumShell ?? 22));
-  const placeAnchor = options.placeAnchor ? clampPoint(options.placeAnchor) : null;
-  const placeWeight = Math.max(0, Number(options.placeWeight || 0));
-  const candidateRadius = Math.max(0, Number(options.candidateRadius || 0));
-  const start = playthingsSeedAngle(seed, 'organic-frontier-angle');
-
-  if (minimumRadius === 0 && isFree(base, blocked, candidateRadius)) return freezePoint(base);
-
-  // Fixed-size deterministic frontier. We intentionally consider multiple
-  // radii at once instead of accepting the first free concentric shell; this
-  // creates pockets/neighbourhoods without runtime randomness or suffix jitter.
-  const preferredReach = minimumRadius + ORGANIC_STEP * (0.8 + playthingsSeedUnit(seed, 'organic-preferred-reach') * 2.7);
-  const targetSpacing = BLOCK_RADIUS * (1.35 + playthingsSeedUnit(seed, 'organic-spacing') * 0.65);
-  const candidates = [];
-  const count = 28;
-  for (let index = 0; index < count; index += 1) {
-    const angleJitter = (playthingsSeedUnit(seed, `organic-jitter:${index}`) - 0.5) * 0.9;
-    const angle = start + index * GOLDEN_ANGLE + angleJitter;
-    const radialUnit = playthingsSeedUnit(seed, `organic-radius:${index}`);
-    const radius = Math.max(minimumRadius, preferredReach * (0.58 + radialUnit * 0.92));
-    const point = clampPoint({ x: base.x + Math.cos(angle) * radius, y: base.y + Math.sin(angle) * radius });
-    if (!inBounds(point) || !isFree(point, blocked, candidateRadius)) continue;
-    const baseDistance = Math.sqrt(distanceSquared(base, point));
-    const nearest = nearestBlockedDistance(point, blocked);
-    const densityCost = Number.isFinite(nearest) ? Math.abs(nearest - targetSpacing) * 0.48 : 0;
-    const reachCost = Math.abs(baseDistance - preferredReach) * 0.42;
-    const placeCost = placeAnchor ? Math.sqrt(distanceSquared(placeAnchor, point)) * placeWeight : 0;
-    const edgeCost = worldEdgePenalty(point);
-    const tie = playthingsSeedUnit(seed, `organic-tie:${round(point.x)}:${round(point.y)}`) * 7;
-    candidates.push({ point, score: baseDistance * 0.22 + reachCost + densityCost + placeCost + edgeCost + tie });
-  }
-  candidates.sort((a, b) => a.score - b.score || a.point.y - b.point.y || a.point.x - b.point.x);
-  if (candidates[0]) return freezePoint(candidates[0].point);
-
-  // Dense-world fallback still expands deterministically, but only after the
-  // organic frontier has failed to find a legal site.
-  for (let shell = 1; shell <= maximumShell; shell += 1) {
-    const radiusBase = minimumRadius + shell * ORGANIC_STEP;
-    const fallback = [];
-    const shellCount = 9 + Math.min(7, shell);
-    for (let index = 0; index < shellCount; index += 1) {
-      const angle = start + index * GOLDEN_ANGLE + (playthingsSeedUnit(seed, `fallback-angle:${shell}:${index}`) - 0.5) * 0.7;
-      const radius = radiusBase + (playthingsSeedUnit(seed, `fallback-radius:${shell}:${index}`) - 0.5) * ORGANIC_STEP * 0.9;
-      const point = clampPoint({ x: base.x + Math.cos(angle) * radius, y: base.y + Math.sin(angle) * radius });
-      if (!inBounds(point) || !isFree(point, blocked, candidateRadius)) continue;
-      fallback.push({ point, score: worldEdgePenalty(point) + playthingsSeedUnit(seed, `fallback-tie:${shell}:${index}`) * 8 });
-    }
-    fallback.sort((a, b) => a.score - b.score || a.point.y - b.point.y || a.point.x - b.point.x);
-    if (fallback[0]) return freezePoint(fallback[0].point);
-  }
-  return freezePoint(base);
-}
-
-function rootGrowthBase(seed, blocked = []) {
-  if (!(blocked || []).length) return worldCenter();
-  const center = worldCenter();
-  const angle = playthingsSeedAngle(seed, 'root-neighbourhood-angle');
-  const radius = 70 + playthingsSeedUnit(seed, 'root-neighbourhood-radius') * 310;
-  return clampPoint({ x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius });
-}
-
-function nearestBlockedDistance(point, blocked = []) {
-  let nearest = Number.POSITIVE_INFINITY;
-  for (const other of blocked || []) nearest = Math.min(nearest, Math.max(0, Math.sqrt(distanceSquared(point, other)) - Number(other?.radius || 0)));
-  return nearest;
 }
 
 function currentLeafBelow(parentKey, activeLeaves, parentByChild, byKey) {
