@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { usePlaythingsCamera } from './playthings.camera.react.js';
-import { generatePlaythingsWorld, playthingsRestingAssignment, playthingsTerrainMarks, playthingsVisibleWorldBounds } from './playthings.world.js';
-import { planPlaythingsEventMotion, samplePlaythingsEventMotion } from './playthings.motion.js';
+import { generatePlaythingsWorld, playthingsRestingAssignment, playthingsTerrainMarks, playthingsVisibleRoads, playthingsVisibleWorldBounds } from './playthings.world.js';
+import { planPlaythingsEventMotion, pointOnPolyline, samplePlaythingsEventMotion } from './playthings.motion.js';
 import { playthingsShirtColor, playthingsVariant } from './playthings.seed.js';
 import { playthingsLeafIdleState } from './playthings.clock.js';
 import { InteractionSpark, PixelOrganizationPlace, PixelPlaything, PixelWorkspacePlace, PlaythingsSceneArtwork, TerrainMark } from './playthings.artwork.jsx';
@@ -16,6 +16,8 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   const actorByKey = useMemo(() => new Map((model.actors || []).map((actor) => [actor.headKey, actor])), [model.actors]);
   const visibleKeys = useMemo(() => new Set((model.artifacts || []).map((artifact) => artifact.key)), [model.artifacts]);
   const activeProjection = activeEvent ? world.eventProjection.get(activeEvent.id) || null : null;
+  const activeRestingMigrations = activeEvent ? world.restingMigrationsByEvent?.get(activeEvent.id) || [] : [];
+  const migratingKeys = useMemo(() => new Set(activeRestingMigrations.map((migration) => migration.headKey)), [activeRestingMigrations]);
   const hoveredActor = hoveredHead ? actorByKey.get(hoveredHead) || null : null;
   const unlockedSkills = useMemo(() => new Set(unlockedSkillIds || []), [unlockedSkillIds]);
   // Transition qualification is intentionally lazy. With large carried workspaces
@@ -37,20 +39,21 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
       const artifact = artifactByKey.get(actor.headKey);
       const point = world.actorPositions.get(actor.headKey);
       if (!artifact || !point) continue;
-      map.set(actor.headKey, playthingsRestingAssignment(world, artifact, point, playheadMs));
+      map.set(actor.headKey, playthingsRestingAssignment(world, artifact, point, playheadMs, visibleKeys));
     }
     return map;
-  }, [model.actors, artifactByKey, world, playheadMs]);
+  }, [model.actors, artifactByKey, world, playheadMs, visibleKeys]);
   const restingByStructure = useMemo(() => {
     const map = new Map();
     for (const [headKey, state] of actorStates) {
-      if (state.state !== 'resting' || !state.structure) continue;
+      if (state.state !== 'resting' || !state.structure || migratingKeys.has(headKey)) continue;
       if (!map.has(state.structure.artifactKey)) map.set(state.structure.artifactKey, []);
       map.get(state.structure.artifactKey).push(headKey);
     }
     return map;
-  }, [actorStates]);
-  const visibleActorKeys = useMemo(() => (model.actors || []).map((actor) => actor.headKey).filter((headKey) => headKey !== hiddenSourceKey && !(actorStates.get(headKey)?.state === 'resting' && actorStates.get(headKey)?.structure)), [model.actors, hiddenSourceKey, actorStates]);
+  }, [actorStates, migratingKeys]);
+  const visibleActorKeys = useMemo(() => (model.actors || []).map((actor) => actor.headKey).filter((headKey) => headKey !== hiddenSourceKey && !migratingKeys.has(headKey) && !(actorStates.get(headKey)?.state === 'resting' && actorStates.get(headKey)?.structure)), [model.actors, hiddenSourceKey, migratingKeys, actorStates]);
+  const visibleRoads = useMemo(() => playthingsVisibleRoads(world, visibleKeys), [world, visibleKeys]);
   const fitBounds = useMemo(() => playthingsVisibleWorldBounds(world, visibleKeys, visibleActorKeys, activeProjection), [world, visibleKeys, visibleActorKeys, activeProjection]);
 
   function motionSample(sample) {
@@ -64,6 +67,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
       </defs>
       <rect className="tx-playthings-earth" x="0" y="0" width={world.width} height={world.height} />
       <g className="tx-playthings-terrain-layer" aria-hidden="true">{terrain.map((mark, index) => <TerrainMark key={index} {...mark} />)}</g>
+      <g className="tx-playthings-road-layer" aria-hidden="true">{visibleRoads.map((road) => <g key={road.key}><path className={`tx-playthings-road-underlay is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /><path className={`tx-playthings-road-core is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /></g>)}</g>
 
       {hoveredActor ? <LineageTesseract actor={hoveredActor} world={world} artifactByKey={artifactByKey} /> : null}
 
@@ -81,7 +85,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
           const artifact = artifactByKey.get(actor.headKey);
           const point = world.actorPositions.get(actor.headKey);
           const idle = actorStates.get(actor.headKey) || playthingsLeafIdleState(artifact?.createdAt, playheadMs);
-          if (!artifact || !point || actor.headKey === hiddenSourceKey || (idle.state === 'resting' && idle.structure)) return null;
+          if (!artifact || !point || actor.headKey === hiddenSourceKey || migratingKeys.has(actor.headKey) || (idle.state === 'resting' && idle.structure)) return null;
           const transitionOptions = hoveredHead === actor.headKey ? hoveredTransitionOptions : [];
           return <LivingPlaything key={actor.id || actor.headKey} actor={actor} artifact={artifact} point={point} idle={idle} highlighted={hoveredHead === actor.headKey} onHover={setHoveredHead} onOpen={() => onOpenRecord?.(artifact.recordId, artifact.workspaceId)} transitionOptions={transitionOptions} onActivateTransition={(action) => onActivateTransition?.(artifact.recordId, artifact.workspaceId, action)} />;
         })}
@@ -95,6 +99,9 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         roleIdentity={artifactByKey.get(activeEvent.artifactKey)?.roleIdentity || actorByKey.get(activeProjection.sourceKey)?.roleIdentity || artifactByKey.get(activeProjection.sourceKey)?.roleIdentity || ''}
         eventCount={eventCount}
         playing={playing}
+        restingMigrations={activeRestingMigrations}
+        actorByKey={actorByKey}
+        artifactByKey={artifactByKey}
         onSample={motionSample}
         onComplete={onEventComplete}
       /> : null}
@@ -146,8 +153,10 @@ function PlaythingTransitionMenu({ actions = [], onActivate }) {
 function transitionSchemaId(action = {}) { return String(action?.authoring?.schemaId || action?.targetSchemaId || '').trim(); }
 function compactTransitionLabel(value = '') { const text = String(value || '').trim(); return text.length > 17 ? `${text.slice(0, 16)}…` : text; }
 
-function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', eventCount, playing, onSample, onComplete }) {
-  const motion = useMemo(() => planPlaythingsEventMotion(event, projection, { eventCount }), [event, projection, eventCount]);
+function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', eventCount, playing, restingMigrations = [], actorByKey, artifactByKey, onSample, onComplete }) {
+  const baseMotion = useMemo(() => planPlaythingsEventMotion(event, projection, { eventCount }), [event, projection, eventCount]);
+  const lifecycleDuration = useMemo(() => Math.max(0, ...restingMigrations.map((migration) => Number(migration.durationMs || 0))), [restingMigrations]);
+  const motion = useMemo(() => Object.freeze({ ...baseMotion, totalMs: Math.max(baseMotion.totalMs, lifecycleDuration) }), [baseMotion, lifecycleDuration]);
   const [sample, setSample] = useState(() => samplePlaythingsEventMotion(motion, 0));
   const onSampleRef = useRef(onSample);
   const onCompleteRef = useRef(onComplete);
@@ -190,12 +199,37 @@ function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', e
     </g> : null}
     <g className="tx-playthings-event-focus" transform={`translate(${artifact.isSchemaArtifact ? scenePoint.x : sample.position.x} ${artifact.isSchemaArtifact ? scenePoint.y : sample.position.y})`} opacity={Math.max(0.18, 1 - sample.progress * 0.7)} aria-hidden="true"><circle r="18" /><circle className="outer" r="25" /></g>
     {!artifact.isSchemaArtifact && sample.dustOpacity > 0 ? <g className="tx-playthings-motion-dust" transform={`translate(${sample.position.x} ${sample.position.y + 13})`} opacity={sample.dustOpacity} aria-hidden="true"><rect x="-12" y="0" width="4" height="2" /><rect x="7" y="-2" width="3" height="2" /></g> : null}
+    {restingMigrations.length ? <RestingMigrationLayer migrations={restingMigrations} elapsedMs={sample.elapsedMs} actorByKey={actorByKey} artifactByKey={artifactByKey} /> : null}
     {!artifact.isSchemaArtifact ? <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
       <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
       <g className="tx-playthings-live-sprite-transform" transform={`translate(0 ${sample.bob}) scale(${sample.scaleX} ${sample.scaleY}) skewX(${sample.lean * 18})`}>
         <PixelPlaything role={artifact.visualKind} roleIdentity={roleIdentity || artifact.roleIdentity || ''} branchDepth={event.kind === 'split' ? 1 : 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} />
       </g>
     </g> : null}
+  </g>;
+}
+
+
+function RestingMigrationLayer({ migrations = [], elapsedMs = 0, actorByKey, artifactByKey }) {
+  return <g className="tx-playthings-resting-migrations" aria-hidden="true">
+    {migrations.map((migration) => {
+      const actor = actorByKey?.get(migration.headKey);
+      const artifact = artifactByKey?.get(migration.artifactKey);
+      if (!actor || !artifact) return null;
+      const duration = Math.max(1, Number(migration.durationMs || 1));
+      const progress = Math.max(0, Math.min(1, Number(elapsedMs || 0) / duration));
+      const eased = progress * progress * (3 - 2 * progress);
+      const position = pointOnPolyline(migration.motionPoints || [migration.from, migration.to], eased);
+      const walk = progress < 1 ? Math.sin((Number(elapsedMs || 0) / 115) * Math.PI * 2) : 0;
+      const seed = actor.presentationSeed || artifact.presentationSeed || actor.id || artifact.key;
+      return <g key={migration.headKey} className="tx-playthings-resting-migrant" transform={`translate(${position.x} ${position.y})`}>
+        <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
+        <g transform={`translate(0 ${progress < 1 ? -Math.abs(walk) * 2 : 0})`}>
+          <PixelPlaything role={artifact.visualKind} roleIdentity={actor.roleIdentity || artifact.roleIdentity || ''} branchDepth={actor.branchDepth || 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} idleState={progress > .82 ? 'resting' : 'long-idle'} />
+        </g>
+        {progress > .86 ? <g className="tx-playthings-sleep-mark"><text x="13" y="-14">z</text></g> : null}
+      </g>;
+    })}
   </g>;
 }
 

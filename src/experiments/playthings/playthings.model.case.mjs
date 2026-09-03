@@ -72,6 +72,16 @@ const schemaLeaf = record({ title: 'Task schema', path: 'src/schemas/core/task/t
 const schemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [schemaLeaf] }]);
 assert.equal(schemaModel.artifacts[0].isSchemaArtifact, true);
 assert.equal(schemaModel.verses[0].actors.length, 0, 'schema leaf artifacts belong to blueprint/Tech Tree presentation and must not leave living Plaything actors on earth');
+assert.equal(schemaModel.artifacts[0].persistenceKind, 'none', 'schema documents must not inherit persistent world semantics from the schema they describe');
+assert.equal(schemaModel.artifacts[0].spawnCapability, '', 'schema documents must not become habitats/spawn places even when their described schema is a place type');
+
+
+const organizationSchemaDoc = record({ title: 'Party Organization', path: 'src/schemas/party/tiinex.party.organization.v1.schema.md', schema: 'tiinex.party.organization.v1' });
+const organizationSchemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [organizationSchemaDoc] }]);
+assert.equal(organizationSchemaModel.artifacts[0].isSchemaArtifact, true);
+assert.equal(organizationSchemaModel.artifacts[0].visualKind, 'blueprint-scene');
+assert.equal(organizationSchemaModel.artifacts[0].persistenceKind, 'none', 'a party.organization .schema.md stays a blueprint and must never project a castle');
+assert.equal(organizationSchemaModel.verses[0].actors.length, 0);
 
 console.log('✓ Playthings multiverse projection and delta playback model passed');
 

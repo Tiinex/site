@@ -345,10 +345,13 @@ function artifactFromNode(node = {}, context = null) {
     interactionKind: isSchemaArtifact ? 'blueprint' : presentationCompanion.interactionKind || 'inspect',
     districtKind: presentationCompanion.districtKind || 'commons',
     worldRole: isSchemaArtifact ? 'blueprint' : presentationCompanion.worldRole || 'scene',
-    persistenceKind: presentationCompanion.persistenceKind || 'none',
-    placementKind: presentationCompanion.placementKind || 'nearest-free',
-    spawnCapability: presentationCompanion.spawnCapability || '',
-    arrivalKind: presentationCompanion.arrivalKind || '',
+    // A .schema.md artifact describes a blueprint. Its target schema may itself
+    // be Organization/Workspace/etc, but the schema document must never inherit
+    // that target's world persistence or spawn semantics.
+    persistenceKind: isSchemaArtifact ? 'none' : presentationCompanion.persistenceKind || 'none',
+    placementKind: isSchemaArtifact ? 'nearest-free' : presentationCompanion.placementKind || 'nearest-free',
+    spawnCapability: isSchemaArtifact ? '' : presentationCompanion.spawnCapability || '',
+    arrivalKind: isSchemaArtifact ? '' : presentationCompanion.arrivalKind || '',
     isSchemaArtifact,
     isWorkspaceArtifact,
     workspaceClusterSize: isWorkspaceArtifact ? workspaceClusterSizeForRecord(record) : 0,

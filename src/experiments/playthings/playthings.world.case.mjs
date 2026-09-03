@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { generatePlaythingsWorld } from './playthings.world.js';
+import { generatePlaythingsWorld, playthingsVisibleRoads } from './playthings.world.js';
 
 function artifact(key, overrides = {}) {
   return {
@@ -83,6 +83,7 @@ const handoffModel = {
 const handoffWorld = generatePlaythingsWorld(handoffModel);
 assert.equal(handoffWorld.structures.length, 2, 'organization history builds persistent places instead of pre-seeding scenery');
 assert.equal(handoffWorld.structuresByArtifact.get('org').organizationDepth, 0, 'root organization uses depth-zero settlement morphology');
+assert.ok(handoffWorld.structuresByArtifact.get('org').footprint.radius > 50, 'castle-scale organization reserves substantially more physical world area than a Plaything');
 assert.equal(handoffWorld.structuresByArtifact.get('org-child').organizationDepth, 1, 'nested organization changes morphology by consecutive organization depth');
 assert.equal(handoffWorld.eventProjection.get('artifact:handoff').arrivalReason, 'organization-receiver', 'handoff receiving movement can originate from an already-built organization spawn place');
 assert.notDeepEqual(handoffWorld.eventProjection.get('artifact:handoff').sourcePoint, handoffWorld.actorPositions.get('org-child'), 'handoff receiver source is generated from the organization place rather than pretending the parent walked the route');
@@ -106,5 +107,29 @@ assert.equal(organicPoint.x % 42 === 0 && organicPoint.y % 42 === 0, false, 'org
 const schemaOnly = artifact('schema-only', { schemaId: 'tiinex.schema.module.v1', presentationSchemaId: 'tiinex.schema.module.v1', visualKind: 'blueprint-scene', interactionKind: 'blueprint', isSchemaArtifact: true, createdAt: '2026-09-01 09:00:00' });
 const schemaOnlyWorld = generatePlaythingsWorld({ fingerprint: 'schema-only', verses: [{ id: 'repo:tiinex/site' }], artifacts: [schemaOnly], edges: [], portals: [] });
 assert.equal(schemaOnlyWorld.livingLeafKeys.length, 0, 'schema blueprint leaves must not occupy the earth as living Playthings');
+
+
+const deceptiveSchema = artifact('organization-schema-doc', {
+  schemaId: 'tiinex.party.organization.v1', presentationSchemaId: 'tiinex.party.organization.v1', visualKind: 'blueprint-scene', interactionKind: 'blueprint',
+  persistenceKind: 'structure', spawnCapability: 'organization', isSchemaArtifact: true, createdAt: '2026-09-01 09:00:00'
+});
+const deceptiveSchemaWorld = generatePlaythingsWorld({ fingerprint: 'deceptive-schema', verses: [{ id: 'repo:tiinex/site' }], artifacts: [deceptiveSchema], edges: [], portals: [] });
+assert.equal(deceptiveSchemaWorld.structures.length, 0, 'world generation defensively refuses persistent structures for .schema.md artifacts even if upstream metadata leaks place semantics');
+
+const restHabitat = artifact('rest-habitat', {
+  schemaId: 'tiinex.party.organization.v1', presentationSchemaId: 'tiinex.party.organization.v1', visualKind: 'organization-place', interactionKind: 'build',
+  persistenceKind: 'structure', spawnCapability: 'organization', createdAt: '2026-09-01 00:00:00'
+});
+const oldLeaf = artifact('old-leaf', { createdAt: '2026-09-01 00:01:00' });
+const oldLeafTwo = artifact('old-leaf-two', { createdAt: '2026-09-01 00:02:00' });
+const oldLeafThree = artifact('old-leaf-three', { createdAt: '2026-09-01 00:03:00' });
+const clockAdvance = artifact('clock-advance', { createdAt: '2026-09-09 00:00:00' });
+const restingWorld = generatePlaythingsWorld({ fingerprint: 'resting-migration', verses: [{ id: 'repo:tiinex/site' }], artifacts: [restHabitat, oldLeaf, oldLeafTwo, oldLeafThree, clockAdvance], edges: [], portals: [] });
+const migrations = restingWorld.restingMigrationsByEvent.get('artifact:clock-advance') || [];
+assert.ok(migrations.some((migration) => migration.headKey === 'old-leaf'), 'a leaf crossing the >7 day idle threshold migrates toward an already-built habitat instead of vanishing');
+assert.ok(migrations.find((migration) => migration.headKey === 'old-leaf').durationMs >= 520, 'resting migration has visible bounded travel time rather than zero-duration disappearance');
+assert.ok(['old-leaf','old-leaf-two','old-leaf-three'].every((key) => migrations.some((migration) => migration.headKey === key)), 'all leaves crossing the same relative-time threshold migrate in one concurrent lifecycle batch');
+const wornRoads = playthingsVisibleRoads(restingWorld, new Set(['rest-habitat','old-leaf','old-leaf-two','old-leaf-three','clock-advance']));
+assert.ok(wornRoads.some((road) => road.kind === 'trail'), 'repeated completed traffic through the shared habitat approach deterministically wears a visible trail');
 
 console.log('✓ Playthings deterministic shared-earth growth projection passed');
