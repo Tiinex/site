@@ -1114,3 +1114,30 @@ main.tx-react-runtime.tx-playthings-mode > .tx-toast { display: none !important;
 .tx-playthings-selection-menu .action.transition rect { stroke: #927e3e; }
 .tx-playthings-selection-menu .action:hover rect,
 .tx-playthings-selection-menu .action:focus rect { fill: #3a4d3d; stroke: #e4d77c; }
+
+/* Artifact discoverability: local/session artifacts remain traceable even after the living leaf advances. */
+.tx-playthings-finder { position: absolute; z-index: 16; top: 54px; right: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.tx-playthings-finder-toggle { min-height: 30px; border: 1px solid #83955d; background: rgba(18,30,20,.94); color: #edf5db; padding: 5px 9px; font: 900 .56rem/1 ui-monospace, monospace; cursor: pointer; }
+.tx-playthings-finder-toggle b { color: #ffe26f; margin-left: 5px; }
+.tx-playthings-finder-toggle.is-open { border-color: #ead266; color: #fff0a2; }
+.tx-playthings-finder-panel { position: absolute; top: 36px; right: 0; width: min(430px, calc(100vw - 36px)); max-height: 430px; overflow: auto; padding: 9px; border: 1px solid #68774e; background: rgba(11,19,12,.98); box-shadow: 4px 4px 0 rgba(0,0,0,.35); }
+.tx-playthings-finder-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 7px; }
+.tx-playthings-finder-head > div { display: grid; gap: 2px; }
+.tx-playthings-finder-head strong { color: #fff0a0; font-size: .68rem; letter-spacing: .06em; }
+.tx-playthings-finder-head small { color: #8c987f; font-size: .5rem; }
+.tx-playthings-finder-head button { border: 0; background: transparent; color: #cbd5bf; cursor: pointer; font-size: 1rem; }
+.tx-playthings-finder-panel > input { box-sizing: border-box; width: 100%; min-height: 34px; margin-bottom: 7px; border: 1px solid #4e5e43; background: #111a12; color: #edf4e3; padding: 7px 8px; font: 700 .62rem/1 ui-monospace, monospace; }
+.tx-playthings-finder-results { display: grid; gap: 4px; }
+.tx-playthings-finder-results > button { display: flex; justify-content: space-between; gap: 12px; align-items: center; min-height: 42px; border: 1px solid #44543c; background: #182219; color: #e9f0df; text-align: left; padding: 6px 8px; cursor: pointer; }
+.tx-playthings-finder-results > button:hover, .tx-playthings-finder-results > button:focus-visible { border-color: #d7c35e; outline: none; background: #202b20; }
+.tx-playthings-finder-results .identity, .tx-playthings-finder-results .where { display: grid; gap: 2px; min-width: 0; }
+.tx-playthings-finder-results .identity strong { font-size: .6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-playthings-finder-results small { color: #89947e; font-size: .49rem; }
+.tx-playthings-finder-results .where { text-align: right; flex: 0 0 auto; }
+.tx-playthings-finder-results .where b { color: #ffe268; font-size: .49rem; }
+.tx-playthings-finder-results p { color: #8b9781; font-size: .57rem; }
+.tx-playthings-local-beacon path { fill: #f3d866; stroke: #28220e; stroke-width: 1; }
+.tx-playthings-local-beacon text { fill: #2b260e; text-anchor: middle; font: 900 6px/1 ui-monospace, monospace; pointer-events: none; }
+.tx-playthings-tesseract-echo.is-exact-artifact { opacity: 1; }
+.tx-playthings-tesseract-echo.is-exact-artifact > circle { fill: none; stroke: #ffe56e; stroke-width: 2; stroke-dasharray: 3 2; }
+.tx-playthings-tesseract-echo .exact-label { fill: #fff0a0; text-anchor: middle; font: 900 7px/1 ui-monospace, monospace; paint-order: stroke; stroke: #172018; stroke-width: 2; }

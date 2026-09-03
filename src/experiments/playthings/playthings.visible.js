@@ -1,3 +1,4 @@
+import { lineageActorForHead } from './playthings.role.js';
 export function projectVisiblePlaythingsModel(model = {}, verseIds, artifactKeys, portalKeys) {
   const visibleVerses = verseIds instanceof Set ? verseIds : new Set((model.verses || []).map((verse) => verse.id));
   const visible = artifactKeys instanceof Set ? artifactKeys : new Set();
@@ -15,26 +16,9 @@ export function projectVisiblePlaythingsModel(model = {}, verseIds, artifactKeys
   }
 
   const artifactByKey = new Map(artifacts.map((artifact) => [artifact.key, artifact]));
-  const actors = artifacts.filter((artifact) => !parentKeys.has(artifact.key) && !artifact.isSchemaArtifact).map((artifact) => {
-    const ancestry = ancestryFor(artifact.key, parentByChild);
-    const branchDepth = ancestry.filter((key) => (childrenByParent.get(key) || []).length > 1).length;
-    const roleArtifact = ancestry.slice().reverse().map((key) => artifactByKey.get(key)).find((candidate) => candidate?.roleIdentity) || null;
-    return Object.freeze({
-      id: `lineage:${artifact.key}`,
-      headKey: artifact.key,
-      verseId: artifact.verseId || '',
-      repo: artifact.repo || '',
-      label: artifact.title || artifact.path || artifact.key,
-      schemaId: artifact.schemaId || '',
-      visualKind: artifact.visualKind || 'relic',
-      roleIdentity: roleArtifact?.roleIdentity || '',
-      roleLabel: roleArtifact?.roleLabel || '',
-      presentationSeed: (artifacts.find((candidate) => candidate.key === ancestry[0]) || artifact).presentationSeed || ancestry[0] || artifact.key,
-      ancestry: Object.freeze(ancestry),
-      generations: Math.max(0, ancestry.length - 1),
-      branchDepth
-    });
-  });
+  const actors = artifacts
+    .filter((artifact) => !parentKeys.has(artifact.key) && !artifact.isSchemaArtifact)
+    .map((artifact) => lineageActorForHead(artifact.key, artifactByKey, parentByChild, childrenByParent));
 
   const verses = (model.verses || []).filter((verse) => visibleVerses.has(verse.id)).map((verse) => {
     const verseArtifacts = artifacts.filter((artifact) => artifact.verseId === verse.id);

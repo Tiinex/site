@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { projectPlaythingsMultiverse } from './playthings.model.js';
 import {
   planPlaythingsHistory,
@@ -14,6 +14,8 @@ import { PlaythingsProgression } from './PlaythingsProgression.jsx';
 import { playthingsPlayheadTime } from './playthings.clock.js';
 import { readPlaythingsProfile, setPlaythingsFollow, writePlaythingsProfile } from './playthings.profile.js';
 import { buildPlaythingsTechTree } from './playthings.techTree.js';
+import { isPlaythingsLocalArtifact } from './playthings.find.js';
+import { PlaythingsArtifactFinder } from './PlaythingsArtifactFinder.jsx';
 import './playthings.css';
 
 export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onOpenLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
@@ -33,12 +35,18 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
   const [eventArmed, setEventArmed] = useState(initialStart.phase === 'playing');
   const [eventToken, setEventToken] = useState(0);
   const [profile, setProfile] = useState(() => readPlaythingsProfile());
+  const [focusRequest, setFocusRequest] = useState(null);
+  const focusTokenRef = useRef(0);
+  const pendingLocalFocusRef = useRef('');
 
   useEffect(() => {
     if (phase === 'refreshing' || incomingModel.fingerprint === target.fingerprint) return;
     const currentObservation = playthingsObservationAtCursor(history, target, cursor);
     const nextHistory = planPlaythingsHistory(incomingModel);
     const resolution = resolvePlaythingsObservationCursor(currentObservation, nextHistory, incomingModel);
+    const previousKeys = new Set((target.artifacts || []).map((artifact) => artifact.key));
+    const localAdditions = (incomingModel.artifacts || []).filter((artifact) => !previousKeys.has(artifact.key) && isPlaythingsLocalArtifact(artifact));
+    if (localAdditions.length) pendingLocalFocusRef.current = localAdditions[localAdditions.length - 1].key;
     setTarget(incomingModel);
     setEventToken((value) => value + 1);
     if (!resolution.valid) {
@@ -135,6 +143,19 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
     setProfile(written);
   }
   function setFollow(next) { updateProfile(setPlaythingsFollow(profile, next)); }
+  function requestArtifactFocus(artifactKey) {
+    const key = String(artifactKey || '');
+    if (!key) return;
+    const eventIndex = history.events.findIndex((event) => event.artifactKey === key);
+    if (eventIndex >= cursor) {
+      setEventArmed(false);
+      setPhase('paused');
+      setCursor(Math.min(history.events.length, eventIndex + 1));
+      setEventToken((value) => value + 1);
+    }
+    focusTokenRef.current += 1;
+    setFocusRequest({ artifactKey: key, token: focusTokenRef.current });
+  }
 
   const projection = playthingsProjectionAtCursor(history, cursor);
   const visibleModel = projectVisiblePlaythingsModel(target, projection.verseIds, projection.artifactKeys, projection.portalKeys);
@@ -149,6 +170,14 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
   const unlockedSkillIds = useMemo(() => (profile.upgradedSchemaIds || []).filter((schemaId) => creatableSchemaIds.has(schemaId)), [profile.upgradedSchemaIds, creatableSchemaIds]);
   const stateLabel = phase === 'refreshing' ? 'READING' : projection.atNow && phase === 'settled' ? 'LIVE · STILL' : phase === 'playing' ? 'PLAYING' : 'PAUSED';
   const crossOriginCount = (visibleModel.edges || []).filter((edge) => edge.crossVerse).length;
+
+  useEffect(() => {
+    const key = pendingLocalFocusRef.current;
+    if (!key || !projection.artifactKeys.has(key)) return;
+    pendingLocalFocusRef.current = '';
+    focusTokenRef.current += 1;
+    setFocusRequest({ artifactKey: key, token: focusTokenRef.current });
+  }, [cursor, target.fingerprint]);
 
   return <section className="tx-playthings" data-playthings-phase={phase} aria-label="Playthings experimental shared world">
     <div className="tx-playthings-world-shell">
@@ -169,6 +198,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
         unlockedSkillIds={unlockedSkillIds}
         onResolveTransitions={onResolveTransitions}
         onActivateTransition={onActivateTransition}
+        focusRequest={focusRequest}
       />
       <div className="tx-playthings-hud" role="status" aria-live="polite">
         <span className="tx-playthings-brand"><strong>Playthings</strong><small>one shared world · read-only</small></span>
@@ -180,6 +210,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
         <button type="button" className="tx-playthings-hud-button" onClick={refresh} disabled={!canRefresh}>{phase === 'refreshing' ? 'Reading…' : 'Refresh'}</button>
       </div>
       {activeEvent ? <div className={`tx-playthings-event is-${activeEvent.kind}`}><span>{eventGlyph(activeEvent.kind, activeEvent)}</span><div><strong>{eventLabel(activeEvent.kind, activeEvent)}</strong><small>{activeEvent.label}</small></div></div> : null}
+      <PlaythingsArtifactFinder model={target} enabled={toolsEnabled} onLocate={requestArtifactFocus} />
       <PlaythingsProgression model={target} profile={profile} enabled={toolsEnabled} onProfileChange={updateProfile} onOpenRecord={onOpenRecord} onActivateSkill={onCreateSkill} />
     </div>
 
@@ -194,8 +225,9 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
   </section>;
 }
 
-function eventGlyph(kind, event = {}) { if (event.interactionKind === 'blueprint') return '▧'; return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
+function eventGlyph(kind, event = {}) { if (event.localArtifact) return '◆'; if (event.interactionKind === 'blueprint') return '▧'; return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
 function eventLabel(kind, event = {}) {
+  if (event.localArtifact) return kind === 'spawn' ? 'Your local leaf entered the world' : kind === 'split' ? 'Your local artifact opened a new branch' : 'Your local artifact continued this Plaything';
   if (event.interactionKind === 'blueprint') return 'A schema blueprint was observed';
   if (event.arrivalKind === 'organization-receiver') return 'A receiver entered the handoff';
   if (kind === 'split') return 'A living branch divided';

@@ -1,3 +1,5 @@
+import { isPlaythingsLocalArtifact } from './playthings.find.js';
+
 export const PLAYTHINGS_TIMELINE_SCHEMA = 'tiinex.playthings.timeline.experimental.v1';
 
 export function planPlaythingsHistory(model = {}) {
@@ -32,7 +34,8 @@ export function planPlaythingsHistory(model = {}) {
       interactionKind: artifact.interactionKind || 'inspect',
       stationKind: artifact.visualKind || 'relic',
       persistenceKind: artifact.persistenceKind || 'none',
-      arrivalKind: artifact.arrivalKind || ''
+      arrivalKind: artifact.arrivalKind || '',
+      localArtifact: isPlaythingsLocalArtifact(artifact)
     }));
   }
 

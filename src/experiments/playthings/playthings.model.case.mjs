@@ -124,6 +124,14 @@ assert.equal(configuredEmptyDocs.verses[0].repo, 'Tiinex/docs');
 assert.equal(configuredEmptyDocs.verses[0].observedCount, 0);
 assert.equal(configuredEmptyDocs.verses[0].actors.length, 0);
 
+
+const browserLocalTask = localize(record({ title: 'My browser task', path: '.topics/my-browser-task.trace.md', schema: 'tiinex.task.v1', createdAt: '2026-09-03 10:00:00' }));
+browserLocalTask.sourceMode = 'local-transition-canonical';
+const browserLocalProjection = projectPlaythingsMultiverse([{ id: 'site-workspace', name: 'Tiinex Site', title: 'Tiinex Site', sources: [{ id: 'local', adapterId: 'local', kind: 'local' }, { id: 'site-origin', adapterId: 'github', repo: 'Tiinex/site', ref: 'site-ref' }], records: [browserLocalTask] }]);
+assert.equal(browserLocalProjection.artifacts.length, 1, 'browser-local canonical artifacts must remain in the Playthings projection when the workspace repository binding is unambiguous');
+assert.equal(browserLocalProjection.artifacts[0].sourceMode, 'local-transition-canonical');
+assert.equal(browserLocalProjection.verses[0].actors.length, 1, 'a browser-local root Task must have a living Plaything representation');
+
 const realmAdded = planPlaythingsDelta(baseline, projectPlaythingsMultiverse([
   { id: 'business-workspace', title: 'Business', sources: [{ id: 'business-src', adapterId: 'github', repository: 'Tiinex/business', repo: 'Tiinex/business', ref: 'business-ref', repoDiscovery: true }], records: [businessProject] },
   { id: 'site-workspace', title: 'Site', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [siteTask] },
