@@ -126,10 +126,10 @@ export function generatePlaythingsWorld(model = {}) {
       minimumRadius: event.kind === 'spawn' ? 0 : 36,
       candidateRadius: Number(plannedFootprint?.radius || 0),
       placeAnchor: lineagePlace?.point || null,
-      placeWeight: lineagePlace ? 0.22 : 0
+      placeWeight: lineagePlace ? 0.42 : 0
     });
     const actorPoint = persistent
-      ? nearestOrganicFreePoint(scenePoint, `stand:${seed}`, [...occupied, footprintObstacle(scenePoint, plannedFootprint)], { minimumRadius: Math.max(42, Number(plannedFootprint?.radius || 0) + 18), maximumShell: 5, placeAnchor: scenePoint, placeWeight: 0.35 })
+      ? nearestOrganicFreePoint(scenePoint, `stand:${seed}`, [...occupied, footprintObstacle(scenePoint, plannedFootprint)], { minimumRadius: Math.max(42, Number(plannedFootprint?.radius || 0) + 18), maximumShell: 5, placeAnchor: scenePoint, placeWeight: 0.528 })
       : scenePoint;
 
     let arrivalSource = sourcePoint;
@@ -356,7 +356,7 @@ function nearestAncestorStructure(parentKey, structuresByArtifact, parentByChild
 }
 function structureSpawnPoint(structure, actorPositions, activeLeaves, structures, seed) {
   const blocked = occupiedPoints(activeLeaves, actorPositions, structures);
-  return nearestOrganicFreePoint(structureDoorPoint(structure), `spawn:${structure.artifactKey}:${seed}`, blocked, { minimumRadius: 32, maximumShell: 4, placeAnchor: structure.point, placeWeight: 0.4 });
+  return nearestOrganicFreePoint(structureDoorPoint(structure), `spawn:${structure.artifactKey}:${seed}`, blocked, { minimumRadius: 32, maximumShell: 4, placeAnchor: structure.point, placeWeight: 0.52 });
 }
 function structureDoorPoint(structure) { const halfHeight = Number(structure?.footprint?.halfHeight || (structure.kind === 'workspace' ? 28 : 34)); return { x: structure.point.x, y: structure.point.y + halfHeight + 8 }; }
 function structureApproachPoint(structure) { const door = structureDoorPoint(structure); return { x: door.x, y: door.y + 64 }; }

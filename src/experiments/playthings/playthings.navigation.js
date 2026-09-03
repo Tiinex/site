@@ -44,9 +44,10 @@ export function navigatePlaythingsRoute(waypoints = [], structures = [], roads =
 }
 
 export function recordRouteTraffic(roads, points = [], artifactKey = '') {
-  for (let index = 1; index < points.length; index += 1) {
-    const a = trafficPoint(points[index - 1]);
-    const b = trafficPoint(points[index]);
+  const corridor = sampledTrafficCorridor(points);
+  for (let index = 1; index < corridor.length; index += 1) {
+    const a = corridor[index - 1];
+    const b = corridor[index];
     if (samePoint(a, b)) continue;
     const key = roadSegmentKey(a, b);
     const prior = roads.get(key) || { key, a: freezePoint(a), b: freezePoint(b), count: 0, trailFromArtifactKey: '', pathFromArtifactKey: '', roadFromArtifactKey: '' };
@@ -56,6 +57,21 @@ export function recordRouteTraffic(roads, points = [], artifactKey = '') {
     if (!next.roadFromArtifactKey && next.count >= 12) next.roadFromArtifactKey = artifactKey;
     roads.set(key, next);
   }
+}
+
+function sampledTrafficCorridor(points = []) {
+  const out = [];
+  for (let index = 1; index < (points || []).length; index += 1) {
+    const from = points[index - 1], to = points[index];
+    const distance = Math.sqrt(distanceSquared(from, to));
+    const steps = Math.max(1, Math.ceil(distance / 24));
+    for (let step = index === 1 ? 0 : 1; step <= steps; step += 1) {
+      const t = step / steps;
+      const point = trafficPoint({ x: Number(from?.x || 0) + (Number(to?.x || 0) - Number(from?.x || 0)) * t, y: Number(from?.y || 0) + (Number(to?.y || 0) - Number(from?.y || 0)) * t });
+      if (!out.length || !samePoint(out[out.length - 1], point)) out.push(freezePoint(point));
+    }
+  }
+  return out;
 }
 
 export function playthingsVisibleRoads(world, visibleArtifactKeys = new Set()) {

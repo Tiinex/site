@@ -66,7 +66,7 @@ import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWin
 import { PlaythingsMultiverse } from '../experiments/playthings/PlaythingsMultiverse.jsx';
 import { playthingsExperimentRequested } from '../experiments/playthings/playthings.model.js';
 import { refreshPlaythingsRepositoryMaterial } from '../experiments/playthings/playthings.refresh.js';
-import { playthingsTransitionOptionsFor, playthingsTransitionTargetFor } from './playthingsInteractionBridge.js';
+import { playthingsTransitionOptionsFor, playthingsTransitionTargetFor } from './playthingsInteractionBridge.js'; import { playthingsLineageSnapshotFor } from '../experiments/playthings/playthings.lineage.js';
 export function TiinexApp() {
   const playthingsUrlExperiment = playthingsExperimentRequested(typeof window !== 'undefined' ? window.location : null);
   const initialRuntimeRef = useRef(null);
@@ -758,7 +758,7 @@ export function TiinexApp() {
         onTogglePlaythings={playthingsExperiment ? exitPlaythings : () => setPlaythingsOpen(true)}
       />
       {playthingsExperiment ? (
-        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onOpenLineage={(recordId, workspaceId) => focusRecordLineage(recordId, workspaceId, true)} onCreateSkill={openPlaythingsCreateSkill} onResolveTransitions={playthingsTransitionOptions} onActivateTransition={activatePlaythingsTransition} />
+        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onOpenLineage={(recordId, workspaceId) => focusRecordLineage(recordId, workspaceId, true)} onResolveLineage={(recordId, workspaceId) => playthingsLineageSnapshotFor(latestStateRef.current || state, recordId, workspaceId)} onCreateSkill={openPlaythingsCreateSkill} onResolveTransitions={playthingsTransitionOptions} onActivateTransition={activatePlaythingsTransition} />
       ) : active ? (
         <div
           className={`${visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} ${visibleWorkspaceItems.length === 1 && visibleWorkspaceItems[0]?.layoutMode === 'compact' ? 'tx-workspace-single-stage-compact' : ''}`.trim()}

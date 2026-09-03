@@ -1141,3 +1141,68 @@ main.tx-react-runtime.tx-playthings-mode > .tx-toast { display: none !important;
 .tx-playthings-tesseract-echo.is-exact-artifact { opacity: 1; }
 .tx-playthings-tesseract-echo.is-exact-artifact > circle { fill: none; stroke: #ffe56e; stroke-width: 2; stroke-dasharray: 3 2; }
 .tx-playthings-tesseract-echo .exact-label { fill: #fff0a0; text-anchor: middle; font: 900 7px/1 ui-monospace, monospace; paint-order: stroke; stroke: #172018; stroke-width: 2; }
+
+/* In-world lineage Verse: loaded Tiinex Parent lineage without leaving Playthings. */
+.tx-playthings-lineage-dialog-backdrop {
+  position: absolute; inset: 0; z-index: 42; display: grid; place-items: center;
+  padding: 54px 58px 68px; background: rgba(5,12,8,.58); backdrop-filter: blur(2px);
+  pointer-events: auto; touch-action: auto; user-select: text; cursor: default;
+}
+.tx-playthings-lineage-dialog {
+  width: min(1060px, 100%); max-height: 100%; overflow: hidden;
+  display: grid; grid-template-rows: auto minmax(0,1fr) auto;
+  border: 2px solid #80743d; background: rgba(11,19,13,.985); color: #e7eddf;
+  box-shadow: 8px 8px 0 rgba(0,0,0,.46); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.tx-playthings-lineage-dialog > header,
+.tx-playthings-lineage-dialog > footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; background: #101c13; border-bottom: 1px solid #44513d; }
+.tx-playthings-lineage-dialog > footer { border-bottom: 0; border-top: 1px solid #44513d; color: #8c9988; font-size: .68rem; }
+.tx-playthings-lineage-dialog > header > div { display: grid; gap: 2px; min-width: 0; }
+.tx-playthings-lineage-dialog > header small { color: #d8c85d; font-size: .62rem; letter-spacing: .08em; }
+.tx-playthings-lineage-dialog > header strong { color: #fff1a0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-playthings-lineage-dialog > header span { color: #8c9988; font-size: .65rem; }
+.tx-playthings-lineage-dialog button { border: 1px solid #5d694f; background: #19251b; color: #e9efdf; font: 800 .68rem/1 ui-monospace, monospace; min-height: 32px; padding: 7px 10px; cursor: pointer; }
+.tx-playthings-lineage-dialog button:hover,
+.tx-playthings-lineage-dialog button:focus-visible { border-color: #d8c85d; color: #fff2a5; outline: none; }
+.tx-playthings-lineage-dialog > header > button { min-width: 36px; font-size: 1.1rem; }
+.tx-playthings-lineage-dialog-body { min-height: 0; display: grid; grid-template-columns: minmax(0,1.55fr) minmax(260px,.75fr); }
+.tx-playthings-lineage-chain { min-height: 0; overflow: auto; padding: 18px; background-image: linear-gradient(rgba(122,145,107,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(122,145,107,.08) 1px, transparent 1px); background-size: 22px 22px; }
+.tx-playthings-lineage-card { width: 100%; min-height: 66px !important; display: grid !important; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 9px; text-align: left; border-color: #465442 !important; background: rgba(21,33,23,.96) !important; }
+.tx-playthings-lineage-card.is-selected { border-color: #e1cc5e !important; box-shadow: inset 4px 0 0 #e1cc5e; }
+.tx-playthings-lineage-card.is-root { background: rgba(36,42,23,.96) !important; }
+.tx-playthings-lineage-card .glyph { color: #e5d45f; font-size: 1rem; text-align: center; }
+.tx-playthings-lineage-card .copy { min-width: 0; display: grid; gap: 3px; }
+.tx-playthings-lineage-card .copy strong { font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-playthings-lineage-card .copy small { color: #a9b59f; font-size: .64rem; }
+.tx-playthings-lineage-card .copy em { color: #667463; font-style: normal; font-size: .58rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-playthings-lineage-card .depth { color: #788875; font-size: .58rem; }
+.tx-playthings-lineage-connector { height: 31px; margin-left: 20px; border-left: 2px solid #62705b; position: relative; }
+.tx-playthings-lineage-connector::after { content: ''; position: absolute; left: -5px; bottom: -1px; width: 8px; height: 8px; border-right: 2px solid #62705b; border-bottom: 2px solid #62705b; transform: rotate(45deg); }
+.tx-playthings-lineage-connector span { position: absolute; left: 9px; top: 10px; color: #687666; font-size: .54rem; text-transform: uppercase; }
+.tx-playthings-lineage-connector.is-mismatch { border-color: #b66d68; }
+.tx-playthings-lineage-inspector { min-height: 0; overflow: auto; padding: 18px; border-left: 1px solid #42503c; background: #101912; }
+.tx-playthings-lineage-inspector > small { color: #d8c85d; font-size: .58rem; letter-spacing: .08em; }
+.tx-playthings-lineage-inspector h3 { margin: 7px 0 4px; color: #f3f0d5; font-size: 1rem; }
+.tx-playthings-lineage-inspector code { color: #a7b59d; font-size: .66rem; }
+.tx-playthings-lineage-inspector p { color: #a1ad9a; font-size: .72rem; line-height: 1.55; }
+.tx-playthings-lineage-inspector dl { display: grid; gap: 5px; margin: 13px 0; }
+.tx-playthings-lineage-inspector dl div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted #394436; padding-bottom: 4px; }
+.tx-playthings-lineage-inspector dt { color: #748272; font-size: .6rem; } .tx-playthings-lineage-inspector dd { margin: 0; color: #c8d2be; font-size: .62rem; text-align: right; }
+.tx-playthings-lineage-inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.tx-playthings-lineage-status { margin-top: 16px; padding: 10px; border: 1px dashed #475444; background: #151f17; }
+.tx-playthings-lineage-status strong { color: #e2d36d; font-size: .68rem; }
+.tx-playthings-lineage-status p { margin-bottom: 0; font-size: .64rem; }
+.tx-playthings-lineage-empty { color: #8c9988; }
+
+/* Active-event beacon is zoom compensated by the renderer, so it stays readable. */
+.tx-playthings-event-focus .beacon { fill: none; stroke: rgba(255,241,143,.9); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.tx-playthings-event-focus .beacon-label { fill: #fff1a0; text-anchor: middle; font: 900 9px/1 ui-monospace, monospace; letter-spacing: .08em; paint-order: stroke; stroke: rgba(17,25,18,.94); stroke-width: 3px; }
+.tx-playthings-event-focus.is-local circle,
+.tx-playthings-event-focus.is-local .beacon { stroke: #9ef2cd; }
+.tx-playthings-event-focus.is-local .beacon-label { fill: #bfffe2; }
+
+@media (max-width: 760px) {
+  .tx-playthings-lineage-dialog-backdrop { padding: 44px 12px 62px; }
+  .tx-playthings-lineage-dialog-body { grid-template-columns: 1fr; }
+  .tx-playthings-lineage-inspector { border-left: 0; border-top: 1px solid #42503c; max-height: 260px; }
+}

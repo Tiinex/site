@@ -18,7 +18,7 @@ import { isPlaythingsLocalArtifact } from './playthings.find.js';
 import { PlaythingsArtifactFinder } from './PlaythingsArtifactFinder.jsx';
 import './playthings.css';
 
-export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onOpenLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
+export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onOpenLineage = null, onResolveLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
   const incomingModel = useMemo(() => projectPlaythingsMultiverse(workspaces), [workspaces]);
   const [target, setTarget] = useState(() => incomingModel);
   const history = useMemo(() => planPlaythingsHistory(target), [target]);
@@ -194,6 +194,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
         onEventComplete={completeActiveEvent}
         onOpenRecord={onOpenRecord}
         onOpenLineage={onOpenLineage}
+        onResolveLineage={onResolveLineage}
         toolsEnabled={toolsEnabled}
         unlockedSkillIds={unlockedSkillIds}
         onResolveTransitions={onResolveTransitions}

@@ -6,15 +6,17 @@ import { playthingsShirtColor, playthingsVariant } from './playthings.seed.js';
 import { playthingsLeafIdleState } from './playthings.clock.js';
 import { isPlaythingsLocalArtifact } from './playthings.find.js';
 import { InteractionSpark, PixelOrganizationPlace, PixelPlaything, PixelWorkspacePlace, PlaythingsSceneArtwork, TerrainMark } from './playthings.artwork.jsx';
+import { PlaythingsLineageDialog } from './PlaythingsLineageDialog.jsx';
 
-export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null, focusRequest = null }) {
+export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, onResolveLineage = null, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null, focusRequest = null }) {
   const world = useMemo(() => generatePlaythingsWorld(fullModel), [fullModel]);
   const terrain = useMemo(() => playthingsTerrainMarks(world.width, world.height), [world.width, world.height]);
   const followLocked = Boolean(followPlaything && playing && activeEvent);
   const camera = usePlaythingsCamera(world.width, world.height, { locked: followLocked });
   const [hoveredHead, setHoveredHead] = useState('');
   const [selection, setSelection] = useState(null);
-  React.useEffect(() => { const close = (event) => { if (event.key === 'Escape') setSelection(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
+  const [lineageDialog, setLineageDialog] = useState(null);
+  React.useEffect(() => { const close = (event) => { if (event.key !== 'Escape') return; if (lineageDialog) setLineageDialog(null); else setSelection(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [lineageDialog]);
   const artifactByKey = useMemo(() => new Map((fullModel.artifacts || []).map((artifact) => [artifact.key, artifact])), [fullModel.artifacts]);
   const actorByKey = useMemo(() => new Map((model.actors || []).map((actor) => [actor.headKey, actor])), [model.actors]);
   const actorById = useMemo(() => new Map((model.actors || []).map((actor) => [actor.id, actor])), [model.actors]);
@@ -65,6 +67,8 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   const visibleActorKeys = useMemo(() => (model.actors || []).map((actor) => actor.headKey).filter((headKey) => headKey !== hiddenSourceKey && !migratingKeys.has(headKey) && !(actorStates.get(headKey)?.state === 'resting' && actorStates.get(headKey)?.structure)), [model.actors, hiddenSourceKey, migratingKeys, actorStates]);
   const visibleRoads = useMemo(() => playthingsVisibleRoads(world, visibleKeys), [world, visibleKeys]);
   const fitBounds = useMemo(() => playthingsVisibleWorldBounds(world, visibleKeys, visibleActorKeys, activeProjection), [world, visibleKeys, visibleActorKeys, activeProjection]);
+  const selectedWorldPoint = selectedActor ? world.actorPositions.get(selectedActor.headKey) || world.scenePositions.get(selectedArtifactKey) : selectedStructure?.point || (selectedArtifactKey ? world.scenePositions.get(selectedArtifactKey) : null);
+  const activityBounds = useMemo(() => playthingsActivityBounds(activeProjection, activeRestingMigrations, selectedWorldPoint, world), [activeProjection, activeRestingMigrations, selectedWorldPoint?.x, selectedWorldPoint?.y, world]);
 
   React.useEffect(() => {
     const key = String(focusRequest?.artifactKey || '');
@@ -85,6 +89,28 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
     const point = world.scenePositions.get(key);
     if (point) { setSelection({ kind: 'artifact', artifactKey: key }); camera.follow(point); }
   }, [focusRequest?.token, model.artifacts?.length]);
+
+  React.useEffect(() => {
+    if (!activeEvent?.localArtifact || !activityBounds) return;
+    camera.fit(activityBounds);
+  }, [activeEvent?.id, eventToken]);
+
+  function openLineageDialog(artifact) {
+    if (!artifact || typeof onResolveLineage !== 'function') return;
+    const snapshot = onResolveLineage(artifact.recordId, artifact.workspaceId);
+    if (snapshot) setLineageDialog(snapshot);
+  }
+  function locateLineageRecord(recordId, workspaceId) {
+    const artifact = (fullModel.artifacts || []).find((candidate) => String(candidate.recordId) === String(recordId) && (!workspaceId || String(candidate.workspaceId) === String(workspaceId))) || null;
+    if (!artifact) return;
+    const structure = world.structuresByArtifact?.get(artifact.key) || null;
+    const actor = (model.actors || []).find((candidate) => candidate.headKey === artifact.key || candidate.ancestry?.includes(artifact.key)) || null;
+    if (actor) setSelection({ kind: 'actor', id: actor.id, artifactKey: artifact.key });
+    else if (structure) setSelection({ kind: 'structure', artifactKey: artifact.key });
+    else setSelection({ kind: 'artifact', artifactKey: artifact.key });
+    const point = world.scenePositions.get(artifact.key) || structure?.point || (actor ? world.actorPositions.get(actor.headKey) : null);
+    if (point) camera.follow(point);
+  }
 
   function motionSample(sample) {
     if (followLocked) camera.follow(sample.position);
@@ -137,6 +163,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         artifactByKey={artifactByKey}
         onSample={motionSample}
         onComplete={onEventComplete}
+        focusScale={1 / Math.max(1, Number(camera.camera?.zoom || 1))}
       /> : null}
       {selection ? <WorldSelectionMenu
         actor={selectedActor ? { ...selectedActor, menuPoint: world.scenePositions.get(selectedArtifactKey) || world.actorPositions.get(selectedActor.headKey) || null } : null}
@@ -144,7 +171,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         artifact={selectedArtifact || (selectedStructure ? artifactByKey.get(selectedStructure.artifactKey) : null)}
         transitionOptions={selectedActor ? hoveredTransitionOptions : []}
         onOpenRecord={onOpenRecord}
-        onOpenLineage={onOpenLineage}
+        onOpenLineage={openLineageDialog}
         artifactPoint={selectedArtifactKey ? world.scenePositions.get(selectedArtifactKey) || null : null}
         onCenter={(point) => camera.follow(point)}
         onActivateTransition={onActivateTransition}
@@ -153,9 +180,11 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
     </svg>
     <div className="tx-playthings-camera-controls" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
       <button type="button" className={`tx-playthings-follow-toggle ${followPlaything ? 'is-on' : ''}`} onClick={() => onFollowPlaythingChange?.(!followPlaything)} aria-pressed={followPlaything}>{followPlaything ? 'Follow: ON' : 'Follow'}</button>
+      <button type="button" className="tx-playthings-camera-reset" onClick={() => camera.fit(activityBounds || fitBounds)} disabled={!activityBounds}>Fit activity</button>
       <button type="button" className="tx-playthings-camera-reset" onClick={() => camera.fit(fitBounds)}>Fit world</button>
       <span className="tx-playthings-camera-help">{followLocked ? 'camera locked · wheel zoom' : 'WASD · drag · wheel'}</span>
     </div>
+    {lineageDialog ? <PlaythingsLineageDialog snapshot={lineageDialog} onClose={() => setLineageDialog(null)} onLocateArtifact={locateLineageRecord} onOpenRecord={onOpenRecord} onOpenViewerLineage={onOpenLineage} /> : null}
   </div>;
 }
 
@@ -192,7 +221,7 @@ function WorldSelectionMenu({ actor, structure, artifact, artifactPoint = null, 
   // When an actor is selected the caller attaches its current point for menu placement.
   const resolved = actor?.menuPoint || menuPoint;
   const rows = [
-    { id: 'lineage', label: 'LINEAGE VERSE', run: () => onOpenLineage?.(artifact.recordId, artifact.workspaceId) },
+    { id: 'lineage', label: 'LINEAGE VERSE', run: () => onOpenLineage?.(artifact) },
     { id: 'detail', label: 'ARTIFACT DETAIL', run: () => onOpenRecord?.(artifact.recordId, artifact.workspaceId) },
     { id: 'center', label: 'CENTER CAMERA', run: () => onCenter?.(resolved) }
   ];
@@ -210,7 +239,7 @@ function WorldSelectionMenu({ actor, structure, artifact, artifactPoint = null, 
 function transitionSchemaId(action = {}) { return String(action?.authoring?.schemaId || action?.targetSchemaId || '').trim(); }
 function compactTransitionLabel(value = '') { const text = String(value || '').trim(); return text.length > 17 ? `${text.slice(0, 16)}…` : text; }
 
-function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', eventCount, playing, restingMigrations = [], actorByKey, artifactByKey, onSample, onComplete }) {
+function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', eventCount, playing, restingMigrations = [], actorByKey, artifactByKey, onSample, onComplete, focusScale = 1 }) {
   const baseMotion = useMemo(() => planPlaythingsEventMotion(event, projection, { eventCount }), [event, projection, eventCount]);
   const lifecycleDuration = useMemo(() => Math.max(0, ...restingMigrations.map((migration) => Number(migration.durationMs || 0))), [restingMigrations]);
   const motion = useMemo(() => Object.freeze({ ...baseMotion, totalMs: Math.max(baseMotion.totalMs, lifecycleDuration) }), [baseMotion, lifecycleDuration]);
@@ -254,7 +283,7 @@ function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', e
     {!projection.persistent && sample.sceneOpacity > 0 ? <g className={`tx-playthings-active-scene interaction-${artifact.interactionKind || 'inspect'}`} transform={`translate(${scenePoint.x} ${scenePoint.y}) scale(${0.82 + sample.sceneOpacity * 0.18})`} opacity={sample.sceneOpacity} aria-hidden="true">
       <PlaythingsSceneArtwork interactionKind={artifact.interactionKind} /><InteractionSpark kind={artifact.interactionKind} /><text x="0" y="31">{sceneVerb(artifact.interactionKind)}</text>
     </g> : null}
-    <g className="tx-playthings-event-focus" transform={`translate(${artifact.isSchemaArtifact ? scenePoint.x : sample.position.x} ${artifact.isSchemaArtifact ? scenePoint.y : sample.position.y})`} opacity={Math.max(0.18, 1 - sample.progress * 0.7)} aria-hidden="true"><circle r="18" /><circle className="outer" r="25" /></g>
+    <g className={`tx-playthings-event-focus ${event.localArtifact ? 'is-local' : ''}`} transform={`translate(${artifact.isSchemaArtifact ? scenePoint.x : sample.position.x} ${artifact.isSchemaArtifact ? scenePoint.y : sample.position.y}) scale(${focusScale})`} opacity={Math.max(0.3, 1 - sample.progress * 0.62)} aria-hidden="true"><circle r="26" /><circle className="outer" r="38" /><path className="beacon" d="M 0 -42 V -76 M -7 -69 L 0 -78 L 7 -69" />{event.localArtifact ? <text className="beacon-label" x="0" y="-84">NEW LOCAL</text> : <text className="beacon-label" x="0" y="-84">ACTIVE</text>}</g>
     {!artifact.isSchemaArtifact && sample.dustOpacity > 0 ? <g className="tx-playthings-motion-dust" transform={`translate(${sample.position.x} ${sample.position.y + 13})`} opacity={sample.dustOpacity} aria-hidden="true"><rect x="-12" y="0" width="4" height="2" /><rect x="7" y="-2" width="3" height="2" /></g> : null}
     {restingMigrations.length ? <RestingMigrationLayer migrations={restingMigrations} elapsedMs={sample.elapsedMs} actorByKey={actorByKey} artifactByKey={artifactByKey} /> : null}
     {!artifact.isSchemaArtifact ? <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
@@ -302,6 +331,22 @@ function LineageTesseract({ actor, world, artifactByKey, pinned = false, selecte
     if (current && !exact) return null;
     return <g key={entry.key} className={`tx-playthings-tesseract-echo ${exact ? 'is-exact-artifact' : ''}`} transform={`translate(${entry.point.x} ${entry.point.y})`}>{entry.artifact.isSchemaArtifact ? <PlaythingsSceneArtwork interactionKind="blueprint" /> : <PixelPlaything role={entry.artifact.visualKind} roleIdentity={entry.artifact.roleIdentity || ''} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} ghost={!exact} />}<circle r={18 + Math.min(10, index)} />{exact ? <text className="exact-label" x="0" y="-27">THIS ARTIFACT</text> : null}</g>;
   })}</g>;
+}
+
+
+function playthingsActivityBounds(projection = null, migrations = [], selectedPoint = null, world = {}) {
+  const points = [];
+  for (const point of projection?.motionPoints || []) if (point) points.push(point);
+  if (projection?.scenePoint) points.push(projection.scenePoint);
+  if (projection?.actorPoint) points.push(projection.actorPoint);
+  for (const migration of migrations || []) for (const point of migration.motionPoints || [migration.from, migration.to]) if (point) points.push(point);
+  if (!points.length && selectedPoint) points.push(selectedPoint);
+  if (!points.length) return null;
+  const xs = points.map((point) => Number(point.x || 0)), ys = points.map((point) => Number(point.y || 0));
+  const pad = 130;
+  const minX = Math.max(0, Math.min(...xs) - pad), minY = Math.max(0, Math.min(...ys) - pad);
+  const maxX = Math.min(Number(world.width || 2200), Math.max(...xs) + pad), maxY = Math.min(Number(world.height || 1350), Math.max(...ys) + pad);
+  return Object.freeze({ x: minX, y: minY, width: Math.max(260, maxX - minX), height: Math.max(190, maxY - minY) });
 }
 
 function sceneVerb(kind) {
