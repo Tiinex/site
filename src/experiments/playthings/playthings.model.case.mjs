@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { planPlaythingsDelta, playthingsArtifactPosition, projectPlaythingsMultiverse, visualKindForSchema } from './playthings.model.js';
 
-function record({ title, path, schema = 'tiinex.task.v1', createdAt = '2026-09-01 10:00:00', parent = '', parentSchema = 'tiinex.task.v1', sourceId = 'site-src', repo = 'Tiinex/site', ref = 'site-ref' }) {
+function record({ title, path, schema = 'tiinex.task.v1', createdAt = '2026-09-01 10:00:00', parent = '', parentSchema = 'tiinex.task.v1', sourceId = 'site-src', repo = 'Tiinex/site', ref = 'site-ref', authors = '' }) {
   const parentBlock = parent ? `- Parent\n  - Parent Schema: ${parentSchema}\n  - Trace: [Parent](${parent})\n  - Origin:\n    - [browse + git](${parent})\n` : '';
-  const markdown = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n${parentBlock}- Current\n  - Current Schema: ${schema}\n  - Created At: ${createdAt}\n  - Summary: ${title}\n\n---\n\n# ${title}\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: demo-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}\n`;
+  const markdown = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n${parentBlock}- Current\n  - Current Schema: ${schema}\n  - Created At: ${createdAt}\n${authors ? `  - Authors: ${authors}\n` : ''}  - Summary: ${title}\n\n---\n\n# ${title}\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: demo-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}\n`;
   const out = createRecordFromMarkdown(markdown, { path, name: path, sourceMode: 'source' });
   out.source = { id: sourceId, adapterId: 'github', repository: repo, repo, ref };
   out.sourceTarget = { inputTarget: `https://github.com/${repo}/blob/${ref}/${path}`, browseUrl: `https://github.com/${repo}/blob/${ref}/${path}`, sourceArtifactPath: path, repository: repo };
@@ -62,6 +62,16 @@ const unresolvedChild = record({ title: 'Unknown parent', path: '.topics/unknown
 const unresolvedModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [unresolvedChild] }]);
 assert.equal(unresolvedModel.edges.length, 0, 'missing Parent must not be guessed into an edge');
 assert.ok(unresolvedModel.unresolved.some((finding) => finding.code === 'lineage.parent.exactTargetNotLoaded'), 'missing Parent remains explicit unknown state');
+
+
+const authoredTask = record({ title: 'Authored task', path: '.topics/authored.task.trace.md', authors: 'Anchor' });
+const authoredModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [authoredTask] }]);
+assert.equal(authoredModel.verses[0].actors[0].roleIdentity, 'anchor', 'explicit artifact Authors may provide presentation-only role livery identity');
+
+const schemaLeaf = record({ title: 'Task schema', path: 'src/schemas/core/task/tiinex.task.v1.schema.md', schema: 'tiinex.schema.module.v1', authors: 'Anchor' });
+const schemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [schemaLeaf] }]);
+assert.equal(schemaModel.artifacts[0].isSchemaArtifact, true);
+assert.equal(schemaModel.verses[0].actors.length, 0, 'schema leaf artifacts belong to blueprint/Tech Tree presentation and must not leave living Plaything actors on earth');
 
 console.log('✓ Playthings multiverse projection and delta playback model passed');
 

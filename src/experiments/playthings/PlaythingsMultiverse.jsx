@@ -178,7 +178,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
         <span className="tx-playthings-now"><i />{stateLabel}</span>
         <button type="button" className="tx-playthings-hud-button" onClick={refresh} disabled={!canRefresh}>{phase === 'refreshing' ? 'Reading…' : 'Refresh'}</button>
       </div>
-      {activeEvent ? <div className={`tx-playthings-event is-${activeEvent.kind}`}><span>{eventGlyph(activeEvent.kind)}</span><div><strong>{eventLabel(activeEvent.kind, activeEvent)}</strong><small>{activeEvent.label}</small></div></div> : null}
+      {activeEvent ? <div className={`tx-playthings-event is-${activeEvent.kind}`}><span>{eventGlyph(activeEvent.kind, activeEvent)}</span><div><strong>{eventLabel(activeEvent.kind, activeEvent)}</strong><small>{activeEvent.label}</small></div></div> : null}
       <PlaythingsProgression model={target} profile={profile} enabled={toolsEnabled} onProfileChange={updateProfile} onOpenRecord={onOpenRecord} onActivateSkill={onCreateSkill} />
     </div>
 
@@ -193,8 +193,9 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
   </section>;
 }
 
-function eventGlyph(kind) { return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
+function eventGlyph(kind, event = {}) { if (event.interactionKind === 'blueprint') return '▧'; return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
 function eventLabel(kind, event = {}) {
+  if (event.interactionKind === 'blueprint') return 'A schema blueprint was observed';
   if (event.arrivalKind === 'organization-receiver') return 'A receiver entered the handoff';
   if (kind === 'split') return 'A living branch divided';
   if (kind === 'advance') return 'A leaf moved into its next scene';

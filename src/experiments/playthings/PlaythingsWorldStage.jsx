@@ -92,6 +92,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         event={activeEvent}
         projection={activeProjection}
         artifact={artifactByKey.get(activeEvent.artifactKey)}
+        roleIdentity={artifactByKey.get(activeEvent.artifactKey)?.roleIdentity || actorByKey.get(activeProjection.sourceKey)?.roleIdentity || artifactByKey.get(activeProjection.sourceKey)?.roleIdentity || ''}
         eventCount={eventCount}
         playing={playing}
         onSample={motionSample}
@@ -119,9 +120,9 @@ function PersistentStructure({ structure, artifact, restingCount = 0, onOpen }) 
 function LivingPlaything({ actor, artifact, point, idle, highlighted, onHover, onOpen, transitionOptions = [], onActivateTransition }) {
   const seed = actor.presentationSeed || artifact.presentationSeed || actor.id || artifact.key;
   return <g className={`tx-playthings-actor idle-${idle.state} ${highlighted ? 'is-tesseract-focus' : ''}`} transform={`translate(${point.x} ${point.y})`} tabIndex="0" role="button" aria-label={`${artifact.title}, living lineage leaf`} onPointerDown={(event) => event.stopPropagation()} onMouseEnter={() => onHover(actor.headKey)} onMouseLeave={() => onHover('')} onFocus={() => onHover(actor.headKey)} onBlur={() => onHover('')} onClick={(event) => { event.stopPropagation(); onOpen?.(); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen?.(); } }}>
-    <title>{`${artifact.title}\n${artifact.schemaId}\n${artifact.repo}\n${actor.generations || 0} generations\n${idle.state === 'normal' ? 'active leaf' : `${idle.state} · ${idle.days.toFixed(1)} relative days`}\nCurrent lineage leaf`}</title>
+    <title>{`${artifact.title}\n${artifact.schemaId}\n${artifact.repo}\n${actor.generations || 0} generations\n${actor.roleLabel ? `role livery: ${actor.roleLabel}\n` : ''}${idle.state === 'normal' ? 'active leaf' : `${idle.state} · ${idle.days.toFixed(1)} relative days`}\nCurrent lineage leaf`}</title>
     <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
-    <PixelPlaything role={artifact.visualKind} branchDepth={actor.branchDepth || 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} idleState={idle.state} />
+    <PixelPlaything role={artifact.visualKind} roleIdentity={actor.roleIdentity || artifact.roleIdentity || ''} branchDepth={actor.branchDepth || 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} idleState={idle.state} />
     {idle.state === 'resting' && !idle.structure ? <g className="tx-playthings-sleep-mark"><text x="13" y="-14">z</text><text x="19" y="-20">z</text></g> : null}
     {highlighted && transitionOptions.length ? <PlaythingTransitionMenu actions={transitionOptions} onActivate={onActivateTransition} /> : null}
   </g>;
@@ -145,7 +146,7 @@ function PlaythingTransitionMenu({ actions = [], onActivate }) {
 function transitionSchemaId(action = {}) { return String(action?.authoring?.schemaId || action?.targetSchemaId || '').trim(); }
 function compactTransitionLabel(value = '') { const text = String(value || '').trim(); return text.length > 17 ? `${text.slice(0, 16)}…` : text; }
 
-function ActiveEventSequence({ event, projection, artifact, eventCount, playing, onSample, onComplete }) {
+function ActiveEventSequence({ event, projection, artifact, roleIdentity = '', eventCount, playing, onSample, onComplete }) {
   const motion = useMemo(() => planPlaythingsEventMotion(event, projection, { eventCount }), [event, projection, eventCount]);
   const [sample, setSample] = useState(() => samplePlaythingsEventMotion(motion, 0));
   const onSampleRef = useRef(onSample);
@@ -187,13 +188,14 @@ function ActiveEventSequence({ event, projection, artifact, eventCount, playing,
     {!projection.persistent && sample.sceneOpacity > 0 ? <g className={`tx-playthings-active-scene interaction-${artifact.interactionKind || 'inspect'}`} transform={`translate(${scenePoint.x} ${scenePoint.y}) scale(${0.82 + sample.sceneOpacity * 0.18})`} opacity={sample.sceneOpacity} aria-hidden="true">
       <PlaythingsSceneArtwork interactionKind={artifact.interactionKind} /><InteractionSpark kind={artifact.interactionKind} /><text x="0" y="31">{sceneVerb(artifact.interactionKind)}</text>
     </g> : null}
-    {sample.dustOpacity > 0 ? <g className="tx-playthings-motion-dust" transform={`translate(${sample.position.x} ${sample.position.y + 13})`} opacity={sample.dustOpacity} aria-hidden="true"><rect x="-12" y="0" width="4" height="2" /><rect x="7" y="-2" width="3" height="2" /></g> : null}
-    <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
+    <g className="tx-playthings-event-focus" transform={`translate(${artifact.isSchemaArtifact ? scenePoint.x : sample.position.x} ${artifact.isSchemaArtifact ? scenePoint.y : sample.position.y})`} opacity={Math.max(0.18, 1 - sample.progress * 0.7)} aria-hidden="true"><circle r="18" /><circle className="outer" r="25" /></g>
+    {!artifact.isSchemaArtifact && sample.dustOpacity > 0 ? <g className="tx-playthings-motion-dust" transform={`translate(${sample.position.x} ${sample.position.y + 13})`} opacity={sample.dustOpacity} aria-hidden="true"><rect x="-12" y="0" width="4" height="2" /><rect x="7" y="-2" width="3" height="2" /></g> : null}
+    {!artifact.isSchemaArtifact ? <g className="tx-playthings-traveller" transform={`translate(${sample.position.x} ${sample.position.y})`}>
       <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
       <g className="tx-playthings-live-sprite-transform" transform={`translate(0 ${sample.bob}) scale(${sample.scaleX} ${sample.scaleY}) skewX(${sample.lean * 18})`}>
-        <PixelPlaything role={artifact.visualKind} branchDepth={event.kind === 'split' ? 1 : 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} />
+        <PixelPlaything role={artifact.visualKind} roleIdentity={roleIdentity || artifact.roleIdentity || ''} branchDepth={event.kind === 'split' ? 1 : 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} />
       </g>
-    </g>
+    </g> : null}
   </g>;
 }
 
@@ -203,14 +205,14 @@ function LineageTesseract({ actor, world, artifactByKey }) {
   if (points.length < 2) return null;
   const path = points.map((entry, index) => `${index ? 'L' : 'M'} ${entry.point.x} ${entry.point.y}`).join(' ');
   const seed = actor.presentationSeed || actor.id || actor.headKey;
-  return <g className="tx-playthings-tesseract" aria-hidden="true"><path className="tx-playthings-tesseract-line" d={path} />{points.slice(0, -1).map((entry, index) => <g key={entry.key} className="tx-playthings-tesseract-echo" transform={`translate(${entry.point.x} ${entry.point.y})`}><PixelPlaything role={entry.artifact.visualKind} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} ghost /><circle r={18 + Math.min(10, index)} /></g>)}</g>;
+  return <g className="tx-playthings-tesseract" aria-hidden="true"><path className="tx-playthings-tesseract-line" d={path} />{points.slice(0, -1).map((entry, index) => <g key={entry.key} className="tx-playthings-tesseract-echo" transform={`translate(${entry.point.x} ${entry.point.y})`}>{entry.artifact.isSchemaArtifact ? <PlaythingsSceneArtwork interactionKind="blueprint" /> : <PixelPlaything role={entry.artifact.visualKind} roleIdentity={entry.artifact.roleIdentity || ''} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} ghost />}<circle r={18 + Math.min(10, index)} /></g>)}</g>;
 }
 
 function sceneVerb(kind) {
   if (kind === 'work' || kind === 'build' || kind === 'build-workspace') return 'WORKING';
   if (kind === 'receive' || kind === 'pass') return 'RECEIVING';
   if (kind === 'observe' || kind === 'read') return 'OBSERVING';
-  if (kind === 'blueprint') return 'STUDYING BLUEPRINT';
+  if (kind === 'blueprint') return 'BLUEPRINT OBSERVED';
   if (kind === 'signal') return 'CALLING';
   if (kind === 'feedback') return 'FEEDBACK';
   if (kind === 'interpret') return 'INTERPRETING';

@@ -1,6 +1,7 @@
 import { resolveLineage } from '../../lineage/lineage.resolve.js';
 import { selfIntegrityValuesForNode } from '../../lineage/lineage.integrity.js';
 import { resolvePlaythingsPresentationCompanion } from './presentation/playthings.presentation.js';
+import { artifactRoleLabel, lineageActorForHead, normalizeRoleIdentity } from './playthings.role.js';
 
 export const PLAYTHINGS_EXPERIMENT_ID = 'tiinex.playthings.multiverse.experimental.v1';
 
@@ -56,7 +57,7 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
       const internalEdges = edgeRows.filter((edge) => keys.has(edge.from) && keys.has(edge.to));
       const roots = verseArtifacts.filter((artifact) => !parentByChild.has(artifact.key) || !keys.has(parentByChild.get(artifact.key))).map((artifact) => artifact.key);
       const leaves = verseArtifacts.filter((artifact) => !(childrenByParent.get(artifact.key) || []).some((childKey) => keys.has(childKey))).map((artifact) => artifact.key);
-      const actors = leaves.map((headKey) => lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent));
+      const actors = leaves.filter((headKey) => !artifactByKey.get(headKey)?.isSchemaArtifact).map((headKey) => lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent));
       return Object.freeze({
         id: verseId,
         repo,
@@ -309,6 +310,8 @@ function sourceStrength(source = {}) {
   return Number.isFinite(count) ? Math.min(80, Math.max(0, count)) : 0;
 }
 
+
+
 function normalizeLabelToken(value) {
   return String(value || '').trim().toLowerCase().replace(/^tiinex[\s:/_-]*/i, '').replace(/[^a-z0-9]+/g, '');
 }
@@ -323,6 +326,8 @@ function artifactFromNode(node = {}, context = null) {
   const isSchemaArtifact = /\.schema\.md$/i.test(path);
   const isWorkspaceArtifact = /\.workspace\.md$/i.test(path) || String(node.schemaId || record.schemaId || '') === 'tiinex.workspace.v1';
   const presentationCompanion = presentation.companion || {};
+  const roleLabel = artifactRoleLabel(record);
+  const roleIdentity = normalizeRoleIdentity(roleLabel);
   return Object.freeze({
     key: String(node.id || ''),
     recordId: context.originalId,
@@ -347,6 +352,8 @@ function artifactFromNode(node = {}, context = null) {
     isSchemaArtifact,
     isWorkspaceArtifact,
     workspaceClusterSize: isWorkspaceArtifact ? workspaceClusterSizeForRecord(record) : 0,
+    roleIdentity,
+    roleLabel,
     presentationResolution: presentation.resolution,
     presentationSchemaId: presentation.resolvedSchemaId,
     hasContinuityContext: Boolean(node.hasContinuityContext ?? record.hasContinuityContext),
@@ -365,33 +372,6 @@ function workspaceClusterSizeForRecord(record = {}) {
   if (!markdown) return 1;
   const paths = new Set(Array.from(markdown.matchAll(/(?:\(|\s)([^\s)]+\.workspace\.md)(?:\)|\s|$)/gi)).map((match) => String(match[1] || '').trim()).filter(Boolean));
   return Math.max(1, Math.min(5, paths.size || 1));
-}
-
-function lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent) {
-  const ancestry = [];
-  let cursor = headKey;
-  const seen = new Set();
-  while (cursor && !seen.has(cursor)) {
-    seen.add(cursor);
-    ancestry.push(cursor);
-    cursor = parentByChild.get(cursor) || '';
-  }
-  ancestry.reverse();
-  const head = artifactByKey.get(headKey) || {};
-  const branchPoints = ancestry.filter((key) => (childrenByParent.get(key) || []).length > 1);
-  return Object.freeze({
-    id: `lineage:${headKey}`,
-    headKey,
-    verseId: head.verseId || '',
-    repo: head.repo || '',
-    label: head.title || head.path || headKey,
-    schemaId: head.schemaId || '',
-    visualKind: head.visualKind || 'relic',
-    presentationSeed: (artifactByKey.get(ancestry[0]) || head).presentationSeed || ancestry[0] || headKey,
-    ancestry: Object.freeze(ancestry),
-    generations: Math.max(0, ancestry.length - 1),
-    branchDepth: branchPoints.length
-  });
 }
 
 function topologicalArtifactAdditions(additions, parentByChild, nextByKey) {

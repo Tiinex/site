@@ -1,8 +1,10 @@
 import React from 'react';
+import { playthingsRoleHat } from './playthings.seed.js';
 
-export function PixelPlaything({ role = 'leaf', branchDepth = 0, variant = 0, ghost = false, shirtColor = '#79b86f', idleState = 'normal' }) {
+export function PixelPlaything({ role = 'leaf', roleIdentity = '', branchDepth = 0, variant = 0, ghost = false, shirtColor = '#79b86f', idleState = 'normal' }) {
   const v = Math.abs(Number(variant || 0)) % 4;
-  return <g className={`tx-playthings-sprite role-${role} variant-${v} ${ghost ? 'is-ghost' : ''}`} style={{ '--plaything-shirt': shirtColor }}>
+  const roleHat = playthingsRoleHat(roleIdentity);
+  return <g className={`tx-playthings-sprite role-${role} variant-${v} ${ghost ? 'is-ghost' : ''}`} style={{ '--plaything-shirt': shirtColor, '--plaything-role-hat': roleHat.color }}>
     {v === 0 ? <>
       <rect className="body" x="-7" y="-8" width="14" height="17" />
       <rect className="shirt" x="-6" y="2" width="12" height="6" />
@@ -36,9 +38,10 @@ export function PixelPlaything({ role = 'leaf', branchDepth = 0, variant = 0, gh
       <rect className="accent" x="-3" y="-13" width="6" height="5" />
     </> : null}
     <RoleSigil role={role} />
-    {idleState === 'long-idle' ? <g className="idle-wear"><rect className="idle-cap" x="-6" y="-13" width="12" height="3" /><rect className="idle-trouser" x="-6" y="8" width="5" height="3" /><rect className="idle-trouser" x="1" y="8" width="5" height="3" /></g> : null}
-    {idleState === 'resting' ? <g className="rest-wear"><rect className="idle-cap" x="-7" y="-14" width="14" height="4" /><rect className="rest-tassel" x="6" y="-12" width="4" height="2" /></g> : null}
-    {branchDepth > 0 ? <rect className="branch-crown" x="-4" y="-19" width="8" height="2" /> : null}
+    {roleHat.visible ? <RoleHat variant={roleHat.variant} /> : null}
+    {idleState === 'long-idle' ? <g className="idle-wear"><rect className="idle-eye" x="-3" y="-3" width="2" height="1" /><rect className="idle-eye" x="2" y="-3" width="2" height="1" /></g> : null}
+    {idleState === 'resting' ? <g className="rest-wear"><rect className="idle-eye" x="-3" y="-3" width="2" height="1" /><rect className="idle-eye" x="2" y="-3" width="2" height="1" /></g> : null}
+    {branchDepth > 0 ? <rect className="branch-crown" x="-4" y="-23" width="8" height="2" /> : null}
   </g>;
 }
 
@@ -134,6 +137,15 @@ function VillageHouse({ x, y, size }) {
   const w = size ? 18 : 14;
   const h = size ? 13 : 10;
   return <g transform={`translate(${x} ${y})`}><rect className="house" x={-w / 2} y={-h / 2} width={w} height={h} /><path className="roof" d={`M ${-w / 2 - 2} ${-h / 2} L 0 ${-h / 2 - 8} L ${w / 2 + 2} ${-h / 2} Z`} /><rect className="door" x="-2" y={h / 2 - 6} width="4" height="6" /></g>;
+}
+
+function RoleHat({ variant = 0 }) {
+  const v = Math.abs(Number(variant || 0)) % 5;
+  if (v === 0) return <g className="role-hat hat-cap"><rect className="hat-main" x="-7" y="-13" width="12" height="4" /><rect className="hat-main" x="-9" y="-10" width="15" height="2" /></g>;
+  if (v === 1) return <g className="role-hat hat-brim"><rect className="hat-main" x="-6" y="-15" width="12" height="5" /><rect className="hat-main" x="-11" y="-11" width="22" height="2" /></g>;
+  if (v === 2) return <g className="role-hat hat-point"><path className="hat-main" d="M -8 -10 L 1 -20 L 7 -10 Z" /><rect className="hat-main" x="-9" y="-11" width="18" height="2" /></g>;
+  if (v === 3) return <g className="role-hat hat-beanie"><rect className="hat-main" x="-7" y="-14" width="14" height="5" /><rect className="hat-main" x="-5" y="-16" width="10" height="3" /><rect className="hat-main" x="-1" y="-19" width="3" height="3" /></g>;
+  return <g className="role-hat hat-visor"><rect className="hat-main" x="-8" y="-14" width="16" height="5" /><rect className="hat-main" x="4" y="-11" width="8" height="2" /><rect className="hat-cut" x="-4" y="-12" width="8" height="2" /></g>;
 }
 
 function RoleSigil({ role }) {

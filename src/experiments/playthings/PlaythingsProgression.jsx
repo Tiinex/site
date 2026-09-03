@@ -1,15 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { buildPlaythingsTechTree } from './playthings.techTree.js';
+import { buildPlaythingsTechTree, filterPlaythingsTechTreeNodes } from './playthings.techTree.js';
 import { assignPlaythingsHotbarSkill, clearPlaythingsHotbarSlot, inspectPlaythingsSchema, upgradePlaythingsSchema } from './playthings.profile.js';
 
 export function PlaythingsProgression({ model, profile, enabled = false, onProfileChange, onOpenRecord, onActivateSkill }) {
   const tree = useMemo(() => buildPlaythingsTechTree(model), [model]);
   const [treeOpen, setTreeOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
+  const [implementedOnly, setImplementedOnly] = useState(true);
   const [shiftHeld, setShiftHeld] = useState(false);
   const inspected = useMemo(() => new Set(profile.inspectedSchemaIds || []), [profile.inspectedSchemaIds]);
   const upgraded = useMemo(() => new Set(profile.upgradedSchemaIds || []), [profile.upgradedSchemaIds]);
   const skillNodes = tree.nodes.filter((node) => upgraded.has(node.schemaId) && node.creatable);
+  const visibleTechNodes = useMemo(() => filterPlaythingsTechTreeNodes(tree, { implementedOnly }), [tree, implementedOnly]);
+  const visibleTechIds = useMemo(() => new Set(visibleTechNodes.map((node) => node.schemaId)), [visibleTechNodes]);
+  const techColumns = useMemo(() => techTreeColumns(visibleTechNodes, tree.byId), [visibleTechNodes, tree.byId]);
+  const implementedCount = tree.nodes.filter((node) => node.implemented).length;
+  const observedLockedCount = tree.nodes.filter((node) => !node.implemented && node.openAvailable).length;
 
   useEffect(() => {
     if (!enabled) { setShiftHeld(false); return undefined; }
@@ -64,23 +70,28 @@ export function PlaythingsProgression({ model, profile, enabled = false, onProfi
     </div>
 
     {treeOpen ? <div className="tx-playthings-tech-panel" role="dialog" aria-label="Playthings schema tech tree">
-      <div className="tx-playthings-panel-head"><div><strong>SCHEMA TECH TREE</strong><small>Known blueprints · Playthings progress only</small></div><button type="button" onClick={() => setTreeOpen(false)}>×</button></div>
-      <div className="tx-playthings-tech-tree">
-        {tree.nodes.map((node) => {
-          const isInspected = inspected.has(node.schemaId), isUpgraded = upgraded.has(node.schemaId);
-          const depth = treeDepth(node, tree.byId);
-          const canUpgrade = node.implemented && !isUpgraded && (isInspected || shiftHeld);
-          return <article key={node.schemaId} className={`tx-playthings-tech-node ${node.locked ? 'is-locked' : ''} ${isUpgraded ? 'is-upgraded' : ''}`} style={{ '--pt-tech-depth': depth }} title={node.locked ? 'Not yet implemented in this Site build' : node.summary}>
-            <div className="tx-playthings-tech-wire" aria-hidden="true" />
-            <div className="tx-playthings-tech-node-title"><span>{node.locked ? '▧' : isUpgraded ? '◆' : '◇'}</span><div><strong>{node.label}</strong><small>{node.schemaId}</small></div></div>
-            <div className="tx-playthings-tech-status">{node.locked ? 'LOCKED · NOT YET IMPLEMENTED' : node.abstract ? 'ABSTRACT BLUEPRINT' : node.creatable ? 'CREATE CAPABLE' : 'IMPLEMENTED'}</div>
-            <div className="tx-playthings-tech-actions">
-              <button type="button" onClick={() => inspect(node)} disabled={!node.openAvailable} title={node.openAvailable ? 'Open the observed schema artifact detail' : 'Schema artifact is not loaded in the observed material'}>{isInspected ? 'Open again' : 'Open'}</button>
-              <button type="button" className="upgrade" onClick={() => upgrade(node)} disabled={!canUpgrade}>{isUpgraded ? (node.creatable ? 'Skill unlocked' : 'Upgraded') : !node.implemented ? 'Locked' : !isInspected && !shiftHeld ? 'Open first' : shiftHeld && !isInspected ? 'Quick upgrade' : 'Upgrade'}</button>
-            </div>
-          </article>;
-        })}
+      <div className="tx-playthings-panel-head tx-playthings-tech-head">
+        <div><strong>SCHEMA TECH TREE</strong><small>Blueprint projection · real Parent topology · local game progression only</small></div>
+        <button type="button" onClick={() => setTreeOpen(false)}>×</button>
       </div>
+      <div className="tx-playthings-tech-toolbar">
+        <label className="tx-playthings-tech-filter">
+          <input type="checkbox" checked={implementedOnly} onChange={(event) => setImplementedOnly(event.currentTarget.checked)} />
+          <span>Implemented only</span>
+        </label>
+        <div className="tx-playthings-tech-stats"><span><b>{implementedCount}</b> in Site</span><span><b>{observedLockedCount}</b> observed locked</span><span>{shiftHeld ? 'SHIFT HELD · quick upgrade' : 'Hold Shift to skip Open friction'}</span></div>
+      </div>
+      <div className="tx-playthings-tech-scroll">
+        <div className="tx-playthings-tech-columns" style={{ '--pt-tech-columns': Math.max(1, techColumns.length) }}>
+          {techColumns.map((column) => <section key={column.depth} className="tx-playthings-tech-column" data-depth={column.depth}>
+            <header><span>TIER {column.depth}</span><b>{column.nodes.length}</b></header>
+            <div className="tx-playthings-tech-column-nodes">
+              {column.nodes.map((node) => <TechTreeNode key={node.schemaId} node={node} tree={tree} visibleTechIds={visibleTechIds} inspected={inspected} upgraded={upgraded} shiftHeld={shiftHeld} onInspect={inspect} onUpgrade={upgrade} />)}
+            </div>
+          </section>)}
+        </div>
+      </div>
+      {!visibleTechNodes.length ? <div className="tx-playthings-tech-empty">No implemented schemas are visible in this observed material.</div> : null}
     </div> : null}
 
     {inventoryOpen ? <aside className="tx-playthings-skill-inventory" aria-label="Unlocked Playthings skills">
@@ -100,8 +111,42 @@ export function PlaythingsProgression({ model, profile, enabled = false, onProfi
   </>;
 }
 
+function TechTreeNode({ node, tree, visibleTechIds, inspected, upgraded, shiftHeld, onInspect, onUpgrade }) {
+  const isInspected = inspected.has(node.schemaId);
+  const isUpgraded = upgraded.has(node.schemaId);
+  const canUpgrade = node.implemented && !isUpgraded && (isInspected || shiftHeld);
+  const parent = node.parentSchemaId ? tree.byId.get(node.parentSchemaId) || null : null;
+  const parentVisible = parent ? visibleTechIds.has(parent.schemaId) : false;
+  const parentHint = parent ? (parentVisible ? `← ${parent.label}` : '← … hidden ancestor') : 'ROOT BLUEPRINT';
+  const status = node.locked ? 'NOT IN SITE' : node.abstract ? 'ABSTRACT' : node.creatable ? 'CREATE CAPABLE' : 'IMPLEMENTED';
+  return <article className={`tx-playthings-tech-node ${node.locked ? 'is-locked' : ''} ${isUpgraded ? 'is-upgraded' : ''} ${parent && !parentVisible ? 'has-hidden-parent' : ''}`} title={node.locked ? 'Not yet implemented in this Site build' : node.summary}>
+    <div className="tx-playthings-tech-parent" title={parent?.schemaId || ''}>{parentHint}</div>
+    <div className="tx-playthings-tech-node-title"><span className="tx-playthings-blueprint-chip">{node.locked ? '▧' : isUpgraded ? '◆' : '◇'}</span><div><strong>{node.label}</strong><small>{node.schemaId}</small></div></div>
+    <div className="tx-playthings-tech-status"><span>{status}</span>{isInspected ? <span>INSPECTED</span> : null}{isUpgraded ? <span>UPGRADED</span> : null}</div>
+    <p>{node.summary}</p>
+    <div className="tx-playthings-tech-actions">
+      <button type="button" onClick={() => onInspect(node)} disabled={!node.openAvailable} title={node.openAvailable ? 'Open the observed schema artifact detail' : 'Schema artifact is not loaded in the observed material'}>{isInspected ? 'Open again' : 'Open blueprint'}</button>
+      <button type="button" className="upgrade" onClick={() => onUpgrade(node)} disabled={!canUpgrade}>{isUpgraded ? (node.creatable ? 'Skill unlocked' : 'Upgraded') : !node.implemented ? 'Locked' : !isInspected && !shiftHeld ? 'Open first' : shiftHeld && !isInspected ? 'Quick upgrade' : 'Upgrade'}</button>
+    </div>
+  </article>;
+}
+
+function techTreeColumns(nodes = [], byId = new Map()) {
+  const columns = new Map();
+  for (const node of nodes) {
+    const depth = treeDepth(node, byId);
+    if (!columns.has(depth)) columns.set(depth, []);
+    columns.get(depth).push(node);
+  }
+  const maxDepth = Math.max(0, ...columns.keys());
+  return Array.from({ length: maxDepth + 1 }, (_, depth) => ({
+    depth,
+    nodes: (columns.get(depth) || []).slice().sort((a, b) => String(a.parentSchemaId || '').localeCompare(String(b.parentSchemaId || '')) || a.label.localeCompare(b.label))
+  })).filter((column) => column.nodes.length);
+}
+
 function treeDepth(node, byId) {
   let depth = 0, cursor = node, seen = new Set([node.schemaId]);
   while (cursor?.parentSchemaId && byId.has(cursor.parentSchemaId) && !seen.has(cursor.parentSchemaId)) { seen.add(cursor.parentSchemaId); cursor = byId.get(cursor.parentSchemaId); depth += 1; }
-  return Math.min(6, depth);
+  return Math.min(8, depth);
 }

@@ -67,7 +67,7 @@ export function generatePlaythingsWorld(model = {}) {
     const excludedSource = event.kind === 'advance' && sourceKey ? new Set([sourceKey]) : null;
     const occupied = occupiedPoints(activeLeaves, actorPositions, structures, excludedSource);
     const lineagePlace = nearestAncestorStructure(parentKey, structuresByArtifact, parentByChild);
-    const base = event.kind === 'spawn' ? worldCenter() : branchPoint || sourcePoint || worldCenter();
+    const base = event.kind === 'spawn' ? rootGrowthBase(seed, occupied) : branchPoint || sourcePoint || worldCenter();
     const scenePoint = nearestOrganicFreePoint(base, `${event.kind}:${seed}`, occupied, {
       minimumRadius: event.kind === 'spawn' ? 0 : 36,
       placeAnchor: lineagePlace?.point || null,
@@ -92,7 +92,7 @@ export function generatePlaythingsWorld(model = {}) {
 
     scenePositions.set(artifact.key, freezePoint(scenePoint));
     actorPositions.set(artifact.key, freezePoint(actorPoint));
-    activeLeaves.add(artifact.key);
+    if (!artifact.isSchemaArtifact) activeLeaves.add(artifact.key);
 
     let structure = null;
     if (persistent) {
@@ -204,27 +204,63 @@ function nearestOrganicFreePoint(baseInput, seed, blocked = [], options = {}) {
 
   if (minimumRadius === 0 && isFree(base, blocked)) return freezePoint(base);
 
+  // Fixed-size deterministic frontier. We intentionally consider multiple
+  // radii at once instead of accepting the first free concentric shell; this
+  // creates pockets/neighbourhoods without runtime randomness or suffix jitter.
+  const preferredReach = minimumRadius + ORGANIC_STEP * (0.8 + playthingsSeedUnit(seed, 'organic-preferred-reach') * 2.7);
+  const targetSpacing = BLOCK_RADIUS * (1.35 + playthingsSeedUnit(seed, 'organic-spacing') * 0.65);
+  const candidates = [];
+  const count = 28;
+  for (let index = 0; index < count; index += 1) {
+    const angleJitter = (playthingsSeedUnit(seed, `organic-jitter:${index}`) - 0.5) * 0.9;
+    const angle = start + index * GOLDEN_ANGLE + angleJitter;
+    const radialUnit = playthingsSeedUnit(seed, `organic-radius:${index}`);
+    const radius = Math.max(minimumRadius, preferredReach * (0.58 + radialUnit * 0.92));
+    const point = clampPoint({ x: base.x + Math.cos(angle) * radius, y: base.y + Math.sin(angle) * radius });
+    if (!inBounds(point) || !isFree(point, blocked)) continue;
+    const baseDistance = Math.sqrt(distanceSquared(base, point));
+    const nearest = nearestBlockedDistance(point, blocked);
+    const densityCost = Number.isFinite(nearest) ? Math.abs(nearest - targetSpacing) * 0.48 : 0;
+    const reachCost = Math.abs(baseDistance - preferredReach) * 0.42;
+    const placeCost = placeAnchor ? Math.sqrt(distanceSquared(placeAnchor, point)) * placeWeight : 0;
+    const edgeCost = worldEdgePenalty(point);
+    const tie = playthingsSeedUnit(seed, `organic-tie:${round(point.x)}:${round(point.y)}`) * 7;
+    candidates.push({ point, score: baseDistance * 0.22 + reachCost + densityCost + placeCost + edgeCost + tie });
+  }
+  candidates.sort((a, b) => a.score - b.score || a.point.y - b.point.y || a.point.x - b.point.x);
+  if (candidates[0]) return freezePoint(candidates[0].point);
+
+  // Dense-world fallback still expands deterministically, but only after the
+  // organic frontier has failed to find a legal site.
   for (let shell = 1; shell <= maximumShell; shell += 1) {
     const radiusBase = minimumRadius + shell * ORGANIC_STEP;
-    const candidates = [];
-    const count = 10 + Math.min(8, shell);
-    for (let index = 0; index < count; index += 1) {
-      const jitter = (playthingsSeedUnit(seed, `organic-jitter:${shell}:${index}`) - 0.5) * 0.52;
-      const angle = start + index * GOLDEN_ANGLE + jitter;
-      const radialJitter = (playthingsSeedUnit(seed, `organic-radius:${shell}:${index}`) - 0.5) * ORGANIC_STEP * 0.72;
-      const radius = Math.max(minimumRadius, radiusBase + radialJitter);
+    const fallback = [];
+    const shellCount = 9 + Math.min(7, shell);
+    for (let index = 0; index < shellCount; index += 1) {
+      const angle = start + index * GOLDEN_ANGLE + (playthingsSeedUnit(seed, `fallback-angle:${shell}:${index}`) - 0.5) * 0.7;
+      const radius = radiusBase + (playthingsSeedUnit(seed, `fallback-radius:${shell}:${index}`) - 0.5) * ORGANIC_STEP * 0.9;
       const point = clampPoint({ x: base.x + Math.cos(angle) * radius, y: base.y + Math.sin(angle) * radius });
       if (!inBounds(point) || !isFree(point, blocked)) continue;
-      const baseCost = Math.sqrt(distanceSquared(base, point));
-      const placeCost = placeAnchor ? Math.sqrt(distanceSquared(placeAnchor, point)) * placeWeight : 0;
-      const edgeCost = worldEdgePenalty(point);
-      const tie = playthingsSeedUnit(seed, `organic-tie:${round(point.x)}:${round(point.y)}`) * 5;
-      candidates.push({ point, score: baseCost + placeCost + edgeCost + tie });
+      fallback.push({ point, score: worldEdgePenalty(point) + playthingsSeedUnit(seed, `fallback-tie:${shell}:${index}`) * 8 });
     }
-    candidates.sort((a, b) => a.score - b.score || a.point.y - b.point.y || a.point.x - b.point.x);
-    if (candidates[0]) return freezePoint(candidates[0].point);
+    fallback.sort((a, b) => a.score - b.score || a.point.y - b.point.y || a.point.x - b.point.x);
+    if (fallback[0]) return freezePoint(fallback[0].point);
   }
   return freezePoint(base);
+}
+
+function rootGrowthBase(seed, blocked = []) {
+  if (!(blocked || []).length) return worldCenter();
+  const center = worldCenter();
+  const angle = playthingsSeedAngle(seed, 'root-neighbourhood-angle');
+  const radius = 70 + playthingsSeedUnit(seed, 'root-neighbourhood-radius') * 310;
+  return clampPoint({ x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius });
+}
+
+function nearestBlockedDistance(point, blocked = []) {
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const other of blocked || []) nearest = Math.min(nearest, Math.sqrt(distanceSquared(point, other)));
+  return nearest;
 }
 
 function currentLeafBelow(parentKey, activeLeaves, parentByChild, byKey) {

@@ -14,9 +14,11 @@ export function projectVisiblePlaythingsModel(model = {}, verseIds, artifactKeys
     childrenByParent.get(edge.from).push(edge.to);
   }
 
-  const actors = artifacts.filter((artifact) => !parentKeys.has(artifact.key)).map((artifact) => {
+  const artifactByKey = new Map(artifacts.map((artifact) => [artifact.key, artifact]));
+  const actors = artifacts.filter((artifact) => !parentKeys.has(artifact.key) && !artifact.isSchemaArtifact).map((artifact) => {
     const ancestry = ancestryFor(artifact.key, parentByChild);
     const branchDepth = ancestry.filter((key) => (childrenByParent.get(key) || []).length > 1).length;
+    const roleArtifact = ancestry.slice().reverse().map((key) => artifactByKey.get(key)).find((candidate) => candidate?.roleIdentity) || null;
     return Object.freeze({
       id: `lineage:${artifact.key}`,
       headKey: artifact.key,
@@ -25,6 +27,8 @@ export function projectVisiblePlaythingsModel(model = {}, verseIds, artifactKeys
       label: artifact.title || artifact.path || artifact.key,
       schemaId: artifact.schemaId || '',
       visualKind: artifact.visualKind || 'relic',
+      roleIdentity: roleArtifact?.roleIdentity || '',
+      roleLabel: roleArtifact?.roleLabel || '',
       presentationSeed: (artifacts.find((candidate) => candidate.key === ancestry[0]) || artifact).presentationSeed || ancestry[0] || artifact.key,
       ancestry: Object.freeze(ancestry),
       generations: Math.max(0, ancestry.length - 1),

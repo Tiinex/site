@@ -102,4 +102,9 @@ assert.equal(workspaceWorld.eventProjection.get('artifact:workspace-child').plac
 const organicPoint = workspaceWorld.scenePositions.get('workspace-child');
 assert.equal(organicPoint.x % 42 === 0 && organicPoint.y % 42 === 0, false, 'organic placement is not projected onto the previous 42px grid');
 
+
+const schemaOnly = artifact('schema-only', { schemaId: 'tiinex.schema.module.v1', presentationSchemaId: 'tiinex.schema.module.v1', visualKind: 'blueprint-scene', interactionKind: 'blueprint', isSchemaArtifact: true, createdAt: '2026-09-01 09:00:00' });
+const schemaOnlyWorld = generatePlaythingsWorld({ fingerprint: 'schema-only', verses: [{ id: 'repo:tiinex/site' }], artifacts: [schemaOnly], edges: [], portals: [] });
+assert.equal(schemaOnlyWorld.livingLeafKeys.length, 0, 'schema blueprint leaves must not occupy the earth as living Playthings');
+
 console.log('✓ Playthings deterministic shared-earth growth projection passed');

@@ -3,6 +3,8 @@ import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { filterArchiveTransportEntries } from './archive.transport.js';
 import { qualifyPortableChangesetEntries } from './archive.portableChangeset.js';
 import { resolveTransportPlan } from '../../sources/transport.levels.js';
+import { workspaceTitleFromMarkdown } from './archive.workspaceTitle.js';
+export { workspaceTitleFromMarkdown } from './archive.workspaceTitle.js';
 
 export const ARCHIVE_ADAPTER_ID = 'archive';
 
@@ -326,14 +328,6 @@ export function assetFromImportEntry(entry = {}) {
     sourceMode: entry.source || 'zip',
     source: { kind: 'local-session', adapterId: 'archive', sourceKind: 'archive.zip', boundary: 'browser-local archive asset; no GitHub provenance inferred' }
   };
-}
-
-export function workspaceTitleFromMarkdown(markdown = '') {
-  const text = String(markdown || '');
-  const browserTitle = text.match(/^\s*-\s*Browser Title:\s*(.+)$/mi)?.[1]?.trim();
-  if (browserTitle) return stripMarkdown(browserTitle).slice(0, 72);
-  const heading = text.match(/^#\s+(.+)\s*$/m)?.[1]?.trim();
-  return stripMarkdown(heading || '').slice(0, 72);
 }
 
 function readCentralEntries(bytes) {

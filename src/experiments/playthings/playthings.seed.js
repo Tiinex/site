@@ -37,6 +37,21 @@ export function playthingsVariant(seed = '') {
   return playthingsSeedIndex(seed, 'body-variant', 4);
 }
 
+
+export const PLAYTHINGS_ROLE_HAT_PALETTE = Object.freeze([
+  '#f0cb62', '#7fb5d8', '#cf7e7a', '#8dbd78', '#a98bd0', '#c99a72', '#71b9ae', '#d28bb7'
+]);
+
+export function playthingsRoleHat(roleIdentity = '') {
+  const identity = String(roleIdentity || '').trim();
+  if (!identity) return Object.freeze({ visible: false, variant: 0, color: '#8f978c' });
+  return Object.freeze({
+    visible: true,
+    variant: playthingsSeedIndex(identity.toLowerCase(), 'role-hat-shape', 5),
+    color: PLAYTHINGS_ROLE_HAT_PALETTE[playthingsSeedIndex(identity.toLowerCase(), 'role-hat-color', PLAYTHINGS_ROLE_HAT_PALETTE.length)]
+  });
+}
+
 function hashInteger(value) {
   let hash = 2166136261;
   for (const char of String(value || '')) {
