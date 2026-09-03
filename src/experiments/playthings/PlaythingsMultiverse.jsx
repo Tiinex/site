@@ -16,7 +16,7 @@ import { readPlaythingsProfile, setPlaythingsFollow, writePlaythingsProfile } fr
 import { buildPlaythingsTechTree } from './playthings.techTree.js';
 import './playthings.css';
 
-export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
+export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onOpenLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
   const incomingModel = useMemo(() => projectPlaythingsMultiverse(workspaces), [workspaces]);
   const [target, setTarget] = useState(() => incomingModel);
   const history = useMemo(() => planPlaythingsHistory(target), [target]);
@@ -164,6 +164,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
         onFollowPlaythingChange={setFollow}
         onEventComplete={completeActiveEvent}
         onOpenRecord={onOpenRecord}
+        onOpenLineage={onOpenLineage}
         toolsEnabled={toolsEnabled}
         unlockedSkillIds={unlockedSkillIds}
         onResolveTransitions={onResolveTransitions}

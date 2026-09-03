@@ -456,14 +456,14 @@ export function TiinexApp() {
     const targetWorkspaceId = String((latestStateRef.current || state).activeWorkspaceId || active?.id || ''); if (!targetWorkspaceId) return setNotice('Playthings needs an active workspace before creating an artifact.');
     setPreferredCreateSchemaId(String(schemaId || '')); setDialogWorkspaceId(targetWorkspaceId); setDialog('create-artifact');
   }
-  function focusRecordLineage(recordId, workspaceId = active?.id || '') {
+  function focusRecordLineage(recordId, workspaceId = active?.id || '', exitAfter = false) {
     const id = String(recordId || '');
     setRecordAction(null);
     setActiveAssetId('');
     setActiveRecordId('');
     if (!id) return;
     const sourceState = latestStateRef.current || state;
-    commitSemanticNavigation(stateWithRecordLineageFocused(sourceState, workspaceId || active?.id, id, viewportWidth), 'push', { deferPersistence: true, persistenceReason: 'workspace-lineage-focus' });
+    commitSemanticNavigation(stateWithRecordLineageFocused(sourceState, workspaceId || active?.id, id, viewportWidth), 'push', { deferPersistence: true, persistenceReason: 'workspace-lineage-focus' }); if (exitAfter) setPlaythingsOpen(false);
   }
   function dismissRecord() {
     setActiveRecordId('');
@@ -758,7 +758,7 @@ export function TiinexApp() {
         onTogglePlaythings={playthingsExperiment ? exitPlaythings : () => setPlaythingsOpen(true)}
       />
       {playthingsExperiment ? (
-        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onCreateSkill={openPlaythingsCreateSkill} onResolveTransitions={playthingsTransitionOptions} onActivateTransition={activatePlaythingsTransition} />
+        <PlaythingsMultiverse workspaces={state.workspaces} onRefresh={refreshPlaythingsMaterial} onOpenRecord={openRecord} onOpenLineage={(recordId, workspaceId) => focusRecordLineage(recordId, workspaceId, true)} onCreateSkill={openPlaythingsCreateSkill} onResolveTransitions={playthingsTransitionOptions} onActivateTransition={activatePlaythingsTransition} />
       ) : active ? (
         <div
           className={`${visibleWorkspaceItems.length > 1 ? 'tx-workspace-multicolumn-stage' : 'tx-workspace-single-stage'} ${visibleWorkspaceItems.length === 1 && visibleWorkspaceItems[0]?.layoutMode === 'compact' ? 'tx-workspace-single-stage-compact' : ''}`.trim()}

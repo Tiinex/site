@@ -43,6 +43,9 @@ const advancedModel = projectPlaythingsMultiverse([
 ]);
 const advancedDelta = planPlaythingsDelta(baseline, advancedModel);
 assert.equal(advancedDelta.events.filter((event) => event.kind === 'advance').length, 1, 'linear lineage continuation should advance the existing lineage actor');
+const baselineSiteActorId = baseline.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors[0]?.id;
+const advancedSiteActorId = advancedModel.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors[0]?.id;
+assert.equal(advancedSiteActorId, baselineSiteActorId, 'linear lineage continuation must preserve the rendered Plaything identity instead of remounting a new actor');
 
 const childTwo = record({ title: 'Alternative projection', path: '.topics/playthings-alternative.task.trace.md', parent: 'playthings.task.trace.md', createdAt: '2026-09-01 11:05:00' });
 const branchedModel = projectPlaythingsMultiverse([
@@ -53,6 +56,9 @@ const branchDelta = planPlaythingsDelta(advancedModel, branchedModel);
 assert.equal(branchDelta.events.length, 1, 'only newly observed material should be replayed');
 assert.equal(branchDelta.events[0].kind, 'split', 'a newly observed sibling branch should be projected as a split');
 assert.equal(branchDelta.events[0].artifactKey.includes('playthings-alternative.task.trace.md'), true);
+const branchActors = branchedModel.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors || [];
+assert.ok(branchActors.some((actor) => actor.id === baselineSiteActorId), 'the first living branch preserves the original Plaything identity when a sibling branch appears');
+assert.ok(branchActors.some((actor) => actor.id !== baselineSiteActorId), 'a sibling branch receives a distinct Plaything identity');
 
 const firstObservation = planPlaythingsDelta(null, baseline);
 assert.equal(firstObservation.firstObservation, true);

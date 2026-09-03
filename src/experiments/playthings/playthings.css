@@ -1093,3 +1093,24 @@ main.tx-react-runtime.tx-playthings-mode > .tx-toast { display: none !important;
 .tx-playthings-tech-filter { font-size: .74rem; }
 .tx-playthings-tech-stats { font-size: .61rem; }
 @media (max-width: 820px) { .tx-playthings-tech-columns { grid-template-columns: repeat(var(--pt-tech-columns), minmax(300px, 340px)); gap: 36px; } }
+
+/* 001-13 interaction continuity: a living lineage actor remains mounted while
+   a traveller/migration representation temporarily owns its pixels. This avoids
+   remount/fade flashes at event boundaries without drawing duplicate bodies. */
+.tx-playthings-actor.is-continuity-suppressed { pointer-events: none; }
+.tx-playthings-actor.is-selected:not(.is-continuity-suppressed),
+.tx-playthings-persistent-structure.is-selected { filter: url(#playthings-world-glow) drop-shadow(2px 2px 0 rgba(0,0,0,.35)); }
+.tx-playthings-selection-ring { fill: none; stroke: #fff0a0; stroke-width: 1.5; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.tx-playthings-tesseract.is-pinned .tx-playthings-tesseract-line { stroke-width: 2.4; stroke-dasharray: 7 4; }
+
+.tx-playthings-selection-menu { pointer-events: all; filter: drop-shadow(3px 3px 0 rgba(0,0,0,.35)); }
+.tx-playthings-selection-menu .panel { fill: rgba(14,23,17,.97); stroke: #c7bb69; stroke-width: 1; }
+.tx-playthings-selection-menu .title { fill: #fff0a0; font: 900 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .04em; pointer-events: none; }
+.tx-playthings-selection-menu .close { fill: #bfc9b5; font: 900 10px/1 ui-monospace, monospace; cursor: pointer; }
+.tx-playthings-selection-menu .section { fill: #788676; font: 800 5px/1 ui-monospace, monospace; letter-spacing: .07em; pointer-events: none; }
+.tx-playthings-selection-menu .action { cursor: pointer; outline: none; }
+.tx-playthings-selection-menu .action rect { fill: #263429; stroke: #53644f; stroke-width: .8; }
+.tx-playthings-selection-menu .action text { fill: #e8efe0; font: 800 6px/1 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
+.tx-playthings-selection-menu .action.transition rect { stroke: #927e3e; }
+.tx-playthings-selection-menu .action:hover rect,
+.tx-playthings-selection-menu .action:focus rect { fill: #3a4d3d; stroke: #e4d77c; }

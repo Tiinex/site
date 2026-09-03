@@ -32,4 +32,16 @@ const retroactive = {
   edgeKeys: ['parent:root->child-b']
 };
 assert.equal(resolvePlaythingsObservationCursor(retroactive, history, model).valid, false, 'non-prefix observation must rebuild rather than silently reorder history');
+
+const independentModel = {
+  fingerprint: 'priority-kahn', verses: [{ id: 'repo:tiinex/site' }], portals: [],
+  artifacts: [
+    { key: 'root-a', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 10:00:00', title: 'Root A' },
+    { key: 'root-b', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 20:00:00', title: 'Root B' },
+    { key: 'child-a', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 11:00:00', title: 'Child A' }
+  ],
+  edges: [{ key: 'parent:root-a->child-a', kind: 'parent', from: 'root-a', to: 'child-a' }]
+};
+assert.deepEqual(planPlaythingsHistory(independentModel).events.map((event) => event.artifactKey), ['root-a', 'child-a', 'root-b'], 'each newly-ready child must re-enter chronological priority immediately instead of waiting behind an older ready batch');
+
 console.log('✓ Playthings history ordering, leaf branching and observation resume passed');

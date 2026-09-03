@@ -6,32 +6,39 @@ import { playthingsShirtColor, playthingsVariant } from './playthings.seed.js';
 import { playthingsLeafIdleState } from './playthings.clock.js';
 import { InteractionSpark, PixelOrganizationPlace, PixelPlaything, PixelWorkspacePlace, PlaythingsSceneArtwork, TerrainMark } from './playthings.artwork.jsx';
 
-export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null }) {
+export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null }) {
   const world = useMemo(() => generatePlaythingsWorld(fullModel), [fullModel]);
   const terrain = useMemo(() => playthingsTerrainMarks(world.width, world.height), [world.width, world.height]);
   const followLocked = Boolean(followPlaything && playing && activeEvent);
   const camera = usePlaythingsCamera(world.width, world.height, { locked: followLocked });
   const [hoveredHead, setHoveredHead] = useState('');
+  const [selection, setSelection] = useState(null);
+  React.useEffect(() => { const close = (event) => { if (event.key === 'Escape') setSelection(null); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, []);
   const artifactByKey = useMemo(() => new Map((fullModel.artifacts || []).map((artifact) => [artifact.key, artifact])), [fullModel.artifacts]);
   const actorByKey = useMemo(() => new Map((model.actors || []).map((actor) => [actor.headKey, actor])), [model.actors]);
+  const actorById = useMemo(() => new Map((model.actors || []).map((actor) => [actor.id, actor])), [model.actors]);
   const visibleKeys = useMemo(() => new Set((model.artifacts || []).map((artifact) => artifact.key)), [model.artifacts]);
   const activeProjection = activeEvent ? world.eventProjection.get(activeEvent.id) || null : null;
   const activeRestingMigrations = activeEvent ? world.restingMigrationsByEvent?.get(activeEvent.id) || [] : [];
   const migratingKeys = useMemo(() => new Set(activeRestingMigrations.map((migration) => migration.headKey)), [activeRestingMigrations]);
   const hoveredActor = hoveredHead ? actorByKey.get(hoveredHead) || null : null;
+  const selectedActor = selection?.kind === 'actor' ? actorById.get(selection.id) || null : null;
+  const selectedStructure = selection?.kind === 'structure' ? world.structuresByArtifact?.get(selection.artifactKey) || null : null;
+  const historyActor = selectedActor || hoveredActor;
   const unlockedSkills = useMemo(() => new Set(unlockedSkillIds || []), [unlockedSkillIds]);
   // Transition qualification is intentionally lazy. With large carried workspaces
   // resolving every living leaf on every render turns a hover affordance into an
   // O(population × transition-qualification) render cost. Only the focused leaf
   // asks Tiinex for currently valid transitions.
   const hoveredTransitionOptions = useMemo(() => {
-    if (!toolsEnabled || !hoveredHead || typeof onResolveTransitions !== 'function') return [];
-    const actor = actorByKey.get(hoveredHead);
+    const interactionHead = selectedActor?.headKey || hoveredHead;
+    if (!toolsEnabled || !interactionHead || typeof onResolveTransitions !== 'function') return [];
+    const actor = actorByKey.get(interactionHead);
     const artifact = actor ? artifactByKey.get(actor.headKey) : null;
     if (!artifact) return [];
     return (onResolveTransitions(artifact.recordId, artifact.workspaceId) || [])
       .filter((action) => unlockedSkills.has(transitionSchemaId(action)));
-  }, [toolsEnabled, hoveredHead, onResolveTransitions, actorByKey, artifactByKey, unlockedSkills]);
+  }, [toolsEnabled, hoveredHead, selectedActor?.headKey, onResolveTransitions, actorByKey, artifactByKey, unlockedSkills]);
   const hiddenSourceKey = activeEvent?.kind === 'advance' && activeProjection?.arrivalReason !== 'organization-receiver' ? activeProjection.sourceKey : '';
   const actorStates = useMemo(() => {
     const map = new Map();
@@ -69,14 +76,14 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
       <g className="tx-playthings-terrain-layer" aria-hidden="true">{terrain.map((mark, index) => <TerrainMark key={index} {...mark} />)}</g>
       <g className="tx-playthings-road-layer" aria-hidden="true">{visibleRoads.map((road) => <g key={road.key}><path className={`tx-playthings-road-underlay is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /><path className={`tx-playthings-road-core is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /></g>)}</g>
 
-      {hoveredActor ? <LineageTesseract actor={hoveredActor} world={world} artifactByKey={artifactByKey} /> : null}
+      {historyActor ? <LineageTesseract actor={historyActor} world={world} artifactByKey={artifactByKey} pinned={Boolean(selectedActor)} /> : null}
 
       <g className="tx-playthings-structures">
         {world.structures.filter((structure) => visibleKeys.has(structure.artifactKey)).map((structure) => {
           const artifact = artifactByKey.get(structure.artifactKey);
           if (!artifact) return null;
           const restingKeys = restingByStructure.get(structure.artifactKey) || [];
-          return <PersistentStructure key={structure.artifactKey} structure={structure} artifact={artifact} restingCount={restingKeys.length} onOpen={() => onOpenRecord?.(artifact.recordId, artifact.workspaceId)} />;
+          return <PersistentStructure key={structure.artifactKey} structure={structure} artifact={artifact} restingCount={restingKeys.length} selected={selection?.kind === 'structure' && selection.artifactKey === structure.artifactKey} onSelect={() => setSelection((current) => current?.kind === 'structure' && current.artifactKey === structure.artifactKey ? null : { kind: 'structure', artifactKey: structure.artifactKey })} />;
         })}
       </g>
 
@@ -85,9 +92,11 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
           const artifact = artifactByKey.get(actor.headKey);
           const point = world.actorPositions.get(actor.headKey);
           const idle = actorStates.get(actor.headKey) || playthingsLeafIdleState(artifact?.createdAt, playheadMs);
-          if (!artifact || !point || actor.headKey === hiddenSourceKey || migratingKeys.has(actor.headKey) || (idle.state === 'resting' && idle.structure)) return null;
-          const transitionOptions = hoveredHead === actor.headKey ? hoveredTransitionOptions : [];
-          return <LivingPlaything key={actor.id || actor.headKey} actor={actor} artifact={artifact} point={point} idle={idle} highlighted={hoveredHead === actor.headKey} onHover={setHoveredHead} onOpen={() => onOpenRecord?.(artifact.recordId, artifact.workspaceId)} transitionOptions={transitionOptions} onActivateTransition={(action) => onActivateTransition?.(artifact.recordId, artifact.workspaceId, action)} />;
+          if (!artifact || !point) return null;
+          const suppressed = actor.headKey === hiddenSourceKey || migratingKeys.has(actor.headKey) || (idle.state === 'resting' && idle.structure);
+          const isSelected = selection?.kind === 'actor' && selection.id === actor.id;
+          const transitionOptions = (isSelected || hoveredHead === actor.headKey) ? hoveredTransitionOptions : [];
+          return <LivingPlaything key={actor.id || actor.headKey} actor={actor} artifact={artifact} point={point} idle={idle} suppressed={suppressed} selected={isSelected} highlighted={hoveredHead === actor.headKey || isSelected} onHover={setHoveredHead} onSelect={() => setSelection((current) => current?.kind === 'actor' && current.id === actor.id ? null : { kind: 'actor', id: actor.id })} transitionOptions={transitionOptions} onActivateTransition={(action) => onActivateTransition?.(artifact.recordId, artifact.workspaceId, action)} />;
         })}
       </g>
 
@@ -105,6 +114,17 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
         onSample={motionSample}
         onComplete={onEventComplete}
       /> : null}
+      {selection ? <WorldSelectionMenu
+        actor={selectedActor ? { ...selectedActor, menuPoint: world.actorPositions.get(selectedActor.headKey) || null } : null}
+        structure={selectedStructure}
+        artifact={selectedActor ? artifactByKey.get(selectedActor.headKey) : selectedStructure ? artifactByKey.get(selectedStructure.artifactKey) : null}
+        transitionOptions={selectedActor ? hoveredTransitionOptions : []}
+        onOpenRecord={onOpenRecord}
+        onOpenLineage={onOpenLineage}
+        onCenter={(point) => camera.follow(point)}
+        onActivateTransition={onActivateTransition}
+        onClose={() => setSelection(null)}
+      /> : null}
     </svg>
     <div className="tx-playthings-camera-controls" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
       <button type="button" className={`tx-playthings-follow-toggle ${followPlaything ? 'is-on' : ''}`} onClick={() => onFollowPlaythingChange?.(!followPlaything)} aria-pressed={followPlaything}>{followPlaything ? 'Follow: ON' : 'Follow'}</button>
@@ -114,9 +134,9 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   </div>;
 }
 
-function PersistentStructure({ structure, artifact, restingCount = 0, onOpen }) {
-  return <g className={`tx-playthings-persistent-structure is-${structure.kind}`} transform={`translate(${structure.point.x} ${structure.point.y})`} tabIndex="0" role="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onOpen?.(); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen?.(); } }}>
-    <title>{`${artifact.title}\n${artifact.schemaId}\nBuilt by observed lineage history\n${restingCount ? `${restingCount} resting Playthings\n` : ''}Presentation only`}</title>
+function PersistentStructure({ structure, artifact, restingCount = 0, selected = false, onSelect }) {
+  return <g className={`tx-playthings-persistent-structure is-${structure.kind} ${selected ? 'is-selected' : ''}`} transform={`translate(${structure.point.x} ${structure.point.y})`} tabIndex="0" role="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onSelect?.(); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect?.(); } }}>
+    <title>{`${artifact.title}\n${artifact.schemaId}\nBuilt by observed lineage history\n${restingCount ? `${restingCount} resting Playthings\n` : ''}Click for actions · Presentation only`}</title>
     <ellipse className="tx-playthings-structure-shadow" cx="0" cy="22" rx="31" ry="7" />
     {structure.kind === 'organization' ? <PixelOrganizationPlace depth={structure.organizationDepth} /> : null}
     {structure.kind === 'workspace' ? <PixelWorkspacePlace clusterSize={structure.clusterSize} /> : null}
@@ -124,29 +144,40 @@ function PersistentStructure({ structure, artifact, restingCount = 0, onOpen }) 
   </g>;
 }
 
-function LivingPlaything({ actor, artifact, point, idle, highlighted, onHover, onOpen, transitionOptions = [], onActivateTransition }) {
+function LivingPlaything({ actor, artifact, point, idle, suppressed = false, selected = false, highlighted, onHover, onSelect, transitionOptions = [], onActivateTransition }) {
   const seed = actor.presentationSeed || artifact.presentationSeed || actor.id || artifact.key;
-  return <g className={`tx-playthings-actor idle-${idle.state} ${highlighted ? 'is-tesseract-focus' : ''}`} transform={`translate(${point.x} ${point.y})`} tabIndex="0" role="button" aria-label={`${artifact.title}, living lineage leaf`} onPointerDown={(event) => event.stopPropagation()} onMouseEnter={() => onHover(actor.headKey)} onMouseLeave={() => onHover('')} onFocus={() => onHover(actor.headKey)} onBlur={() => onHover('')} onClick={(event) => { event.stopPropagation(); onOpen?.(); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onOpen?.(); } }}>
-    <title>{`${artifact.title}\n${artifact.schemaId}\n${artifact.repo}\n${actor.generations || 0} generations\n${actor.roleLabel ? `role livery: ${actor.roleLabel}\n` : ''}${idle.state === 'normal' ? 'active leaf' : `${idle.state} · ${idle.days.toFixed(1)} relative days`}\nCurrent lineage leaf`}</title>
+  return <g className={`tx-playthings-actor idle-${idle.state} ${highlighted ? 'is-tesseract-focus' : ''} ${selected ? 'is-selected' : ''} ${suppressed ? 'is-continuity-suppressed' : ''}`} transform={`translate(${point.x} ${point.y})`} visibility={suppressed ? 'hidden' : undefined} tabIndex={suppressed ? -1 : 0} role="button" aria-hidden={suppressed ? 'true' : undefined} aria-label={`${artifact.title}, living lineage leaf`} onPointerDown={(event) => event.stopPropagation()} onMouseEnter={() => !suppressed && onHover(actor.headKey)} onMouseLeave={() => onHover('')} onFocus={() => !suppressed && onHover(actor.headKey)} onBlur={() => onHover('')} onClick={(event) => { event.stopPropagation(); if (!suppressed) onSelect?.(); }} onKeyDown={(event) => { if (!suppressed && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect?.(); } }}>
+    <title>{`${artifact.title}\n${artifact.schemaId}\n${artifact.repo}\n${actor.generations || 0} generations\n${actor.roleLabel ? `role livery: ${actor.roleLabel}\n` : ''}${idle.state === 'normal' ? 'active leaf' : `${idle.state} · ${idle.days.toFixed(1)} relative days`}\nClick for lineage/actions`}</title>
     <ellipse className="tx-playthings-actor-shadow" cx="0" cy="14" rx="10" ry="3" />
     <PixelPlaything role={artifact.visualKind} roleIdentity={actor.roleIdentity || artifact.roleIdentity || ''} branchDepth={actor.branchDepth || 0} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} idleState={idle.state} />
     {idle.state === 'resting' && !idle.structure ? <g className="tx-playthings-sleep-mark"><text x="13" y="-14">z</text><text x="19" y="-20">z</text></g> : null}
-    {highlighted && transitionOptions.length ? <PlaythingTransitionMenu actions={transitionOptions} onActivate={onActivateTransition} /> : null}
+    {selected ? <circle className="tx-playthings-selection-ring" r="19" /> : null}
   </g>;
 }
 
-function PlaythingTransitionMenu({ actions = [], onActivate }) {
-  const shown = actions.slice(0, 5);
-  const width = 116, row = 22, height = 12 + shown.length * row;
-  return <g className="tx-playthings-transition-menu" transform="translate(22 -30)" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} aria-label="Unlocked valid transitions">
-    <rect className="tx-playthings-transition-menu-bg" x="0" y="0" width={width} height={height} rx="3" />
-    {shown.map((action, index) => {
-      const schemaId = transitionSchemaId(action), label = String(action?.authoring?.schemaLabel || action?.label || schemaId || 'Transition');
-      return <g key={action.id || action.definitionKey || `${schemaId}:${index}`} className="tx-playthings-transition-menu-action" transform={`translate(5 ${7 + index * row})`} tabIndex="0" role="button" aria-label={label} onClick={(event) => { event.stopPropagation(); onActivate?.(action); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); onActivate?.(action); } }}>
-        <rect x="0" y="0" width={width - 10} height={row - 4} rx="2" />
-        <text x="6" y="13">＋ {compactTransitionLabel(label)}</text>
-      </g>;
-    })}
+function WorldSelectionMenu({ actor, structure, artifact, transitionOptions = [], onOpenRecord, onOpenLineage, onCenter, onActivateTransition, onClose }) {
+  if (!artifact) return null;
+  const point = actor ? null : structure?.point || null;
+  const anchor = actor ? null : point;
+  // Actor position is resolved from the currently visible head in the caller's world map;
+  // structure points are already stable world coordinates. For actors, use a lightweight
+  // menu offset supplied through the artifact presentation position below.
+  const menuPoint = anchor || structure?.point || { x: 0, y: 0 };
+  // When an actor is selected the caller attaches its current point for menu placement.
+  const resolved = actor?.menuPoint || menuPoint;
+  const rows = [
+    { id: 'lineage', label: 'LINEAGE VERSE', run: () => onOpenLineage?.(artifact.recordId, artifact.workspaceId) },
+    { id: 'detail', label: 'ARTIFACT DETAIL', run: () => onOpenRecord?.(artifact.recordId, artifact.workspaceId) },
+    { id: 'center', label: 'CENTER CAMERA', run: () => onCenter?.(resolved) }
+  ];
+  const transitions = transitionOptions.slice(0, 4);
+  const width = 154, rowHeight = 20, height = 30 + rows.length * rowHeight + (transitions.length ? 9 + transitions.length * rowHeight : 0);
+  return <g className="tx-playthings-selection-menu" transform={`translate(${resolved.x + 24} ${resolved.y - 44})`} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+    <rect className="panel" x="0" y="0" width={width} height={height} rx="3" />
+    <text className="title" x="8" y="13">{compactTransitionLabel(artifact.title || 'PLAYTHING')}</text>
+    <text className="close" x={width - 12} y="13" role="button" tabIndex="0" onClick={() => onClose?.()}>×</text>
+    {rows.map((item, index) => <g key={item.id} className="action" transform={`translate(7 ${21 + index * rowHeight})`} role="button" tabIndex="0" onClick={item.run} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.run(); } }}><rect x="0" y="0" width={width - 14} height={16} rx="2" /><text x="6" y="11">{item.label}</text></g>)}
+    {transitions.length ? <g transform={`translate(7 ${24 + rows.length * rowHeight})`}><text className="section" x="0" y="8">VALID + UNLOCKED</text>{transitions.map((action, index) => <g key={action.id || action.definitionKey || index} className="action transition" transform={`translate(0 ${12 + index * rowHeight})`} role="button" tabIndex="0" onClick={() => onActivateTransition?.(artifact.recordId, artifact.workspaceId, action)}><rect x="0" y="0" width={width - 14} height={16} rx="2" /><text x="6" y="11">＋ {compactTransitionLabel(action?.authoring?.schemaLabel || action?.label || transitionSchemaId(action))}</text></g>)}</g> : null}
   </g>;
 }
 
@@ -233,13 +264,13 @@ function RestingMigrationLayer({ migrations = [], elapsedMs = 0, actorByKey, art
   </g>;
 }
 
-function LineageTesseract({ actor, world, artifactByKey }) {
+function LineageTesseract({ actor, world, artifactByKey, pinned = false }) {
   const keys = Array.isArray(actor.ancestry) ? actor.ancestry : [];
   const points = keys.map((key) => ({ key, point: world.actorPositions.get(key) || world.scenePositions.get(key), artifact: artifactByKey.get(key) })).filter((entry) => entry.point && entry.artifact);
   if (points.length < 2) return null;
   const path = points.map((entry, index) => `${index ? 'L' : 'M'} ${entry.point.x} ${entry.point.y}`).join(' ');
   const seed = actor.presentationSeed || actor.id || actor.headKey;
-  return <g className="tx-playthings-tesseract" aria-hidden="true"><path className="tx-playthings-tesseract-line" d={path} />{points.slice(0, -1).map((entry, index) => <g key={entry.key} className="tx-playthings-tesseract-echo" transform={`translate(${entry.point.x} ${entry.point.y})`}>{entry.artifact.isSchemaArtifact ? <PlaythingsSceneArtwork interactionKind="blueprint" /> : <PixelPlaything role={entry.artifact.visualKind} roleIdentity={entry.artifact.roleIdentity || ''} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} ghost />}<circle r={18 + Math.min(10, index)} /></g>)}</g>;
+  return <g className={`tx-playthings-tesseract ${pinned ? 'is-pinned' : ''}`} aria-hidden="true"><path className="tx-playthings-tesseract-line" d={path} />{points.slice(0, -1).map((entry, index) => <g key={entry.key} className="tx-playthings-tesseract-echo" transform={`translate(${entry.point.x} ${entry.point.y})`}>{entry.artifact.isSchemaArtifact ? <PlaythingsSceneArtwork interactionKind="blueprint" /> : <PixelPlaything role={entry.artifact.visualKind} roleIdentity={entry.artifact.roleIdentity || ''} variant={playthingsVariant(seed)} shirtColor={playthingsShirtColor(seed)} ghost />}<circle r={18 + Math.min(10, index)} /></g>)}</g>;
 }
 
 function sceneVerb(kind) {

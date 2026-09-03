@@ -42,7 +42,7 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
     if (!childrenByParent.has(edge.from)) childrenByParent.set(edge.from, []);
     childrenByParent.get(edge.from).push(edge.to);
   }
-  for (const children of childrenByParent.values()) children.sort();
+  for (const children of childrenByParent.values()) children.sort((left, right) => compareArtifacts(artifactByKey.get(left), artifactByKey.get(right)) || String(left).localeCompare(String(right)));
 
   const artifactsByVerse = groupBy(artifacts, (artifact) => artifact.verseId);
   const repoSummaries = prepared.repoSummaries || [];

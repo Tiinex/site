@@ -137,8 +137,10 @@ function topologicalChronologicalOrder(artifacts, parentByChild) {
     }).sort(compareArtifacts);
     // A malformed/cyclic loaded graph must not hang playback. Preserve deterministic
     // presentation order while lineage findings remain owned by the resolver/model.
-    const batch = ready.length ? ready : Array.from(pending.values()).sort(compareArtifacts).slice(0, 1);
-    for (const artifact of batch) { ordered.push(artifact); pending.delete(artifact.key); }
+    const next = ready[0] || Array.from(pending.values()).sort(compareArtifacts)[0];
+    if (!next) break;
+    ordered.push(next);
+    pending.delete(next.key);
   }
   return ordered;
 }

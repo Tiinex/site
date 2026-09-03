@@ -101,11 +101,13 @@ export function applyRecipientFacingV2Handoff(input = {}) {
     if (existing) {
       const index = (nextState.workspaces || []).findIndex((workspace) => workspace.id === existing.id);
       const localSources = (existing.sources || []).filter((source) => source?.id === 'local');
+      const preservedLocalRecords = (existing.records || []).filter(isUserLocalRecord);
+      const preservedLocalAssets = (existing.assets || []).filter(isUserLocalAsset);
       const replacement = Object.assign({}, existing, {
         name: prepared.workspaceEntry.title || existing.name || descriptor.workspaceId || 'Handoff workspace',
         title: prepared.workspaceEntry.title || existing.title || existing.name || descriptor.workspaceId || 'Handoff workspace',
-        records: [],
-        assets: [],
+        records: preservedLocalRecords,
+        assets: preservedLocalAssets,
         sources: localSources.length ? localSources : (existing.sources || []).filter((source) => source?.id === 'local'),
         sourceOrder: ['local'],
         workspaceMarkdown: String(prepared.workspaceEntry.markdown || ''),
@@ -188,6 +190,15 @@ export function applyRecipientFacingV2Handoff(input = {}) {
     workspaceId: nextState.activeWorkspaceId || applied[0]?.workspaceId || '',
     notice: `Handoff reconciled · ${applied.length} workspace${applied.length === 1 ? '' : 's'} · ${applied.reduce((sum, item) => sum + item.records, 0)} artifact${applied.reduce((sum, item) => sum + item.records, 0) === 1 ? '' : 's'}${findings.length ? ` · ${findings.length} ambiguous workspace${findings.length === 1 ? '' : 's'} left unchanged` : ''}.`
   };
+}
+
+function isUserLocalRecord(record = {}) {
+  const mode = String(record.sourceMode || '').trim().toLowerCase();
+  return mode === 'local-draft' || mode === 'local-transition' || mode === 'local-transition-canonical' || mode === 'local-workspace-file' || mode.startsWith('local-user-');
+}
+function isUserLocalAsset(asset = {}) {
+  const mode = String(asset.sourceMode || '').trim().toLowerCase();
+  return mode === 'local-asset' || mode.startsWith('local-user-');
 }
 
 function matchRecipientWorkspace(state = {}, descriptor = {}) {
