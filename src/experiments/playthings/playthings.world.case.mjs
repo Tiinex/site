@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { generatePlaythingsWorld, playthingsVisibleRoads } from './playthings.world.js';
+import { navigatePlaythingsRoute, recordRouteTraffic, roadLevel } from './playthings.navigation.js';
 
 function artifact(key, overrides = {}) {
   return {
@@ -38,6 +39,9 @@ assert.deepEqual(worldA.scenePositions.get('root'), worldB.scenePositions.get('r
 assert.deepEqual(worldA.scenePositions.get('child'), worldB.scenePositions.get('child'), 'same history must generate the same cross-origin child scene');
 assert.notDeepEqual(worldA.scenePositions.get('child'), worldA.scenePositions.get('root'), 'an advancing scene must find nearby free space rather than pop onto its parent');
 assert.equal(worldA.structures.length, 0, 'ordinary Tasks must not become permanent world objects');
+assert.deepEqual(worldA.eventProjection.get('artifact:root').sourcePoint, worldA.rootGate.point, 'a living root with no observed Parent place visibly emerges from the neutral Root Gate instead of materializing on grass');
+assert.ok(worldA.eventProjection.get('artifact:root').motionPoints.length >= 2, 'Root Gate emergence has a real route into the world');
+assert.ok(worldA.rootGate.usedByArtifactKeys.includes('root'), 'Root Gate records presentation use without becoming semantic lineage');
 const splitProjection = worldA.eventProjection.get('artifact:sibling');
 assert.equal(splitProjection.motionPoints.length >= 2, true, 'a sibling split has a real movement path');
 assert.deepEqual(splitProjection.branchPoint, worldA.actorPositions.get('root'), 'sibling placement is generated from the actual branch point');
@@ -118,6 +122,31 @@ const deceptiveSchema = artifact('organization-schema-doc', {
 });
 const deceptiveSchemaWorld = generatePlaythingsWorld({ fingerprint: 'deceptive-schema', verses: [{ id: 'repo:tiinex/site' }], artifacts: [deceptiveSchema], edges: [], portals: [] });
 assert.equal(deceptiveSchemaWorld.structures.length, 0, 'world generation defensively refuses persistent structures for .schema.md artifacts even if upstream metadata leaks place semantics');
+
+const schemaBridgeRoot = artifact('schema-bridge-root', { createdAt: '2026-09-01 09:10:00' });
+const schemaBridgeDoc = artifact('schema-bridge-doc', { isSchemaArtifact: true, schemaId: 'tiinex.schema.v1', presentationSchemaId: 'tiinex.schema.v1', interactionKind: 'blueprint', visualKind: 'blueprint-scene', createdAt: '2026-09-01 09:11:00' });
+const schemaBridgeLeaf = artifact('schema-bridge-leaf', { createdAt: '2026-09-01 09:12:00' });
+const schemaBridgeWorld = generatePlaythingsWorld({ fingerprint: 'schema-bridge-world', verses: [{ id: 'repo:tiinex/site' }], artifacts: [schemaBridgeRoot, schemaBridgeDoc, schemaBridgeLeaf], edges: [{ key: 'sb1', kind: 'parent', from: 'schema-bridge-root', to: 'schema-bridge-doc' }, { key: 'sb2', kind: 'parent', from: 'schema-bridge-doc', to: 'schema-bridge-leaf' }], portals: [] });
+assert.equal(schemaBridgeWorld.actorPositions.has('schema-bridge-doc'), false, 'schema observations never receive living actor positions');
+assert.deepEqual(schemaBridgeWorld.livingLeafKeys, ['schema-bridge-leaf'], 'schema Parent hops do not create or terminate a physical Plaything leaf');
+assert.equal(schemaBridgeWorld.eventProjection.get('artifact:schema-bridge-doc').arrivalReason, 'observe', 'schema history remains an observation/blueprint scene');
+assert.ok(schemaBridgeWorld.roadSegments.every((road) => !(road.levelFromArtifactKeys || []).includes('schema-bridge-doc')), 'schema observations cannot manufacture traffic or roads');
+
+const leveledRoads = new Map();
+for (let pass = 1; pass <= 12; pass += 1) recordRouteTraffic(leveledRoads, [{ x: 10, y: 10 }, { x: 90, y: 10 }], `traffic-${pass}`);
+assert.equal(roadLevel(1), 1);
+assert.equal(roadLevel(6), 6);
+assert.equal(roadLevel(99), 10, 'road maturity is capped at ten presentation levels');
+assert.ok([...leveledRoads.values()].every((road) => road.count >= 12 && roadLevel(road.count) === 10), 'repeated traffic matures the whole sampled corridor to level 10');
+
+const collisionRoute = navigatePlaythingsRoute([{ x: 100, y: 100 }, { x: 300, y: 100 }], [{ artifactKey: 'standing-plaything', kind: 'plaything-obstacle', point: { x: 200, y: 100 }, footprint: { halfWidth: 13, halfHeight: 17, radius: 22 } }], new Map());
+assert.ok(collisionRoute.length > 2 && collisionRoute.some((point) => Math.abs(point.y - 100) > 20), 'navigation detours around standing Playthings instead of walking through their occupied footprint');
+
+const preferredRoads = new Map();
+for (let pass = 0; pass < 10; pass += 1) recordRouteTraffic(preferredRoads, [{ x: 100, y: 100 }, { x: 100, y: 148 }, { x: 300, y: 148 }, { x: 300, y: 100 }], `road-pref-${pass}`);
+const preferredRoadRoute = navigatePlaythingsRoute([{ x: 100, y: 100 }, { x: 300, y: 100 }], [], preferredRoads);
+assert.ok(preferredRoadRoute.some((point) => point.y >= 144), 'a mature connected road can beat the shorter grass route when its accumulated travel cost is cheaper');
+
 
 const restHabitat = artifact('rest-habitat', {
   schemaId: 'tiinex.party.organization.v1', presentationSchemaId: 'tiinex.party.organization.v1', visualKind: 'organization-place', interactionKind: 'build',

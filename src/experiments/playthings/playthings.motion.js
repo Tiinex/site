@@ -19,8 +19,9 @@ export function planPlaythingsEventMotion(event = {}, projection = {}, options =
   const isSplit = event.kind === 'split';
   const interactionKind = String(event.interactionKind || 'inspect');
 
-  const anticipateMs = isSpawn ? 80 : Math.round((isSplit ? 125 : 105) * density);
-  const travelMs = isSpawn ? 0 : Math.round(clamp(distance / 0.72, 190, 900) * density);
+  const spawnTravels = isSpawn && points.length > 1 && distance > 1;
+  const anticipateMs = isSpawn ? 110 : Math.round((isSplit ? 125 : 105) * density);
+  const travelMs = isSpawn && !spawnTravels ? 0 : Math.round(clamp(distance / 0.72, isSpawn ? 260 : 190, isSpawn ? 980 : 900) * density);
   const forkBeatMs = fork ? Math.round(clamp(130 * density, 85, 140)) : 0;
   const forkDistance = fork ? Math.max(0, ...(fork.arms || []).map((arm) => polylineLength(arm.points || []))) : 0;
   const forkTravelMs = fork ? Math.round(clamp(forkDistance / 0.72, 260, 980) * density) : 0;

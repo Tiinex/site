@@ -2,6 +2,8 @@ import { resolveLineage } from '../../lineage/lineage.resolve.js';
 import { selfIntegrityValuesForNode } from '../../lineage/lineage.integrity.js';
 import { resolvePlaythingsPresentationCompanion } from './presentation/playthings.presentation.js';
 import { artifactRoleLabel, lineageActorForHead, normalizeRoleIdentity } from './playthings.role.js';
+import { buildPlaythingsLivingProjection } from './playthings.living.js';
+import { isPlaythingsSchemaDocument, playthingsArtifactMaterialPath } from './playthings.artifactKind.js';
 
 export const PLAYTHINGS_EXPERIMENT_ID = 'tiinex.playthings.multiverse.experimental.v1';
 
@@ -43,6 +45,7 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
     childrenByParent.get(edge.from).push(edge.to);
   }
   for (const children of childrenByParent.values()) children.sort((left, right) => compareArtifacts(artifactByKey.get(left), artifactByKey.get(right)) || String(left).localeCompare(String(right)));
+  const living = buildPlaythingsLivingProjection(artifacts, edgeRows);
 
   const artifactsByVerse = groupBy(artifacts, (artifact) => artifact.verseId);
   const repoSummaries = prepared.repoSummaries || [];
@@ -56,8 +59,9 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
       const keys = new Set(verseArtifacts.map((artifact) => artifact.key));
       const internalEdges = edgeRows.filter((edge) => keys.has(edge.from) && keys.has(edge.to));
       const roots = verseArtifacts.filter((artifact) => !parentByChild.has(artifact.key) || !keys.has(parentByChild.get(artifact.key))).map((artifact) => artifact.key);
-      const leaves = verseArtifacts.filter((artifact) => !(childrenByParent.get(artifact.key) || []).some((childKey) => keys.has(childKey))).map((artifact) => artifact.key);
-      const actors = leaves.filter((headKey) => !artifactByKey.get(headKey)?.isSchemaArtifact).map((headKey) => lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent));
+      const livingVerseKeys = new Set(verseArtifacts.filter((artifact) => !artifact.isSchemaArtifact).map((artifact) => artifact.key));
+      const leaves = living.leaves.filter((headKey) => livingVerseKeys.has(headKey));
+      const actors = leaves.map((headKey) => lineageActorForHead(headKey, artifactByKey, living.parentByChild, living.childrenByParent));
       return Object.freeze({
         id: verseId,
         repo,
@@ -322,8 +326,8 @@ function artifactFromNode(node = {}, context = null) {
   const createdAt = String(record.currentCreatedAt || record.createdAt || record.date || '');
   const presentation = resolvePlaythingsPresentationCompanion(node.schemaId || record.schemaId || record.kind || '');
   const selfIntegritySeed = selfIntegrityValuesForNode(node)[0] || String(node.id || '');
-  const path = String(node.path || record.path || '');
-  const isSchemaArtifact = /\.schema\.md$/i.test(path);
+  const path = playthingsArtifactMaterialPath(node, record);
+  const isSchemaArtifact = isPlaythingsSchemaDocument(node, record);
   const isWorkspaceArtifact = /\.workspace\.md$/i.test(path) || String(node.schemaId || record.schemaId || '') === 'tiinex.workspace.v1';
   const presentationCompanion = presentation.companion || {};
   const roleLabel = artifactRoleLabel(record);
@@ -366,6 +370,8 @@ function artifactFromNode(node = {}, context = null) {
     projectionBound: Boolean(context.inferred)
   });
 }
+
+
 
 
 function workspaceClusterSizeForRecord(record = {}) {

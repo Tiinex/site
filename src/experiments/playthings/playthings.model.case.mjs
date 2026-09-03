@@ -89,6 +89,14 @@ assert.equal(organizationSchemaModel.artifacts[0].visualKind, 'blueprint-scene')
 assert.equal(organizationSchemaModel.artifacts[0].persistenceKind, 'none', 'a party.organization .schema.md stays a blueprint and must never project a castle');
 assert.equal(organizationSchemaModel.verses[0].actors.length, 0);
 
+const transportedSchemaDoc = record({ title: 'Transported Organization Schema', path: 'src/schemas/party/tiinex.party.organization.v1.schema.md', schema: 'tiinex.party.organization.v1' });
+transportedSchemaDoc.sourcePath = transportedSchemaDoc.path;
+transportedSchemaDoc.path = '';
+const transportedSchemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [transportedSchemaDoc] }]);
+assert.equal(transportedSchemaModel.artifacts[0].isSchemaArtifact, true, 'schema-document classification survives transport when canonical material path is carried in sourcePath rather than record.path');
+assert.equal(transportedSchemaModel.verses[0].actors.length, 0, 'a transported .schema.md document still cannot become a living Plaything leaf');
+assert.equal(transportedSchemaModel.artifacts[0].persistenceKind, 'none', 'transported Organization schema remains blueprint-only and cannot leak castle persistence');
+
 console.log('✓ Playthings multiverse projection and delta playback model passed');
 
 function localize(input, sourceId = 'local') {

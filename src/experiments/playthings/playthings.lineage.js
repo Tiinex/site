@@ -17,3 +17,8 @@ export function playthingsLineageSnapshotFor(state = {}, recordId = '', workspac
     semanticAuthority: 'none'
   });
 }
+
+export function playthingsLineageNodesNewestFirst(traversal = null) {
+  const list = Array.isArray(traversal?.nodes) ? traversal.nodes.slice() : [];
+  return list.sort((left, right) => Number(left?.depth || 0) - Number(right?.depth || 0) || String(left?.id || '').localeCompare(String(right?.id || '')));
+}

@@ -1,10 +1,11 @@
-export const PLAYTHINGS_NAVIGATION_SCHEMA = 'tiinex.playthings.navigation.experimental.v1';
+export const PLAYTHINGS_NAVIGATION_SCHEMA = 'tiinex.playthings.navigation.experimental.v2';
+
+const MAX_ROAD_LEVEL = 10;
+const GRASS_TRAVEL_FACTOR = 1.24;
+const MAX_ROUTE_ROAD_SEGMENTS = 140;
 
 export function structureFootprintFor(artifact = {}, organizationDepth = 0) {
   if (isOrganizationArtifact(artifact)) {
-    // Footprints follow the visible landmark silhouette rather than the old
-    // debug rectangle. Castle flags/towers reserve noticeably more space than
-    // a Plaything, while deeper settlement forms remain compact.
     const halfWidth = organizationDepth <= 0 ? 52 : organizationDepth === 1 ? 43 : 46;
     const halfHeight = organizationDepth <= 0 ? 60 : organizationDepth === 1 ? 46 : 34;
     return { halfWidth, halfHeight, radius: Math.hypot(halfWidth, halfHeight) };
@@ -28,10 +29,11 @@ export function polylineDistance(points = []) {
   return total;
 }
 
-// Presentation-only A* over a sparse visibility graph. Structure corners and
-// existing road endpoints are navigation nodes; no visible square nav grid is
-// imposed on the earth. Existing worn routes have lower edge cost, so roads are
-// preferred only when the saved travel cost beats the detour.
+// Presentation-only A* over a sparse visibility graph. Grass is deliberately
+// expensive and established traffic progressively cheaper, so useful roads
+// become the default without making a road semantic or forcing absurd detours.
+// Only route-local road nodes are admitted to each A* search; the old global
+// road-node scan grew quadratically with world history and could stall entry.
 export function navigatePlaythingsRoute(waypoints = [], structures = [], roads = new Map()) {
   const clean = uniquePoints((waypoints || []).filter(Boolean));
   if (clean.length < 2) return clean;
@@ -50,11 +52,25 @@ export function recordRouteTraffic(roads, points = [], artifactKey = '') {
     const b = corridor[index];
     if (samePoint(a, b)) continue;
     const key = roadSegmentKey(a, b);
-    const prior = roads.get(key) || { key, a: freezePoint(a), b: freezePoint(b), count: 0, trailFromArtifactKey: '', pathFromArtifactKey: '', roadFromArtifactKey: '' };
-    const next = { ...prior, count: prior.count + 1 };
+    const prior = roads.get(key) || {
+      key,
+      a: freezePoint(a),
+      b: freezePoint(b),
+      count: 0,
+      levelFromArtifactKeys: Array(MAX_ROAD_LEVEL).fill(''),
+      trailFromArtifactKey: '',
+      pathFromArtifactKey: '',
+      roadFromArtifactKey: ''
+    };
+    const next = { ...prior, levelFromArtifactKeys: Array.from(prior.levelFromArtifactKeys || Array(MAX_ROAD_LEVEL).fill('')) };
+    next.count = Number(prior.count || 0) + 1;
+    const level = roadLevel(next.count);
+    if (!next.levelFromArtifactKeys[level - 1]) next.levelFromArtifactKeys[level - 1] = artifactKey;
+    // Keep legacy threshold receipts for compatibility with older observation
+    // caches while the renderer uses the richer 1..10 level projection.
     if (!next.trailFromArtifactKey && next.count >= 2) next.trailFromArtifactKey = artifactKey;
     if (!next.pathFromArtifactKey && next.count >= 4) next.pathFromArtifactKey = artifactKey;
-    if (!next.roadFromArtifactKey && next.count >= 8) next.roadFromArtifactKey = artifactKey;
+    if (!next.roadFromArtifactKey && next.count >= 7) next.roadFromArtifactKey = artifactKey;
     roads.set(key, next);
   }
 }
@@ -77,11 +93,9 @@ function sampledTrafficCorridor(points = []) {
 export function playthingsVisibleRoads(world, visibleArtifactKeys = new Set()) {
   const qualified = [];
   for (const segment of world?.roadSegments || []) {
-    let kind = '';
-    if (segment.roadFromArtifactKey && visibleArtifactKeys.has(segment.roadFromArtifactKey)) kind = 'road';
-    else if (segment.pathFromArtifactKey && visibleArtifactKeys.has(segment.pathFromArtifactKey)) kind = 'path';
-    else if (segment.trailFromArtifactKey && visibleArtifactKeys.has(segment.trailFromArtifactKey)) kind = 'trail';
-    if (kind) qualified.push({ ...segment, kind });
+    const level = visibleRoadLevel(segment, visibleArtifactKeys);
+    if (!level) continue;
+    qualified.push({ ...segment, level });
   }
   const endpointCounts = new Map();
   for (const segment of qualified) {
@@ -92,18 +106,36 @@ export function playthingsVisibleRoads(world, visibleArtifactKeys = new Set()) {
   }
   return Object.freeze(qualified.map((segment) => {
     const connected = (endpointCounts.get(pointKey(segment.a)) || 0) > 1 || (endpointCounts.get(pointKey(segment.b)) || 0) > 1;
-    // Isolated high-wear fragments read as worn earth / entrance aprons. Only
-    // connected corridors are allowed to visually graduate into path/road.
-    return Object.freeze({ ...segment, kind: connected ? segment.kind : 'wear' });
+    const kind = !connected ? 'wear' : segment.level <= 2 ? 'trail' : segment.level <= 5 ? 'path' : 'road';
+    return Object.freeze({ ...segment, kind, connected });
   }));
+}
+
+export function roadLevel(count = 0) {
+  return Math.max(0, Math.min(MAX_ROAD_LEVEL, Math.floor(Number(count || 0))));
+}
+
+function visibleRoadLevel(segment = {}, visibleArtifactKeys = new Set()) {
+  const levels = Array.isArray(segment.levelFromArtifactKeys) ? segment.levelFromArtifactKeys : [];
+  for (let index = Math.min(MAX_ROAD_LEVEL, levels.length) - 1; index >= 0; index -= 1) {
+    const artifactKey = levels[index];
+    if (artifactKey && visibleArtifactKeys.has(artifactKey)) return index + 1;
+  }
+  // Carried 001-16 road state does not have per-level receipts. Preserve a
+  // bounded fallback when older world state is ever supplied directly.
+  if (segment.roadFromArtifactKey && visibleArtifactKeys.has(segment.roadFromArtifactKey)) return Math.min(MAX_ROAD_LEVEL, Math.max(7, roadLevel(segment.count)));
+  if (segment.pathFromArtifactKey && visibleArtifactKeys.has(segment.pathFromArtifactKey)) return Math.min(5, Math.max(3, roadLevel(segment.count)));
+  if (segment.trailFromArtifactKey && visibleArtifactKeys.has(segment.trailFromArtifactKey)) return Math.min(2, Math.max(1, roadLevel(segment.count)));
+  return 0;
 }
 
 function routeBetween(start, end, structures = [], roads = new Map()) {
   if (!roads.size && lineOfSightClear(start, end, structures)) return [start, end];
   const nodes = [freezePoint(start), freezePoint(end)];
-  for (const structure of structures || []) {
+  const relevantStructures = routeRelevantStructures(start, end, structures);
+  for (const structure of relevantStructures) {
     const fp = structure.footprint || { halfWidth: 34, halfHeight: 28 };
-    const margin = 18;
+    const margin = structure.kind === 'plaything-obstacle' ? 10 : 18;
     const dx = Number(fp.halfWidth || 34) + margin;
     const dy = Number(fp.halfHeight || 28) + margin;
     nodes.push(
@@ -113,7 +145,7 @@ function routeBetween(start, end, structures = [], roads = new Map()) {
       freezePoint({ x: structure.point.x - dx, y: structure.point.y + dy })
     );
   }
-  for (const road of roads.values()) {
+  for (const road of routeRelevantRoads(start, end, roads)) {
     nodes.push(freezePoint(road.a), freezePoint(road.b));
   }
   const unique = uniquePoints(nodes);
@@ -134,11 +166,13 @@ function routeBetween(start, end, structures = [], roads = new Map()) {
     }
     if (current === endIndex) return reconstructRoute(unique, came, current);
     open.delete(current);
-    for (let next = 0; next < unique.length; next += 1) {
-      if (next === current || !lineOfSightClear(unique[current], unique[next], structures)) continue;
+    const candidates = neighborIndexes(unique, current, endIndex);
+    for (const next of candidates) {
+      if (next === current || !lineOfSightClear(unique[current], unique[next], relevantStructures)) continue;
       const distance = Math.sqrt(distanceSquared(unique[current], unique[next]));
       const road = roads.get(roadSegmentKey(unique[current], unique[next]));
-      const tentative = (g.get(current) ?? Number.POSITIVE_INFINITY) + distance * roadTravelFactor(road?.count || 0);
+      const factor = road ? roadTravelFactor(road.count) : GRASS_TRAVEL_FACTOR;
+      const tentative = (g.get(current) ?? Number.POSITIVE_INFINITY) + distance * factor;
       if (tentative >= (g.get(next) ?? Number.POSITIVE_INFINITY)) continue;
       came.set(next, current);
       g.set(next, tentative);
@@ -149,6 +183,54 @@ function routeBetween(start, end, structures = [], roads = new Map()) {
   return [start, end];
 }
 
+function routeRelevantStructures(start, end, structures = []) {
+  const direct = Math.sqrt(distanceSquared(start, end));
+  const margin = Math.max(110, Math.min(320, direct * 0.38));
+  return (structures || []).filter((structure) => pointNearRouteBox(structure.point, start, end, margin));
+}
+
+function routeRelevantRoads(start, end, roads = new Map()) {
+  const direct = Math.sqrt(distanceSquared(start, end));
+  const margin = Math.max(190, Math.min(520, direct * 0.58));
+  const candidates = [];
+  for (const road of roads.values()) {
+    const midpoint = { x: (Number(road.a?.x || 0) + Number(road.b?.x || 0)) / 2, y: (Number(road.a?.y || 0) + Number(road.b?.y || 0)) / 2 };
+    const nearEndpoint = Math.min(distanceSquared(road.a, start), distanceSquared(road.b, start), distanceSquared(road.a, end), distanceSquared(road.b, end)) < 180 * 180;
+    if (!nearEndpoint && !pointNearRouteBox(midpoint, start, end, margin)) continue;
+    candidates.push({ road, score: pointSegmentDistanceSquared(midpoint, start, end) - roadLevel(road.count) * 180 });
+  }
+  candidates.sort((a, b) => a.score - b.score || String(a.road.key).localeCompare(String(b.road.key)));
+  return candidates.slice(0, MAX_ROUTE_ROAD_SEGMENTS).map((entry) => entry.road);
+}
+
+function neighborIndexes(nodes, current, endIndex) {
+  const point = nodes[current];
+  const candidates = [];
+  for (let index = 0; index < nodes.length; index += 1) {
+    if (index === current) continue;
+    candidates.push({ index, distance: distanceSquared(point, nodes[index]) });
+  }
+  candidates.sort((a, b) => a.distance - b.distance || a.index - b.index);
+  const nearest = candidates.slice(0, 24).map((entry) => entry.index);
+  if (!nearest.includes(endIndex)) nearest.push(endIndex);
+  return nearest;
+}
+
+function pointNearRouteBox(point, start, end, margin) {
+  const minX = Math.min(start.x, end.x) - margin, maxX = Math.max(start.x, end.x) + margin;
+  const minY = Math.min(start.y, end.y) - margin, maxY = Math.max(start.y, end.y) + margin;
+  return Number(point?.x || 0) >= minX && Number(point?.x || 0) <= maxX && Number(point?.y || 0) >= minY && Number(point?.y || 0) <= maxY;
+}
+
+function pointSegmentDistanceSquared(point, a, b) {
+  const abx = Number(b?.x || 0) - Number(a?.x || 0), aby = Number(b?.y || 0) - Number(a?.y || 0);
+  const apx = Number(point?.x || 0) - Number(a?.x || 0), apy = Number(point?.y || 0) - Number(a?.y || 0);
+  const denom = abx * abx + aby * aby;
+  const t = denom ? Math.max(0, Math.min(1, (apx * abx + apy * aby) / denom)) : 0;
+  const x = Number(a?.x || 0) + abx * t, y = Number(a?.y || 0) + aby * t;
+  return distanceSquared(point, { x, y });
+}
+
 function reconstructRoute(nodes, came, current) {
   const route = [nodes[current]];
   while (came.has(current)) { current = came.get(current); route.push(nodes[current]); }
@@ -157,7 +239,7 @@ function reconstructRoute(nodes, came, current) {
 function lineOfSightClear(a, b, structures = []) { return !(structures || []).some((structure) => segmentIntersectsFootprint(a, b, structure)); }
 function segmentIntersectsFootprint(a, b, structure) {
   const fp = structure?.footprint || { halfWidth: 34, halfHeight: 28 };
-  const margin = 12;
+  const margin = structure?.kind === 'plaything-obstacle' ? 4 : 12;
   const minX = structure.point.x - Number(fp.halfWidth || 34) - margin;
   const maxX = structure.point.x + Number(fp.halfWidth || 34) + margin;
   const minY = structure.point.y - Number(fp.halfHeight || 28) - margin;
@@ -193,8 +275,17 @@ function roadSegmentKey(a, b) {
   const ak = `${left.x}:${left.y}`, bk = `${right.x}:${right.y}`;
   return ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
 }
-function roadTravelFactor(count = 0) { return count >= 8 ? .46 : count >= 4 ? .62 : count >= 2 ? .78 : 1; }
-function routeHeuristic(a, b) { return Math.sqrt(distanceSquared(a, b)) * .52; }
+function roadTravelFactor(count = 0) {
+  const level = roadLevel(count);
+  if (!level) return GRASS_TRAVEL_FACTOR;
+  const base = Math.max(.38, .9 - (level - 1) * .058);
+  // A very heavily used one-cell corridor becomes slightly less attractive,
+  // allowing nearby equal-cost lanes/junctions to emerge instead of collapsing
+  // every future journey onto one mathematical line.
+  const capacity = Math.min(.14, Math.max(0, Number(count || 0) - 18) * .008);
+  return base + capacity;
+}
+function routeHeuristic(a, b) { return Math.sqrt(distanceSquared(a, b)) * .38; }
 function isOrganizationArtifact(artifact = {}) { return artifact.presentationSchemaId === 'tiinex.party.organization.v1' || artifact.schemaId === 'tiinex.party.organization.v1'; }
 function uniquePoints(points = []) {
   const out = [], seen = new Set();

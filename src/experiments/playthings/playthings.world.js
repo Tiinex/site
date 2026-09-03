@@ -1,7 +1,9 @@
 import { planPlaythingsHistory } from './playthings.timeline.js';
 import { parsePlaythingsTime, playthingsLeafIdleState } from './playthings.clock.js';
 import { footprintObstacle, navigatePlaythingsRoute, playthingsVisibleRoads, polylineDistance, recordRouteTraffic, structureFootprintFor } from './playthings.navigation.js';
+import { playthingsOccupiedPoints, playthingsRouteObstacles } from './playthings.worldOccupancy.js';
 import { nearestOrganicFreePoint, nearestTrafficAnchor, rootGrowthBase } from './playthings.placement.js';
+import { buildPlaythingsLivingProjection, nearestLivingAncestorKey } from './playthings.living.js';
 
 export { playthingsVisibleRoads };
 
@@ -11,6 +13,7 @@ export const PLAYTHINGS_WORLD_HEIGHT = 1350;
 
 const WORLD_PADDING = 85;
 const BLOCK_RADIUS = 34;
+const ROOT_GATE_FOOTPRINT = Object.freeze({ halfWidth: 42, halfHeight: 50, radius: 66 });
 
 /**
  * Presentation-only deterministic geography.
@@ -25,6 +28,7 @@ export function generatePlaythingsWorld(model = {}) {
   const byKey = new Map(artifacts.map((artifact) => [artifact.key, artifact]));
   const parentEdges = (model.edges || []).filter((edge) => edge.kind === 'parent' && byKey.has(edge.from) && byKey.has(edge.to));
   const parentByChild = new Map(parentEdges.map((edge) => [edge.to, edge.from]));
+  const living = buildPlaythingsLivingProjection(artifacts, parentEdges);
   const history = planPlaythingsHistory(model);
   const scenePositions = new Map();
   const actorPositions = new Map();
@@ -36,23 +40,31 @@ export function generatePlaythingsWorld(model = {}) {
   const restedLeaves = new Set();
   const restedHabitatByLeaf = new Map();
   const roadSegments = new Map();
+  const rootGate = Object.freeze({ kind: 'root-gate', point: freezePoint(worldCenter()), footprint: ROOT_GATE_FOOTPRINT, habitat: false, semanticAuthority: 'none' });
+  const rootGateUsedBy = [];
 
   for (const event of history.events || []) {
     const artifact = byKey.get(event?.artifactKey || '');
     if (!artifact) continue;
 
     const parentKey = parentByChild.get(artifact.key) || '';
+    const livingParentKey = String(event.livingParentKey || living.parentByChild.get(artifact.key) || '');
     let sourceKey = '';
-    let sourcePoint = parentKey ? actorPositions.get(parentKey) || scenePositions.get(parentKey) || worldCenter() : null;
-    let branchPoint = parentKey ? scenePositions.get(parentKey) || sourcePoint || worldCenter() : null;
+    let sourcePoint = livingParentKey ? actorPositions.get(livingParentKey) || scenePositions.get(livingParentKey) || rootGate.point : null;
+    let branchPoint = livingParentKey ? scenePositions.get(livingParentKey) || sourcePoint || rootGate.point : null;
+    let blueprintAnchorPoint = null;
 
     if (event.kind === 'advance') {
-      sourceKey = parentKey;
-      activeLeaves.delete(parentKey);
+      sourceKey = livingParentKey;
+      activeLeaves.delete(livingParentKey);
     } else if (event.kind === 'split') {
-      sourceKey = currentLeafBelow(parentKey, activeLeaves, parentByChild, byKey);
+      sourceKey = currentLeafBelow(livingParentKey, activeLeaves, living.parentByChild, byKey);
       sourcePoint = actorPositions.get(sourceKey) || sourcePoint;
-      branchPoint = scenePositions.get(parentKey) || actorPositions.get(parentKey) || branchPoint;
+      branchPoint = scenePositions.get(livingParentKey) || actorPositions.get(livingParentKey) || branchPoint;
+    } else if (event.kind === 'observe') {
+      const ancestorKey = nearestLivingAncestorKey(artifact.key, living.artifactByKey, living.semanticParentByChild);
+      const activeAncestorLeaf = ancestorKey ? currentLeafBelow(ancestorKey, activeLeaves, living.parentByChild, byKey) : '';
+      blueprintAnchorPoint = actorPositions.get(activeAncestorLeaf) || actorPositions.get(ancestorKey) || scenePositions.get(ancestorKey) || null;
     }
 
     const sourceLeafPoint = sourceKey ? actorPositions.get(sourceKey) || sourcePoint || null : null;
@@ -76,7 +88,7 @@ export function generatePlaythingsWorld(model = {}) {
       if (!habitat) continue;
       const to = structureDoorPoint(habitat);
       const approach = structureApproachPoint(habitat);
-      const route = navigatePlaythingsRoute([from, approach, to], structures, roadSegments);
+      const route = navigatePlaythingsRoute([from, approach, to], playthingsRouteObstacles(activeLeaves, actorPositions, structures, rootGate, new Set([leafKey])), roadSegments);
       const distance = polylineDistance(route);
       restingMigrations.push(Object.freeze({
         headKey: leafKey,
@@ -99,7 +111,7 @@ export function generatePlaythingsWorld(model = {}) {
 
     // A lineage that becomes active again wakes from the place where it had
     // previously rested. The semantic leaf never changed; only presentation did.
-    if (sourceKey && sourcePoint) {
+    if (event.kind !== 'observe' && sourceKey && sourcePoint) {
       const restingHabitatKey = restedHabitatByLeaf.get(sourceKey) || '';
       const habitat = restingHabitatKey ? structuresByArtifact.get(restingHabitatKey) || null : null;
       if (habitat) sourcePoint = structureDoorPoint(habitat);
@@ -119,25 +131,30 @@ export function generatePlaythingsWorld(model = {}) {
     const persistent = !artifact.isSchemaArtifact && artifact.persistenceKind === 'structure';
     const organizationDepth = persistent && isOrganizationArtifact(artifact) ? organizationLineageDepth(artifact.key, byKey, parentByChild) : 0;
     const plannedFootprint = persistent ? structureFootprintFor(artifact, organizationDepth) : null;
-    const excludedSource = event.kind === 'advance' && sourceKey ? new Set([sourceKey]) : null;
-    const occupied = occupiedPoints(activeLeaves, actorPositions, structures, excludedSource);
+    const excludedSource = ['advance','split'].includes(event.kind) && sourceKey ? new Set([sourceKey]) : null;
+    const occupied = [...playthingsOccupiedPoints(activeLeaves, actorPositions, structures, excludedSource), footprintObstacle(rootGate.point, rootGate.footprint)];
     const lineagePlace = nearestAncestorStructure(parentKey, structuresByArtifact, parentByChild);
-    const base = event.kind === 'spawn' ? rootGrowthBase(seed, occupied) : branchPoint || sourcePoint || worldCenter();
-    const trafficAnchor = event.kind === 'spawn' ? null : nearestTrafficAnchor(base, roadSegments);
+    const base = event.kind === 'observe'
+      ? blueprintAnchorPoint || lineagePlace?.point || rootGate.point
+      : event.kind === 'spawn'
+        ? rootGrowthBase(seed, occupied)
+        : branchPoint || sourcePoint || rootGate.point;
+    const trafficAnchor = event.kind === 'observe' ? null : nearestTrafficAnchor(base, roadSegments);
     const scenePoint = nearestOrganicFreePoint(base, `${event.kind}:${seed}`, occupied, {
-      minimumRadius: event.kind === 'spawn' ? 0 : 36,
+      minimumRadius: event.kind === 'spawn' ? 22 : event.kind === 'observe' ? 20 : 36,
       candidateRadius: Number(plannedFootprint?.radius || 0),
       placeAnchor: lineagePlace?.point || null,
-      placeWeight: lineagePlace ? 0.52 : 0,
+      placeWeight: lineagePlace ? 0.58 : 0,
       trafficAnchor,
-      trafficWeight: trafficAnchor ? 0.14 : 0
+      trafficWeight: trafficAnchor ? (event.kind === 'spawn' ? 0.2 : 0.18) : 0
     });
     const actorPoint = persistent
       ? nearestOrganicFreePoint(scenePoint, `stand:${seed}`, [...occupied, footprintObstacle(scenePoint, plannedFootprint)], { minimumRadius: Math.max(42, Number(plannedFootprint?.radius || 0) + 18), maximumShell: 5, placeAnchor: scenePoint, placeWeight: 0.528 })
       : scenePoint;
 
-    let arrivalSource = sourcePoint;
-    let arrivalReason = event.kind;
+    let arrivalSource = event.kind === 'spawn' ? rootGate.point : sourcePoint;
+    let arrivalReason = event.kind === 'spawn' ? 'root-gate' : event.kind;
+    if (event.kind === 'spawn') rootGateUsedBy.push(artifact.key);
     if (artifact.arrivalKind === 'organization-receiver') {
       const organization = nearestOrganizationStructure(scenePoint, structures);
       if (organization) {
@@ -147,8 +164,10 @@ export function generatePlaythingsWorld(model = {}) {
     }
 
     scenePositions.set(artifact.key, freezePoint(scenePoint));
-    actorPositions.set(artifact.key, freezePoint(actorPoint));
-    if (!artifact.isSchemaArtifact) activeLeaves.add(artifact.key);
+    if (!artifact.isSchemaArtifact) {
+      actorPositions.set(artifact.key, freezePoint(actorPoint));
+      activeLeaves.add(artifact.key);
+    }
 
     let structure = null;
     if (persistent) {
@@ -169,26 +188,29 @@ export function generatePlaythingsWorld(model = {}) {
       structuresByArtifact.set(artifact.key, structure);
     }
 
-    const rawMotionPoints = event.kind === 'spawn'
-      ? [actorPoint]
-      : event.kind === 'split'
-        ? uniquePoints([arrivalSource, branchPoint])
-        : uniquePoints([arrivalSource, actorPoint]);
+    const rawMotionPoints = event.kind === 'observe'
+      ? [scenePoint]
+      : event.kind === 'spawn'
+        ? uniquePoints([arrivalSource, actorPoint])
+        : event.kind === 'split'
+          ? uniquePoints([arrivalSource, branchPoint])
+          : uniquePoints([arrivalSource, actorPoint]);
     const routeStructures = structure ? structures.filter((candidate) => candidate.artifactKey !== structure.artifactKey) : structures;
-    const motionPoints = event.kind === 'spawn' ? rawMotionPoints : navigatePlaythingsRoute(rawMotionPoints, routeStructures, roadSegments);
-    if (motionPoints.length > 1) recordRouteTraffic(roadSegments, motionPoints, artifact.key);
+    const routeObstacles = playthingsRouteObstacles(activeLeaves, actorPositions, routeStructures, rootGate, new Set([artifact.key, sourceKey].filter(Boolean)));
+    const motionPoints = event.kind === 'observe' ? rawMotionPoints : navigatePlaythingsRoute(rawMotionPoints, routeObstacles, roadSegments);
+    if (!artifact.isSchemaArtifact && motionPoints.length > 1) recordRouteTraffic(roadSegments, motionPoints, artifact.key);
 
     let fork = null;
     if (event.kind === 'split' && branchPoint && sourceKey) {
       const approachStart = arrivalSource || sourceLeafPoint || branchPoint;
-      const approach = navigatePlaythingsRoute(uniquePoints([approachStart, branchPoint]), routeStructures, roadSegments);
+      const approach = navigatePlaythingsRoute(uniquePoints([approachStart, branchPoint]), routeObstacles, roadSegments);
       const continuationTarget = sourceLeafPoint || approachStart || branchPoint;
       const sleepHabitat = sourceRestingHabitat || nearestHabitatStructure(continuationTarget, structures);
       const sleepTarget = sleepHabitat ? structureDoorPoint(sleepHabitat) : continuationTarget;
       const sleepApproach = sleepHabitat ? structureApproachPoint(sleepHabitat) : sleepTarget;
-      const sleepRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, sleepApproach, sleepTarget]), routeStructures, roadSegments);
-      const continuationRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, continuationTarget]), routeStructures, roadSegments);
-      const siblingRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, actorPoint]), routeStructures, roadSegments);
+      const sleepRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, sleepApproach, sleepTarget]), routeObstacles, roadSegments);
+      const continuationRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, continuationTarget]), routeObstacles, roadSegments);
+      const siblingRoute = navigatePlaythingsRoute(uniquePoints([branchPoint, actorPoint]), routeObstacles, roadSegments);
       // All three fan-out routes are one presentation event. The sleep-return
       // route never changes occupancy; resting counts are derived from the real
       // living leaf state after the event, not from this choreography echo.
@@ -217,7 +239,7 @@ export function generatePlaythingsWorld(model = {}) {
       motionPoints: Object.freeze(motionPoints.map(freezePoint)),
       motionPath: motionPath(motionPoints),
       arrivalReason,
-      placementReason: lineagePlace ? `near-place:${lineagePlace.artifactKey}` : event.kind === 'spawn' ? 'root-growth' : 'nearest-free-from-lineage',
+      placementReason: event.kind === 'observe' ? (lineagePlace ? `blueprint-near-place:${lineagePlace.artifactKey}` : 'blueprint-root-gate') : lineagePlace ? `near-place:${lineagePlace.artifactKey}` : event.kind === 'spawn' ? 'root-gate-growth' : 'nearest-free-from-lineage',
       visualSeed: lineagePresentationSeed(artifact.key, byKey, parentByChild),
       persistent,
       structure,
@@ -237,6 +259,7 @@ export function generatePlaythingsWorld(model = {}) {
     eventProjection,
     restingMigrationsByEvent,
     roadSegments: Object.freeze(Array.from(roadSegments.values()).map((segment) => Object.freeze({ ...segment }))),
+    rootGate: Object.freeze({ ...rootGate, usedByArtifactKeys: Object.freeze(rootGateUsedBy.slice()) }),
     semanticAuthority: 'none'
   });
 }
@@ -251,6 +274,7 @@ export function playthingsRestingAssignment(world, artifact, point, playheadMs, 
 
 export function playthingsVisibleWorldBounds(world, artifactKeys = new Set(), actorKeys = [], activeProjection = null) {
   const points = [];
+  if (world?.rootGate?.usedByArtifactKeys?.some((key) => !artifactKeys.size || artifactKeys.has(key))) points.push(world.rootGate.point);
   for (const structure of world?.structures || []) if (!artifactKeys.size || artifactKeys.has(structure.artifactKey)) points.push(structure.point);
   for (const key of actorKeys || []) { const point = world?.actorPositions?.get(key); if (point) points.push(point); }
   for (const point of activeProjection?.motionPoints || []) points.push(point);
@@ -279,12 +303,7 @@ export function playthingsTerrainMarks(width = PLAYTHINGS_WORLD_WIDTH, height = 
   return Object.freeze(marks);
 }
 
-function occupiedPoints(activeLeaves, actorPositions, structures, excludedLeaves = null) {
-  const points = [];
-  for (const key of activeLeaves || []) { if (excludedLeaves?.has(key)) continue; const point = actorPositions.get(key); if (point) points.push(point); }
-  for (const structure of structures || []) if (structure?.point) points.push(footprintObstacle(structure.point, structure.footprint));
-  return points;
-}
+
 
 function currentLeafBelow(parentKey, activeLeaves, parentByChild, byKey) {
   const candidates = Array.from(activeLeaves || []).filter((leafKey) => isDescendantOf(leafKey, parentKey, parentByChild));
@@ -318,7 +337,7 @@ function nearestAncestorStructure(parentKey, structuresByArtifact, parentByChild
   return null;
 }
 function structureSpawnPoint(structure, actorPositions, activeLeaves, structures, seed) {
-  const blocked = occupiedPoints(activeLeaves, actorPositions, structures);
+  const blocked = playthingsOccupiedPoints(activeLeaves, actorPositions, structures);
   return nearestOrganicFreePoint(structureDoorPoint(structure), `spawn:${structure.artifactKey}:${seed}`, blocked, { minimumRadius: 32, maximumShell: 4, placeAnchor: structure.point, placeWeight: 0.52 });
 }
 function structureDoorPoint(structure) { const halfHeight = Number(structure?.footprint?.halfHeight || (structure.kind === 'workspace' ? 28 : 34)); return { x: structure.point.x, y: structure.point.y + halfHeight + 8 }; }

@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { projectPlaythingsMultiverse } from './playthings.model.js';
 import {
   planPlaythingsHistory,
   playthingsObservationAtCursor,
@@ -16,16 +15,20 @@ import { readPlaythingsProfile, setPlaythingsFollow, writePlaythingsProfile } fr
 import { buildPlaythingsTechTree } from './playthings.techTree.js';
 import { isPlaythingsLocalArtifact } from './playthings.find.js';
 import { PlaythingsArtifactFinder } from './PlaythingsArtifactFinder.jsx';
+import { preparePlaythingsSnapshotAsync } from './playthings.prepare.client.js';
 import './playthings.css';
 
-export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onOpenLineage = null, onResolveLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
-  const incomingModel = useMemo(() => projectPlaythingsMultiverse(workspaces), [workspaces]);
-  const [target, setTarget] = useState(() => incomingModel);
-  const history = useMemo(() => planPlaythingsHistory(target), [target]);
+export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefresh = null, onOpenRecord = null, onOpenLineage = null, onResolveLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
+  if (!preparedSnapshot?.model) throw new Error('PlaythingsMultiverse requires an asynchronously prepared snapshot.');
+  const incomingSnapshot = preparedSnapshot;
+  const incomingModel = incomingSnapshot.model;
+  const [targetSnapshot, setTargetSnapshot] = useState(() => incomingSnapshot);
+  const target = targetSnapshot.model;
+  const history = targetSnapshot.history || planPlaythingsHistory(target);
   const prefersReducedMotion = useReducedMotion();
   const [initialStart] = useState(() => {
     const observation = readPlaythingsObservation(incomingModel);
-    const initialHistory = planPlaythingsHistory(incomingModel);
+    const initialHistory = incomingSnapshot.history || planPlaythingsHistory(incomingModel);
     const resolution = resolvePlaythingsObservationCursor(observation, initialHistory, incomingModel);
     const cursor = resolution.valid ? resolution.cursor : 0;
     return { cursor, phase: cursor >= initialHistory.events.length || !initialHistory.events.length ? 'settled' : 'playing' };
@@ -42,12 +45,12 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
   useEffect(() => {
     if (phase === 'refreshing' || incomingModel.fingerprint === target.fingerprint) return;
     const currentObservation = playthingsObservationAtCursor(history, target, cursor);
-    const nextHistory = planPlaythingsHistory(incomingModel);
+    const nextHistory = incomingSnapshot.history || planPlaythingsHistory(incomingModel);
     const resolution = resolvePlaythingsObservationCursor(currentObservation, nextHistory, incomingModel);
     const previousKeys = new Set((target.artifacts || []).map((artifact) => artifact.key));
     const localAdditions = (incomingModel.artifacts || []).filter((artifact) => !previousKeys.has(artifact.key) && isPlaythingsLocalArtifact(artifact));
     if (localAdditions.length) pendingLocalFocusRef.current = localAdditions[localAdditions.length - 1].key;
-    setTarget(incomingModel);
+    setTargetSnapshot(incomingSnapshot);
     setEventToken((value) => value + 1);
     if (!resolution.valid) {
       setCursor(0);
@@ -67,7 +70,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
       setEventArmed(true);
       setPhase('playing');
     }
-  }, [incomingModel.fingerprint]); // direct local Create appends real-Now material without rewriting the historical playhead
+  }, [incomingModel.fingerprint]); // asynchronously prepared local/Create/package material preserves the historical playhead
 
   useEffect(() => {
     if (!prefersReducedMotion || phase !== 'playing') return;
@@ -85,11 +88,12 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
     try {
       const result = await onRefresh();
       const nextWorkspaces = Array.isArray(result?.workspaces) ? result.workspaces : workspaces;
-      const nextModel = projectPlaythingsMultiverse(nextWorkspaces);
-      const nextHistory = planPlaythingsHistory(nextModel);
+      const nextSnapshot = await preparePlaythingsSnapshotAsync(nextWorkspaces);
+      const nextModel = nextSnapshot.model;
+      const nextHistory = nextSnapshot.history || planPlaythingsHistory(nextModel);
       const resolution = resolvePlaythingsObservationCursor(previousObservation, nextHistory, nextModel);
       const nextCursor = resolution.valid ? resolution.cursor : 0;
-      setTarget(nextModel);
+      setTargetSnapshot(nextSnapshot);
       setCursor(prefersReducedMotion ? nextHistory.events.length : nextCursor);
       setEventToken((value) => value + 1);
       if (prefersReducedMotion || nextCursor >= nextHistory.events.length) {
@@ -184,6 +188,7 @@ export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpen
       <PlaythingsWorldStage
         model={visibleModel}
         fullModel={target}
+        preparedWorld={targetSnapshot.world}
         activeEvent={activeEvent}
         playing={phase === 'playing'}
         eventToken={eventToken}

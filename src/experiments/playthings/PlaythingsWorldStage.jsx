@@ -9,8 +9,8 @@ import { InteractionSpark, PixelOrganizationPlace, PixelPlaything, PixelWorkspac
 import { PlaythingsLineageDialog } from './PlaythingsLineageDialog.jsx';
 import { PlaythingsLocationDialog } from './PlaythingsLocationDialog.jsx';
 
-export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, onResolveLineage = null, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null, focusRequest = null }) {
-  const world = useMemo(() => generatePlaythingsWorld(fullModel), [fullModel]);
+export function PlaythingsWorldStage({ model, fullModel = model, preparedWorld = null, activeEvent, playing = false, eventToken = 0, eventCount = 1, playheadMs = NaN, followPlaything = false, onFollowPlaythingChange, onEventComplete, onOpenRecord, onOpenLineage, onResolveLineage = null, toolsEnabled = false, unlockedSkillIds = [], onResolveTransitions = null, onActivateTransition = null, focusRequest = null }) {
+  const world = useMemo(() => preparedWorld || generatePlaythingsWorld(fullModel), [preparedWorld, fullModel]);
   const terrain = useMemo(() => playthingsTerrainMarks(world.width, world.height), [world.width, world.height]);
   const followLocked = Boolean(followPlaything && playing && activeEvent);
   const camera = usePlaythingsCamera(world.width, world.height, { locked: followLocked });
@@ -76,6 +76,7 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
   }, [locationDialogKey, restingByStructure, actorByKey, artifactByKey, actorStates]);
   const visibleActorKeys = useMemo(() => (model.actors || []).map((actor) => actor.headKey).filter((headKey) => headKey !== hiddenSourceKey && !migratingKeys.has(headKey) && !(actorStates.get(headKey)?.state === 'resting' && actorStates.get(headKey)?.structure)), [model.actors, hiddenSourceKey, migratingKeys, actorStates]);
   const visibleRoads = useMemo(() => playthingsVisibleRoads(world, visibleKeys), [world, visibleKeys]);
+  const rootGateVisible = Boolean(activeProjection?.arrivalReason === 'root-gate' || world.rootGate?.usedByArtifactKeys?.some((key) => visibleKeys.has(key)));
   const fitBounds = useMemo(() => playthingsVisibleWorldBounds(world, visibleKeys, visibleActorKeys, activeProjection), [world, visibleKeys, visibleActorKeys, activeProjection]);
   const selectedWorldPoint = selectedActor ? world.actorPositions.get(selectedActor.headKey) || world.scenePositions.get(selectedArtifactKey) : selectedStructure?.point || (selectedArtifactKey ? world.scenePositions.get(selectedArtifactKey) : null);
   const activityBounds = useMemo(() => playthingsActivityBounds(activeProjection, activeRestingMigrations, selectedWorldPoint, world), [activeProjection, activeRestingMigrations, selectedWorldPoint?.x, selectedWorldPoint?.y, world]);
@@ -133,7 +134,8 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
       </defs>
       <rect className="tx-playthings-earth" x="0" y="0" width={world.width} height={world.height} />
       <g className="tx-playthings-terrain-layer" aria-hidden="true">{terrain.map((mark, index) => <TerrainMark key={index} {...mark} />)}</g>
-      <g className="tx-playthings-road-layer" aria-hidden="true">{visibleRoads.map((road) => <g key={road.key}><path className={`tx-playthings-road-underlay is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /><path className={`tx-playthings-road-core is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /></g>)}</g>
+      {rootGateVisible && world.rootGate ? <RootGate gate={world.rootGate} active={activeProjection?.arrivalReason === 'root-gate'} /> : null}
+      <g className="tx-playthings-road-layer" aria-hidden="true">{visibleRoads.map((road) => <g key={road.key} className={`tx-playthings-road-segment is-${road.kind} is-level-${road.level}`}><path className={`tx-playthings-road-underlay is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /><path className={`tx-playthings-road-core is-${road.kind}`} d={`M ${road.a.x} ${road.a.y} L ${road.b.x} ${road.b.y}`} /><RoadDecoration road={road} /></g>)}</g>
 
       {historyActor ? <LineageTesseract actor={historyActor} world={world} artifactByKey={artifactByKey} pinned={Boolean(selectedActor)} selectedArtifactKey={selectedArtifactKey} /> : null}
 
@@ -199,6 +201,32 @@ export function PlaythingsWorldStage({ model, fullModel = model, activeEvent, pl
     {lineageDialog ? <PlaythingsLineageDialog snapshot={lineageDialog} onClose={() => setLineageDialog(null)} onLocateArtifact={locateLineageRecord} onOpenRecord={onOpenRecord} onOpenViewerLineage={onOpenLineage} /> : null}
     {locationDialogKey ? <PlaythingsLocationDialog structure={world.structuresByArtifact?.get(locationDialogKey) || null} artifact={artifactByKey.get(locationDialogKey) || null} residents={locationResidents} onClose={() => setLocationDialogKey('')} onSelectResident={(actor, leafArtifact) => { setSelection({ kind: 'actor', id: actor.id, artifactKey: leafArtifact.key }); const point = world.actorPositions.get(actor.headKey) || world.scenePositions.get(leafArtifact.key); if (point) camera.follow(point); }} onOpenLineage={openLineageDialog} onOpenRecord={onOpenRecord} /> : null}
   </div>;
+}
+
+function RootGate({ gate, active = false }) {
+  const point = gate?.point || { x: 0, y: 0 };
+  return <g className={`tx-playthings-root-gate ${active ? 'is-active' : ''}`} transform={`translate(${point.x} ${point.y})`} aria-label="Root Gate, Playthings fallback origin" role="img">
+    <title>Root Gate · presentation-only fallback origin when loaded Tiinex history declares no spatial place.</title>
+    <ellipse className="shadow" cx="0" cy="34" rx="42" ry="10" />
+    <path className="stone-back" d="M -34 30 V -8 Q -34 -48 0 -58 Q 34 -48 34 -8 V 30 H 20 V -7 Q 20 -33 0 -40 Q -20 -33 -20 -7 V 30 Z" />
+    <path className="stone-light" d="M -28 26 V -7 Q -27 -39 0 -49 Q 27 -39 28 -7 V 26 H 20 V -7 Q 20 -33 0 -40 Q -20 -33 -20 -7 V 26 Z" />
+    <path className="rift" d="M 0 -35 C 14 -28 17 -8 10 13 C 7 22 2 28 0 30 C -4 25 -11 17 -12 5 C -14 -10 -9 -29 0 -35 Z" />
+    <path className="rift-core" d="M 0 -27 C 8 -20 9 -4 5 12 C 3 18 1 21 0 23 C -2 19 -6 12 -6 3 C -7 -8 -4 -21 0 -27 Z" />
+    <rect className="rune" x="-39" y="5" width="6" height="6" /><rect className="rune" x="33" y="-10" width="6" height="6" />
+    <text x="0" y="49">ROOT GATE</text>
+  </g>;
+}
+
+function RoadDecoration({ road }) {
+  const level = Number(road?.level || 0);
+  if (level < 6) return null;
+  const mx = (Number(road.a?.x || 0) + Number(road.b?.x || 0)) / 2;
+  const my = (Number(road.a?.y || 0) + Number(road.b?.y || 0)) / 2;
+  const dx = Number(road.b?.x || 0) - Number(road.a?.x || 0), dy = Number(road.b?.y || 0) - Number(road.a?.y || 0);
+  const length = Math.max(1, Math.hypot(dx, dy));
+  const nx = -dy / length, ny = dx / length;
+  if (level >= 9) return <g className="tx-playthings-road-decoration is-lantern"><rect x={mx + nx * 10 - 1.5} y={my + ny * 10 - 8} width="3" height="8" /><rect className="lamp" x={mx + nx * 10 - 3} y={my + ny * 10 - 11} width="6" height="5" /></g>;
+  return <g className="tx-playthings-road-decoration is-stone"><rect x={mx + nx * 8 - 2} y={my + ny * 8 - 2} width="4" height="4" /></g>;
 }
 
 function PersistentStructure({ structure, artifact, restingCount = 0, selected = false, onSelect }) {

@@ -1262,3 +1262,77 @@ main.tx-react-runtime.tx-playthings-mode > .tx-toast { display: none !important;
   .tx-playthings-location-dialog-backdrop { padding: 44px 12px 62px; }
   .tx-playthings-location-room { grid-template-columns: 1fr; }
 }
+
+/* 001-17 causality + responsive Verse entry. The loading surface paints before
+   projection work begins; current browsers prepare the world in a module worker. */
+.tx-playthings-loader-host { position: relative; min-width: 0; min-height: 0; height: 100%; }
+.tx-playthings-loading { min-height: 0; height: 100%; overflow: hidden; background: #0b150d; }
+.tx-playthings-loading-world {
+  position: relative; width: 100%; height: 100%; min-height: 460px; display: grid; place-items: center;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(155,181,106,.12), transparent 31%),
+    linear-gradient(rgba(94,118,78,.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94,118,78,.08) 1px, transparent 1px), #101c12;
+  background-size: auto, 32px 32px, 32px 32px, auto;
+}
+.tx-playthings-loading-card {
+  position: relative; z-index: 2; width: min(560px, calc(100% - 42px)); padding: 24px 26px 20px;
+  border: 2px solid #67734c; background: rgba(13,23,15,.96); box-shadow: 8px 8px 0 rgba(0,0,0,.34);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.tx-playthings-loading-card small { color: #d7c85d; font-size: .62rem; letter-spacing: .12em; }
+.tx-playthings-loading-card h2 { margin: 7px 0 8px; color: #f4edb5; font-size: 1.2rem; }
+.tx-playthings-loading-card p { min-height: 2.4em; margin: 0 0 16px; color: #a9b6a2; font-size: .73rem; line-height: 1.55; }
+.tx-playthings-loading-card footer { margin-top: 8px; display: flex; justify-content: space-between; gap: 12px; color: #74816f; font-size: .58rem; }
+.tx-playthings-progress { height: 13px; padding: 2px; border: 1px solid #5f6a4e; background: #0a120c; overflow: hidden; }
+.tx-playthings-progress > span { display: block; height: 100%; min-width: 2px; background: linear-gradient(90deg,#8c8d45,#d5c85e,#b9d477); transition: width .16s ease-out; }
+.tx-playthings-progress.is-compact { width: 150px; height: 8px; padding: 1px; }
+.tx-playthings-background-loading {
+  position: absolute; z-index: 60; right: 14px; top: 58px; display: grid; grid-template-columns: auto 150px; align-items: center; gap: 9px;
+  padding: 7px 9px; border: 1px solid #5b674d; background: rgba(10,18,12,.92); color: #b9c6ae;
+  font: 700 .58rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none;
+}
+.tx-playthings-loading-gate { position: absolute; left: 50%; top: 16%; width: 116px; height: 126px; transform: translateX(-50%); opacity: .48; }
+.tx-playthings-loading-gate > span { position: absolute; inset: 0; display: grid; place-items: center; color: #77885c; font: 700 7rem/1 serif; }
+.tx-playthings-loading-gate > i { position: absolute; left: 50%; top: 27px; width: 34px; height: 68px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse,#d6d06c 0,#6f8c58 37%,rgba(64,92,61,.1) 72%); filter: blur(1px); animation: tx-playthings-rift-pulse 1.5s ease-in-out infinite alternate; }
+.tx-playthings-loading-gate > b { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); color: #fff2a2; }
+@keyframes tx-playthings-rift-pulse { to { opacity: .62; transform: translateX(-50%) scale(.9,1.06); } }
+
+/* Root Gate is presentation-only: a shared spatial origin for living roots whose
+   loaded Tiinex lineage supplies no already-observed place. */
+.tx-playthings-root-gate { pointer-events: none; }
+.tx-playthings-root-gate .shadow { fill: rgba(8,14,9,.38); }
+.tx-playthings-root-gate .stone-back { fill: #3f4939; stroke: #1c281f; stroke-width: 3; }
+.tx-playthings-root-gate .stone-light { fill: #69705a; stroke: #8e8b65; stroke-width: 1.5; }
+.tx-playthings-root-gate .rift { fill: rgba(104,151,112,.66); stroke: #b7cf86; stroke-width: 2; }
+.tx-playthings-root-gate .rift-core { fill: rgba(230,218,103,.72); }
+.tx-playthings-root-gate .rune { fill: #e0d56d; }
+.tx-playthings-root-gate text { fill: #d8ce76; text-anchor: middle; font: 900 8px/1 ui-monospace, monospace; paint-order: stroke; stroke: #152019; stroke-width: 3px; }
+.tx-playthings-root-gate.is-active .rift { animation: tx-playthings-root-gate-pulse .5s steps(2,end) infinite alternate; }
+@keyframes tx-playthings-root-gate-pulse { to { fill: rgba(149,207,142,.88); stroke: #fff09b; } }
+
+/* Ten deterministic travel grades. Grass is expensive in A*; every completed
+   journey can strengthen a corridor one grade, while isolated wear remains a yard. */
+.tx-playthings-road-segment.is-level-1 { --road-core: rgba(92,93,57,.30); --road-under: rgba(53,67,43,.17); --road-w: 1.3; --road-u: 4.4; }
+.tx-playthings-road-segment.is-level-2 { --road-core: rgba(107,96,56,.40); --road-under: rgba(62,66,43,.22); --road-w: 1.8; --road-u: 5.0; }
+.tx-playthings-road-segment.is-level-3 { --road-core: rgba(119,97,57,.52); --road-under: rgba(67,55,37,.28); --road-w: 2.5; --road-u: 6.0; }
+.tx-playthings-road-segment.is-level-4 { --road-core: rgba(132,104,61,.62); --road-under: rgba(65,50,34,.34); --road-w: 3.2; --road-u: 7.0; }
+.tx-playthings-road-segment.is-level-5 { --road-core: rgba(145,114,67,.70); --road-under: rgba(61,47,33,.40); --road-w: 4.0; --road-u: 8.2; }
+.tx-playthings-road-segment.is-level-6 { --road-core: rgba(151,122,73,.77); --road-under: rgba(57,44,31,.46); --road-w: 4.8; --road-u: 9.4; }
+.tx-playthings-road-segment.is-level-7 { --road-core: rgba(158,132,83,.82); --road-under: rgba(53,42,31,.50); --road-w: 5.5; --road-u: 10.4; }
+.tx-playthings-road-segment.is-level-8 { --road-core: rgba(166,143,95,.87); --road-under: rgba(50,41,32,.54); --road-w: 6.2; --road-u: 11.4; }
+.tx-playthings-road-segment.is-level-9 { --road-core: rgba(174,154,108,.91); --road-under: rgba(47,40,33,.58); --road-w: 6.8; --road-u: 12.4; }
+.tx-playthings-road-segment.is-level-10 { --road-core: rgba(187,170,124,.95); --road-under: rgba(45,40,34,.62); --road-w: 7.4; --road-u: 13.4; }
+.tx-playthings-road-segment .tx-playthings-road-underlay { stroke: var(--road-under); stroke-width: var(--road-u); }
+.tx-playthings-road-segment .tx-playthings-road-core { stroke: var(--road-core); stroke-width: var(--road-w); }
+.tx-playthings-road-segment.is-wear .tx-playthings-road-underlay { stroke-width: calc(var(--road-u) + 2px); stroke-dasharray: 1 7; }
+.tx-playthings-road-segment.is-wear .tx-playthings-road-core { stroke-width: max(2px, var(--road-w)); stroke-dasharray: 1 7; }
+.tx-playthings-road-decoration rect { vector-effect: non-scaling-stroke; }
+.tx-playthings-road-decoration.is-stone rect { fill: #77715a; stroke: #3d3a2f; stroke-width: 1; }
+.tx-playthings-road-decoration.is-lantern rect { fill: #574631; }
+.tx-playthings-road-decoration.is-lantern .lamp { fill: #e2ce68; stroke: #6d5d34; stroke-width: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tx-playthings-loading-gate > i, .tx-playthings-root-gate.is-active .rift { animation: none; }
+  .tx-playthings-progress > span { transition: none; }
+}

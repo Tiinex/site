@@ -1,4 +1,5 @@
 import { isPlaythingsLocalArtifact } from './playthings.find.js';
+import { buildPlaythingsLivingProjection } from './playthings.living.js';
 
 export const PLAYTHINGS_TIMELINE_SCHEMA = 'tiinex.playthings.timeline.experimental.v1';
 
@@ -14,20 +15,23 @@ export function planPlaythingsHistory(model = {}) {
   }
   for (const children of childrenByParent.values()) children.sort();
 
+  const living = buildPlaythingsLivingProjection(artifacts, parentEdges);
   const orderedArtifacts = topologicalChronologicalOrder(artifacts, parentByChild);
-  const seenChildren = new Map();
+  const seenLivingChildren = new Map();
   const events = [];
 
   for (const artifact of orderedArtifacts) {
     const parentKey = parentByChild.get(artifact.key) || '';
-    const siblingIndex = parentKey ? Number(seenChildren.get(parentKey) || 0) : 0;
-    const kind = !parentKey ? 'spawn' : siblingIndex > 0 ? 'split' : 'advance';
-    if (parentKey) seenChildren.set(parentKey, siblingIndex + 1);
+    const livingParentKey = artifact.isSchemaArtifact ? '' : living.parentByChild.get(artifact.key) || '';
+    const siblingIndex = livingParentKey ? Number(seenLivingChildren.get(livingParentKey) || 0) : 0;
+    const kind = artifact.isSchemaArtifact ? 'observe' : !livingParentKey ? 'spawn' : siblingIndex > 0 ? 'split' : 'advance';
+    if (livingParentKey) seenLivingChildren.set(livingParentKey, siblingIndex + 1);
     events.push(Object.freeze({
       id: `artifact:${artifact.key}`,
       kind,
       artifactKey: artifact.key,
       parentKey,
+      livingParentKey,
       verseId: artifact.verseId,
       at: artifact.createdAt || '',
       label: artifact.title || artifact.path || artifact.key,

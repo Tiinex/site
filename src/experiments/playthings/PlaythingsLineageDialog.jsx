@@ -1,12 +1,10 @@
 import React, { useMemo, useState } from 'react';
+import { playthingsLineageNodesNewestFirst } from './playthings.lineage.js';
 
 export function PlaythingsLineageDialog({ snapshot = null, onClose, onLocateArtifact, onOpenRecord, onOpenViewerLineage }) {
   const traversal = snapshot?.selectedTraversal || null;
   const [selectedId, setSelectedId] = useState(() => String(snapshot?.selectedRecordId || traversal?.startIds?.[0] || ''));
-  const nodes = useMemo(() => {
-    const list = Array.isArray(traversal?.nodes) ? traversal.nodes.slice() : [];
-    return list.sort((a, b) => Number(b.depth || 0) - Number(a.depth || 0));
-  }, [traversal]);
+  const nodes = useMemo(() => playthingsLineageNodesNewestFirst(traversal), [traversal]);
   const selected = nodes.find((node) => String(node.id) === selectedId) || nodes[nodes.length - 1] || null;
   if (!snapshot) return null;
   const status = traversal?.status || {};
