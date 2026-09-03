@@ -41,26 +41,6 @@ console.log('✓ CLI default help keeps the common lifecycle visible while advan
 }
 console.log('✓ common subcommand help is focused and preserves deliberate advanced discovery passed');
 
-{
-  const evidenceLines = [];
-  const evidenceIo = { log: (value) => evidenceLines.push(value), error: (value) => evidenceLines.push(value) };
-  assert.equal(await runPortableCli(['author', '--help', '--schema', 'tiinex.evidence.v1'], evidenceIo), 0);
-  const evidenceHelp = evidenceLines.at(-1);
-  assert.match(evidenceHelp, /Schema body contract — tiinex\.evidence\.v1/);
-  assert.match(evidenceHelp, /## Supported Claim Or Question: Supported Claim Or Question, Evidence Role/);
-  assert.match(evidenceHelp, /## Interpretation Limits: Does Not Prove, Not Yet Used As, Must Not Be Treated As/);
-
-  const handoffLines = [];
-  const handoffIo = { log: (value) => handoffLines.push(value), error: (value) => handoffLines.push(value) };
-  assert.equal(await runPortableCli(['author', '--help', '--schema', 'tiinex.handoff.v1'], handoffIo), 0);
-  const handoffHelp = handoffLines.at(-1);
-  assert.match(handoffHelp, /Schema body contract — tiinex\.handoff\.v1/);
-  assert.match(handoffHelp, /## Handoff Parties: Purpose, From, From Kind, To, To Kind/);
-  assert.match(handoffHelp, /## Transfers — each Transfers entry: Transfer Kind, Description/);
-  assert.match(handoffHelp, /literal `none` is allowed only where the schema contract permits it/);
-}
-console.log('✓ author focused help exposes schema-qualified body contracts from registered validation authority passed');
-
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-turn-binding-'));
 try {
   const transaction = path.join(root, 'turn.json');
@@ -229,104 +209,6 @@ console.log('✓ common ground host-result façade owns receipt normalization an
   }
 }
 console.log('✓ common author façade infers Parent and owns sealing, audit, staging, and continuation carry-forward passed');
-
-{
-  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-invalid-author-repair-'));
-  try {
-    const parentRelativePath = '.topics/tooling/006-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-authoring-return-common-path-ergonomics-handoff.trace.md';
-    const parentSource = path.resolve(parentRelativePath);
-    const parentTarget = path.join(root, parentRelativePath);
-    await mkdir(path.dirname(parentTarget), { recursive: true });
-    await copyFile(parentSource, parentTarget);
-    await mkdir(path.join(root, '.tiinex'), { recursive: true });
-    await writeFile(path.join(root, '.tiinex/continuation.json'), `${JSON.stringify({
-      schema: 'tiinex.portable.ground-continuation-state.v1',
-      version: 1,
-      selectedHandoffPath: parentRelativePath,
-      roleLabel: 'Loom'
-    }, null, 2)}\n`, 'utf8');
-
-    const evidenceBodyPath = path.join(root, 'invalid-evidence-body.md');
-    await writeFile(evidenceBodyPath, '# Invalid Evidence\n\n## Supported Claim Or Question\n\n- Supported Claim Or Question: compact author repair should be actionable.\n', 'utf8');
-    const evidenceRelativePath = '.topics/tooling/invalid-evidence.trace.md';
-    const evidenceArgs = ['author', root, '--schema', 'tiinex.evidence.v1', '--path', evidenceRelativePath, '--body', evidenceBodyPath];
-    const evidenceLines = [];
-    const evidenceIo = { log: (value) => evidenceLines.push(value), error: (value) => evidenceLines.push(value) };
-    assert.equal(await runPortableCli(evidenceArgs, evidenceIo, portableCanonicalBootstrapRuntime), 2);
-    const evidence = JSON.parse(evidenceLines.at(-1));
-    assert.equal(evidence.projection, 'common-default');
-    assert.equal(evidence.status, 'blocked');
-    assert.equal(evidence.artifact.written, false);
-    assert.equal('audit' in evidence, false);
-    assert.equal('stage' in evidence, false);
-    assert.equal(evidence.repair.missingHeadings.some((entry) => entry.heading === '## Evidence Material'), true);
-    assert.equal(evidence.repair.missingFields.some((entry) => entry.heading === '## Supported Claim Or Question' && entry.fields.some((field) => field.field === 'Evidence Role')), true);
-    assert.match(evidence.repair.schemaContractHelp, /author --help --schema tiinex\.evidence\.v1$/);
-    assert.match(evidence.repair.retryCommand, /author .* --schema tiinex\.evidence\.v1 .* --body /);
-    await assert.rejects(access(path.join(root, evidenceRelativePath)), /ENOENT/, 'invalid Evidence must not be retained');
-
-    const fullLines = [];
-    const fullIo = { log: (value) => fullLines.push(value), error: (value) => fullLines.push(value) };
-    assert.equal(await runPortableCli([...evidenceArgs, '--full'], fullIo, portableCanonicalBootstrapRuntime), 2);
-    const fullEvidence = JSON.parse(fullLines.at(-1));
-    assert.equal('projection' in fullEvidence, false);
-    assert.equal(Boolean(fullEvidence.audit), true);
-    assert.equal(Boolean(fullEvidence.stage), true);
-    assert.equal(fullEvidence.artifact.written, false);
-
-    const handoffBodyPath = path.join(root, 'invalid-handoff-body.md');
-    await writeFile(handoffBodyPath, `# Invalid Handoff
-
-## Handoff Parties
-
-- Purpose: return bounded work.
-- From: Loom
-- From Kind: role
-- To: Anchor
-
-## Transfers
-
-- bounded-return
-  - Transfer Kind: work
-
-## Required Context
-
-- none
-
-## Reference Context
-
-- none
-
-## Retained Responsibilities
-
-- none
-
-## Exclusions And Dependencies
-
-- none
-
-## Completion Expectation
-
-- Signal Kind: result
-
-## Interpretation Limits
-
-- Does Not Mean: this invalid body is qualified.
-`, 'utf8');
-    const handoffRelativePath = '.topics/tooling/invalid-handoff.trace.md';
-    const handoffLines = [];
-    const handoffIo = { log: (value) => handoffLines.push(value), error: (value) => handoffLines.push(value) };
-    assert.equal(await runPortableCli(['author', root, '--schema', 'tiinex.handoff.v1', '--path', handoffRelativePath, '--body', handoffBodyPath], handoffIo, portableCanonicalBootstrapRuntime), 2);
-    const handoff = JSON.parse(handoffLines.at(-1));
-    assert.equal(handoff.repair.missingFields.some((entry) => entry.heading === '## Handoff Parties' && entry.fields.some((field) => field.field === 'To Kind')), true);
-    assert.equal(handoff.repair.missingDeclarationFields.some((entry) => entry.group === 'Transfers' && entry.entry === 'bounded-return' && entry.fields.some((field) => field.field === 'Description')), true);
-    assert.match(handoff.repair.schemaContractHelp, /author --help --schema tiinex\.handoff\.v1$/);
-    await assert.rejects(access(path.join(root, handoffRelativePath)), /ENOENT/, 'invalid Handoff must not be retained');
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
-}
-console.log('✓ schema-invalid author default repair is compact/actionable for Evidence and Handoff while --full and fail-closed non-retention remain intact passed');
 
 
 {

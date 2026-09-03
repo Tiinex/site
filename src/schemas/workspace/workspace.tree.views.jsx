@@ -4,6 +4,7 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { buildWorkspacePathTree } from '../../workspaces/workspace.pathTree.js';
 import { AuditStatusBadge } from './workspace.auditBadge.views.jsx';
 import { recordLifecycleBadge } from './workspace.viewFormatting.js';
+import { WORKSPACE_RECORD_PRIMARY_INTENT, workspaceRecordPrimaryIntent, workspaceRecordPrimaryLabel } from '../../workspaces/workspace.navigation.js';
 
 export function WorkspaceTreeState({ workspace, query = '', records, assets = [], auditById = new Map(), expandedFolders = [], onToggleTreeFolder, onOpenRecord, onFocusRecordLineage, onOpenAsset, readOnly = false, selectionActive = false, selectionCandidates = [], onSelectCandidate }) {
   query = String(query || '').trim();
@@ -66,15 +67,22 @@ function TreeLeafItem({ item, auditById = new Map(), onOpenRecord, onFocusRecord
     );
   }
   const auditItem = auditById.get(item.source.id);
+  const primaryIntent = workspaceRecordPrimaryIntent({ surface: 'tree', selectionActive, selectionCandidate });
+  const openPrimary = () => {
+    if (primaryIntent === WORKSPACE_RECORD_PRIMARY_INTENT.select) return onSelectCandidate?.(selectionCandidate);
+    if (primaryIntent === WORKSPACE_RECORD_PRIMARY_INTENT.unavailable) return undefined;
+    return onOpenRecord?.(item.source.id);
+  };
   return (
     <div className="tx-tree-record-row tx-tree-leaf-row" role="treeitem" title={item.path || ''}>
-      <button type="button" className="tx-tree-row-main" onClick={() => selectionActive ? (selectionCandidate ? onSelectCandidate?.(selectionCandidate) : undefined) : readOnly ? onOpenRecord?.(item.source.id) : onFocusRecordLineage?.(item.source.id)} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : readOnly ? 'Open' : 'Open lineage for'} ${item.name || item.title || 'artifact'}`}>
+      <button type="button" className="tx-tree-row-main" onClick={openPrimary} aria-label={workspaceRecordPrimaryLabel({ intent: primaryIntent, title: item.name || item.title || 'artifact' })}>
         <span><Icon name="open" /> {item.name || item.title || 'Untitled'}</span>
       </button>
       <span className="tx-tree-row-badges">
         <AuditStatusBadge record={item.source} item={auditItem} />
         {recordLifecycleBadge(item.source) ? <Badge title="Lifecycle/publication state">{recordLifecycleBadge(item.source)}</Badge> : null}
         <Badge>{item.source.kind || item.kind || 'artifact'}</Badge>
+        {!readOnly && !selectionActive ? <button type="button" className="tx-tree-row-action" onClick={() => onFocusRecordLineage?.(item.source.id)} aria-label={`Open lineage for ${item.name || item.title || 'artifact'}`} title="Open lineage"><Icon name="lineage" /> Lineage</button> : null}
         {selectionActive && selectionCandidate ? <button type="button" className="tx-tree-record-select" onClick={() => onSelectCandidate?.(selectionCandidate)}>Select</button> : null}
       </span>
     </div>

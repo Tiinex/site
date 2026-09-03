@@ -15,7 +15,7 @@ import { recordDisplayPath, recordLifecycleBadge, recordSchemaBadge } from './wo
 import { readCanonicalTaskAuthoringValues, renderCanonicalTaskEditMarkdown } from '../core/task/tiinex.task.v1.authoring.js';
 
 
-export function RecordDetailDialog({ record, onDismiss, onShare }) {
+export function RecordDetailDialog({ record, onDismiss, onLineage, onShare }) {
   const source = record?.source || {};
   const displayPath = recordDisplayPath(record || {});
   const isSourceBacked = Boolean(source.adapterId && source.adapterId !== 'local');
@@ -49,6 +49,7 @@ export function RecordDetailDialog({ record, onDismiss, onShare }) {
         {!record?.markdown ? <p className="tx-muted">{record?.materialAvailability === 'material-unavailable' ? 'Material is unavailable in this route/session shell; source boundary and path are preserved.' : 'No embedded Markdown body is available for this record.'}</p> : null}
         <div className="tx-dialog-actions">
           <Button variant="ghost" onClick={onDismiss}>Close</Button>
+          {onLineage && !historical ? <Button variant="ghost" icon="lineage" onClick={onLineage}>Lineage</Button> : null}
           {onShare && !historical ? <Button variant="primary" icon="shareNodes" onClick={onShare}>Share artifact</Button> : null}
         </div>
       </div>

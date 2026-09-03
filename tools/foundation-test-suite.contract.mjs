@@ -51,6 +51,7 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/app/defaultWorkspaceStart.case.mjs",
   "src/app/workspaceEntrypointProductRouting.case.mjs",
   "src/app/workspaceSpineProductRouting.case.mjs",
+  "src/app/workspaceNavigationParity.case.mjs",
   "src/app/canonicalCreationProductSettlement.case.mjs",
   "src/acceptance/postV437M0ETimePortalProductParityClosure.case.mjs",
   "src/acceptance/knownScenarios.case.mjs"

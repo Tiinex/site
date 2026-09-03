@@ -1,10 +1,7 @@
-import { projectAuthorDefault } from './cli.author-output.js';
-
 const COMMON_DEFAULT_PROJECTION = 'common-default';
 
 export function projectCommonCliDefaultOutput(result = {}, parsed = {}) {
   if (parsed?.flags?.full === true) return result;
-  if (parsed?.command === 'author') return projectAuthorDefault(result, parsed);
   if (parsed?.command === 'orient-handoff-package') return projectOrientDefault(result, parsed);
   if (parsed?.command === 'project-grounding-readiness') return projectGroundDefault(result, parsed);
   if (parsed?.command === 'manufacture-handoff-package' && parsed?.surfaceCommand === 'handoff') return projectHandoffDefault(result, parsed);

@@ -11,6 +11,7 @@ import { appendTransitionActionsToStaticRow } from './workspace.cardActions.js';
 import { assetPreviewSummary, assetSourceBadge, assetSourceBoundary, compactPath, compactRecordDate, recordDisplayPath, recordLifecycleBadge, recordMaterialBadge, recordSchemaBadge, recordSchemaCanOpen, recordSourceBadge } from './workspace.viewFormatting.js';
 import { workspaceArtifactActionModel, workspaceArtifactBoundaryBadge } from '../../workspaces/workspace.artifactActions.js';
 import { RecordActionButton } from './workspace.recordActionButton.views.jsx';
+import { WORKSPACE_RECORD_PRIMARY_INTENT, workspaceRecordPrimaryIntent, workspaceRecordPrimaryLabel } from '../../workspaces/workspace.navigation.js';
 
 
 export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey = '', onOpenAsset }) {
@@ -38,25 +39,27 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
   const isWorkspaceArtifact = isWorkspaceRecord(record);
   const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
   const baseActions = selectionActive ? [] : readOnly ? [{ id: RecordActionKind.open, label: 'Open', icon: 'open', enabled: true }] : presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
+  const lineageAction = { id: RecordActionKind.lineage, label: lineageContext ? 'Anchor' : 'Lineage', icon: 'lineage', enabled: true };
   const contextualActions = readOnly ? baseActions : lineageContext
-    ? [{ id: RecordActionKind.lineage, label: 'Anchor', icon: 'lineage', enabled: true }, ...baseActions]
-    : baseActions.filter((action) => action.id !== RecordActionKind.lineage);
+    ? [lineageAction, ...baseActions]
+    : [baseActions[0], lineageAction, ...baseActions.slice(1)].filter(Boolean);
   const actions = appendTransitionActionsToStaticRow(contextualActions, transitionActions);
   const dateBadge = compactRecordDate(record);
   const schemaBadge = recordSchemaBadge(record);
   const schemaOpenable = recordSchemaCanOpen(record);
   const sourceBadge = recordSourceBadge(record);
+  const primaryIntent = workspaceRecordPrimaryIntent({ surface: context, selectionActive, selectionCandidate });
   const primaryClick = () => {
-    if (selectionActive) return selectionCandidate ? onSelectCandidate?.(selectionCandidate) : undefined;
-    if (readOnly) return onOpenRecord?.(record.id);
-    if (lineageContext) return onToggleExpanded?.(record.id);
-    return onFocusRecordLineage?.(record.id);
+    if (primaryIntent === WORKSPACE_RECORD_PRIMARY_INTENT.select) return onSelectCandidate?.(selectionCandidate);
+    if (primaryIntent === WORKSPACE_RECORD_PRIMARY_INTENT.unavailable) return undefined;
+    if (primaryIntent === WORKSPACE_RECORD_PRIMARY_INTENT.toggleLineagePreview) return onToggleExpanded?.(record.id);
+    return onOpenRecord?.(record.id);
   };
   const onKey = (event) => {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); primaryClick(); }
   };
   return (
-    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
+    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={workspaceRecordPrimaryLabel({ intent: primaryIntent, title: record.title || 'artifact' })} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
       <div className="tx-card-badges tx-legacy-card-badges">
         {isWorkspaceArtifact ? <Badge>workspace</Badge> : null}
         {isWorkspaceArtifact ? <Badge>{workspaceActionModel.roleLabel}</Badge> : null}

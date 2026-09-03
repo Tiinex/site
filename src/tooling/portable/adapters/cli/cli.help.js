@@ -1,10 +1,8 @@
-import { publicAuthorSchemaBodyContractHelpLines } from './cli.author-contract.js';
-
-export function portableCliHelpText(commandPrefix = '', surfaceCommand = '', flags = {}) {
+export function portableCliHelpText(commandPrefix = '', surfaceCommand = '') {
   const command = String(commandPrefix || '').trim()
     || (String(process.argv[1] || '').replace(/\\/g, '/').includes('/bin/') ? 'node bin/tiinex-portable.mjs' : 'node tools/tiinex-portable.mjs');
   const common = String(surfaceCommand || '').trim().toLowerCase();
-  const specific = commonCommandHelp(command, common, flags);
+  const specific = commonCommandHelp(command, common);
   if (specific) return specific.join('\n');
   return [
     'Tiinex portable tooling',
@@ -29,7 +27,7 @@ export function portableCliHelpText(commandPrefix = '', surfaceCommand = '', fla
   ].join('\n');
 }
 
-function commonCommandHelp(command, surfaceCommand, flags = {}) {
+function commonCommandHelp(command, surfaceCommand) {
   if (surfaceCommand === 'ground') return [
     'Tiinex portable tooling — ground',
     '',
@@ -42,22 +40,15 @@ function commonCommandHelp(command, surfaceCommand, flags = {}) {
     '',
     `Advanced/internal catalog: ${command} operations`
   ];
-  if (surfaceCommand === 'author') {
-    const schemaId = typeof flags.schema === 'string' ? flags.schema.trim() : '';
-    return [
-      'Tiinex portable tooling — author',
-      '',
-      `${command} author <workspace-dir> --schema <schema-id> --path <workspace-relative-artifact> --body <body.md> [--parent <workspace-relative-parent>] [--title <title>] [--summary <summary>] [--why <why>]`,
-      '',
-      'Uses qualified continuation state to infer the ordinary Parent when `--parent` is omitted, seals c14n-v2 self-integrity, audits, stages, and updates continuation state only after qualification. Invalid output is not retained.',
-      '',
-      'Schema-body contract discovery:',
-      `- Run ${command} author --help --schema <schema-id> to see the required body headings and fields from the registered schema runtime validation contract.`,
-      ...(schemaId ? ['', ...publicAuthorSchemaBodyContractHelpLines(schemaId)] : []),
-      '',
-      `Advanced/internal catalog: ${command} operations`
-    ];
-  }
+  if (surfaceCommand === 'author') return [
+    'Tiinex portable tooling — author',
+    '',
+    `${command} author <workspace-dir> --schema <schema-id> --path <workspace-relative-artifact> --body <body.md> [--parent <workspace-relative-parent>] [--title <title>] [--summary <summary>] [--why <why>]`,
+    '',
+    'Uses qualified continuation state to infer the ordinary Parent when `--parent` is omitted, seals c14n-v2 self-integrity, audits, stages, and updates continuation state only after qualification. Invalid output is not retained.',
+    '',
+    `Advanced/internal catalog: ${command} operations`
+  ];
   if (surfaceCommand === 'handoff') return [
     'Tiinex portable tooling — handoff',
     '',

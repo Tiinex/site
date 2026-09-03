@@ -61,7 +61,7 @@ import { useTimePortalProductController } from './useTimePortalProductController
 import { TimePortalResolveDialog } from '../schemas/workspace/workspace.timePortal.views.jsx';
 import { projectShareTruth, ShareScope } from './shareProjection.js';
 import { executeShareProjectionAction } from './shareActionCommand.js';
-import { stateAfterWorkspaceClosePresentation, stateWithRecordLineageFocused, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById } from './workspaceScopedInteraction.js';
+import { stateAfterWorkspaceClosePresentation, stateWithRecordLineageFocused, stateWithWorkspaceFocused, stateWithWorkspaceViewPatchAndFocus, stateWithWorkspaceViewUpdateAndFocus, workspaceById, workspaceVerseNavigationPatch } from './workspaceScopedInteraction.js';
 import { stateWithWorkspaceWindowPage, workspaceWindowFor } from './workspaceWindow.js';
 export function TiinexApp() {
   const initialRuntimeRef = useRef(null);
@@ -599,17 +599,7 @@ export function TiinexApp() {
     commit(stateWithWorkspaceViewPatchAndFocus(result.state, targetId, { lineageAuditReport: result.lineageAuditReport }, viewportWidth), 'replace');
   }
   function setVerse(verse, workspaceId = active?.id || '') {
-    const normalizedVerse = verse === 'tree' || verse === 'lineage' ? verse : 'feed';
-    const resetLineage = normalizedVerse === 'feed' || normalizedVerse === 'tree';
-    commitWorkspaceViewPatch(workspaceId, Object.assign({
-      workspaceVerse: normalizedVerse
-    }, resetLineage ? {
-      lineageReturnVerse: '',
-      selectedRecordId: '',
-      expandedLineageRecordIds: [],
-      lineageAuditReport: null,
-      lineageLoadReport: null
-    } : {}), 'push');
+    commitWorkspaceViewPatch(workspaceId, workspaceVerseNavigationPatch(verse), 'push');
   }
   function toggleLineageCard(recordId, workspaceId = active?.id || '') {
     const id = String(recordId || '').trim();
@@ -795,7 +785,7 @@ export function TiinexApp() {
       {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}
       {dialog === 'rename-workspace' && dialogWorkspace ? <RenameWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
-      {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}
+      {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onLineage={activeRecord?.historicalSnapshot ? null : () => { const recordId = activeRecord.id; dismissRecord(); focusRecordLineage(recordId, active?.id || ''); }} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}
       {activeAsset ? <AssetDetailDialog asset={activeAsset} onDismiss={dismissAsset} /> : null}
       {actionRecord ? <RecordActionDialog record={actionRecord} action={recordAction.action} schemaRegistry={schemaRegistry} workspaceId={actionWorkspace?.id || ''} workspaceRecords={actionWorkspace?.records || []} referenceTargets={referenceSelectionOptions?.options || []} placementTargets={placementSelectionOptions.action?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissRecordAction} onShare={() => shareRecord(actionRecord, actionWorkspace?.id || '')} onCreateTransition={createTransitionRecord} onCreateCanonicalTransition={canonicalCreation.createTransitionRecord} onCreateCanonicalReference={canonicalCreation.createReferenceRecord} onUpdateLocalDraft={updateLocalDraftRecord} /> : null}
       {dialog === 'display-options' && dialogWorkspace ? <DisplayOptionsDialog options={dialogWorkspaceView?.displayOptions} counts={buildDisplayOptionCounts(dialogWorkspaceUi || dialogWorkspace)} scope={dialogWorkspaceView?.workspaceVerse === 'lineage' ? 'lineage' : 'discovery'} timePortal={timePortalViewFor(dialogWorkspaceView)} onResolveTimePortal={(intent) => openTimePortalResolver(intent, dialogWorkspace.id)} onReturnLatest={() => returnTimePortalToLatest(dialogWorkspace.id)} onSubmit={setDisplayOptions} onDismiss={dismissDialog} /> : null}

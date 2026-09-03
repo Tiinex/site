@@ -42,6 +42,20 @@ export function stateWithRecordLineageFocused(state = {}, workspaceId = '', reco
   }, viewportWidth);
 }
 
+
+export function workspaceVerseNavigationPatch(verse = 'feed') {
+  const normalizedVerse = verse === 'tree' || verse === 'lineage' ? verse : 'feed';
+  if (normalizedVerse === 'lineage') return { workspaceVerse: 'lineage' };
+  return {
+    workspaceVerse: normalizedVerse,
+    lineageReturnVerse: '',
+    selectedRecordId: '',
+    expandedLineageRecordIds: [],
+    lineageAuditReport: null,
+    lineageLoadReport: null
+  };
+}
+
 export function stateWithWorkspaceViewUpdateAndFocus(state = {}, workspaceId = '', updater = null, viewportWidth = 0) {
   const id = String(workspaceId || '').trim();
   const updated = stateWithWorkspaceViewUpdate(state, id, updater);

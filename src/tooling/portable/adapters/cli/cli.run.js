@@ -14,7 +14,7 @@ import { projectCommonCliDefaultOutput } from './cli.common-output.js';
 export async function runPortableCli(argv = process.argv.slice(2), io = console, runtime = {}) {
   const parsed = parseArgs(argv);
   if (!parsed.command || parsed.command === 'help' || parsed.flags.help) {
-    io.log(portableCliHelpText(runtime.commandPrefix, parsed.flags.help ? parsed.surfaceCommand : '', parsed.flags));
+    io.log(portableCliHelpText(runtime.commandPrefix, parsed.flags.help ? parsed.surfaceCommand : ''));
     return 0;
   }
   if (parsed.command === 'operations') {
@@ -24,8 +24,7 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
   try {
     if (parsed.command === 'author') {
       const result = await runCommonAuthorCli(parsed, runtime);
-      const output = projectCommonCliDefaultOutput(result, { ...parsed, commandPrefix: runtime.commandPrefix });
-      writeJson(io, output, parsed.flags.compact !== true);
+      writeJson(io, result, parsed.flags.compact !== true);
       return result?.findingSummary?.counts?.error ? 2 : 0;
     }
     const timingEnabled = Boolean(parsed.flags['phase-timing']);
