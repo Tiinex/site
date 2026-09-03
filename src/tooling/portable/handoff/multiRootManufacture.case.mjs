@@ -187,8 +187,10 @@ try {
   assert.equal(shared.bundle.files.some((file) => String(file.path || '').includes('workspace-representation')), false, 'complete package-local Workspace bindings do not emit Workspace Representation companions');
   assert(recipientFacingV2PackageZipBuffer(shared.bundle, { inspection: shared.inspection }).byteLength > 0, 'package-v1 recipient bundle must serialize through the supported deterministic ZIP writer');
   const continuationInput = groundContinuationOperationInput({ includeRequiredContext: '', includeCurrentWork: false }, { continue: path.join(root, 'continued-site') });
-  assert.equal(continuationInput.includeRequiredContext, 'all', 'common --continue path must automatically request all qualified Required Context bodies');
+  assert.equal(continuationInput.includeRequiredContext, '', 'common --continue path must not automatically project every qualified Required Context body');
   assert.equal(continuationInput.includeCurrentWork, true, 'common --continue path must automatically request the exact current-work body');
+  const fullContinuationInput = groundContinuationOperationInput({ includeRequiredContext: '', includeCurrentWork: false }, { continue: path.join(root, 'continued-site-full'), full: true });
+  assert.equal(fullContinuationInput.includeRequiredContext, 'all', 'explicit --full continuation must retain the complete qualified Required Context receipt path');
   const continuedSiteRoot = path.join(root, 'continued-site');
   const continued = await materializeGroundWorkspaceCliOutput({
     readiness: { state: 'grounded-to-act' },

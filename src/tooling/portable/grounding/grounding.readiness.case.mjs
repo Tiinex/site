@@ -102,6 +102,17 @@ function composeCase({ authority = qualifiedAuthority, continuation = Object.fre
 }
 
 {
+  const result = composeCase();
+  assert.equal('mutationBoundary' in result.authority, false, 'operation safety must not be presented as a semantic authority mutation boundary');
+  assert.equal(result.authority.operationBoundary.sourceMutation, false);
+  assert.equal(result.authority.operationBoundary.remoteWrite, false);
+  assert.equal(result.authority.operationBoundary.scope, 'current-grounding-operation-only');
+  assert.match(result.authority.operationBoundary.semanticAuthority, /Handoff\/Task\/Role artifacts govern downstream work authority/);
+  assert.match(result.authority.operationBoundary.boundary, /must not be interpreted as a prohibition on separately authorized downstream Workspace work/);
+}
+console.log('✓ grounding authority projection distinguishes operation safety from downstream semantic work authority passed');
+
+{
   const result = composeGroundingReadiness({
     mode: 'routed-handoff-package',
     authority: qualifiedAuthority,
@@ -367,6 +378,48 @@ console.log('✓ accepted pinned repository Parent deterministically resolves it
   );
 }
 console.log('✓ accept-host-receipt explicitly carries prior accepted recovery material forward without hidden state passed');
+
+{
+  const commit = '56ba75025b7a8fd44b5318d2560d2ec63eb0106f';
+  const plan = Object.freeze({
+    actionId: 'host-action:exact-parent',
+    action: 'repository-read',
+    steps: Object.freeze([Object.freeze({
+      stepId: 'host-action:exact-parent:1',
+      capability: 'repositoryRead',
+      tool: Object.freeze({ id: 'github-fetch-file' }),
+      argumentsTemplate: Object.freeze({ repository: 'Tiinex/site', ref: commit, path: '.topics/tooling/exact-parent.trace.md' })
+    })])
+  });
+  const receipt = Object.freeze({
+    schema: 'tiinex.portable.host-action-receipt.v1',
+    actionId: plan.actionId,
+    action: plan.action,
+    steps: Object.freeze([Object.freeze({
+      stepId: 'host-action:exact-parent:1',
+      toolId: 'github-fetch-file',
+      status: 'completed',
+      normalized: Object.freeze({ files: Object.freeze([Object.freeze({
+        path: '.topics/tooling/decoy-parent.trace.md',
+        content: '# decoy\n',
+        source: Object.freeze({
+          repository: 'Tiinex/other',
+          ref: 'main',
+          commit: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+          path: '.topics/tooling/decoy-parent.trace.md',
+          authority: 'remote-repository-unverified'
+        })
+      })]) })
+    })])
+  });
+  const result = acceptPortableHostActionReceipt({ plan, receipt });
+  assert.equal(result.status, 'rejected');
+  assert.equal(result.providerResponses.length, 0, 'identity-mismatched repository bytes must not enter accepted recovery material');
+  assert.equal(result.findings.some((finding) => finding.code === 'portable.host-receipt.repository-identity.mismatch'), true);
+  assert.equal(result.findings.some((finding) => finding.code === 'portable.host-receipt.repository-path.mismatch'), true);
+  assert.equal(result.findings.some((finding) => finding.code === 'portable.host-receipt.repository-ref.mismatch'), true);
+}
+console.log('✓ accept-host-receipt rejects repository bytes that do not match the exact planned repository/ref/path identity passed');
 
 {
   const result = composeCase({

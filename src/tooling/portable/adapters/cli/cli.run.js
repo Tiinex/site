@@ -9,11 +9,12 @@ import { commandInput } from './cli.command-input.js';
 import { continueGroundWithHostResult } from './cli.ground-recovery.js';
 import { groundContinuationOperationInput, materializeGroundWorkspaceCliOutput } from './cli.ground-materialize.js';
 import { runCommonAuthorCli } from './cli.common-author.js';
+import { projectCommonCliDefaultOutput } from './cli.common-output.js';
 
 export async function runPortableCli(argv = process.argv.slice(2), io = console, runtime = {}) {
   const parsed = parseArgs(argv);
   if (!parsed.command || parsed.command === 'help' || parsed.flags.help) {
-    io.log(portableCliHelpText(runtime.commandPrefix));
+    io.log(portableCliHelpText(runtime.commandPrefix, parsed.flags.help ? parsed.surfaceCommand : '', parsed.flags));
     return 0;
   }
   if (parsed.command === 'operations') {
@@ -23,7 +24,8 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
   try {
     if (parsed.command === 'author') {
       const result = await runCommonAuthorCli(parsed, runtime);
-      writeJson(io, result, parsed.flags.compact !== true);
+      const output = projectCommonCliDefaultOutput(result, { ...parsed, commandPrefix: runtime.commandPrefix });
+      writeJson(io, output, parsed.flags.compact !== true);
       return result?.findingSummary?.counts?.error ? 2 : 0;
     }
     const timingEnabled = Boolean(parsed.flags['phase-timing']);
@@ -75,6 +77,7 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
       measuredElapsedBeforeFinalSerializationMs: elapsedMs(totalStartedAt)
     });
     if (parsed.flags.summary) output = withCliSummaryProjection(output, parsed.command, parsed.flags);
+    output = projectCommonCliDefaultOutput(output, parsed);
     writeJson(io, output, parsed.flags.compact !== true);
     return result?.findingSummary?.counts?.error ? 2 : 0;
   } catch (error) {

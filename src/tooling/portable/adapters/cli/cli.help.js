@@ -1,6 +1,11 @@
-export function portableCliHelpText(commandPrefix = '') {
+import { publicAuthorSchemaBodyContractHelpLines } from './cli.author-contract.js';
+
+export function portableCliHelpText(commandPrefix = '', surfaceCommand = '', flags = {}) {
   const command = String(commandPrefix || '').trim()
     || (String(process.argv[1] || '').replace(/\\/g, '/').includes('/bin/') ? 'node bin/tiinex-portable.mjs' : 'node tools/tiinex-portable.mjs');
+  const common = String(surfaceCommand || '').trim().toLowerCase();
+  const specific = commonCommandHelp(command, common, flags);
+  if (specific) return specific.join('\n');
   return [
     'Tiinex portable tooling',
     '',
@@ -9,67 +14,76 @@ export function portableCliHelpText(commandPrefix = '') {
     `${command} ground <handoff-package.zip> --route <Continue-from> --continue <workspace-dir>`,
     `${command} author <workspace-dir> --schema <schema-id> --path <workspace-relative-artifact> --body <body.md> [--parent <workspace-relative-parent>] [--title <title>] [--summary <summary>] [--why <why>]`,
     `${command} handoff <workspace-dir>`,
-    `Handoff aliases: ${command} orient <carrier.zip>; ${command} ground <carrier.zip> --route <Continue-from>; ${command} validate <carrier.zip>; ${command} handoff <workspace-dir>`,
-    `Advanced/internal catalog: ${command} operations`,
-    'Global option: append --phase-timing to emit monotonic in-process input/operation/materialization timing through the pre-serialization boundary; final JSON serialization/emission are explicitly unmeasured.',
-    'After `ground --continue`, Tooling writes runtime-only `.tiinex/continuation.json` state beside the exact materialized source. Canonical manufacture excludes `.tiinex`. `author` uses that state to infer the qualified incoming Handoff Parent (or the previous authored result), seals c14n-v2 integrity, audits and stages the artifact, and keeps invalid output from becoming durable. After a qualified Handoff is authored, `handoff <workspace-dir>` infers its path, selected Workspace id/target, received package parent, unchanged sibling Workspace providers, canonical projected filename, and return output directory. Explicit low-level flags remain diagnostic/advanced overrides.',
-    'Grounding option: broad directory reads quarantine .topics/development by default; append --include-legacy-topics to include that legacy subtree explicitly. `ground` keeps Required Context and current Task bodies out of the default receipt; append --include-required-context <requirement-id,name|all> and/or --include-current-work only when exact qualified body text is needed. After `grounded-to-act`, append --continue <workspace-dir> on the same ground command to project the exact current Task plus all Required Context and materialize the selected route Workspace exact bytes into an empty local directory. Use --workspace <id> with --materialize-workspace <workspace-dir> only when an explicitly carried non-selected Workspace is needed. For exact Parent recovery on the common path, bind the available exact-read tool with --host-tool <tool-name> and give Tooling one explicit state path with --state <file>. After executing the projected exact host action, return only the fetched UTF-8 content with --host-result <file|->; Tooling owns plan/receipt normalization, cumulative accepted recovery, and same-command resume. Advanced --host/--recovery plus plan-host-action/accept-host-receipt remain diagnostic escape hatches, not required happy-path knowledge.',
-    'Output option: append --summary to inspect/audit/search-lineage/resolve-lineage/qualify-cold-start for a bounded receipt. For qualify-cold-start, append --include-required-context <requirement-id,name|all> only when exact qualified Required Context body text must be projected.',
-    `${command} prepare-task [file|dir|zip] --task <read-schema|create-artifact|validate-draft|search-lineage|analyze-asset> [--schema <id>] [--host host-profile.json]`,
-    `${command} discover-tooling [--host host-profile.json]`,
-    `${command} describe-cold-start-ingress [routed-handoff-package|workspace-bootstrap|degraded-capture]`,
-    `${command} project-cold-start-host [--ingress routed-handoff-package|workspace-bootstrap] [--host host-profile.json]`,
-    `${command} ground <handoff-package.zip> --route <Continue-from> [--continue <workspace-dir>] [--include-current-work] [--include-required-context <requirement-id,name|all>] [--materialize-workspace <workspace-dir> --workspace <id>] [--host-tool <exact-read-tool> --state <tooling-state.json> [--host-result <file|->]] [--include-legacy-topics]`,
-    `${command} ground-cold-consumer [handoff-package.zip] [--route <route>] [--host host-profile.json] [--interaction interaction.json] [--participants participants.json] [--contributions contributions.json] [--role-material role.trace.md]`,
-    `${command} qualify-cold-start <handoff-package.zip> --route <Continue-from> --pre-takeover minimal-bootstrap-only|none|native-archaeology [--evidence-source caller-declared|external-observer|host-instrumented]`,
-    `${command} qualify-cold-start --evidence evidence.json [--ingress routed-handoff-package|workspace-bootstrap|degraded-capture]`,
-    `${command} plan-host-action <action> --host host-profile.json [--request request.json]`,
-    `${command} accept-host-receipt --plan plan.json --receipt receipt.json [--prior previous-accepted.json]`,
-    `${command} list-material-providers [file|dir|zip] [--host host-profile.json]`,
-    `${command} resolve-schema-material [file|dir|zip] --schema <schema-id> [--host host-profile.json]`,
-    `${command} resolve-schema-chain-material [file|dir|zip] --schema <schema-id> [--depth 16]`,
-    `${command} inspect <file|dir|zip> [--include-markdown]`,
-    `${command} audit <file|dir|zip>`,
-    `${command} project-operating-overview <file|dir|zip>`,
-    `${command} resolve-lineage <file|dir|zip> [--start <id>] [--depth 3] [--direction ancestors|descendants|both]`,
-    `${command} resolve-capabilities <schema-id> [capability]`,
-    `${command} describe-schema-chain [file|dir|zip] --schema <schema-id>`,
-    `${command} inspect-creation-contract <schema-id> [--transition <type>]`,
-    `${command} make-writer-brief [file|dir|zip] --schema <schema-id>`,
-    `${command} schema-guide [file|dir|zip] --schema <schema-id> [--task create] [--detail compact]`,
-    `${command} read-schema-section [file|dir|zip] --schema <schema-id> --section "Artifact Creation Contract,Minimal Example"`,
-    `${command} plan-artifact [file|dir|zip] --schema <schema-id> [--values inputs.json]`,
-    `${command} process-live-turn [state.json] --turn turn-transaction.json [--material workspace.zip] --output state.json`,
-    `${command} read-live-lineage [state.json]`,
-    `${command} export-live-lineage [state.json] [--material workspace.zip] --bundle artifacts.zip [--require-interleaved]`,
-    `${command} prepare-materialization [artifact-dir|zip] --proposals proposals.json`,
-    `${command} create-local-artifact-set [artifact-dir|zip] --proposals proposals.json --output-dir <dir> [--bundle artifacts.zip]`,
-    `${command} create-local-draft [schema-dir|zip] --schema <schema-id> --values inputs.json [--sections sections.json] --output artifact.md [--qualified-package artifact-evidence.zip --transfer-manifest manifest.json --bootstrap-manifest bootstrap/manifest.json --transfer-verification transfer.verify.json --bootstrap-verification bootstrap.verify.json --task-request task/request.md] [--created-at <iso>] [--authors <value>] [--references schema-references.json] [--overwrite]`,
-    `${command} update-local-draft <draft.md> [schema-dir|zip] --replacement updated.md --schema <schema-id>`,
-    `${command} delete-local-draft <draft.md> --confirm <draft-id-or-path> [--reason <text>]`,
-    `${command} validate-draft <draft.md> [schema-dir|zip] --schema <schema-id>`,
-    `${command} stage-draft <draft.md> [schema-dir|zip] --schema <schema-id>`,
-    `${command} search-lineage <file|dir|zip> --query <text> [--schema <ids>] [--relation root|leaf] [--scope ancestors --start <id>]`,
-    `${command} inspect-assets <file|dir|zip>`,
-    `${command} prepare-asset-analysis <file|dir|zip> --asset <path> --host host-profile.json`,
-    `${command} plan-durable-materialization --session session.json --specs materializations.json`,
-    `${command} materialize-durable-findings [schema-dir|zip] --session session.json --specs materializations.json`,
-    `${command} create-checkpoint session.json [--created-at <iso>]`,
-    `${command} restore-checkpoint checkpoint.json`,
-    `${command} manufacture-handoff-package <workspace-dir> --handoff <workspace-relative-handoff.trace.md> --workspace-id <id> --workspace-target <exact-workspace-relative-.workspace.md> (--output <exact-tooling-projected-filename> | --output-dir <dir>) [--additional-workspaces <id=dir,id=dir> | --workspace-roots workspaces.json] [--handoff-routes <path1,path2> | --workspace-routes routes.json] [--route <selected-path-or-route-id>] [--legacy-recipient-v2-compatibility] [--collision-instance 2] [--transport-text [sidecar.txt]] [--tooling-bootstrap embedded|persistent] [--tooling-bootstrap-manifest verified-bootstrap.json] [--material-bindings bindings.json] [--package-parent <previous.handoff-package.zip>] [--package-major --major-reason <milestone>] [--no-roundtrip]`,
-    `${command} project-handoff-carrier-output <handoff-package.zip> [--route <workspace-relative-handoff.trace.md|route-id>] [--collision-instance 2]`,
-    'Handoff human return: when ready, emit only humanOutput.primary as the sole package choice plus the exact humanOutput.normalInlineRouting.content adjacent to it in a copyable surface. If the chat host supports fenced code blocks, render those exact routing bytes in a fenced code block; otherwise use an equivalent copyable host surface. Do not add semantic work-summary prose, humanOutput JSON, helper artifacts, manually reconstructed routing, or duplicate normal file choices unless the user explicitly asks for explanation/review evidence. Presentation wrappers have no semantic authority; --transport-text is optional fallback only.',
-    `${command} orient-handoff-package <handoff-package.zip>`,
-    `${command} audit-handoff-package-context <handoff-package.zip>`,
-    `${command} build-runtime-package [file|dir|zip] [--session session.json] [--staged staged.json] [--output package.zip]`,
-    `${command} inspect-runtime-package bundle.json`,
-    `${command} rehydrate-runtime-package package.zip`,
-    `${command} roundtrip-runtime-package [file|dir|zip] [--session session.json] [--bundle bundle.json]`,
-    `${command} explain-findings <validation-result.json>`,
-    `${command} repair-plan <validation-result.json>`,
-    `${command} serialize-session <file|dir|zip>`,
-    `${command} restore-session <snapshot.json>`,
     '',
-    'All results are JSON. Remote schema reads are host-mediated and explicit. Operations do not mutate sources or authorize remote writes. Verified bootstrap package code is executable; separate supplied package code is never auto-executed.'
+    `Handoff aliases: ${command} orient <carrier.zip>; ${command} validate <carrier.zip>`,
+    `Advanced/internal catalog: ${command} operations`,
+    '',
+    'Common boundaries:',
+    '- `orient`, `ground`, and public `handoff` use compact decision-first default projections; add `--full` on the same command for the complete qualified receipt.',
+    '- `ground` is read-only; append `--continue <workspace-dir>` only after `grounded-to-act` to materialize the selected carried Workspace and runtime-only `.tiinex/continuation.json`.',
+    '- `author` uses continuation state to infer ordinary Parent continuity, seal c14n-v2 integrity, audit, and stage; invalid artifacts are not retained.',
+    '- `handoff` uses continuation state plus the latest qualified authored Handoff to manufacture the canonical return carrier and excludes runtime-only `.tiinex` state. Normal operator completion is one Handoff package plus the exact routing text; markdown-capable hosts render that routing in a fenced code block, and do not emit loose Evidence/Handoff markdown as extra transport payloads.',
+    '- Remote reads/writes remain explicit host concerns. Tooling operation safety does not create or revoke semantic Task/Handoff authority.',
+    '',
+    'Use `<common-command> --help` for focused common-path usage. Use `operations` deliberately for the advanced/internal operation catalog.'
   ].join('\n');
+}
+
+function commonCommandHelp(command, surfaceCommand, flags = {}) {
+  if (surfaceCommand === 'ground') return [
+    'Tiinex portable tooling — ground',
+    '',
+    `${command} ground <handoff-package.zip> --route <Continue-from>`,
+    `${command} ground <handoff-package.zip> --route <Continue-from> --continue <workspace-dir>`,
+    '',
+    'Reads and qualifies the exact selected Handoff route. The default projection keeps readiness, recipient authority boundary, Required Context closure, continuity/blockers, current Task identity, and exact next action compact; add `--full` for the full qualified receipt.',
+    'Add `--include-required-context <requirement-id,name|all>` and/or `--include-current-work` only when exact body text is needed. `ground --continue` includes the bounded current Task body needed to proceed, retains Required Context counts and continuity/recovery state, and does not repeat qualified Required Context item paths or root-detail receipts unless explicitly requested (or `--full` is used).',
+    'After `grounded-to-act`, `--continue` materializes the selected carried Workspace into an empty local directory and writes runtime-only `.tiinex/continuation.json`. The grounding operation itself is non-mutating; downstream work authority comes from qualified Handoff/Task/Role artifacts, not from that operation-safety fact.',
+    '',
+    `Advanced/internal catalog: ${command} operations`
+  ];
+  if (surfaceCommand === 'author') {
+    const schemaId = typeof flags.schema === 'string' ? flags.schema.trim() : '';
+    return [
+      'Tiinex portable tooling — author',
+      '',
+      `${command} author <workspace-dir> --schema <schema-id> --path <workspace-relative-artifact> --body <body.md> [--parent <workspace-relative-parent>] [--title <title>] [--summary <summary>] [--why <why>]`,
+      '',
+      'Uses qualified continuation state to infer the ordinary Parent when `--parent` is omitted, seals c14n-v2 self-integrity, audits, stages, and updates continuation state only after qualification. Invalid output is not retained.',
+      '',
+      'Schema-body contract discovery:',
+      `- Run ${command} author --help --schema <schema-id> to see the required body headings and fields from the registered schema runtime validation contract.`,
+      ...(schemaId ? ['', ...publicAuthorSchemaBodyContractHelpLines(schemaId)] : []),
+      '',
+      `Advanced/internal catalog: ${command} operations`
+    ];
+  }
+  if (surfaceCommand === 'handoff') return [
+    'Tiinex portable tooling — handoff',
+    '',
+    `${command} handoff <workspace-dir>`,
+    '',
+    'Infers the latest qualified authored Handoff, selected Workspace identity/target, received package parent, unchanged sibling Workspace providers, canonical projected filename, and return output directory. The default receipt keeps output identity, routing text, closure/workspace qualification, verification, and actionable findings compact; add `--full` for the complete manufacture receipt. Normal operator completion is exactly one Handoff package plus the adjacent exact routing text. In markdown-capable hosts render that routing in a fenced code block; do not emit canonical Workspace Evidence/Handoff markdown as additional loose transport files. Runtime-only `.tiinex` state is excluded from canonical manufacture.',
+    '',
+    `Advanced/internal catalog: ${command} operations`
+  ];
+  if (surfaceCommand === 'orient') return [
+    'Tiinex portable tooling — orient',
+    '',
+    `${command} orient <handoff-package.zip>`,
+    '',
+    'Read-only recipient orientation for a supplied Handoff carrier. The default projection identifies qualified Workspaces/routes, selection, non-authority, and the exact grounding route; add `--full` for endpoint, closure, and package-detail receipts.',
+    '',
+    `Advanced/internal catalog: ${command} operations`
+  ];
+  if (surfaceCommand === 'validate') return [
+    'Tiinex portable tooling — validate',
+    '',
+    `${command} validate <handoff-package.zip>`,
+    '',
+    'Audits carried Handoff-package context and qualification evidence without mutating source material.',
+    '',
+    `Advanced/internal catalog: ${command} operations`
+  ];
+  return null;
 }

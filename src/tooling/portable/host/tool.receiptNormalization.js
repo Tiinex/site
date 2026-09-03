@@ -1,6 +1,6 @@
 import { portableFinding } from '../findings.js';
 
-export function normalizeRepositoryFiles(normalized, findings) {
+export function normalizeRepositoryFiles(normalized, findings, request = {}) {
   const files = normalizeFiles(normalized);
   const out = [];
   for (const file of files) {
@@ -12,7 +12,7 @@ export function normalizeRepositoryFiles(normalized, findings) {
     if (!source.repository) findings.push(portableFinding('error', 'portable.host-receipt.repository-source.missing', 'Repository read receipts require explicit repository identity.', { ref: file.path }));
     if (!source.commit) findings.push(portableFinding('warning', 'portable.host-receipt.repository-commit.unpinned', 'Repository material was returned without a resolved commit and remains moving-ref qualified.', { ref: file.path, repository: source.repository || '' }));
     const authority = source.authority === 'canonical-core' && !source.commit ? 'remote-repository-unpinned' : String(source.authority || 'remote-repository-unverified');
-    out.push(Object.freeze({
+    const normalizedFile = Object.freeze({
       path: normalizePath(file.path),
       content: file.content,
       sourceMode: 'portable-host-repository',
@@ -28,9 +28,51 @@ export function normalizeRepositoryFiles(normalized, findings) {
         ...(source.permalink ? { permalink: String(source.permalink) } : {}),
         ...(source.durableLocator ? { durableLocator: String(source.durableLocator) } : {})
       })
-    }));
+    });
+    if (repositoryReadIdentityMatches(request, normalizedFile, findings)) out.push(normalizedFile);
   }
   return out;
+}
+
+
+function repositoryReadIdentityMatches(request = {}, file = {}, findings = []) {
+  const expectedRepository = concreteIdentity(request.repository);
+  const expectedRef = concreteIdentity(request.ref);
+  const expectedPath = concretePath(request.path);
+  const source = file?.source || {};
+  const actualRepository = concreteIdentity(source.repository);
+  const actualRef = concreteIdentity(source.ref);
+  const actualCommit = concreteIdentity(source.commit);
+  const actualFilePath = concretePath(file?.path);
+  const actualSourcePath = concretePath(source.path || file?.path);
+  let matches = true;
+  if (expectedRepository && expectedRepository.toLowerCase() !== actualRepository.toLowerCase()) {
+    matches = false;
+    findings.push(portableFinding('error', 'portable.host-receipt.repository-identity.mismatch', 'Repository read receipt does not match the exact requested repository identity.', { expected: expectedRepository, actual: actualRepository, ref: actualFilePath }));
+  }
+  if (expectedPath && (expectedPath !== actualFilePath || expectedPath !== actualSourcePath)) {
+    matches = false;
+    findings.push(portableFinding('error', 'portable.host-receipt.repository-path.mismatch', 'Repository read receipt does not match the exact requested repository path.', { expected: expectedPath, actual: actualSourcePath || actualFilePath, ref: actualFilePath }));
+  }
+  if (expectedRef) {
+    const pinned = /^[0-9a-f]{40}$/i.test(expectedRef);
+    const refMatches = pinned ? actualCommit.toLowerCase() === expectedRef.toLowerCase() : actualRef === expectedRef || actualCommit === expectedRef;
+    if (!refMatches) {
+      matches = false;
+      findings.push(portableFinding('error', 'portable.host-receipt.repository-ref.mismatch', 'Repository read receipt does not match the exact requested repository ref/commit identity.', { expected: expectedRef, actualRef, actualCommit, ref: actualFilePath }));
+    }
+  }
+  return matches;
+}
+
+function concreteIdentity(value = '') {
+  const text = String(value || '').trim();
+  return !text || /^<.*>$/.test(text) ? '' : text;
+}
+
+function concretePath(value = '') {
+  const text = concreteIdentity(value);
+  return text ? normalizePath(text) : '';
 }
 
 export function normalizeLocalFiles(normalized, findings, capabilityName) {

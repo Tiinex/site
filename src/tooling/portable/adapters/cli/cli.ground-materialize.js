@@ -6,7 +6,7 @@ import { handoffWorkspaceProviderForId } from '../../handoff/workspaceByteProvid
 export function groundContinuationOperationInput(input = {}, flags = {}) {
   return Object.freeze({
     ...input,
-    includeRequiredContext: flags['include-required-context'] || (flags.continue ? 'all' : input.includeRequiredContext || ''),
+    includeRequiredContext: flags['include-required-context'] || (flags.continue && flags.full ? 'all' : input.includeRequiredContext || ''),
     includeCurrentWork: Boolean(flags['include-current-work'] || flags.continue || input.includeCurrentWork)
   });
 }

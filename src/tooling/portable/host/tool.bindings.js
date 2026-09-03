@@ -168,7 +168,7 @@ export function acceptPortableHostActionReceipt(input = {}, options = {}) {
     if (actual.status !== 'completed') findings.push(portableFinding('error', 'portable.host-receipt.step.incomplete', 'A host action step did not complete.', { stepId: expected.stepId, status: actual.status || '' }));
     if (expected.tool?.id && actual.toolId && actual.toolId !== expected.tool.id) findings.push(portableFinding('warning', 'portable.host-receipt.tool.changed', 'The receipt used a different tool than the selected binding; the normalized result is accepted only through the explicit receipt.', { expectedToolId: expected.tool.id, actualToolId: actual.toolId }));
     const normalized = actual.normalized || {};
-    if (expected.capability === 'repositoryRead') normalizedFiles.push(...normalizeRepositoryFiles(normalized, findings));
+    if (expected.capability === 'repositoryRead') normalizedFiles.push(...normalizeRepositoryFiles(normalized, findings, expected.argumentsTemplate || {}));
     if (expected.capability === 'filesystemRead' || expected.capability === 'archiveRead') normalizedFiles.push(...normalizeLocalFiles(normalized, findings, expected.capability));
     if (expected.capability === 'images' || expected.capability === 'pdf') interpretations.push(...normalizeInterpretations(normalized, findings, expected.capability));
   }
