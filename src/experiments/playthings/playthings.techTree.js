@@ -45,6 +45,12 @@ export function buildPlaythingsTechTree(model = {}) {
   return Object.freeze({ schema: PLAYTHINGS_TECH_TREE_SCHEMA, nodes: Object.freeze(nodes), roots: Object.freeze(roots), byId, semanticAuthority: 'none' });
 }
 
+
+export function filterPlaythingsTechTreeNodes(tree = {}, options = {}) {
+  const nodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
+  return Object.freeze((options.implementedOnly !== false ? nodes.filter((node) => node.implemented) : nodes).slice());
+}
+
 function schemaLabel(schemaId) {
   const parts = String(schemaId || '').replace(/^tiinex\./, '').replace(/\.v\d+$/, '').split('.').filter(Boolean);
   return parts.map((part) => part.slice(0, 1).toUpperCase() + part.slice(1)).join(' ') || 'Schema';

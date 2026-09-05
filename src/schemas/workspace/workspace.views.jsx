@@ -5,15 +5,14 @@ import { Icon } from '../../ui/primitives/Icon.jsx';
 import { presentWorkspaceFeed, presentWorkspaceTree } from './tiinex.workspace.v1.presenter.js';
 import { summarizeWorkspaceMaterial } from '../../workspaces/workspace.summary.js';
 import { buildWorkspaceLineageView } from '../../workspaces/workspace.lineageView.js';
-import { buildDiscoveryMaterialIndex, buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
-import { buildWorkspaceAuditView } from '../../workspaces/workspace.auditView.js';
+import { buildWorkspaceDiscoveryView } from '../../workspaces/workspace.discoveryView.js';
 import { normalizeWorkspaceDisplayOptions } from '../../workspaces/workspace.displayOptions.js';
 import { WorkspaceBoundaryKicker, SourceStrip, WorkspaceDropHint, WorkspaceMaterialSummary, ModeToolbar, ProgressStrip, EmptyWorkspaceState } from './workspace.chrome.views.jsx';
 import { DiscoveryRecordList } from './workspace.discovery.views.jsx';
 import { WorkspaceTreeState } from './workspace.tree.views.jsx';
 import { WorkspaceAuditState } from './workspace.audit.views.jsx';
 import { WorkspaceLineageState } from './workspace.lineage.views.jsx';
-import { transitionProductContextForWorkspace } from '../../transitions/transition.productPresentation.browser.js';
+import { resolvedWorkspaceMaterialProjection, resolvedWorkspaceTransitionContext } from '../../workspaces/workspace.resolvedProjection.js';
 import { TimePortalBanner, TimePortalCompactMarker } from './workspace.timePortal.views.jsx';
 import { WorkspaceSelectionSurface } from './workspace.selection.views.jsx';
 
@@ -21,11 +20,6 @@ export { AssetDetailDialog } from './workspace.cards.views.jsx';
 export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
 export { WorkspaceCanonicalCreateDialog } from './workspace.canonicalTaskDialog.views.jsx';
 export { GovernanceBoundaryDialog } from './workspace.governance.views.jsx';
-
-function auditIndexForWorkspace(workspace = {}, records = []) {
-  const audit = buildWorkspaceAuditView(workspace, { records, query: '' });
-  return new Map((audit.items || []).map((item) => [item.id, item]));
-}
 
 function selectedRecordFrom(workspace = {}, selectedRecordId = '') {
   const records = Array.isArray(workspace.records) ? workspace.records : [];
@@ -58,7 +52,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
   const transitionProductActionsVisible = !selectionActive && !readOnlyHistorical && (verse === 'feed' || verse === 'lineage');
   const transitionProductContext = useMemo(() => (transitionProductActionsVisible
-    ? transitionProductContextForWorkspace({ workspaceRecords: allRecords, referenceRecords })
+    ? resolvedWorkspaceTransitionContext(allRecords, referenceRecords)
     : null), [transitionProductActionsVisible, allRecords, referenceRecords]);
   const selectedRecordId = String(state.view?.selectedRecordId || '');
   const lineageTraversalPreview = useMemo(() => (lineageVerse && selectedRecordId
@@ -71,10 +65,11 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
   const query = lineageVerse ? lineageQuery : discoveryQuery;
   const displayOptions = useMemo(() => normalizeWorkspaceDisplayOptions(state.view?.displayOptions), [state.view?.displayOptions]);
   const selectedRecord = selectedRecordFrom(workspace, selectedRecordId);
-  const materialIndex = useMemo(() => buildDiscoveryMaterialIndex(allRecords), [allRecords]);
-  const auditById = useMemo(() => auditIndexForWorkspace(workspace, allRecords), [workspace, allRecords]);
+  const resolvedMaterial = useMemo(() => resolvedWorkspaceMaterialProjection(workspace, allRecords), [workspace, allRecords]);
+  const materialIndex = resolvedMaterial.materialIndex;
+  const auditById = resolvedMaterial.auditById;
   const allAssets = useMemo(() => (Array.isArray(workspace.assets) ? workspace.assets : []), [workspace.assets]);
-  const workspaceArtifactCount = useMemo(() => allRecords.filter(isWorkspaceRecord).length, [allRecords]);
+  const workspaceArtifactCount = resolvedMaterial.workspaceArtifactCount;
   const discoveryView = useMemo(() => buildWorkspaceDiscoveryView(workspace, {
     records: allRecords,
     assets: allAssets,
@@ -94,7 +89,6 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
     : presentWorkspaceFeed(workspace, { verse, query: discoveryQuery })), [workspace, verse, discoveryQuery]);
   const materialSummary = useMemo(() => summarizeWorkspaceMaterial(workspace), [workspace]);
   const interactionRevision = [
-    state.activeWorkspaceId || '',
     workspace?.id || '',
     state.view?.workspaceVerse || '',
     state.view?.selectedRecordId || '',
@@ -193,7 +187,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
 
 function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
   return previous.workspace === next.workspace
-    && previous.state === next.state
+    && workspaceSurfaceStateEqual(previous.state, next.state)
     && previous.referenceRecords === next.referenceRecords
     && previous.selectionSession === next.selectionSession
     && previous.expandedLineageRecordIds === next.expandedLineageRecordIds
@@ -202,4 +196,16 @@ function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
     && previous.timePortal === next.timePortal
     && previous.historicalReadModel === next.historicalReadModel
     && previous.readOnlyHistorical === next.readOnlyHistorical;
+}
+
+function workspaceSurfaceStateEqual(previous = {}, next = {}) {
+  const a = previous?.view || {}; const b = next?.view || {};
+  return String(a.workspaceVerse || '') === String(b.workspaceVerse || '')
+    && String(a.layoutMode || 'expanded') === String(b.layoutMode || 'expanded')
+    && String(a.query || '') === String(b.query || '')
+    && String(a.lineageQuery || '') === String(b.lineageQuery || '')
+    && String(a.selectedRecordId || '') === String(b.selectedRecordId || '')
+    && a.displayOptions === b.displayOptions
+    && a.expandedTreeFolders === b.expandedTreeFolders
+    && a.timePortal === b.timePortal;
 }

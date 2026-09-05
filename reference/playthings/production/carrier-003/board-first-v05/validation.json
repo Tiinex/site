@@ -1,0 +1,319 @@
+{
+  "explorer": {
+    "source_board": {
+      "file": "source-board.png",
+      "sha256": "f0d3aaa12a6f2cd3d17c7908750e73b155b32eeadc47a586981dea06601501ee"
+    },
+    "walk_source_heights": [
+      274,
+      275,
+      274,
+      274,
+      276,
+      275,
+      276,
+      276
+    ],
+    "walk_source_height_median": 275.0,
+    "max_source_height_drift": 0.0036363636363636364,
+    "world64_bboxes": [
+      [
+        15,
+        9,
+        48,
+        59
+      ],
+      [
+        15,
+        9,
+        48,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        15,
+        9,
+        48,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        14,
+        9,
+        49,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        14,
+        9,
+        49,
+        59
+      ]
+    ],
+    "checks": {
+      "walk_frame_count_8": true,
+      "source_height_drift_lte_8pct": true,
+      "all_world64_cells_nonempty": true,
+      "world64_safety_margin": true,
+      "top_view_count_3": true
+    },
+    "pass": true,
+    "walk": [
+      {
+        "file": "walk-left-01.png",
+        "sha256": "7b2cf13e72129b822d9ee24dea4d79903dc87ea3da46916a7ffef15849a913e5",
+        "bbox256": [
+          59,
+          33,
+          197,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-02.png",
+        "sha256": "b169898ab953c937ff467d9be863b1e8508921998a6f1abf6a7942b749347b5c",
+        "bbox256": [
+          59,
+          32,
+          197,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-03.png",
+        "sha256": "cfe32908734ca20caf9638d14df644fda977c2d49645e4eb770cb82c46ba26ea",
+        "bbox256": [
+          57,
+          33,
+          198,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-04.png",
+        "sha256": "2fb5eb9440dd555e5eb3e4c66fbc31f1bdfb8dffb7805070ac4b6595a3ee1e3c",
+        "bbox256": [
+          59,
+          33,
+          197,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-05.png",
+        "sha256": "eb1dee67425e4c18cf9ce90d13fb460d3bc7df51e7f13aa65fdc29aefbc39a93",
+        "bbox256": [
+          56,
+          31,
+          199,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-06.png",
+        "sha256": "df3a6ca8d1ff61c3b2106888e925ccb26f4f75c657bfa45536163f71aa619564",
+        "bbox256": [
+          54,
+          32,
+          201,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-07.png",
+        "sha256": "b45cd2730cf1e786c9e834f3a62382a72787b348744c8b9575db60b089e2b2ee",
+        "bbox256": [
+          57,
+          31,
+          198,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-08.png",
+        "sha256": "b0b5d8f10861a08d30c600910c632d120fbeafd64ceaa187d3d5808ad9a44546",
+        "bbox256": [
+          55,
+          31,
+          201,
+          240
+        ]
+      }
+    ]
+  },
+  "robot": {
+    "source_board": {
+      "file": "source-board.png",
+      "sha256": "5309b81a3041f871daa20ff1776081336f7f1276c5315541d5d56afee836dda0"
+    },
+    "walk_source_heights": [
+      273,
+      273,
+      273,
+      274,
+      273,
+      274,
+      274,
+      274
+    ],
+    "walk_source_height_median": 273.5,
+    "max_source_height_drift": 0.0018281535648994515,
+    "world64_bboxes": [
+      [
+        15,
+        9,
+        48,
+        59
+      ],
+      [
+        16,
+        9,
+        48,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        15,
+        9,
+        48,
+        59
+      ],
+      [
+        14,
+        9,
+        50,
+        59
+      ],
+      [
+        15,
+        9,
+        49,
+        59
+      ],
+      [
+        14,
+        9,
+        49,
+        59
+      ]
+    ],
+    "checks": {
+      "walk_frame_count_8": true,
+      "source_height_drift_lte_8pct": true,
+      "all_world64_cells_nonempty": true,
+      "world64_safety_margin": true,
+      "top_view_count_3": true
+    },
+    "pass": true,
+    "walk": [
+      {
+        "file": "walk-left-01.png",
+        "sha256": "8dcd928ef8058b63e34a2644bfb4acd477d80a49697f1d6ca1fb76a2a97cb16e",
+        "bbox256": [
+          60,
+          32,
+          195,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-02.png",
+        "sha256": "55cac4bef835aa32b405f004188fb7d0a7bb0e795b0a0480a4ba36d9f03e6040",
+        "bbox256": [
+          60,
+          32,
+          195,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-03.png",
+        "sha256": "21b8d1077355e88f4dfe1c031a78deddba3efd73c2690f0130b4ec33411ce7fa",
+        "bbox256": [
+          58,
+          32,
+          198,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-04.png",
+        "sha256": "45751eebaceccb7fb7630ad9e7172b1c2539d17e9f80867fa4bf3bc9156b5c28",
+        "bbox256": [
+          57,
+          32,
+          199,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-05.png",
+        "sha256": "cfa0f34ef5861c06b0de714f8a72e042ceffe3789d3b788dda840cc24ac61cac",
+        "bbox256": [
+          59,
+          32,
+          197,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-06.png",
+        "sha256": "53c0e88982bceb22ee3cbe55ebd3cd6050d4ec6d3668cc8df46abef2c40c7c51",
+        "bbox256": [
+          54,
+          32,
+          202,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-07.png",
+        "sha256": "351d23c4843274edbed5d0e46071f090de4cc47c5c8cf1db40f3dca99e74c2c0",
+        "bbox256": [
+          57,
+          32,
+          198,
+          240
+        ]
+      },
+      {
+        "file": "walk-left-08.png",
+        "sha256": "c1315a8a224ad1ba17a3edc04372146feb4e68d3172f56db424b3ccde014888b",
+        "bbox256": [
+          54,
+          31,
+          201,
+          240
+        ]
+      }
+    ]
+  },
+  "proof_of_two_pass": true
+}

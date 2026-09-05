@@ -6,9 +6,12 @@ export const PLAYTHINGS_MOTION_SCHEMA = 'tiinex.playthings.motion.experimental.v
  * long history remains watchable. No timing decision changes Tiinex semantics.
  */
 export function planPlaythingsEventMotion(event = {}, projection = {}, options = {}) {
-  const points = Array.isArray(projection.motionPoints) && projection.motionPoints.length
-    ? projection.motionPoints.map(pointCopy)
-    : [projection.actorPoint || projection.scenePoint].filter(Boolean).map(pointCopy);
+  const fork = projection?.fork || null;
+  const points = fork?.approachPoints?.length
+    ? fork.approachPoints.map(pointCopy)
+    : Array.isArray(projection.motionPoints) && projection.motionPoints.length
+      ? projection.motionPoints.map(pointCopy)
+      : [projection.actorPoint || projection.scenePoint].filter(Boolean).map(pointCopy);
   const eventCount = Math.max(1, Number(options.eventCount || 1));
   const density = clamp(110 / eventCount, 0.55, 1);
   const distance = polylineLength(points);
@@ -16,15 +19,19 @@ export function planPlaythingsEventMotion(event = {}, projection = {}, options =
   const isSplit = event.kind === 'split';
   const interactionKind = String(event.interactionKind || 'inspect');
 
-  const anticipateMs = isSpawn ? 80 : Math.round((isSplit ? 190 : 105) * density);
-  const travelMs = isSpawn ? 0 : Math.round(clamp(distance / 0.72, 190, 900) * density);
+  const spawnTravels = isSpawn && points.length > 1 && distance > 1;
+  const anticipateMs = isSpawn ? 110 : Math.round((isSplit ? 125 : 105) * density);
+  const travelMs = isSpawn && !spawnTravels ? 0 : Math.round(clamp(distance / 0.72, isSpawn ? 260 : 190, isSpawn ? 980 : 900) * density);
+  const forkBeatMs = fork ? Math.round(clamp(130 * density, 85, 140)) : 0;
+  const forkDistance = fork ? Math.max(0, ...(fork.arms || []).map((arm) => polylineLength(arm.points || []))) : 0;
+  const forkTravelMs = fork ? Math.round(clamp(forkDistance / 0.72, 260, 980) * density) : 0;
   const interactionBase = ['work', 'build'].includes(interactionKind) ? 500
     : ['receive', 'pass', 'connect'].includes(interactionKind) ? 400
       : ['observe', 'read', 'decide', 'preserve', 'attest'].includes(interactionKind) ? 340
         : 280;
   const interactionMs = Math.round(clamp(interactionBase * density, 190, 520));
   const settleMs = Math.round(clamp(105 * density, 65, 110));
-  const totalMs = Math.max(1, anticipateMs + travelMs + interactionMs + settleMs);
+  const totalMs = Math.max(1, anticipateMs + travelMs + forkBeatMs + forkTravelMs + interactionMs + settleMs);
 
   return Object.freeze({
     schema: PLAYTHINGS_MOTION_SCHEMA,
@@ -33,6 +40,9 @@ export function planPlaythingsEventMotion(event = {}, projection = {}, options =
     distance,
     anticipateMs,
     travelMs,
+    forkBeatMs,
+    forkTravelMs,
+    fork: fork ? Object.freeze({ branchPoint: pointCopy(fork.branchPoint || points[points.length - 1]), arms: Object.freeze((fork.arms || []).map((arm) => Object.freeze({ kind: arm.kind, artifactKey: arm.artifactKey || '', points: Object.freeze((arm.points || []).map(pointCopy)) }))) }) : null,
     interactionMs,
     settleMs,
     totalMs,
@@ -46,7 +56,9 @@ export function samplePlaythingsEventMotion(plan = {}, elapsedInput = 0) {
   const elapsedMs = clamp(Number(elapsedInput || 0), 0, totalMs);
   const anticipateEnd = Number(plan.anticipateMs || 0);
   const travelEnd = anticipateEnd + Number(plan.travelMs || 0);
-  const interactionEnd = travelEnd + Number(plan.interactionMs || 0);
+  const forkBeatEnd = travelEnd + Number(plan.forkBeatMs || 0);
+  const forkTravelEnd = forkBeatEnd + Number(plan.forkTravelMs || 0);
+  const interactionEnd = forkTravelEnd + Number(plan.interactionMs || 0);
   const points = Array.isArray(plan.points) ? plan.points : [];
   const start = points[0] || { x: 0, y: 0 };
   const finish = points[points.length - 1] || start;
@@ -66,26 +78,37 @@ export function samplePlaythingsEventMotion(plan = {}, elapsedInput = 0) {
     phaseProgress = unit(elapsedMs, anticipateEnd, travelEnd);
     position = pointOnPolyline(points, smoothstep(phaseProgress));
     moving = true;
+  } else if (elapsedMs < forkBeatEnd && Number(plan.forkBeatMs || 0) > 0) {
+    phase = 'fork';
+    phaseProgress = unit(elapsedMs, travelEnd, forkBeatEnd);
+    position = plan.fork?.branchPoint || finish;
+  } else if (elapsedMs < forkTravelEnd && Number(plan.forkTravelMs || 0) > 0) {
+    phase = 'fork-travel';
+    phaseProgress = unit(elapsedMs, forkBeatEnd, forkTravelEnd);
+    position = plan.fork?.branchPoint || finish;
+    moving = true;
   } else if (elapsedMs < interactionEnd) {
     phase = 'interact';
-    phaseProgress = unit(elapsedMs, travelEnd, interactionEnd);
+    phaseProgress = unit(elapsedMs, forkTravelEnd, interactionEnd);
     interactionProgress = phaseProgress;
-    position = finish;
+    position = plan.fork?.arms?.find((arm) => arm.kind === 'sibling')?.points?.at(-1) || finish;
   } else {
     phase = 'settle';
     phaseProgress = unit(elapsedMs, interactionEnd, totalMs);
     interactionProgress = 1;
-    position = finish;
+    position = plan.fork?.arms?.find((arm) => arm.kind === 'sibling')?.points?.at(-1) || finish;
   }
 
-  const tangent = moving ? tangentOnPolyline(points, smoothstep(phaseProgress)) : lastTangent(points);
+  const forkProgress = phase === 'fork-travel' ? smoothstep(phaseProgress) : (['interact', 'settle'].includes(phase) ? 1 : 0);
+  const forkActors = plan.fork ? (plan.fork.arms || []).map((arm) => ({ kind: arm.kind, artifactKey: arm.artifactKey, position: pointOnPolyline(arm.points || [plan.fork.branchPoint], forkProgress), progress: forkProgress })) : [];
+  const tangent = moving && phase !== 'fork-travel' ? tangentOnPolyline(points, smoothstep(phaseProgress)) : lastTangent(points);
   const facing = tangent.x < -0.001 ? -1 : 1;
   const walkPhase = moving ? (elapsedMs / 115) * Math.PI * 2 : 0;
   const bob = moving ? -Math.abs(Math.sin(walkPhase)) * 2.2 : 0;
   const lean = moving ? clamp(tangent.x / Math.max(1, Math.hypot(tangent.x, tangent.y)), -1, 1) * 0.06 : 0;
   const spawnScale = plan.isSpawn && phase === 'spawn' ? spawnEase(phaseProgress) : 1;
-  const anticipationScaleY = phase === 'anticipate' || phase === 'split' ? 1 - Math.sin(phaseProgress * Math.PI) * 0.09 : 1;
-  const anticipationScaleX = phase === 'anticipate' || phase === 'split' ? 1 + Math.sin(phaseProgress * Math.PI) * 0.07 : 1;
+  const anticipationScaleY = phase === 'anticipate' || phase === 'split' || phase === 'fork' ? 1 - Math.sin(phaseProgress * Math.PI) * 0.09 : 1;
+  const anticipationScaleX = phase === 'anticipate' || phase === 'split' || phase === 'fork' ? 1 + Math.sin(phaseProgress * Math.PI) * 0.07 : 1;
 
   return Object.freeze({
     elapsedMs,
@@ -102,7 +125,8 @@ export function samplePlaythingsEventMotion(plan = {}, elapsedInput = 0) {
     interactionProgress,
     sceneOpacity: phase === 'interact' ? scenePulse(phaseProgress) : phase === 'settle' ? 1 - phaseProgress : 0,
     structureProgress: phase === 'interact' || phase === 'settle' ? smoothstep(interactionProgress) : 0,
-    splitFlash: plan.isSplit && phase === 'split' ? Math.sin(phaseProgress * Math.PI) : 0,
+    splitFlash: plan.isSplit && phase === 'fork' ? Math.sin(phaseProgress * Math.PI) : 0,
+    forkActors: Object.freeze(forkActors.map((actor) => Object.freeze({ ...actor, position: Object.freeze(pointCopy(actor.position)) }))),
     dustOpacity: moving ? 0.18 + Math.abs(Math.sin(walkPhase)) * 0.28 : 0,
     done: elapsedMs >= totalMs
   });

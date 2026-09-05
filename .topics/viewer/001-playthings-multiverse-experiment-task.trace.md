@@ -2,9 +2,9 @@
 
 - Envelope Schema: tiinex.root.v1
 - Parent
-  - Parent Schema: tiinex.discovery.v1
-  - Trace: [Viewer Present State And Atlas Readiness](https://github.com/Tiinex/business/blob/13f72c62cd4f476abc2e277358293f852394c127/.topics/initiatives/001-3-3-viewer-present-state-and-atlas-readiness-discovery.trace.md)
-  - Origin: [external-versioned](https://github.com/Tiinex/business/blob/13f72c62cd4f476abc2e277358293f852394c127/.topics/initiatives/001-3-3-viewer-present-state-and-atlas-readiness-discovery.trace.md)
+  - Parent Schema: tiinex.project.v1
+  - Trace: [Playthings](../playthings/001-playthings-project.trace.md)
+  - Origin: [relative](../playthings/001-playthings-project.trace.md)
 - Current
   - Current Schema: tiinex.task.v1
   - Created At: 2026-09-01 21:10:00
@@ -38,6 +38,7 @@ Create an isolated Site experiment that projects each loaded repository as a bou
 
 ## Dependencies
 
+- Organizational Playthings project root: ../playthings/001-playthings-project.trace.md.
 - Business Viewer readiness direction: https://github.com/Tiinex/business/blob/13f72c62cd4f476abc2e277358293f852394c127/.topics/initiatives/001-3-3-viewer-present-state-and-atlas-readiness-discovery.trace.md
 - Site implementation base verified against Tiinex/site refactor commit 56ba75025b7a8fd44b5318d2560d2ec63eb0106f.
 - Existing Site lineage resolver and GitHub source materialization remain the semantic/source authority; Playthings may project them but not replace them.
@@ -46,4 +47,4 @@ Create an isolated Site experiment that projects each loaded repository as a bou
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: -K-GTcZtr6t7xjJ6bmHfJSSf7dXDYD99bLZRGed21fA
+  - Value: MCqLL2rchFjEk2Pve6tQCa9sb8yrvOlUu_47TWi2ldA

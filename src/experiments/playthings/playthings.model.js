@@ -1,7 +1,9 @@
 import { resolveLineage } from '../../lineage/lineage.resolve.js';
 import { selfIntegrityValuesForNode } from '../../lineage/lineage.integrity.js';
 import { resolvePlaythingsPresentationCompanion } from './presentation/playthings.presentation.js';
-import { findArtifactLocalPlaythingsTileCompanion, resolvePlaythingsTileCompanion } from './presentation/playthings.tiles.js';
+import { artifactRoleLabel, lineageActorForHead, normalizeRoleIdentity } from './playthings.role.js';
+import { buildPlaythingsLivingProjection } from './playthings.living.js';
+import { isPlaythingsSchemaDocument, playthingsArtifactMaterialPath } from './playthings.artifactKind.js';
 
 export const PLAYTHINGS_EXPERIMENT_ID = 'tiinex.playthings.multiverse.experimental.v1';
 
@@ -16,9 +18,7 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
   const workspaces = Array.isArray(workspacesInput) ? workspacesInput : [];
   const prepared = prepareRecords(workspaces);
   const lineage = resolveLineage(prepared.records, { depth: 'playthings-loaded-multiverse' });
-  const rawArtifacts = lineage.nodes.map((node) => artifactFromNode(node, prepared.recordContextById.get(String(node.id || '')))).filter(Boolean);
-  const schemaTileCompanions = new Map(rawArtifacts.filter((artifact) => artifact.isSchemaArtifact && artifact.playthingsTilesCompanion).map((artifact) => [artifact.schemaId, artifact.playthingsTilesCompanion]));
-  const artifacts = rawArtifacts.map((artifact) => Object.freeze(Object.assign({}, artifact, { playthingsTiles: resolvePlaythingsTileCompanion({ artifact, schemaId: artifact.schemaId, schemaCompanions: schemaTileCompanions }) })));
+  const artifacts = lineage.nodes.map((node) => artifactFromNode(node, prepared.recordContextById.get(String(node.id || '')))).filter(Boolean);
   const artifactByKey = new Map(artifacts.map((artifact) => [artifact.key, artifact]));
   const edgeRows = (lineage.edges || []).filter((edge) => edge.kind === 'parent' && edge.status !== 'missing').map((edge) => {
     const from = artifactByKey.get(String(edge.from || ''));
@@ -44,7 +44,8 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
     if (!childrenByParent.has(edge.from)) childrenByParent.set(edge.from, []);
     childrenByParent.get(edge.from).push(edge.to);
   }
-  for (const children of childrenByParent.values()) children.sort();
+  for (const children of childrenByParent.values()) children.sort((left, right) => compareArtifacts(artifactByKey.get(left), artifactByKey.get(right)) || String(left).localeCompare(String(right)));
+  const living = buildPlaythingsLivingProjection(artifacts, edgeRows);
 
   const artifactsByVerse = groupBy(artifacts, (artifact) => artifact.verseId);
   const repoSummaries = prepared.repoSummaries || [];
@@ -58,8 +59,9 @@ export function projectPlaythingsMultiverse(workspacesInput = []) {
       const keys = new Set(verseArtifacts.map((artifact) => artifact.key));
       const internalEdges = edgeRows.filter((edge) => keys.has(edge.from) && keys.has(edge.to));
       const roots = verseArtifacts.filter((artifact) => !parentByChild.has(artifact.key) || !keys.has(parentByChild.get(artifact.key))).map((artifact) => artifact.key);
-      const leaves = verseArtifacts.filter((artifact) => !(childrenByParent.get(artifact.key) || []).some((childKey) => keys.has(childKey))).map((artifact) => artifact.key);
-      const actors = leaves.map((headKey) => lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent));
+      const livingVerseKeys = new Set(verseArtifacts.filter((artifact) => !artifact.isSchemaArtifact).map((artifact) => artifact.key));
+      const leaves = living.leaves.filter((headKey) => livingVerseKeys.has(headKey));
+      const actors = leaves.map((headKey) => lineageActorForHead(headKey, artifactByKey, living.parentByChild, living.childrenByParent));
       return Object.freeze({
         id: verseId,
         repo,
@@ -163,11 +165,7 @@ export function planPlaythingsDelta(previous = null, next = null) {
 
 export function playthingsModelFingerprint(model = {}) {
   const verses = (model.verses || []).map((verse) => `${verse.id}@${Number(verse.observedCount || 0)}`).sort();
-  const artifacts = (model.artifacts || []).map((artifact) => {
-    const tile = artifact.playthingsTiles?.companion || null;
-    const tileIdentity = tile ? `${tile.path || tile.id || ''}@${hashToken(tile.url || tile.assetRelativePath || '')}` : '';
-    return `${artifact.key}@${artifact.createdAt || ''}@tiles:${tileIdentity}`;
-  }).sort();
+  const artifacts = (model.artifacts || []).map((artifact) => `${artifact.key}@${artifact.createdAt || ''}`).sort();
   const edges = (model.edges || []).map((edge) => edge.key).sort();
   return hashToken(`${verses.join('|')}::${artifacts.join('|')}::${edges.join('|')}`);
 }
@@ -216,7 +214,6 @@ function prepareRecords(workspaces) {
   for (const workspace of workspaces) {
     const workspaceId = String(workspace?.id || 'workspace');
     const sources = Array.isArray(workspace?.sources) ? workspace.sources : [];
-    const assets = Array.isArray(workspace?.assets) ? workspace.assets : [];
     const sourceMap = new Map(sources.map((source) => [String(source?.id || ''), source]));
     const repoSources = uniqueRepoSources(sources);
     const primary = primaryRepositoryForWorkspace(workspace, repoSources);
@@ -249,8 +246,7 @@ function prepareRecords(workspaces) {
         originalId,
         source,
         inferred,
-        bindingMethod: inferred ? primary?.method || 'workspace-repository' : 'record-source',
-        assets
+        bindingMethod: inferred ? primary?.method || 'workspace-repository' : 'record-source'
       });
     }
   }
@@ -318,6 +314,8 @@ function sourceStrength(source = {}) {
   return Number.isFinite(count) ? Math.min(80, Math.max(0, count)) : 0;
 }
 
+
+
 function normalizeLabelToken(value) {
   return String(value || '').trim().toLowerCase().replace(/^tiinex[\s:/_-]*/i, '').replace(/[^a-z0-9]+/g, '');
 }
@@ -328,11 +326,12 @@ function artifactFromNode(node = {}, context = null) {
   const createdAt = String(record.currentCreatedAt || record.createdAt || record.date || '');
   const presentation = resolvePlaythingsPresentationCompanion(node.schemaId || record.schemaId || record.kind || '');
   const selfIntegritySeed = selfIntegrityValuesForNode(node)[0] || String(node.id || '');
-  const path = String(node.path || record.path || '');
-  const isSchemaArtifact = /\.schema\.md$/i.test(path);
+  const path = playthingsArtifactMaterialPath(node, record);
+  const isSchemaArtifact = isPlaythingsSchemaDocument(node, record);
   const isWorkspaceArtifact = /\.workspace\.md$/i.test(path) || String(node.schemaId || record.schemaId || '') === 'tiinex.workspace.v1';
   const presentationCompanion = presentation.companion || {};
-  const playthingsTilesCompanion = findArtifactLocalPlaythingsTileCompanion({ artifactPath: path, assets: context.assets || [] });
+  const roleLabel = artifactRoleLabel(record);
+  const roleIdentity = normalizeRoleIdentity(roleLabel);
   return Object.freeze({
     key: String(node.id || ''),
     recordId: context.originalId,
@@ -350,16 +349,20 @@ function artifactFromNode(node = {}, context = null) {
     interactionKind: isSchemaArtifact ? 'blueprint' : presentationCompanion.interactionKind || 'inspect',
     districtKind: presentationCompanion.districtKind || 'commons',
     worldRole: isSchemaArtifact ? 'blueprint' : presentationCompanion.worldRole || 'scene',
-    persistenceKind: presentationCompanion.persistenceKind || 'none',
-    placementKind: presentationCompanion.placementKind || 'nearest-free',
-    spawnCapability: presentationCompanion.spawnCapability || '',
-    arrivalKind: presentationCompanion.arrivalKind || '',
+    // A .schema.md artifact describes a blueprint. Its target schema may itself
+    // be Organization/Workspace/etc, but the schema document must never inherit
+    // that target's world persistence or spawn semantics.
+    persistenceKind: isSchemaArtifact ? 'none' : presentationCompanion.persistenceKind || 'none',
+    placementKind: isSchemaArtifact ? 'nearest-free' : presentationCompanion.placementKind || 'nearest-free',
+    spawnCapability: isSchemaArtifact ? '' : presentationCompanion.spawnCapability || '',
+    arrivalKind: isSchemaArtifact ? '' : presentationCompanion.arrivalKind || '',
     isSchemaArtifact,
     isWorkspaceArtifact,
     workspaceClusterSize: isWorkspaceArtifact ? workspaceClusterSizeForRecord(record) : 0,
+    roleIdentity,
+    roleLabel,
     presentationResolution: presentation.resolution,
     presentationSchemaId: presentation.resolvedSchemaId,
-    playthingsTilesCompanion,
     hasContinuityContext: Boolean(node.hasContinuityContext ?? record.hasContinuityContext),
     hasIntegrity: Boolean(node.hasIntegrity ?? record.hasIntegrity),
     sourceMode: String(node.sourceMode || record.sourceMode || ''),
@@ -369,6 +372,8 @@ function artifactFromNode(node = {}, context = null) {
 }
 
 
+
+
 function workspaceClusterSizeForRecord(record = {}) {
   const candidates = [record.workspaceEntries, record.workspaceEntrypoints, record.workspaces].find((value) => Array.isArray(value));
   if (candidates?.length) return Math.max(1, Math.min(5, candidates.length));
@@ -376,33 +381,6 @@ function workspaceClusterSizeForRecord(record = {}) {
   if (!markdown) return 1;
   const paths = new Set(Array.from(markdown.matchAll(/(?:\(|\s)([^\s)]+\.workspace\.md)(?:\)|\s|$)/gi)).map((match) => String(match[1] || '').trim()).filter(Boolean));
   return Math.max(1, Math.min(5, paths.size || 1));
-}
-
-function lineageActorForHead(headKey, artifactByKey, parentByChild, childrenByParent) {
-  const ancestry = [];
-  let cursor = headKey;
-  const seen = new Set();
-  while (cursor && !seen.has(cursor)) {
-    seen.add(cursor);
-    ancestry.push(cursor);
-    cursor = parentByChild.get(cursor) || '';
-  }
-  ancestry.reverse();
-  const head = artifactByKey.get(headKey) || {};
-  const branchPoints = ancestry.filter((key) => (childrenByParent.get(key) || []).length > 1);
-  return Object.freeze({
-    id: `lineage:${headKey}`,
-    headKey,
-    verseId: head.verseId || '',
-    repo: head.repo || '',
-    label: head.title || head.path || headKey,
-    schemaId: head.schemaId || '',
-    visualKind: head.visualKind || 'relic',
-    presentationSeed: (artifactByKey.get(ancestry[0]) || head).presentationSeed || ancestry[0] || headKey,
-    ancestry: Object.freeze(ancestry),
-    generations: Math.max(0, ancestry.length - 1),
-    branchDepth: branchPoints.length
-  });
 }
 
 function topologicalArtifactAdditions(additions, parentByChild, nextByKey) {

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildPlaythingsTechTree } from './playthings.techTree.js';
+import { buildPlaythingsTechTree, filterPlaythingsTechTreeNodes } from './playthings.techTree.js';
 
 const rootSchema = { key: 'root-schema', recordId: 'root-record', workspaceId: 'site', path: 'src/schemas/tiinex.root.v1.schema.md', schemaId: 'tiinex.root.v1', isSchemaArtifact: true };
 const taskSchema = { key: 'task-schema', recordId: 'task-record', workspaceId: 'site', path: 'src/schemas/core/task/tiinex.task.v1.schema.md', schemaId: 'tiinex.task.v1', isSchemaArtifact: true };
@@ -17,4 +17,6 @@ assert.equal(future.locked, true, 'observed external schema absent from Site rem
 assert.equal(future.openAvailable, true, 'locked observed schema can still open its detailed artifact');
 assert.equal(future.parentSchemaId, 'tiinex.root.v1', 'observed lineage may place an external blueprint under its resolved parent');
 assert.equal(tree.semanticAuthority, 'none');
+assert.equal(filterPlaythingsTechTreeNodes(tree, { implementedOnly: true }).every((node) => node.implemented), true, 'Implemented only is the default Tech Tree visibility boundary');
+assert.equal(filterPlaythingsTechTreeNodes(tree, { implementedOnly: false }).some((node) => node.schemaId === 'tiinex.future.widget.v1'), true, 'disabling the filter reveals observed locked schemas without changing implementation state');
 console.log('✓ Playthings schema tech-tree projection passed');

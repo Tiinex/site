@@ -570,3 +570,19 @@ Runtime: `react-v440-m0f-control-set-completeness-correction`
 Run the v440 control-topology adversarial matrix, v439 transport/publication regressions, all `src/**/*.test.mjs` individually, and repository gates. The historical source-clean `ERR_MODULE_NOT_FOUND: react` at `src/app/useLocalMaterialIntake.test.mjs` remains an explicit environment exception when dependencies are unavailable; it is not a product/runtime PASS claim.
 
 Browser/public runtime remains unclaimed unless separately exercised.
+
+---
+
+# Carrier Major 003 — board-first Plaything production checkpoint v0.5
+
+- Rebased onto the user-supplied current functional Site workspace; unrelated source from the earlier incorrect Site base is not transplanted.
+- Atomic generated source bundle: FRONT + LEFT + BACK + 8 LEFT walk poses.
+- Same deterministic extractor passes the frozen explorer and robot proof-of-two boards.
+- Walk normalization uses one shared scale per strip/export profile; no per-frame rescue scaling.
+- Current world64 compatibility probe passes non-empty and safety gates on both proof boards, but world64 is a compatibility probe rather than the final sheet/presentation contract.
+- Pressure exposed and removed a fixed `1536x1024` source-canvas assumption; v0.5 additionally passes an alternate `1312x1199` explorer board and a second robot board without code changes.
+- Motion review requires an ordered pose/contact representation as the primary gait-review surface; GIF/video playback is secondary and must not hide the pose sequence under review.
+- Site `.topics/playthings/001-playthings-project.trace.md` is the Playthings organizational root under the carried Business Tiinex Viewer project.
+- Historical Site Viewer/Playthings descendants now converge through that Site Playthings root instead of the older Business Viewer-readiness Discovery root.
+- Playthings-specific artifacts remain Site-owned on this track. Business carries only the separate domain-neutral visual-source process candidate suitable for later main-refactor reconciliation.
+- Artistic gait acceptance, final schema/artifact sheet-family taxonomy, grid/interior/fullscreen/time decisions, and final exporters remain explicitly open.

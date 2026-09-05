@@ -1,0 +1,281 @@
+{
+  "source": "/mnt/data/tiinex_playthings_005_mutable/site/reference/playthings/production/carrier-003/board-first-v05/explorer/source-board.png",
+  "source_size": [
+    1536,
+    1024
+  ],
+  "contract": {
+    "top_count": 3,
+    "walk_count": 8,
+    "band_threshold_frac": 0.15,
+    "review_cell": 256,
+    "review_target_h": 208,
+    "review_baseline": 240,
+    "world_cell": 64,
+    "world_target_h": 50,
+    "world_baseline": 59
+  },
+  "bands": {
+    "top": [
+      0,
+      581
+    ],
+    "walk": [
+      639,
+      915
+    ],
+    "all": [
+      [
+        0,
+        581
+      ],
+      [
+        639,
+        915
+      ]
+    ]
+  },
+  "walk_centers": [
+    109,
+    289,
+    466,
+    652,
+    835,
+    1029,
+    1216,
+    1408
+  ],
+  "assets": {
+    "front": {
+      "region": [
+        0,
+        0,
+        512,
+        581
+      ],
+      "bbox": [
+        172,
+        30,
+        409,
+        579
+      ],
+      "trimmed_size": [
+        237,
+        549
+      ],
+      "method": "grabcut-central-subject"
+    },
+    "left": {
+      "region": [
+        512,
+        0,
+        1024,
+        581
+      ],
+      "bbox": [
+        151,
+        26,
+        354,
+        579
+      ],
+      "trimmed_size": [
+        203,
+        553
+      ],
+      "method": "grabcut-central-subject"
+    },
+    "back": {
+      "region": [
+        1024,
+        0,
+        1536,
+        581
+      ],
+      "bbox": [
+        83,
+        25,
+        316,
+        577
+      ],
+      "trimmed_size": [
+        233,
+        552
+      ],
+      "method": "grabcut-central-subject"
+    },
+    "walk-left-01": {
+      "region": [
+        0,
+        639,
+        199,
+        915
+      ],
+      "bbox": [
+        15,
+        0,
+        199,
+        274
+      ],
+      "trimmed_size": [
+        178,
+        268
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-02": {
+      "region": [
+        199,
+        639,
+        377,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        178,
+        275
+      ],
+      "trimmed_size": [
+        178,
+        269
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-03": {
+      "region": [
+        377,
+        639,
+        559,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        182,
+        274
+      ],
+      "trimmed_size": [
+        182,
+        268
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-04": {
+      "region": [
+        559,
+        639,
+        743,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        184,
+        274
+      ],
+      "trimmed_size": [
+        179,
+        268
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-05": {
+      "region": [
+        743,
+        639,
+        932,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        189,
+        276
+      ],
+      "trimmed_size": [
+        185,
+        270
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-06": {
+      "region": [
+        932,
+        639,
+        1122,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        190,
+        275
+      ],
+      "trimmed_size": [
+        190,
+        269
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-07": {
+      "region": [
+        1122,
+        639,
+        1312,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        188,
+        276
+      ],
+      "trimmed_size": [
+        182,
+        270
+      ],
+      "method": "foreground-center-component"
+    },
+    "walk-left-08": {
+      "region": [
+        1312,
+        639,
+        1536,
+        915
+      ],
+      "bbox": [
+        0,
+        0,
+        195,
+        276
+      ],
+      "trimmed_size": [
+        189,
+        270
+      ],
+      "method": "foreground-center-component"
+    }
+  },
+  "scales": {
+    "top_review_shared": 0.37681159420289856,
+    "walk_review_shared": 0.7732342007434945,
+    "walk_world_shared": 0.18587360594795538,
+    "top_source_heights": [
+      549,
+      553,
+      552
+    ],
+    "walk_source_heights": [
+      268,
+      269,
+      268,
+      268,
+      270,
+      269,
+      270,
+      270
+    ],
+    "top_median_h": 552,
+    "walk_median_h": 269.0
+  }
+}

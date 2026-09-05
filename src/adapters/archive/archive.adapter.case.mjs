@@ -2,7 +2,7 @@ import assert from 'assert';
 import { createHash } from 'node:crypto';
 import { deflateRawSync } from 'zlib';
 import {
-  classifyArchiveEntry,
+  classifyArchiveEntry, workspaceTitleFromMarkdown,
   createArchiveAdapter,
   materializeArchiveFiles,
   safeArchivePath,
@@ -97,6 +97,8 @@ try {
   assert.equal(classifyArchiveEntry('docs/explicit.md', '# Explicit\n\n- Current Schema: tiinex.workspace.v1'), 'workspace', 'explicit workspace schema can still become a candidate');
   assert.equal(classifyArchiveEntry('src/workspaces/workspace.config.js', 'const DEFAULT_WORKSPACE_MARKDOWN = `- Current Schema: tiinex.workspace.v1`;'), 'asset', 'embedded workspace markdown inside JS must remain an asset, not an open/merge candidate');
   assert.equal(classifyArchiveEntry('a/001.trace.md', '# A'), 'record');
+  assert.equal(workspaceTitleFromMarkdown('# Continuity Context\n\n---\n\n# Tiinex Docs'), 'Tiinex Docs', 'workspace title skips reserved continuity headings');
+  assert.equal(workspaceTitleFromMarkdown('# Continuity Context\n\n---\n\n# tiinex/business — Workspace'), 'Tiinex Business', 'repo workspace headings get concise distinct presentation names');
   assert.equal(classifyArchiveEntry('assets/img.png', null), 'asset');
 
   const zip = makeZip([

@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { createRecordFromMarkdown } from '../../artifacts/artifact.record.js';
 import { planPlaythingsDelta, playthingsArtifactPosition, projectPlaythingsMultiverse, visualKindForSchema } from './playthings.model.js';
 
-function record({ title, path, schema = 'tiinex.task.v1', createdAt = '2026-09-01 10:00:00', parent = '', parentSchema = 'tiinex.task.v1', sourceId = 'site-src', repo = 'Tiinex/site', ref = 'site-ref' }) {
+function record({ title, path, schema = 'tiinex.task.v1', createdAt = '2026-09-01 10:00:00', parent = '', parentSchema = 'tiinex.task.v1', sourceId = 'site-src', repo = 'Tiinex/site', ref = 'site-ref', authors = '' }) {
   const parentBlock = parent ? `- Parent\n  - Parent Schema: ${parentSchema}\n  - Trace: [Parent](${parent})\n  - Origin:\n    - [browse + git](${parent})\n` : '';
-  const markdown = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n${parentBlock}- Current\n  - Current Schema: ${schema}\n  - Created At: ${createdAt}\n  - Summary: ${title}\n\n---\n\n# ${title}\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: demo-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}\n`;
+  const markdown = `# Continuity Context\n\n- Envelope Schema: tiinex.root.v1\n${parentBlock}- Current\n  - Current Schema: ${schema}\n  - Created At: ${createdAt}\n${authors ? `  - Authors: ${authors}\n` : ''}  - Summary: ${title}\n\n---\n\n# ${title}\n\n# Continuity Integrity\n\n- sha256-base64url-c14n-v2\n  - Towards: self\n  - Value: demo-${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}\n`;
   const out = createRecordFromMarkdown(markdown, { path, name: path, sourceMode: 'source' });
   out.source = { id: sourceId, adapterId: 'github', repository: repo, repo, ref };
   out.sourceTarget = { inputTarget: `https://github.com/${repo}/blob/${ref}/${path}`, browseUrl: `https://github.com/${repo}/blob/${ref}/${path}`, sourceArtifactPath: path, repository: repo };
@@ -45,6 +43,9 @@ const advancedModel = projectPlaythingsMultiverse([
 ]);
 const advancedDelta = planPlaythingsDelta(baseline, advancedModel);
 assert.equal(advancedDelta.events.filter((event) => event.kind === 'advance').length, 1, 'linear lineage continuation should advance the existing lineage actor');
+const baselineSiteActorId = baseline.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors[0]?.id;
+const advancedSiteActorId = advancedModel.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors[0]?.id;
+assert.equal(advancedSiteActorId, baselineSiteActorId, 'linear lineage continuation must preserve the rendered Plaything identity instead of remounting a new actor');
 
 const childTwo = record({ title: 'Alternative projection', path: '.topics/playthings-alternative.task.trace.md', parent: 'playthings.task.trace.md', createdAt: '2026-09-01 11:05:00' });
 const branchedModel = projectPlaythingsMultiverse([
@@ -55,6 +56,9 @@ const branchDelta = planPlaythingsDelta(advancedModel, branchedModel);
 assert.equal(branchDelta.events.length, 1, 'only newly observed material should be replayed');
 assert.equal(branchDelta.events[0].kind, 'split', 'a newly observed sibling branch should be projected as a split');
 assert.equal(branchDelta.events[0].artifactKey.includes('playthings-alternative.task.trace.md'), true);
+const branchActors = branchedModel.verses.find((verse) => verse.repo === 'Tiinex/site')?.actors || [];
+assert.ok(branchActors.some((actor) => actor.id === baselineSiteActorId), 'the first living branch preserves the original Plaything identity when a sibling branch appears');
+assert.ok(branchActors.some((actor) => actor.id !== baselineSiteActorId), 'a sibling branch receives a distinct Plaything identity');
 
 const firstObservation = planPlaythingsDelta(null, baseline);
 assert.equal(firstObservation.firstObservation, true);
@@ -66,18 +70,34 @@ assert.equal(unresolvedModel.edges.length, 0, 'missing Parent must not be guesse
 assert.ok(unresolvedModel.unresolved.some((finding) => finding.code === 'lineage.parent.exactTargetNotLoaded'), 'missing Parent remains explicit unknown state');
 
 
+const authoredTask = record({ title: 'Authored task', path: '.topics/authored.task.trace.md', authors: 'Anchor' });
+const authoredModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [authoredTask] }]);
+assert.equal(authoredModel.verses[0].actors[0].roleIdentity, 'anchor', 'explicit artifact Authors may provide presentation-only role livery identity');
 
-const tilePngBytes = fs.readFileSync(fileURLToPath(new URL('./assets/runtime/root.playthings.tiles.png', import.meta.url)));
-const tileAsset = { id:'asset:local:playthings-tiles', path:'.topics/playthings.task.playthings.tiles.png', name:'playthings.task.playthings.tiles.png', type:'image/png', size:tilePngBytes.length, dataUrl:`data:image/png;base64,${tilePngBytes.toString('base64')}`, previewState:'available' };
-const assetBoundModel = projectPlaythingsMultiverse([
-  { id:'site-workspace', title:'Site', sources:[{ id:'site-src', adapterId:'github', repository:'Tiinex/site', repo:'Tiinex/site', ref:'site-ref', repoDiscovery:true }], records:[siteTask], assets:[tileAsset] }
-]);
-const assetBoundArtifact = assetBoundModel.artifacts.find((artifact) => artifact.path === '.topics/playthings.task.trace.md');
-assert.equal(assetBoundArtifact?.playthingsTiles?.resolution, 'artifact-local', 'same-workspace basename companion should bind ahead of schema/root fallback');
-assert.equal(assetBoundArtifact?.playthingsTiles?.companion?.path, '.topics/playthings.task.playthings.tiles.png');
-assert.notEqual(assetBoundModel.fingerprint, projectPlaythingsMultiverse([{ id:'site-workspace', title:'Site', sources:[{ id:'site-src', adapterId:'github', repository:'Tiinex/site', repo:'Tiinex/site', ref:'site-ref', repoDiscovery:true }], records:[siteTask], assets:[] }]).fingerprint, 'companion byte identity must participate in model refresh fingerprinting');
+const schemaLeaf = record({ title: 'Task schema', path: 'src/schemas/core/task/tiinex.task.v1.schema.md', schema: 'tiinex.schema.module.v1', authors: 'Anchor' });
+const schemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [schemaLeaf] }]);
+assert.equal(schemaModel.artifacts[0].isSchemaArtifact, true);
+assert.equal(schemaModel.verses[0].actors.length, 0, 'schema leaf artifacts belong to blueprint/Tech Tree presentation and must not leave living Plaything actors on earth');
+assert.equal(schemaModel.artifacts[0].persistenceKind, 'none', 'schema documents must not inherit persistent world semantics from the schema they describe');
+assert.equal(schemaModel.artifacts[0].spawnCapability, '', 'schema documents must not become habitats/spawn places even when their described schema is a place type');
 
-console.log('✓ Playthings multiverse projection, delta playback and tile-asset binding passed');
+
+const organizationSchemaDoc = record({ title: 'Party Organization', path: 'src/schemas/party/tiinex.party.organization.v1.schema.md', schema: 'tiinex.party.organization.v1' });
+const organizationSchemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [organizationSchemaDoc] }]);
+assert.equal(organizationSchemaModel.artifacts[0].isSchemaArtifact, true);
+assert.equal(organizationSchemaModel.artifacts[0].visualKind, 'blueprint-scene');
+assert.equal(organizationSchemaModel.artifacts[0].persistenceKind, 'none', 'a party.organization .schema.md stays a blueprint and must never project a castle');
+assert.equal(organizationSchemaModel.verses[0].actors.length, 0);
+
+const transportedSchemaDoc = record({ title: 'Transported Organization Schema', path: 'src/schemas/party/tiinex.party.organization.v1.schema.md', schema: 'tiinex.party.organization.v1' });
+transportedSchemaDoc.sourcePath = transportedSchemaDoc.path;
+transportedSchemaDoc.path = '';
+const transportedSchemaModel = projectPlaythingsMultiverse([{ id: 'site-workspace', sources: [{ id: 'site-src', adapterId: 'github', repository: 'Tiinex/site', repo: 'Tiinex/site', ref: 'site-ref', repoDiscovery: true }], records: [transportedSchemaDoc] }]);
+assert.equal(transportedSchemaModel.artifacts[0].isSchemaArtifact, true, 'schema-document classification survives transport when canonical material path is carried in sourcePath rather than record.path');
+assert.equal(transportedSchemaModel.verses[0].actors.length, 0, 'a transported .schema.md document still cannot become a living Plaything leaf');
+assert.equal(transportedSchemaModel.artifacts[0].persistenceKind, 'none', 'transported Organization schema remains blueprint-only and cannot leak castle persistence');
+
+console.log('✓ Playthings multiverse projection and delta playback model passed');
 
 function localize(input, sourceId = 'local') {
   input.source = { id: sourceId, adapterId: 'local', kind: 'local' };
@@ -111,6 +131,14 @@ assert.equal(configuredEmptyDocs.verses.length, 1, 'an unambiguously configured 
 assert.equal(configuredEmptyDocs.verses[0].repo, 'Tiinex/docs');
 assert.equal(configuredEmptyDocs.verses[0].observedCount, 0);
 assert.equal(configuredEmptyDocs.verses[0].actors.length, 0);
+
+
+const browserLocalTask = localize(record({ title: 'My browser task', path: '.topics/my-browser-task.trace.md', schema: 'tiinex.task.v1', createdAt: '2026-09-03 10:00:00' }));
+browserLocalTask.sourceMode = 'local-transition-canonical';
+const browserLocalProjection = projectPlaythingsMultiverse([{ id: 'site-workspace', name: 'Tiinex Site', title: 'Tiinex Site', sources: [{ id: 'local', adapterId: 'local', kind: 'local' }, { id: 'site-origin', adapterId: 'github', repo: 'Tiinex/site', ref: 'site-ref' }], records: [browserLocalTask] }]);
+assert.equal(browserLocalProjection.artifacts.length, 1, 'browser-local canonical artifacts must remain in the Playthings projection when the workspace repository binding is unambiguous');
+assert.equal(browserLocalProjection.artifacts[0].sourceMode, 'local-transition-canonical');
+assert.equal(browserLocalProjection.verses[0].actors.length, 1, 'a browser-local root Task must have a living Plaything representation');
 
 const realmAdded = planPlaythingsDelta(baseline, projectPlaythingsMultiverse([
   { id: 'business-workspace', title: 'Business', sources: [{ id: 'business-src', adapterId: 'github', repository: 'Tiinex/business', repo: 'Tiinex/business', ref: 'business-ref', repoDiscovery: true }], records: [businessProject] },
