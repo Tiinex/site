@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/[\\/]$/, '');
@@ -25,7 +25,7 @@ function walk(dir) {
   }
   return out;
 }
-function rel(path) { return path.replace(root + '/', '').replaceAll('\\', '/'); }
+function rel(path) { return relative(root, path).replaceAll('\\', '/'); }
 
 const budgets = [
   ['src/schemas/workspace/workspace.views.jsx', 260, 'workspace surface orchestrator must stay thin and delegate sub-surfaces'],
