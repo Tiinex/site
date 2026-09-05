@@ -32,35 +32,4 @@ const retroactive = {
   edgeKeys: ['parent:root->child-b']
 };
 assert.equal(resolvePlaythingsObservationCursor(retroactive, history, model).valid, false, 'non-prefix observation must rebuild rather than silently reorder history');
-
-const independentModel = {
-  fingerprint: 'priority-kahn', verses: [{ id: 'repo:tiinex/site' }], portals: [],
-  artifacts: [
-    { key: 'root-a', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 10:00:00', title: 'Root A' },
-    { key: 'root-b', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 20:00:00', title: 'Root B' },
-    { key: 'child-a', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 11:00:00', title: 'Child A' }
-  ],
-  edges: [{ key: 'parent:root-a->child-a', kind: 'parent', from: 'root-a', to: 'child-a' }]
-};
-assert.deepEqual(planPlaythingsHistory(independentModel).events.map((event) => event.artifactKey), ['root-a', 'child-a', 'root-b'], 'each newly-ready child must re-enter chronological priority immediately instead of waiting behind an older ready batch');
-
 console.log('✓ Playthings history ordering, leaf branching and observation resume passed');
-
-const schemaBridgeModel = {
-  fingerprint: 'schema-bridge', verses: [{ id: 'repo:tiinex/site' }], portals: [],
-  artifacts: [
-    { key: 'living-root', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 12:00:00', title: 'Living root', isSchemaArtifact: false },
-    { key: 'schema-blueprint', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 12:01:00', title: 'Blueprint', isSchemaArtifact: true, interactionKind: 'blueprint' },
-    { key: 'after-blueprint', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 12:02:00', title: 'After blueprint', isSchemaArtifact: false },
-    { key: 'real-sibling', verseId: 'repo:tiinex/site', createdAt: '2026-09-01 12:03:00', title: 'Real sibling', isSchemaArtifact: false }
-  ],
-  edges: [
-    { key: 'p1', kind: 'parent', from: 'living-root', to: 'schema-blueprint' },
-    { key: 'p2', kind: 'parent', from: 'schema-blueprint', to: 'after-blueprint' },
-    { key: 'p3', kind: 'parent', from: 'living-root', to: 'real-sibling' }
-  ]
-};
-const schemaBridgeHistory = planPlaythingsHistory(schemaBridgeModel);
-assert.deepEqual(schemaBridgeHistory.events.map((event) => event.kind), ['spawn', 'observe', 'advance', 'split'], 'schema documents remain observed blueprint events and do not consume a living continuation/sibling slot');
-assert.equal(schemaBridgeHistory.events[2].livingParentKey, 'living-root', 'a real descendant after schema-only Parent hops continues from the nearest real living ancestor without rewriting Tiinex Parent');
-assert.equal(schemaBridgeHistory.events[2].parentKey, 'schema-blueprint', 'the semantic Parent remains the actual schema artifact');

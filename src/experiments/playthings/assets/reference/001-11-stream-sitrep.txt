@@ -1,0 +1,85 @@
+Got it — switching to **English from here until the stream is over**. :P
+
+### Glimmer SITREP — Playthings stream handoff
+
+**Current checkpoint:** `001-11`  
+Latest demo package: `tiinex-site-001-1-1-1-1-1-1-1-1-1-1-anchor-to-anchor.handoff-package.zip`
+
+**What Playthings is now:**
+- One shared earth across all loaded origins/workspaces.
+- Living Plaything = current lineage leaf.
+- Artifact history drives playback; at Now the world becomes **Live · Still**.
+- Playthings is presentation only: it does not invent Tiinex semantics, relations, transitions, authority, or timestamps.
+
+**Major improvements already landed:**
+- The catastrophic Viewer/UI freeze was largely fixed.
+- Handoff packages can be drag-dropped globally and reconcile/update their contained workspaces without clearing unrelated ones.
+- Workspace names now resolve to useful names such as Tiinex Business / Docs / Site.
+- Playthings remembers its observed state so updated package material can continue as new history rather than visually reloading everything.
+- Feed transition work and Playthings transition resolution were made substantially more lazy/cached.
+- Schema artifacts are now treated as **blueprints**, not living Playthings or world buildings.
+- Role identity is represented by a stable **hat shape + hat colour** shared by all Playthings with the same role.
+- Individual variation remains separate from role appearance.
+- Tech Tree is now game-like, parent-topology based, and has **Implemented only = ON by default**.
+- Local Tech Tree progression / unlocked skills / hotbar remain localStorage-only — not qualifications.
+
+**Latest correctness fixes:**
+- A `.schema.md` describing Organization can no longer accidentally become a castle.
+- Idle Playthings can no longer disappear into future habitats that have not yet been built.
+- When multiple leaves become resting together, they now migrate toward legitimate already-built habitats together rather than blinking out.
+- Idle state no longer fades entire sprites in/out.
+
+**New experimental world physics in `001-11`:**
+- Persistent places now have real physical footprints, so Playthings should not route through castles/workshops.
+- Movement uses sparse A*-style navigation around existing structures.
+- Actual historical traffic can synthetically wear terrain:
+  - repeated traversal → trail
+  - more traversal → path
+  - heavier traversal → road
+- Roads reduce future travel cost, so Playthings may prefer an existing road when it genuinely makes the route better.
+- Roads are reconstruction/presentation only — never Tiinex truth.
+- The interesting hypothesis for the stream is whether repeated traffic to an Organization naturally causes a road network to emerge from its gate.
+
+**Artifact visual grammar currently being explored:**
+- Organization → settlement/castle/fort/village, visibly built during history.
+- Workspace → workshop / small hamlet.
+- Task → work activity, usually no permanent object.
+- Handoff → transfer choreography.
+- Signal → sound/call with ripple waves.
+- Feedback → communication scene.
+- Discovery/Finding → observation/finding scene.
+- Schema → blueprint + Tech Tree.
+- Relations influence context only when actually resolved.
+
+**Idle policy for this fast-moving project:**
+- `<4 days` → normal
+- `4–7 days` → long idle
+- `>7 days` → resting
+- Time is relative to the historical playhead during playback.
+- At Live, real current time applies.
+- New artifacts are always created at actual Now, never at historical playhead time.
+
+**Current things worth watching critically on stream:**
+1. Whether resting transitions now look continuous instead of blinking.
+2. Whether schema artifacts truly stay out of the living population/world-place layer.
+3. Whether roads actually emerge from meaningful repeated journeys.
+4. Whether A* navigation respects large structure footprints.
+5. Whether the world still looks too algorithmically radial/flower-like.
+6. Whether active-event focus is readable when zoomed out.
+7. Remaining interaction lag in Feed / Tech Tree / artifact detail.
+8. Tech Tree readability — it is improving, but text/layout may still need another visual pass.
+9. Fit World / Follow camera behavior.
+10. Whether the whole thing can increasingly be understood **without reading the artifact text**.
+
+The main design goal at this stage is no longer “add more features.”
+
+It is:
+
+> **Make history create visible, persistent patterns that make intuitive sense.**
+
+If castles attract traffic, roads should emerge.  
+If leaves go dormant, they should visibly go home.  
+If a lineage branches, the split should be readable.  
+If nothing happens at Now, the world should be still.
+
+That is the current frontier. :P

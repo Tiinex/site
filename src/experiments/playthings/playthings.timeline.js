@@ -1,6 +1,3 @@
-import { isPlaythingsLocalArtifact } from './playthings.find.js';
-import { buildPlaythingsLivingProjection } from './playthings.living.js';
-
 export const PLAYTHINGS_TIMELINE_SCHEMA = 'tiinex.playthings.timeline.experimental.v1';
 
 export function planPlaythingsHistory(model = {}) {
@@ -15,31 +12,27 @@ export function planPlaythingsHistory(model = {}) {
   }
   for (const children of childrenByParent.values()) children.sort();
 
-  const living = buildPlaythingsLivingProjection(artifacts, parentEdges);
   const orderedArtifacts = topologicalChronologicalOrder(artifacts, parentByChild);
-  const seenLivingChildren = new Map();
+  const seenChildren = new Map();
   const events = [];
 
   for (const artifact of orderedArtifacts) {
     const parentKey = parentByChild.get(artifact.key) || '';
-    const livingParentKey = artifact.isSchemaArtifact ? '' : living.parentByChild.get(artifact.key) || '';
-    const siblingIndex = livingParentKey ? Number(seenLivingChildren.get(livingParentKey) || 0) : 0;
-    const kind = artifact.isSchemaArtifact ? 'observe' : !livingParentKey ? 'spawn' : siblingIndex > 0 ? 'split' : 'advance';
-    if (livingParentKey) seenLivingChildren.set(livingParentKey, siblingIndex + 1);
+    const siblingIndex = parentKey ? Number(seenChildren.get(parentKey) || 0) : 0;
+    const kind = !parentKey ? 'spawn' : siblingIndex > 0 ? 'split' : 'advance';
+    if (parentKey) seenChildren.set(parentKey, siblingIndex + 1);
     events.push(Object.freeze({
       id: `artifact:${artifact.key}`,
       kind,
       artifactKey: artifact.key,
       parentKey,
-      livingParentKey,
       verseId: artifact.verseId,
       at: artifact.createdAt || '',
       label: artifact.title || artifact.path || artifact.key,
       interactionKind: artifact.interactionKind || 'inspect',
       stationKind: artifact.visualKind || 'relic',
       persistenceKind: artifact.persistenceKind || 'none',
-      arrivalKind: artifact.arrivalKind || '',
-      localArtifact: isPlaythingsLocalArtifact(artifact)
+      arrivalKind: artifact.arrivalKind || ''
     }));
   }
 
@@ -144,10 +137,8 @@ function topologicalChronologicalOrder(artifacts, parentByChild) {
     }).sort(compareArtifacts);
     // A malformed/cyclic loaded graph must not hang playback. Preserve deterministic
     // presentation order while lineage findings remain owned by the resolver/model.
-    const next = ready[0] || Array.from(pending.values()).sort(compareArtifacts)[0];
-    if (!next) break;
-    ordered.push(next);
-    pending.delete(next.key);
+    const batch = ready.length ? ready : Array.from(pending.values()).sort(compareArtifacts).slice(0, 1);
+    for (const artifact of batch) { ordered.push(artifact); pending.delete(artifact.key); }
   }
   return ordered;
 }

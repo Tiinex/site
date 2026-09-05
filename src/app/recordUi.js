@@ -1,11 +1,11 @@
-import { cachedHydratedRecord, cachedHydratedWorkspace } from './recordUi.cache.js';
-
-function storage() { return typeof window !== 'undefined' ? window.localStorage : null; }
+import { hydrateGithubRecordFromSourceCache, hydrateGithubWorkspaceFromSourceCache } from '../sources/github/github.transport.js';
 
 export function hydrateUiRecord(record) {
-  return cachedHydratedRecord(record, storage());
+  if (!record) return null;
+  return hydrateGithubRecordFromSourceCache(record, { storage: typeof window !== 'undefined' ? window.localStorage : null });
 }
 
 export function hydrateUiWorkspace(workspace) {
-  return cachedHydratedWorkspace(workspace, storage());
+  if (!workspace) return null;
+  return hydrateGithubWorkspaceFromSourceCache(workspace, { storage: typeof window !== 'undefined' ? window.localStorage : null });
 }

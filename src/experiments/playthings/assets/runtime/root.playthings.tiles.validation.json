@@ -1,0 +1,301 @@
+{
+  "status": "PASS",
+  "file": "root.playthings.tiles.png",
+  "sha256": "ae282bbfa467311c13fac00e61101a5bb2de64541b0a952030daf276fa3a313e",
+  "size": [
+    256,
+    256
+  ],
+  "mode": "RGBA",
+  "slotCount": 64,
+  "findings": [],
+  "metadata": {
+    "format": "tiinex.playthings.tiles",
+    "version": 1,
+    "family": "place-tiles-runtime",
+    "semanticAuthority": "none-presentation-only",
+    "size": [
+      256,
+      256
+    ],
+    "mode": "RGBA",
+    "grid": {
+      "cols": 8,
+      "rows": 8
+    },
+    "cell": {
+      "width": 32,
+      "height": 32
+    },
+    "tokens": {
+      "terrain.grass": {
+        "row": 0,
+        "col": 0
+      },
+      "terrain.dirt": {
+        "row": 0,
+        "col": 1
+      },
+      "terrain.stone": {
+        "row": 0,
+        "col": 2
+      },
+      "terrain.water": {
+        "row": 0,
+        "col": 3
+      },
+      "terrain.sand": {
+        "row": 0,
+        "col": 4
+      },
+      "terrain.mud": {
+        "row": 0,
+        "col": 5
+      },
+      "terrain.gravel": {
+        "row": 0,
+        "col": 6
+      },
+      "terrain.earth": {
+        "row": 0,
+        "col": 7
+      },
+      "road.path": {
+        "row": 1,
+        "col": 0
+      },
+      "road.cobble": {
+        "row": 1,
+        "col": 1
+      },
+      "road.bridge": {
+        "row": 1,
+        "col": 2
+      },
+      "road.planks": {
+        "row": 1,
+        "col": 3
+      },
+      "wear.track": {
+        "row": 1,
+        "col": 4
+      },
+      "wear.scuff": {
+        "row": 1,
+        "col": 5
+      },
+      "wear.crack": {
+        "row": 1,
+        "col": 6
+      },
+      "wear.patch": {
+        "row": 1,
+        "col": 7
+      },
+      "interior.floor.wood": {
+        "row": 2,
+        "col": 0
+      },
+      "interior.floor.stone": {
+        "row": 2,
+        "col": 1
+      },
+      "interior.floor.tile": {
+        "row": 2,
+        "col": 2
+      },
+      "interior.wall.brick": {
+        "row": 2,
+        "col": 3
+      },
+      "interior.wall.plaster": {
+        "row": 2,
+        "col": 4
+      },
+      "interior.wall.wood": {
+        "row": 2,
+        "col": 5
+      },
+      "interior.roof.slate": {
+        "row": 2,
+        "col": 6
+      },
+      "interior.window": {
+        "row": 2,
+        "col": 7
+      },
+      "interior.door.closed": {
+        "row": 3,
+        "col": 0
+      },
+      "interior.door.open": {
+        "row": 3,
+        "col": 1
+      },
+      "interior.stairs.up": {
+        "row": 3,
+        "col": 2
+      },
+      "interior.stairs.down": {
+        "row": 3,
+        "col": 3
+      },
+      "interior.fence": {
+        "row": 3,
+        "col": 4
+      },
+      "interior.gate": {
+        "row": 3,
+        "col": 5
+      },
+      "interior.railing": {
+        "row": 3,
+        "col": 6
+      },
+      "interior.sign": {
+        "row": 3,
+        "col": 7
+      },
+      "interior.table": {
+        "row": 4,
+        "col": 0
+      },
+      "interior.chair": {
+        "row": 4,
+        "col": 1
+      },
+      "interior.bed": {
+        "row": 4,
+        "col": 2
+      },
+      "interior.desk": {
+        "row": 4,
+        "col": 3
+      },
+      "interior.shelf": {
+        "row": 4,
+        "col": 4
+      },
+      "interior.cabinet": {
+        "row": 4,
+        "col": 5
+      },
+      "interior.crate": {
+        "row": 4,
+        "col": 6
+      },
+      "interior.barrel": {
+        "row": 4,
+        "col": 7
+      },
+      "workshop.workbench": {
+        "row": 5,
+        "col": 0
+      },
+      "workshop.machine": {
+        "row": 5,
+        "col": 1
+      },
+      "workshop.anvil": {
+        "row": 5,
+        "col": 2
+      },
+      "workshop.furnace": {
+        "row": 5,
+        "col": 3
+      },
+      "workshop.gears": {
+        "row": 5,
+        "col": 4
+      },
+      "workshop.pipe": {
+        "row": 5,
+        "col": 5
+      },
+      "archive.shelf": {
+        "row": 5,
+        "col": 6
+      },
+      "archive.stack": {
+        "row": 5,
+        "col": 7
+      },
+      "nature.tree": {
+        "row": 6,
+        "col": 0
+      },
+      "nature.shrub": {
+        "row": 6,
+        "col": 1
+      },
+      "nature.rock": {
+        "row": 6,
+        "col": 2
+      },
+      "nature.flower": {
+        "row": 6,
+        "col": 3
+      },
+      "nature.grass.tuft": {
+        "row": 6,
+        "col": 4
+      },
+      "nature.stump": {
+        "row": 6,
+        "col": 5
+      },
+      "nature.log": {
+        "row": 6,
+        "col": 6
+      },
+      "nature.mushroom": {
+        "row": 6,
+        "col": 7
+      },
+      "utility.lamp": {
+        "row": 7,
+        "col": 0
+      },
+      "utility.post": {
+        "row": 7,
+        "col": 1
+      },
+      "utility.well": {
+        "row": 7,
+        "col": 2
+      },
+      "utility.pump": {
+        "row": 7,
+        "col": 3
+      },
+      "artifact.relic": {
+        "row": 7,
+        "col": 4
+      },
+      "artifact.blueprint": {
+        "row": 7,
+        "col": 5
+      },
+      "artifact.package": {
+        "row": 7,
+        "col": 6
+      },
+      "utility.spare": {
+        "row": 7,
+        "col": 7
+      }
+    },
+    "replaceableColorSlots": [
+      "terrain",
+      "structure",
+      "wood",
+      "metal",
+      "accent"
+    ]
+  },
+  "rerenderSha256": "ae282bbfa467311c13fac00e61101a5bb2de64541b0a952030daf276fa3a313e",
+  "byteIdenticalRerender": true,
+  "rendererSha256": "967411cc024e80f12f509340c6f03c0058a984dfea3af760183f20334f780911",
+  "resolverSha256": "14d2fe077291c661a0923a182c675f7f895a9094f99884b500e6182dab01d26e",
+  "pureCaseSha256": "1578fdbbde18222d8ca3576cab51f72f1634e27f0c3242484e19ae50028bfae7"
+}

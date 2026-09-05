@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { projectPlaythingsMultiverse } from './playthings.model.js';
 import {
   planPlaythingsHistory,
   playthingsObservationAtCursor,
@@ -13,22 +14,16 @@ import { PlaythingsProgression } from './PlaythingsProgression.jsx';
 import { playthingsPlayheadTime } from './playthings.clock.js';
 import { readPlaythingsProfile, setPlaythingsFollow, writePlaythingsProfile } from './playthings.profile.js';
 import { buildPlaythingsTechTree } from './playthings.techTree.js';
-import { isPlaythingsLocalArtifact } from './playthings.find.js';
-import { PlaythingsArtifactFinder } from './PlaythingsArtifactFinder.jsx';
-import { preparePlaythingsSnapshotAsync } from './playthings.prepare.client.js';
 import './playthings.css';
 
-export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefresh = null, onOpenRecord = null, onOpenLineage = null, onResolveLineage = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
-  if (!preparedSnapshot?.model) throw new Error('PlaythingsMultiverse requires an asynchronously prepared snapshot.');
-  const incomingSnapshot = preparedSnapshot;
-  const incomingModel = incomingSnapshot.model;
-  const [targetSnapshot, setTargetSnapshot] = useState(() => incomingSnapshot);
-  const target = targetSnapshot.model;
-  const history = targetSnapshot.history || planPlaythingsHistory(target);
+export function PlaythingsMultiverse({ workspaces = [], onRefresh = null, onOpenRecord = null, onCreateSkill = null, onResolveTransitions = null, onActivateTransition = null }) {
+  const incomingModel = useMemo(() => projectPlaythingsMultiverse(workspaces), [workspaces]);
+  const [target, setTarget] = useState(() => incomingModel);
+  const history = useMemo(() => planPlaythingsHistory(target), [target]);
   const prefersReducedMotion = useReducedMotion();
   const [initialStart] = useState(() => {
     const observation = readPlaythingsObservation(incomingModel);
-    const initialHistory = incomingSnapshot.history || planPlaythingsHistory(incomingModel);
+    const initialHistory = planPlaythingsHistory(incomingModel);
     const resolution = resolvePlaythingsObservationCursor(observation, initialHistory, incomingModel);
     const cursor = resolution.valid ? resolution.cursor : 0;
     return { cursor, phase: cursor >= initialHistory.events.length || !initialHistory.events.length ? 'settled' : 'playing' };
@@ -38,19 +33,13 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
   const [eventArmed, setEventArmed] = useState(initialStart.phase === 'playing');
   const [eventToken, setEventToken] = useState(0);
   const [profile, setProfile] = useState(() => readPlaythingsProfile());
-  const [focusRequest, setFocusRequest] = useState(null);
-  const focusTokenRef = useRef(0);
-  const pendingLocalFocusRef = useRef('');
 
   useEffect(() => {
     if (phase === 'refreshing' || incomingModel.fingerprint === target.fingerprint) return;
     const currentObservation = playthingsObservationAtCursor(history, target, cursor);
-    const nextHistory = incomingSnapshot.history || planPlaythingsHistory(incomingModel);
+    const nextHistory = planPlaythingsHistory(incomingModel);
     const resolution = resolvePlaythingsObservationCursor(currentObservation, nextHistory, incomingModel);
-    const previousKeys = new Set((target.artifacts || []).map((artifact) => artifact.key));
-    const localAdditions = (incomingModel.artifacts || []).filter((artifact) => !previousKeys.has(artifact.key) && isPlaythingsLocalArtifact(artifact));
-    if (localAdditions.length) pendingLocalFocusRef.current = localAdditions[localAdditions.length - 1].key;
-    setTargetSnapshot(incomingSnapshot);
+    setTarget(incomingModel);
     setEventToken((value) => value + 1);
     if (!resolution.valid) {
       setCursor(0);
@@ -70,7 +59,7 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
       setEventArmed(true);
       setPhase('playing');
     }
-  }, [incomingModel.fingerprint]); // asynchronously prepared local/Create/package material preserves the historical playhead
+  }, [incomingModel.fingerprint]); // direct local Create appends real-Now material without rewriting the historical playhead
 
   useEffect(() => {
     if (!prefersReducedMotion || phase !== 'playing') return;
@@ -88,12 +77,11 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
     try {
       const result = await onRefresh();
       const nextWorkspaces = Array.isArray(result?.workspaces) ? result.workspaces : workspaces;
-      const nextSnapshot = await preparePlaythingsSnapshotAsync(nextWorkspaces);
-      const nextModel = nextSnapshot.model;
-      const nextHistory = nextSnapshot.history || planPlaythingsHistory(nextModel);
+      const nextModel = projectPlaythingsMultiverse(nextWorkspaces);
+      const nextHistory = planPlaythingsHistory(nextModel);
       const resolution = resolvePlaythingsObservationCursor(previousObservation, nextHistory, nextModel);
       const nextCursor = resolution.valid ? resolution.cursor : 0;
-      setTargetSnapshot(nextSnapshot);
+      setTarget(nextModel);
       setCursor(prefersReducedMotion ? nextHistory.events.length : nextCursor);
       setEventToken((value) => value + 1);
       if (prefersReducedMotion || nextCursor >= nextHistory.events.length) {
@@ -147,19 +135,6 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
     setProfile(written);
   }
   function setFollow(next) { updateProfile(setPlaythingsFollow(profile, next)); }
-  function requestArtifactFocus(artifactKey) {
-    const key = String(artifactKey || '');
-    if (!key) return;
-    const eventIndex = history.events.findIndex((event) => event.artifactKey === key);
-    if (eventIndex >= cursor) {
-      setEventArmed(false);
-      setPhase('paused');
-      setCursor(Math.min(history.events.length, eventIndex + 1));
-      setEventToken((value) => value + 1);
-    }
-    focusTokenRef.current += 1;
-    setFocusRequest({ artifactKey: key, token: focusTokenRef.current });
-  }
 
   const projection = playthingsProjectionAtCursor(history, cursor);
   const visibleModel = projectVisiblePlaythingsModel(target, projection.verseIds, projection.artifactKeys, projection.portalKeys);
@@ -175,20 +150,11 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
   const stateLabel = phase === 'refreshing' ? 'READING' : projection.atNow && phase === 'settled' ? 'LIVE · STILL' : phase === 'playing' ? 'PLAYING' : 'PAUSED';
   const crossOriginCount = (visibleModel.edges || []).filter((edge) => edge.crossVerse).length;
 
-  useEffect(() => {
-    const key = pendingLocalFocusRef.current;
-    if (!key || !projection.artifactKeys.has(key)) return;
-    pendingLocalFocusRef.current = '';
-    focusTokenRef.current += 1;
-    setFocusRequest({ artifactKey: key, token: focusTokenRef.current });
-  }, [cursor, target.fingerprint]);
-
   return <section className="tx-playthings" data-playthings-phase={phase} aria-label="Playthings experimental shared world">
     <div className="tx-playthings-world-shell">
       <PlaythingsWorldStage
         model={visibleModel}
         fullModel={target}
-        preparedWorld={targetSnapshot.world}
         activeEvent={activeEvent}
         playing={phase === 'playing'}
         eventToken={eventToken}
@@ -198,13 +164,10 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
         onFollowPlaythingChange={setFollow}
         onEventComplete={completeActiveEvent}
         onOpenRecord={onOpenRecord}
-        onOpenLineage={onOpenLineage}
-        onResolveLineage={onResolveLineage}
         toolsEnabled={toolsEnabled}
         unlockedSkillIds={unlockedSkillIds}
         onResolveTransitions={onResolveTransitions}
         onActivateTransition={onActivateTransition}
-        focusRequest={focusRequest}
       />
       <div className="tx-playthings-hud" role="status" aria-live="polite">
         <span className="tx-playthings-brand"><strong>Playthings</strong><small>one shared world · read-only</small></span>
@@ -215,8 +178,7 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
         <span className="tx-playthings-now"><i />{stateLabel}</span>
         <button type="button" className="tx-playthings-hud-button" onClick={refresh} disabled={!canRefresh}>{phase === 'refreshing' ? 'Reading…' : 'Refresh'}</button>
       </div>
-      {activeEvent ? <div className={`tx-playthings-event is-${activeEvent.kind}`}><span>{eventGlyph(activeEvent.kind, activeEvent)}</span><div><strong>{eventLabel(activeEvent.kind, activeEvent)}</strong><small>{activeEvent.label}</small></div></div> : null}
-      <PlaythingsArtifactFinder model={target} enabled={toolsEnabled} onLocate={requestArtifactFocus} />
+      {activeEvent ? <div className={`tx-playthings-event is-${activeEvent.kind}`}><span>{eventGlyph(activeEvent.kind)}</span><div><strong>{eventLabel(activeEvent.kind, activeEvent)}</strong><small>{activeEvent.label}</small></div></div> : null}
       <PlaythingsProgression model={target} profile={profile} enabled={toolsEnabled} onProfileChange={updateProfile} onOpenRecord={onOpenRecord} onActivateSkill={onCreateSkill} />
     </div>
 
@@ -231,10 +193,8 @@ export function PlaythingsMultiverse({ workspaces = [], preparedSnapshot, onRefr
   </section>;
 }
 
-function eventGlyph(kind, event = {}) { if (event.localArtifact) return '◆'; if (event.interactionKind === 'blueprint') return '▧'; return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
+function eventGlyph(kind) { return kind === 'split' ? '↯' : kind === 'advance' ? '→' : '✦'; }
 function eventLabel(kind, event = {}) {
-  if (event.localArtifact) return kind === 'spawn' ? 'Your local leaf entered the world' : kind === 'split' ? 'Your local artifact opened a new branch' : 'Your local artifact continued this Plaything';
-  if (event.interactionKind === 'blueprint') return 'A schema blueprint was observed';
   if (event.arrivalKind === 'organization-receiver') return 'A receiver entered the handoff';
   if (kind === 'split') return 'A living branch divided';
   if (kind === 'advance') return 'A leaf moved into its next scene';

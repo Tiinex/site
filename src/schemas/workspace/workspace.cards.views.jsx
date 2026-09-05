@@ -34,9 +34,7 @@ export const AssetCard = React.memo(function AssetCard({ asset, actionStateKey =
 export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRecords = [], workspaceId = '', transitionProductContext = null, onOpenRecord, onFocusRecordLineage, onShareRecord, onRecordAction, onOpenSchema, context = 'discovery', expanded = false, onToggleExpanded, readOnly = false, selectionActive = false, selectionCandidate = null, onSelectCandidate }) {
   const lineageContext = context === 'lineage';
   const displayPath = recordDisplayPath(record);
-  const [transitionActionsArmed, setTransitionActionsArmed] = React.useState(false);
-  React.useEffect(() => { setTransitionActionsArmed(false); }, [record, actionStateKey, transitionProductContext]);
-  const transitionActions = readOnly || selectionActive || !transitionActionsArmed ? [] : transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId, productContext: transitionProductContext });
+  const transitionActions = readOnly || selectionActive ? [] : transitionProductActionsForRecord(record, { surface: context, maxPrimary: 1, workspaceRecords, workspaceId, productContext: transitionProductContext });
   const isWorkspaceArtifact = isWorkspaceRecord(record);
   const workspaceActionModel = isWorkspaceArtifact ? workspaceArtifactActionModel(record) : null;
   const baseActions = selectionActive ? [] : readOnly ? [{ id: RecordActionKind.open, label: 'Open', icon: 'open', enabled: true }] : presentRecordActions(record).filter((action) => action.enabled !== false && action.id !== RecordActionKind.reference && action.id !== RecordActionKind.continue);
@@ -58,7 +56,7 @@ export function RecordCard({ record, auditItem, actionStateKey = '', workspaceRe
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); primaryClick(); }
   };
   return (
-    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onPointerEnter={() => setTransitionActionsArmed(true)} onFocusCapture={() => setTransitionActionsArmed(true)} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
+    <article className={`tx-artifact-card tx-record-card tx-old-like-record-card tx-clickable-record-card ${isWorkspaceArtifact ? 'tx-workspace-artifact-record-card' : ''} ${lineageContext ? 'tx-lineage-as-record-card' : ''} ${expanded ? 'tx-record-card-expanded' : ''}`} role="button" tabIndex="0" aria-expanded={lineageContext ? expanded : undefined} aria-label={`${selectionActive ? (selectionCandidate ? 'Select' : 'Unavailable for selection') : lineageContext ? 'Toggle read preview for' : 'Focus lineage for'} ${record.title || 'artifact'}`} onClick={primaryClick} onKeyDown={onKey} data-workspace-artifact-action-model={workspaceActionModel?.schema || undefined}>
       <div className="tx-card-badges tx-legacy-card-badges">
         {isWorkspaceArtifact ? <Badge>workspace</Badge> : null}
         {isWorkspaceArtifact ? <Badge>{workspaceActionModel.roleLabel}</Badge> : null}
