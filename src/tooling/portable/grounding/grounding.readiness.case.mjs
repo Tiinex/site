@@ -251,8 +251,23 @@ console.log('✓ grounding adversarial authority/context/Parent/staleness matrix
   ]) });
   assert.equal(genuine.currentWork.blockers.length, 1, 'genuine positive blocker wording must remain visible');
   assert.equal(genuine.currentWork.blockers[0].basis, 'explicit-blocking-cue-in-task-dependencies');
+  assert.equal(genuine.currentWork.blockers[0].id, TASK_PATH, 'explicit unresolved blocker must remain attached to the selected current frontier');
 }
 console.log('✓ grounding blocker extraction is negation-safe without weakening genuine blockers passed');
+
+{
+  const ancestorPath = 'site/.topics/tooling/historical-ancestor.task.trace.md';
+  const result = composeCase({ records: Object.freeze([
+    qualifiedTaskRecord({ path: ancestorPath, dependencies: '- waiting for historical disposition that must not become a current blocker' }),
+    qualifiedTaskRecord({ trace: 'historical-ancestor.task.trace.md', dependencies: '- none' }),
+    routeRecord()
+  ]) });
+  assert.equal(result.readiness.state, 'grounded-to-act');
+  assert.equal(result.currentWork.frontier[0].path, TASK_PATH);
+  assert.equal(result.currentWork.blockers.length, 0, 'explicit blockers on non-frontier historical ancestors must not be promoted as current blockers');
+}
+console.log('✓ grounding blocker currentness is scoped to the exact selected current frontier rather than historical nonterminal ancestors passed');
+
 
 {
   const result = composeCase();

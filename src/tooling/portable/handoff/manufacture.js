@@ -10,7 +10,7 @@ export function manufactureRecipientRelativeHandoffPackage(input = {}, options =
   const toolingBootstrapInspection = upgraded.inspection?.bootstrapInspection || inspectPortableToolingBootstrap(baseline.bundle || upgraded.bundle || {});
   const majorReadiness = qualifyMajorCarrierReadiness({
     ...input,
-    requireBusinessDocsSiteMajorClosure: Boolean(upgraded.inspection?.packageContract?.packageRole === 'recipient-facing-handoff-carrier')
+    carrierProfile: input.carrierProfile || null
   }, input.carrierLineage || upgraded.carrierProjection?.lineage || baseline.carrierProjection?.lineage || {});
   const majorFindings = majorReadiness.state === 'blocked' ? [Object.freeze({ severity: 'error', code: 'portable.handoff-carrier-lineage.major.not-self-contained', message: 'Major Handoff carrier requires complete replacement-capable carried Workspace snapshots.' })] : [];
   const findings = Object.freeze([

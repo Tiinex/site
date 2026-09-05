@@ -239,11 +239,11 @@ export async function commandInput(parsed, runtime = {}) {
     options
   };
   if (parsed.command === 'resolve-schema-material') return {
-    input: { ...material, host, schemaCache, schemaId: flags.schema || parsed.positionals[0] || '', repository: flags.repository || 'Tiinex/docs', ref: flags.ref || 'master' },
+    input: { ...material, host, schemaCache, schemaId: flags.schema || parsed.positionals[0] || '', repository: flags.repository || runtime.defaultSchemaProviderSource?.repository || '', ref: flags.ref || runtime.defaultSchemaProviderSource?.ref || '', sourceProfile: runtime.defaultSchemaProviderSource || null },
     options
   };
   if (parsed.command === 'resolve-schema-chain-material') return {
-    input: { ...material, host, schemaCache, schemaId: flags.schema || parsed.positionals[0] || '', repository: flags.repository || 'Tiinex/docs', ref: flags.ref || 'master', maxDepth: flags.depth || 16 },
+    input: { ...material, host, schemaCache, schemaId: flags.schema || parsed.positionals[0] || '', repository: flags.repository || runtime.defaultSchemaProviderSource?.repository || '', ref: flags.ref || runtime.defaultSchemaProviderSource?.ref || '', sourceProfile: runtime.defaultSchemaProviderSource || null, maxDepth: flags.depth || 16 },
     options
   };
   if (parsed.command === 'make-writer-brief') return {
@@ -416,7 +416,7 @@ function emptyMaterial() {
 }
 
 function decorateDefaultSchemaMaterial(material = {}, source = {}) {
-  const repository = String(source.repository || 'Tiinex/docs');
+  const repository = String(source.repository || '');
   const commit = String(source.commit || source.ref || '');
   const sourcePathPrefix = String(source.sourcePathPrefix || '.topics/.schemas').replace(/\/$/, '');
   return {

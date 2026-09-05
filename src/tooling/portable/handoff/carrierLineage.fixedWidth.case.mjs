@@ -33,20 +33,28 @@ assert.equal(major.dimension, '002');
 assert.equal(major.major, '002');
 assert.equal(major.parentDimension, '001-1-1');
 
-const progressionReadiness = qualifyMajorCarrierReadiness({ workspaceMaterializations: [] }, grandchild);
+const neutralProfile = { id: 'neutral-foundation', requiredMajorWorkspaceIds: ['alpha', 'beta', 'gamma'] };
+const progressionReadiness = qualifyMajorCarrierReadiness({ carrierProfile: neutralProfile, workspaceMaterializations: [] }, grandchild);
 assert.equal(progressionReadiness.state, 'not-applicable');
-const incompleteMajor = qualifyMajorCarrierReadiness({ requireBusinessDocsSiteMajorClosure: true, workspaceMaterializations: [
-  { id: 'site', state: 'complete', completenessEvidence: { state: 'qualified' } },
-  { id: 'business', state: 'complete', completenessEvidence: { state: 'qualified' } }
+assert.deepEqual(progressionReadiness.requiredWorkspaceIds, ['alpha', 'beta', 'gamma']);
+const unresolvedMajor = qualifyMajorCarrierReadiness({ workspaceMaterializations: [
+  { id: 'alpha', state: 'complete', completenessEvidence: { state: 'qualified' } }
+] }, major);
+assert.equal(unresolvedMajor.state, 'qualified');
+assert.equal(unresolvedMajor.reason, 'major-carrier-has-complete-carried-workspaces-without-named-profile-requirements');
+const incompleteMajor = qualifyMajorCarrierReadiness({ carrierProfile: neutralProfile, workspaceMaterializations: [
+  { id: 'alpha', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'beta', state: 'complete', completenessEvidence: { state: 'qualified' } }
 ] }, major);
 assert.equal(incompleteMajor.state, 'blocked');
-assert.deepEqual(incompleteMajor.missingWorkspaceIds, ['docs']);
-const completeMajor = qualifyMajorCarrierReadiness({ requireBusinessDocsSiteMajorClosure: true, workspaceMaterializations: [
-  { id: 'site', state: 'complete', completenessEvidence: { state: 'qualified' } },
-  { id: 'business', state: 'complete', completenessEvidence: { state: 'qualified' } },
-  { id: 'docs', state: 'complete', completenessEvidence: { state: 'qualified' } }
+assert.deepEqual(incompleteMajor.missingWorkspaceIds, ['gamma']);
+const completeMajor = qualifyMajorCarrierReadiness({ carrierProfile: neutralProfile, workspaceMaterializations: [
+  { id: 'alpha', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'beta', state: 'complete', completenessEvidence: { state: 'qualified' } },
+  { id: 'gamma', state: 'complete', completenessEvidence: { state: 'qualified' } }
 ] }, major);
 assert.equal(completeMajor.state, 'qualified');
+assert.equal(completeMajor.profile.id, 'neutral-foundation');
 
 const rootPath = '001-package.trace.md';
 const root = finalizeFile({

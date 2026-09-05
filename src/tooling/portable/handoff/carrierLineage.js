@@ -4,6 +4,7 @@ import { parseHandoffPackageV1, validatePackageFields } from './recipientV2.pack
 import { RECIPIENT_V2_PACKAGE_V1_SCHEMA_ID } from './recipientV2.packageV1.constants.js';
 import { currentSchemaId } from './recipientV2.packageV1.shared.js';
 import { recipientV2FactsIndex } from './recipientV2.transportManifest.js';
+import { handoffCarrierProfileFromPackageContract, normalizeHandoffCarrierProfile } from './carrierProfile.js';
 
 export const HANDOFF_CARRIER_LINEAGE_SCHEMA_ID = 'tiinex.portable.handoff-carrier-lineage.v1';
 
@@ -89,6 +90,24 @@ export function parentHandoffCarrierLineageFromBundle(bundle = {}, options = {})
   });
 }
 
+export function parentHandoffCarrierProfileFromBundle(bundle = {}) {
+  const files = Array.isArray(bundle.files) ? bundle.files : [];
+  const candidates = files.filter((file) => {
+    if (!/\.md$/i.test(String(file.path || ''))) return false;
+    return currentSchemaId(decodeUtf8(packageFileBytes(file))) === RECIPIENT_V2_PACKAGE_V1_SCHEMA_ID;
+  });
+  if (candidates.length !== 1) return normalizeHandoffCarrierProfile(null);
+  const file = candidates[0];
+  if (!/^\d{3}-tiinex-handoff-package\.trace\.md$/.test(String(file.path || ''))) return normalizeHandoffCarrierProfile(null);
+  const markdown = decodeUtf8(packageFileBytes(file));
+  if (canonicalC14nV2SelfState(markdown).state !== 'verified') return normalizeHandoffCarrierProfile(null);
+  const contract = parseHandoffPackageV1(markdown);
+  const findings = [];
+  validatePackageFields(contract, findings);
+  if (findings.some((item) => item.severity === 'error' && !String(item.code || '').includes('major-carrier-profile'))) return normalizeHandoffCarrierProfile(null);
+  return handoffCarrierProfileFromPackageContract(contract);
+}
+
 function packageV1CarrierLineage(files = []) {
   const candidates = files.filter((file) => {
     if (!/\.md$/i.test(String(file.path || ''))) return false;
@@ -113,26 +132,36 @@ function packageV1CarrierLineage(files = []) {
 }
 
 export function qualifyMajorCarrierReadiness(input = {}, lineage = {}) {
-  if (String(lineage.checkpointKind || '') !== 'major') return Object.freeze({ state: 'not-applicable', completeWorkspaceCount: 0, workspaceCount: 0, requiredWorkspaceIds: Object.freeze(['business', 'docs', 'site']), missingWorkspaceIds: Object.freeze([]), reason: '' });
+  const profile = normalizeHandoffCarrierProfile(input.carrierProfile || null);
+  if (String(lineage.checkpointKind || '') !== 'major') return Object.freeze({
+    state: 'not-applicable',
+    profile,
+    completeWorkspaceCount: 0,
+    workspaceCount: 0,
+    requiredWorkspaceIds: profile.requiredMajorWorkspaceIds,
+    missingWorkspaceIds: Object.freeze([]),
+    reason: ''
+  });
   const workspaces = [...(input.workspaceMaterializations || [])];
-  const requireBusinessDocsSite = input.requireBusinessDocsSiteMajorClosure === true;
-  const requiredWorkspaceIds = Object.freeze(requireBusinessDocsSite ? ['business', 'docs', 'site'] : []);
+  const requiredWorkspaceIds = profile.requiredMajorWorkspaceIds;
   const completeWorkspaceIds = new Set(workspaces
     .filter((workspace) => String(workspace.state || '') === 'complete' && String(workspace.completenessEvidence?.state || '') === 'qualified')
     .map((workspace) => String(workspace.id || workspace.workspaceId || '').trim().toLowerCase())
     .filter(Boolean));
   const missingWorkspaceIds = Object.freeze(requiredWorkspaceIds.filter((workspaceId) => !completeWorkspaceIds.has(workspaceId)));
   const complete = workspaces.filter((workspace) => String(workspace.state || '') === 'complete' && String(workspace.completenessEvidence?.state || '') === 'qualified').length;
-  const ready = workspaces.length > 0 && complete === workspaces.length && (!requireBusinessDocsSite || missingWorkspaceIds.length === 0);
+  const profileReady = profile.state === 'qualified';
+  const ready = workspaces.length > 0 && complete === workspaces.length && missingWorkspaceIds.length === 0;
   return Object.freeze({
     state: ready ? 'qualified' : 'blocked',
+    profile,
     workspaceCount: workspaces.length,
     completeWorkspaceCount: complete,
     requiredWorkspaceIds,
     missingWorkspaceIds,
     reason: ready
-      ? (requireBusinessDocsSite ? 'major-carrier-has-complete-business-docs-site-source-chain' : 'all-carried-workspaces-are-complete-replacement-capable-snapshots')
-      : (requireBusinessDocsSite ? 'major-carrier-requires-complete-business-docs-site-source-chain' : 'major-carrier-requires-complete-carried-workspaces'),
+      ? (profileReady ? 'major-carrier-satisfies-explicit-carrier-profile' : 'major-carrier-has-complete-carried-workspaces-without-named-profile-requirements')
+      : 'major-carrier-requires-complete-carried-and-profile-declared-workspaces',
     semanticClosure: lineage.mode === 'major' ? 'explicit-major-reason-caller-declared' : 'initial-root'
   });
 }

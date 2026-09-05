@@ -292,14 +292,14 @@ function normalizeAction(value = '') {
 
 function argumentsTemplate(capabilityName, request = {}) {
   if (capabilityName === 'repositorySearch') return Object.freeze({
-    repository: request.repository || 'Tiinex/docs',
+    repository: request.repository || '<explicit repository>',
     queries: request.searchQueries || [request.schemaId ? `${request.schemaId}.schema.md` : '<query>'],
-    ref: request.ref || 'master'
+    ref: request.ref || '<explicit ref>'
   });
   if (capabilityName === 'repositoryRead') return Object.freeze({
-    repository: request.repository || 'Tiinex/docs',
+    repository: request.repository || '<explicit repository>',
     path: request.path || '<exact path selected from search result or expectedPaths>',
-    ref: request.ref || 'master'
+    ref: request.ref || '<explicit ref>'
   });
   if (capabilityName === 'repositoryWrite') return Object.freeze({ repository: request.repository || '<explicit repository>', path: request.path || '<explicit target path>', ref: request.ref || '<explicit ref>', content: '<explicit reviewed content>' });
   if (capabilityName === 'filesystemRead') return Object.freeze({ path: request.path || request.localPath || '<local path>' });

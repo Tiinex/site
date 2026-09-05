@@ -8,6 +8,7 @@ import { createColdStartMaterialContext, projectGroundedContinuation } from '../
 import { auditHandoffPackageContextCarriage } from '../handoff/contextAudit.js';
 import { acceptedRecoveryMaterial, projectColdStartContinuity } from './grounding.continuity.js';
 import { projectGroundingAuthority } from './grounding.readiness.authority.js';
+import { projectGroundingCapsule } from './grounding.capsule.js';
 
 export const PORTABLE_GROUNDING_READINESS_SCHEMA_ID = 'tiinex.portable.grounding-readiness.v1';
 
@@ -173,8 +174,10 @@ export function composeGroundingReadiness({ mode = 'loaded-material', authority 
   if (topology.currentFrontier.length) known.push(evidence('declared-current-frontier', 'resolved', `${topology.currentFrontier.length} nearest current Task anchor(s) to the selected route leaf`));
   else reasons.push(reason('current-frontier-not-resolved', 'Authority grounding is not act-ready until declared current-work evidence is resolved on the selected Handoff route lineage.'));
 
-  const blockers = projectBlockers(overview.blockerSignals || [], topology.currentTaskIds);
+  const frontierTaskIds = new Set((topology.currentFrontier || []).map((item) => String(item.id || '')));
+  const blockers = projectBlockers(overview.blockerSignals || [], frontierTaskIds);
   const currentWorkProjection = projectCurrentWork(topology, records, includeCurrentWork);
+  const capsule = projectGroundingCapsule({ authority, continuation, contextAudit, requiredContext, records, topology, blockers });
   if (continuity.losses?.items?.length) unresolved.push(evidence('non-critical-material-loss', 'degraded-nonblocking', `${continuity.losses.items.length} unavailable non-lineage asset/reference item(s) remain visible without blocking unrelated work.`));
   const externalHumanGates = Array.isArray(authority?.humanOnlyGates) ? authority.humanOnlyGates : [];
   for (const gate of externalHumanGates) humanOnly.push(evidence('human-only-gate', 'declared', String(gate?.label || gate || 'human gate')));
@@ -233,6 +236,7 @@ export function composeGroundingReadiness({ mode = 'loaded-material', authority 
       boundary: 'Leaf/root roles are derived only from loaded declared Parent edges produced by the shared lineage resolver. Filename numbering, carrier dimensions, directory depth, branch names, and Task lifecycle labels are never substituted for Parent topology.'
     }),
     continuity,
+    capsule,
     currentWork: Object.freeze({
       state: topology.currentFrontier.length ? 'current-frontier-resolved' : topology.currentTasks.length ? 'current-candidates-without-frontier' : 'unresolved',
       frontier: currentWorkProjection.frontier,

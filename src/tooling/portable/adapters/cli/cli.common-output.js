@@ -66,6 +66,7 @@ function projectGroundDefault(result = {}, parsed = {}) {
       bodiesProjected: Number(required.bodiesProjected || 0),
       bodiesAvailable: Number(required.bodiesAvailable || 0)
     }),
+    capsule: result.capsule ? Object.freeze({ ...result.capsule }) : null,
     currentWork: Object.freeze({
       state: String(currentWork.state || ''),
       frontier: Object.freeze((currentWork.frontier || []).map(projectCurrentWorkItem)),
@@ -128,6 +129,7 @@ function projectHandoffDefault(result = {}, parsed = {}) {
     transport: Object.freeze({
       primary: primary ? Object.freeze({ ...primary }) : null,
       routing: human.normalInlineRouting ? Object.freeze({ ...human.normalInlineRouting }) : null,
+      sharedRouting: human.sharedRouting ? Object.freeze({ ...human.sharedRouting, routes: Object.freeze((human.sharedRouting.routes || []).map((item) => Object.freeze({ ...item }))) }) : null,
       presentation: compactHandoffPresentation(human.presentation),
       normalEmission: compactHandoffNormalEmission(human.normalEmissionBoundary)
     }),

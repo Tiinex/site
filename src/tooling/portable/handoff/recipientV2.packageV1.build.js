@@ -75,7 +75,7 @@ export function buildRecipientFacingV2PackageV1(input = {}) {
     kind: 'tiinex-handoff-package-artifact',
     logicalKind: 'recipient-v2-package-v1-root',
     mediaType: 'text/markdown',
-    content: renderHandoffPackageV1({ createdAt, workspaces: topology.workspaces, carrierLineage: carrier.lineage || {}, startPath: RECIPIENT_V2_READ_PATH, bootstrapPath: hasBootstrap(input.bundle) ? '001-2-bootstrap.trace.md' : '' })
+    content: renderHandoffPackageV1({ createdAt, workspaces: topology.workspaces, carrierLineage: carrier.lineage || {}, carrierProfile: input.carrierProfile || null, startPath: RECIPIENT_V2_READ_PATH, bootstrapPath: hasBootstrap(input.bundle) ? '001-2-bootstrap.trace.md' : '' })
   });
   files.push(packageFile);
   topology.root = Object.freeze({ path: packageFile.path, sha256: packageFile.sha256 });

@@ -4,6 +4,10 @@ import { RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
 
 export function recipientV2StandardInvocation(humanOutput = {}, inspection = {}) {
   const route = humanOutput.selectedRoute || {};
+  return recipientV2InvocationForRoute(route, inspection);
+}
+
+function recipientV2InvocationForRoute(route = {}, inspection = {}) {
   const routeMeta = (inspection.routes || []).find((item) => String(item.workspaceId || '') === String(route.workspaceId || '') && String(item.workspaceRelativeHandoffPath || '') === String(route.workspaceRelativePath || ''));
   if (!routeMeta?.pointerPath || !route.workspaceRelativePath || !route.workspaceId) return '';
   return [
@@ -20,14 +24,23 @@ export function recipientV2StandardInvocation(humanOutput = {}, inspection = {})
 }
 
 export function projectRecipientV2HumanOutput(humanOutput = {}, inspection = {}) {
-  if (humanOutput.status !== 'ready' || !humanOutput.primary) return humanOutput;
-  const invocation = recipientV2StandardInvocation(humanOutput, inspection);
-  if (!invocation) return Object.freeze({ ...humanOutput, status: 'blocked', findings: Object.freeze([...(humanOutput.findings || []), Object.freeze({ severity: 'error', code: 'portable.handoff-v2-human-output.route-pointer.unresolved', message: 'Recipient-v2 human output requires one exact package-local Handoff route pointer for the selected semantic Handoff.' })]) });
+  if (humanOutput.status !== 'ready' && humanOutput.status !== 'selection-required') return humanOutput;
+  const invocation = humanOutput.primary ? recipientV2StandardInvocation(humanOutput, inspection) : '';
+  if (humanOutput.primary && !invocation) return Object.freeze({ ...humanOutput, status: 'blocked', findings: Object.freeze([...(humanOutput.findings || []), Object.freeze({ severity: 'error', code: 'portable.handoff-v2-human-output.route-pointer.unresolved', message: 'Recipient-v2 human output requires one exact package-local Handoff route pointer for the selected semantic Handoff.' })]) });
+  const sharedRoutes = (humanOutput.sharedRouting?.routes || []).map((item) => {
+    const route = (inspection.carrierProjection?.routes || []).find((candidate) => String(candidate.id || '') === String(item.routeId || ''))
+      || { id: item.routeId, workspaceId: item.workspaceId, workspaceRelativePath: item.workspaceRelativeHandoffPath };
+    const transportText = recipientV2InvocationForRoute(route, inspection);
+    return transportText ? Object.freeze({ ...item, transportText }) : null;
+  });
+  if (humanOutput.sharedRouting && sharedRoutes.some((item) => !item)) return Object.freeze({ ...humanOutput, status: 'blocked', findings: Object.freeze([...(humanOutput.findings || []), Object.freeze({ severity: 'error', code: 'portable.handoff-v2-human-output.shared-route-pointer.unresolved', message: 'Recipient-v2 shared human output requires one exact package-local Handoff route pointer for every qualified route.' })]) });
+  const sharedRouting = humanOutput.sharedRouting ? Object.freeze({ ...humanOutput.sharedRouting, routes: Object.freeze(sharedRoutes) }) : null;
   return Object.freeze({
     ...humanOutput,
     normalInlineRouting: humanOutput.normalInlineRouting ? Object.freeze({ ...humanOutput.normalInlineRouting, content: invocation }) : null,
+    sharedRouting,
     fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: invocation }) : null,
-    boundary: `${String(humanOutput.boundary || '')} Recipient-v2 host-layer routing is a deterministic address label only: the fixed package Start artifact and exactly one package-local Continue-from Handoff Route Pointer. Workspace, semantic Handoff path, Role, and Task stay package-owned and are never duplicated as host-layer routing hints; sibling routes remain carried but unselected.`
+    boundary: `${String(humanOutput.boundary || '')} Recipient-v2 host-layer routing is a deterministic address label only: the fixed package Start artifact and exact package-local Continue-from Handoff Route Pointers. Workspace, semantic Handoff path, Role, and Task stay package-owned; shared route texts are read-only addresses and sibling routes remain unselected until one exact qualified route is chosen.`
   });
 }
 

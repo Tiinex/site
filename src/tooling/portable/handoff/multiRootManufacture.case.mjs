@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
+import { preparePackageParentWorkspaceReuse } from '../adapters/node/handoff.manufacture.packageParent.js';
 import { entryFromEnumeration } from '../adapters/node/handoff.manufacture.requirements.js';
 import { safeWorkspaceToken } from '../adapters/node/handoff.manufacture.multiRoot.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
@@ -19,6 +20,7 @@ import { recipientFacingV2PackageZipBuffer } from '../output/recipientV2.zip.js'
 import { loadNodePortableInput } from '../input/node.input.js';
 import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
 import { projectHandoffHumanOutput } from './carrierProjection.js';
+import { projectRecipientV2HumanOutput } from './recipientV2.humanOutput.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
 try {
@@ -76,9 +78,30 @@ try {
   assert.equal(twoRoutes.carrierProjection.mode, 'shared');
   assert.deepEqual(twoRoutes.carrierProjection.routes.map((route) => route.workspaceId).sort(), ['docs', 'site']);
   assert.equal(twoRoutes.pointerEntrypointProjection.entries.length, 2);
+  assert.equal(twoRoutes.inspection.format, 'tiinex-recipient-facing-handoff-v2-flat');
+  const legacyParentReuse = preparePackageParentWorkspaceReuse({
+    bundle: twoRoutes.bundle,
+    currentWorkspaceIds: ['site'],
+    parentPackagePath: path.join(root, 'legacy-shared-parent.zip'),
+    parentPackageSha256: '9'.repeat(64)
+  });
+  assert.equal(legacyParentReuse.state, 'qualified', 'valid recipient-v2-flat parent carriers must expose their already-qualified complete Workspace providers for child reuse');
+  assert.deepEqual(legacyParentReuse.inherited.map((item) => item.id), ['docs']);
   const sharedHumanOutput = projectHandoffHumanOutput({ projection: twoRoutes.carrierProjection, route: 'handoff-route:site:.topics/015-handoff.trace.md' });
   assert.equal(sharedHumanOutput.status, 'ready');
   assert.match(sharedHumanOutput.primary.filename, /anchor-to-axiom-and-loom\.handoff-package\.zip$/, 'shared outer filename must include every recipient in deterministic qualified-route order');
+  assert.equal(sharedHumanOutput.sharedRouting.routes.length, 2, 'one shared human projection must expose one exact transport text per qualified route');
+  assert.equal(sharedHumanOutput.sharedRouting.selectionAuthority, 'exact-qualified-route-only');
+  assert.equal(sharedHumanOutput.sharedRouting.siblingInference, false);
+  const unselectedSharedHumanOutput = projectHandoffHumanOutput({ projection: twoRoutes.carrierProjection });
+  assert.equal(unselectedSharedHumanOutput.status, 'selection-required', 'read-only shared routing projection must not silently select a sibling route');
+  assert.equal(unselectedSharedHumanOutput.sharedRouting.routes.length, 2);
+  assert.equal(unselectedSharedHumanOutput.sharedRouting.primary.filename, sharedHumanOutput.primary.filename, 'every route text must address the same shared package filename');
+  const exactSharedRecipientOutput = projectRecipientV2HumanOutput(unselectedSharedHumanOutput, twoRoutes.inspection || inspectRecipientFacingV2Topology(twoRoutes.bundle));
+  assert.equal(exactSharedRecipientOutput.status, 'selection-required');
+  assert.equal(exactSharedRecipientOutput.sharedRouting.routes.length, 2);
+  assert(exactSharedRecipientOutput.sharedRouting.routes.every((route) => /Start:\n001-1-READ-BEFORE-PROCEEDING\.trace\.md/.test(route.transportText)), 'each shared route text must retain the fixed Start artifact');
+  assert(exactSharedRecipientOutput.sharedRouting.routes.every((route) => /Continue from .*:\n[^\n]+handoff-pointer\.trace\.md/.test(route.transportText)), 'each shared route text must carry one exact package-local Continue-from pointer');
   const sharedMultiRouteContinuedRoot = path.join(root, 'continued-shared-multi-route-site');
   const sharedMultiRouteContinued = await materializeGroundWorkspaceCliOutput({
     readiness: { state: 'grounded-to-act' },

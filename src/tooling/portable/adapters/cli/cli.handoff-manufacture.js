@@ -6,9 +6,10 @@ import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
 import { writeRecipientFacingV2PackageZip } from '../../output/recipientV2.zip.js';
 import { projectRecipientV2HumanOutput } from '../../handoff/recipientV2.humanOutput.js';
 import { inspectRecipientFacingV2Topology } from '../../handoff/recipientV2.inspect.js';
-import { carrierLineageFromCliParent, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle } from '../../handoff/carrierLineage.js';
+import { carrierLineageFromCliParent, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle, parentHandoffCarrierProfileFromBundle } from '../../handoff/carrierLineage.js';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { reserveHandoffSiblingIndex } from './cli.handoff-sibling-allocation.js';
+import { normalizeHandoffCarrierProfile } from '../../handoff/carrierProfile.js';
 
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
@@ -23,6 +24,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   if (!flags.route && handoffPath) flags.route = handoffPath;
   if (!flags.output && !flags['output-dir'] && parsed.surfaceCommand === 'handoff' && continuationState.returnOutputDir) flags['output-dir'] = continuationState.returnOutputDir;
   const materialBindings = await readOptionalJson(flags['material-bindings'] || flags.materials);
+  const operatorCarrierProfile = await readOptionalJson(flags['carrier-profile']);
   const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
   const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
   const workspaceTargetValue = await readOptionalJson(flags['workspace-targets']);
@@ -41,11 +43,13 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   let packageParentBundle = null;
   let packageParentSha256 = '';
   let carrierLineage = initialHandoffCarrierLineage();
+  let inheritedCarrierProfile = normalizeHandoffCarrierProfile(null);
   if (parentPackagePath) {
     const resolvedParent = path.resolve(parentPackagePath);
     const parentBytes = new Uint8Array(await readFile(resolvedParent));
     const parentBundle = await loadNodePortableInput([resolvedParent], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
     packageParentBundle = parentBundle;
+    inheritedCarrierProfile = parentHandoffCarrierProfileFromBundle(parentBundle);
     let parentLineage = null;
     let routeDimensions = [];
     try {
@@ -89,6 +93,11 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
   } else if (flags['package-major']) {
     throw new Error('portable.cli.handoff-carrier.package-major.parent-required');
   }
+  const carrierProfile = selectCarrierProfile({
+    operator: operatorCarrierProfile,
+    inherited: inheritedCarrierProfile,
+    runtime: runtime.defaultCarrierProfile || null
+  });
   const input = await prepareNodeHandoffManufacturingInput({
     workspaceRoot,
     handoffPath,
@@ -108,6 +117,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
     verifyRoundtrip,
     recipientRouteSelector: flags.route || '',
     carrierLineage,
+    carrierProfile,
     packageParentBundle,
     packageParentPath: parentPackagePath ? path.resolve(parentPackagePath) : '',
     packageParentSha256
@@ -204,6 +214,7 @@ export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt =
       status: humanOutput.status,
       primary: humanOutput.primary,
       normalInlineRouting: humanOutput.normalInlineRouting ? Object.freeze({ ...humanOutput.normalInlineRouting }) : null,
+      sharedRouting: humanOutput.sharedRouting ? Object.freeze({ ...humanOutput.sharedRouting, routes: Object.freeze([...(humanOutput.sharedRouting.routes || [])].map((item) => Object.freeze({ ...item }))) }) : null,
       presentation: humanOutput.presentation ? Object.freeze({ ...humanOutput.presentation }) : null,
       normalEmissionBoundary: humanOutput.normalEmissionBoundary ? Object.freeze({ ...humanOutput.normalEmissionBoundary, allowed: Object.freeze([...(humanOutput.normalEmissionBoundary.allowed || [])]) }) : null,
       fallbackTransportText: humanOutput.fallbackTransportText ? Object.freeze({ ...humanOutput.fallbackTransportText, content: undefined }) : null
@@ -267,6 +278,15 @@ function defaultSidecarPath(packageTarget) {
 async function readOptionalJson(file = '') { if (!file) return {}; return JSON.parse(await readFile(file, 'utf8')); }
 function descriptorArray(value, key) { if (Array.isArray(value)) return value; if (Array.isArray(value?.[key])) return value[key]; return []; }
 function splitFlag(value) { if (!value || value === true) return []; return String(value).split(',').map((item) => item.trim()).filter(Boolean); }
+
+
+function selectCarrierProfile({ operator = null, inherited = null, runtime = null } = {}) {
+  for (const [value, source] of [[operator, 'operator'], [inherited, 'inherited-package'], [runtime, 'runtime-profile']]) {
+    const profile = normalizeHandoffCarrierProfile(value, { source });
+    if (profile.state === 'qualified') return profile;
+  }
+  return normalizeHandoffCarrierProfile(null);
+}
 
 async function readGroundContinuationState(workspaceRoot = '.') {
   try { return JSON.parse(await readFile(path.join(path.resolve(String(workspaceRoot || '.')), '.tiinex', 'continuation.json'), 'utf8')); }

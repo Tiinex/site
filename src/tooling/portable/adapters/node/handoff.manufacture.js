@@ -3,6 +3,7 @@ import path from 'node:path';
 import { inferWorkspaceTitle, normalizeAdditionalWorkspaceDescriptors, normalizeTransportRoute, safeWorkspaceToken } from './handoff.manufacture.multiRoot.js';
 import { buildToolingBootstrapTransportFiles, PORTABLE_TOOLING_BOOTSTRAP_MANIFEST_SCHEMA_ID } from './handoff.manufacture.bootstrap.js';
 import { normalizeHandoffCarrierLineage } from '../../handoff/carrierLineage.js';
+import { normalizeHandoffCarrierProfile } from '../../handoff/carrierProfile.js';
 import { enumerateNodeWorkspace, PORTABLE_NODE_WORKSPACE_ENUMERATION_SCHEMA_ID } from './handoff.manufacture.enumeration.js';
 import { preparePackageParentWorkspaceReuse } from './handoff.manufacture.packageParent.js';
 import {
@@ -157,6 +158,7 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
     transportRoutes,
     workspaceTargets,
     carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null),
+    carrierProfile: normalizeHandoffCarrierProfile(input.carrierProfile || null),
     toolingBootstrap: toolingBootstrap.summary,
     manufacturingEvidence: Object.freeze({
       enumeration: enumeration.evidence,
@@ -168,7 +170,7 @@ export async function prepareNodeHandoffManufacturingInput(input = {}, options =
         inheritedWorkspaceIds: Object.freeze((packageParentReuse.inherited || []).map((item) => String(item.id || ''))),
         boundary: String(packageParentReuse.boundary || '')
       }),
-      carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null), boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
+      carrierProjection: Object.freeze({ requestedRoutes: transportRoutes.length || 1, carrierLineage: normalizeHandoffCarrierLineage(input.carrierLineage || null), carrierProfile: normalizeHandoffCarrierProfile(input.carrierProfile || null), boundary: 'Routes are qualified later against packaged workspace bytes; adapter text is not authority.' })
     }),
     verifyRoundtrip: input.verifyRoundtrip !== false
   });

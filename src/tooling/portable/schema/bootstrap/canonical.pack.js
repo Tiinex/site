@@ -9,5 +9,16 @@ export const portableCanonicalBootstrapRuntime = Object.freeze({
     repository: 'Tiinex/docs',
     commit: PORTABLE_CANONICAL_BOOTSTRAP_DOCS_COMMIT,
     sourcePathPrefix: '.topics/.schemas'
+  }),
+  defaultSchemaProviderSource: Object.freeze({
+    id: 'tiinex-docs',
+    repository: 'Tiinex/docs',
+    ref: 'master',
+    source: 'canonical-bootstrap-runtime-profile'
+  }),
+  defaultCarrierProfile: Object.freeze({
+    id: 'tiinex-foundation',
+    requiredMajorWorkspaceIds: Object.freeze(['business', 'docs', 'site']),
+    source: 'canonical-bootstrap-runtime-profile'
   })
 });

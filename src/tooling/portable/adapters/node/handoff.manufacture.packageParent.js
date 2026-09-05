@@ -6,13 +6,13 @@ export function preparePackageParentWorkspaceReuse(input = {}) {
   const bundle = input.bundle || null;
   if (!bundle?.files?.length) return emptyReuse('unavailable');
   const currentIds = new Set([...(input.currentWorkspaceIds || [])].map(normalizeId).filter(Boolean));
-  const declared = declaredPackageWorkspaceBindings(bundle);
+  const inspection = inspectRecipientFacingV2Topology(bundle);
+  const declared = declaredPackageWorkspaceBindings(bundle, inspection);
   if (!declared.length) return emptyReuse('unsupported-parent-surface');
+  if (inspection.status !== 'valid') throw new Error('portable.handoff-manufacture.package-parent.workspace-provider.invalid');
   const missing = declared.filter((item) => !currentIds.has(normalizeId(item.workspaceId)));
   if (!missing.length) return emptyReuse('not-needed');
 
-  const inspection = inspectRecipientFacingV2Topology(bundle);
-  if (inspection.status !== 'valid') throw new Error('portable.handoff-manufacture.package-parent.workspace-provider.invalid');
   const providerById = new Map((inspection.workspaceByteProvider?.workspaces || []).map((item) => [normalizeId(item.id), item]));
   const inspectedById = new Map((inspection.workspaces || []).map((item) => [normalizeId(item.workspaceId), item]));
   const inherited = [];
@@ -43,14 +43,24 @@ export function preparePackageParentWorkspaceReuse(input = {}) {
   });
 }
 
-function declaredPackageWorkspaceBindings(bundle = {}) {
+function declaredPackageWorkspaceBindings(bundle = {}, inspection = null) {
   const roots = (bundle.files || []).filter((file) => String(file.path || '') === RECIPIENT_V2_PACKAGE_V1_ROOT_PATH);
-  if (roots.length !== 1) return [];
-  let markdown = '';
-  try { markdown = new TextDecoder('utf-8', { fatal: true }).decode(packageFileBytes(roots[0])); }
-  catch { return []; }
-  try { return [...(parseHandoffPackageV1(markdown).workspaces || [])]; }
-  catch { return []; }
+  if (roots.length === 1) {
+    try {
+      const markdown = new TextDecoder('utf-8', { fatal: true }).decode(packageFileBytes(roots[0]));
+      const declared = [...(parseHandoffPackageV1(markdown).workspaces || [])];
+      if (declared.length) return declared;
+    } catch { /* fall through to independently qualified recipient-v2 inspection */ }
+  }
+  if (!inspection || inspection.detected !== true || inspection.status !== 'valid') return [];
+  return (inspection.workspaces || [])
+    .filter((workspace) => String(workspace.coverage || '') === 'complete')
+    .map((workspace) => Object.freeze({
+      workspaceId: String(workspace.workspaceId || ''),
+      workspaceArtifactInnerPath: String(workspace.sourceWorkspaceTargetInnerPath || ''),
+      snapshotPath: String(workspace.workspaceArchivePath || '')
+    }))
+    .filter((workspace) => workspace.workspaceId && workspace.workspaceArtifactInnerPath && workspace.snapshotPath);
 }
 
 function buildInheritedEnumeration(provider = {}, source = {}) {

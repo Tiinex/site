@@ -77,12 +77,14 @@ export function projectHandoffHumanOutput(input = {}) {
   const filename = selected.route ? carrierFilenameForInstance(projectedOuterFilename(projection, selected.route), instance) : '';
   const routeWorkspace = selected.route ? findProjectedHandoffCarrierWorkspace(projection, selected.route.workspaceId) : null;
   const transportText = selected.route ? transportTextForRoute(routeWorkspace || projection.workspace || {}, selected.route) : '';
+  const sharedRouting = projectSharedRouting(projection, instance);
   const status = findings.some((item) => item.severity === 'error') ? (selected.state === 'selection-required' ? 'selection-required' : 'blocked') : 'ready';
   return deepFreeze({
     schema: HANDOFF_HUMAN_OUTPUT_SCHEMA_ID,
     status,
     primary: selected.route ? Object.freeze({ kind: 'handoff-package', filename, dimension: String(projection.lineage?.dimension || selected.route.dimension || ''), parentDimension: String(projection.lineage?.parentDimension || ''), checkpointKind: String(projection.lineage?.checkpointKind || ''), routeId: selected.route.id, workspaceId: selected.route.workspaceId, workspaceRelativeHandoffPath: selected.route.workspaceRelativePath, collisionInstance: instance, singleHumanTransportChoice: true }) : null,
     normalInlineRouting: selected.route ? Object.freeze({ kind: 'transport-text', content: transportText, normalEmission: true, requiredForHumanCompletion: true, placement: 'adjacent-to-primary', authority: 'none' }) : null,
+    sharedRouting,
     presentation: HANDOFF_HUMAN_OUTPUT_PRESENTATION,
     normalEmissionBoundary: HANDOFF_NORMAL_EMISSION_BOUNDARY,
     fallbackTransportText: selected.route ? Object.freeze({ supported: true, filename: transportSidecarFilename(filename), content: transportText, normalEmission: false, requiredForHumanCompletion: false, authority: 'none' }) : null,
@@ -110,12 +112,36 @@ export function carrierFilenameForInstance(filename = '', instance = 1) {
 
 
 
+function projectSharedRouting(projection = {}, instance = 1) {
+  if (String(projection.mode || '') !== 'shared') return null;
+  const routes = (projection.routes || []).filter((route) => route.state === 'qualified');
+  if (!routes.length) return null;
+  const filename = carrierFilenameForInstance(projectedOuterFilename(projection, routes[0]), instance);
+  return Object.freeze({
+    mode: 'one-shared-package-many-exact-route-texts',
+    primary: Object.freeze({ kind: 'handoff-package', filename }),
+    routes: Object.freeze(routes.map((route) => {
+      const workspace = findProjectedHandoffCarrierWorkspace(projection, route.workspaceId) || projection.workspace || {};
+      return Object.freeze({
+        routeId: String(route.id || ''),
+        workspaceId: String(route.workspaceId || ''),
+        workspaceRelativeHandoffPath: String(route.workspaceRelativePath || ''),
+        transportText: transportTextForRoute(workspace, route),
+        authority: 'none'
+      });
+    })),
+    selectionAuthority: 'exact-qualified-route-only',
+    siblingInference: false,
+    readOnly: true
+  });
+}
+
 function projectedOuterFilename(projection = {}, selectedRoute = {}) {
   if (String(projection.mode || '') !== 'shared') return String(selectedRoute.projectedFilename || '');
   const routes = (projection.routes || []).filter((route) => route.state === 'qualified');
   const recipients = [...new Set(routes.map((route) => String(route.parties?.to || '').trim()).filter(Boolean))];
   const senders = [...new Set(routes.map((route) => String(route.parties?.from || '').trim()).filter(Boolean))];
-  const workspace = findProjectedHandoffCarrierWorkspace(projection, selectedRoute.workspaceId) || projection.workspace || {};
+  const workspace = projection.workspace || findProjectedHandoffCarrierWorkspace(projection, selectedRoute.workspaceId) || {};
   const dimension = String(projection.lineage?.dimension || selectedRoute.dimension || '').trim();
   if (senders.length !== 1 || !recipients.length || !workspace.slug || !dimension) return String(selectedRoute.projectedFilename || '');
   const recipientSegment = recipients.map(slug).filter(Boolean).join('-and-');

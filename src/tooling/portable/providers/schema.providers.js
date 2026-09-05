@@ -57,8 +57,7 @@ export async function resolvePortableSchemaMaterial(input = {}, options = {}) {
     try {
       response = await provider.resolveSchema(Object.freeze({
         schemaId,
-        repository: input.repository || options.repository || 'Tiinex/docs',
-        ref: input.ref || options.ref || 'master',
+        ...providerSource(input, options),
         expectedPaths: expectedSchemaPaths(schemaId)
       }));
     } catch (error) {
@@ -267,12 +266,19 @@ function resolutionResult(schemaId, material, providerCatalog, findings, provide
   });
 }
 
+function providerSource(input = {}, options = {}) {
+  const profile = input.sourceProfile || input.schemaProviderSource || options.sourceProfile || options.schemaProviderSource || {};
+  return Object.freeze({
+    repository: String(input.repository || options.repository || profile.repository || '').trim(),
+    ref: String(input.ref || options.ref || profile.ref || '').trim()
+  });
+}
+
 function buildProviderRequest(schemaId, catalog, input, options) {
-  const repository = String(input.repository || options.repository || 'Tiinex/docs');
-  const ref = String(input.ref || options.ref || 'master');
+  const { repository, ref } = providerSource(input, options);
   const repositoryProvider = catalog.providers.find((provider) => provider.id === 'host-repository' && provider.available);
   const httpProvider = catalog.providers.find((provider) => provider.id === 'explicit-http' && provider.available);
-  const capability = repositoryProvider ? 'repository-search-and-read' : httpProvider ? 'explicit-http-read' : 'supply-schema-material';
+  const capability = repository && repositoryProvider ? 'repository-search-and-read' : httpProvider ? 'explicit-http-read' : 'supply-schema-material';
   return Object.freeze({
     schema: 'tiinex.portable.provider-request.v1',
     capability,

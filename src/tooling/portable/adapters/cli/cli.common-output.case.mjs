@@ -46,6 +46,7 @@ import { groundContinuationOperationInput } from './cli.ground-materialize.js';
       { requirementId: 'required:a', name: 'a', state: 'qualified', workspaceId: 'site', innerPath: '.topics/a.md', contentProjected: false },
       { requirementId: 'required:b', name: 'b', state: 'qualified', workspaceId: 'site', innerPath: '.topics/b.md', contentProjected: true, content: '# Exact requested body' }
     ], bodiesProjected: 1, bodiesAvailable: 2 } },
+    capsule: { schema: 'tiinex.portable.grounding-capsule.v1', semanticReductions: [{ id: 'required:a', title: 'Context A', signals: [] }], frontier: { state: 'resolved' }, exclusions: [], sourceEvidence: { carrier: { state: 'qualified' }, workspaces: [] }, roleState: { recipient: 'Loom', holder: 'Loom' }, unresolved: [{ slot: 'organizational-work-provenance', state: 'unresolved' }], boundary: 'bounded' },
     currentWork: { state: 'current-frontier-resolved', frontier: [{ id: 'site/.topics/task.trace.md', path: 'site/.topics/task.trace.md', title: 'Task', declaredStatus: 'ready/local', contentProjected: true, content: '# Current task body' }], blockers: [] },
     continuity: { state: 'qualified', proof: { roots: [{ id: 'root', path: 'site/.topics/root.md', title: 'Root', schemaId: 'tiinex.decision.v1', declaresParent: false, hasContinuityContext: true, hasIntegrity: true }] }, blockingIssues: [], recovery: { state: 'not-required' }, losses: { state: 'none', blocking: false, items: [] } },
     lineage: { large: 'receipt' },
@@ -61,6 +62,8 @@ import { groundContinuationOperationInput } from './cli.ground-materialize.js';
   assert.equal(compact.requiredContext.missingFromWorkspaceSnapshots, 0);
   assert.equal(compact.requiredContext.items.length, 0, 'ordinary continuation must not repeat qualified Required Context item paths by default');
   assert.equal(compact.requiredContext.itemsOmitted, 2);
+  assert.equal(compact.capsule.semanticReductions[0].title, 'Context A');
+  assert.equal(compact.capsule.unresolved[0].slot, 'organizational-work-provenance');
   assert.equal(compact.currentWork.frontier[0].content, '# Current task body');
   assert.equal(compact.continuity.state, 'qualified');
   assert.equal(compact.continuity.roots.length, 0, 'ordinary continuation must not repeat already-qualified root-detail receipts');
@@ -96,6 +99,7 @@ import { groundContinuationOperationInput } from './cli.ground-materialize.js';
     primaryOutput: { status: 'written', path: '/tmp/return.handoff-package.zip', bytes: 1000, projectedFilename: 'return.handoff-package.zip', selectedRoute: '.topics/return.trace.md' },
     humanOutput: {
       normalInlineRouting: { kind: 'transport-text', content: 'Handoff package attached.\n', normalEmission: true, authority: 'none' },
+      sharedRouting: { mode: 'one-shared-package-many-exact-route-texts', primary: { filename: 'return.handoff-package.zip' }, routes: [{ routeId: 'route:return', transportText: 'route text', authority: 'none' }], selectionAuthority: 'exact-qualified-route-only', siblingInference: false, readOnly: true },
       presentation: { copyableSurfaceRequired: true, exactContentRequired: true, fencedCodeBlockWhenSupported: 'required', markdownCapableHostRendering: 'fenced-code-block', wrapperAuthority: 'none' },
       normalEmissionBoundary: { allowed: ['primary', 'normalInlineRouting'], canonicalFilePayloadCount: 1, workspaceArtifactsAsLooseTransportFiles: false, semanticWorkSummaryProse: false, helperArtifacts: false, manuallyReconstructedRouting: false, duplicateNormalFileChoices: false },
       internal: { large: 'receipt' }
@@ -112,6 +116,8 @@ import { groundContinuationOperationInput } from './cli.ground-materialize.js';
   assert.equal(compact.projection, 'common-default');
   assert.equal(compact.transport.primary.path, '/tmp/return.handoff-package.zip');
   assert.equal(compact.transport.routing.content, 'Handoff package attached.\n');
+  assert.equal(compact.transport.sharedRouting.selectionAuthority, 'exact-qualified-route-only');
+  assert.equal(compact.transport.sharedRouting.siblingInference, false);
   assert.equal(compact.transport.presentation.markdownCapableHostRendering, 'fenced-code-block');
   assert.equal(compact.transport.normalEmission.canonicalFilePayloadCount, 1);
   assert.equal(compact.transport.normalEmission.workspaceArtifactsAsLooseTransportFiles, false);

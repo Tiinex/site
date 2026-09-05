@@ -185,7 +185,8 @@ export function projectRelevantTopology(lineage = {}, relevantIds = new Set(), f
   const rankedCurrent = currentTasks.filter((item) => distance.has(item.id)).sort((a, b) => distance.get(a.id) - distance.get(b.id));
   const nearestDistance = rankedCurrent.length ? distance.get(rankedCurrent[0].id) : Number.POSITIVE_INFINITY;
   const currentFrontier = rankedCurrent.filter((item) => distance.get(item.id) === nearestDistance);
-  return Object.freeze({ roots, leaves, routeLeaves, currentTasks, currentTaskIds, currentFrontier });
+  const relevantPaths = Object.freeze([...relevantIds].map((id) => String(nodeById.get(id)?.path || '')).filter(Boolean));
+  return Object.freeze({ roots, leaves, routeLeaves, currentTasks, currentTaskIds, currentFrontier, relevantPaths });
 }
 
 export function relevantLineageIssues(lineage = {}, relevantIds = new Set()) {
