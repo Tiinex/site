@@ -10,14 +10,15 @@
   "sourcePath": ".topics/.schemas/core/evidence/tiinex.evidence.v1.schema.md",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
-  "sourceBlobSha": "430367bb717d93e396a50c993dc011f8d129bf54",
+  "sourceBlobSha": "e3d135424ae2eba30d26ab8b1a48c7d8cdd0e639",
   "checksum": {
     "algorithm": "sha256",
-    "value": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08"
+    "value": "b6c06684af1d5fa181ebf37f04ffb0c226ef5b4f46fccd53b5ec12676ab8c551"
   },
   "capabilityContract": "tiinex.schema.module.v1",
-  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "snapshotCompleteness": "exact-axiom-canonical-unpublished-bounded-workspace-contract",
   "bindingVersion": "tiinex.web.schema-binding.v1",
-  "originId": "tiinex-docs-e713557f",
-  "originTrustRole": "canonical-core"
+  "originId": "tiinex-docs-e713557f-accepted-local",
+  "originTrustRole": "canonical-core",
+  "publicationState": "accepted-local-unpublished"
 }

@@ -1,6 +1,6 @@
 import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { inspectRecipientFacingV2PackageV1 } from '../../handoff/recipientV2.packageV1.inspect.js';
+import { inspectRecipientFacingV2Topology } from '../../handoff/recipientV2.inspect.js';
 import { handoffWorkspaceProviderForId } from '../../handoff/workspaceByteProvider.js';
 
 export function groundContinuationOperationInput(input = {}, flags = {}) {
@@ -19,7 +19,7 @@ export async function materializeGroundWorkspaceCliOutput(result = {}, input = {
     return result;
   }
   if (String(result?.readiness?.state || '') !== 'grounded-to-act') throw new Error('portable.cli.ground.workspace-materialization.requires-grounded-to-act');
-  const inspection = inspectRecipientFacingV2PackageV1(input.bundle || input.package || input);
+  const inspection = inspectRecipientFacingV2Topology(input.bundle || input.package || input);
   if (String(inspection.status || '') !== 'valid') throw new Error('portable.cli.ground.workspace-materialization.package-unqualified');
   const workspaceId = String(flags.workspace || result?.authority?.route?.workspaceId || '').trim();
   if (!workspaceId) throw new Error('portable.cli.ground.workspace-id.required');

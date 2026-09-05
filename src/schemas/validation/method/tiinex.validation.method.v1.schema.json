@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.validation.method.v1",
+  "kind": "concrete",
+  "role": "validation-method-artifact",
+  "module": "./tiinex.validation.method.v1.schema.js",
+  "snapshot": "./tiinex.validation.method.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/validation/method/tiinex.validation.method.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/validation/method/tiinex.validation.method.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/validation/method/tiinex.validation.method.v1.schema.md",
+  "sourcePath": ".topics/.schemas/validation/method/tiinex.validation.method.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+  "sourceBlobSha": "12ad3ecedb3d027417377e069a50b2188bbf9052",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "e405c92a5b6ddc367505c59c828a8388b8880141db465f9eae9f9bd5db0e29c8"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-39889512",
+  "originTrustRole": "canonical-core"
+}

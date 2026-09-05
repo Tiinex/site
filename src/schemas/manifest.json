@@ -1,6 +1,6 @@
 {
   "type": "tiinex.web.schema-module.manifest.v1",
-  "version": "v190",
+  "version": "v191",
   "sourceRepository": "Tiinex/docs",
   "sourceCommit": "52ecdea0a75893882ce282214d155f70e1309c2a",
   "modules": [
@@ -9,9 +9,9 @@
       "kind": "concrete",
       "role": "workflow-decision-artifact",
       "path": "core/decision/tiinex.decision.v1.schema.json",
-      "checksum": "5d28c0425d19d8d18038ced26d3af70d46ea52ecca194e9faf13aa22f4579638",
-      "sourceBlobSha": "866ed2d1f2d213d13e68866fd51b5faad155a15c",
-      "originId": "tiinex-docs-e713557f",
+      "checksum": "9bec2153af0be7b004212545f6824554c9cfcbe94e07c338e67e6824e2bcc689",
+      "sourceBlobSha": "19794d0a4c7cd6fc148b543b18e72f66f9e633e9",
+      "originId": "tiinex-docs-e713557f-accepted-local",
       "originTrustRole": "canonical-core"
     },
     {
@@ -39,9 +39,9 @@
       "kind": "concrete",
       "role": "core-evidence-artifact",
       "path": "core/evidence/tiinex.evidence.v1.schema.json",
-      "checksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
-      "sourceBlobSha": "430367bb717d93e396a50c993dc011f8d129bf54",
-      "originId": "tiinex-docs-e713557f",
+      "checksum": "b6c06684af1d5fa181ebf37f04ffb0c226ef5b4f46fccd53b5ec12676ab8c551",
+      "sourceBlobSha": "e3d135424ae2eba30d26ab8b1a48c7d8cdd0e639",
+      "originId": "tiinex-docs-e713557f-accepted-local",
       "originTrustRole": "canonical-core"
     },
     {
@@ -89,9 +89,9 @@
       "kind": "concrete",
       "role": "party-role-artifact",
       "path": "party/role/tiinex.party.role.v1.schema.json",
-      "checksum": "7556148015a657eaf3e35ce680126d3f397e4e5bc36d071edee22d88a7a391fd",
-      "sourceBlobSha": "912d64079439850eff2e18702fae3e36b19f52d2",
-      "originId": "tiinex-docs-39889512",
+      "checksum": "16b6bd63b9ba6044906aa9daa9bd289881171ddc875b3b9e7c2158470ad27828",
+      "sourceBlobSha": "16687051579d5c850591d4bf4e2dbd9705f83983",
+      "originId": "tiinex-docs-39889512-accepted-local",
       "originTrustRole": "canonical-core"
     },
     {
@@ -157,9 +157,9 @@
       "kind": "abstract",
       "role": "envelope",
       "path": "tiinex.root.v1.schema.json",
-      "checksum": "0868fbc1c5e3501e0994ea8feaa22f50d59877fff447f73a60f2bffbc64324a1",
-      "sourceBlobSha": "1398960010b919d266a7451f59bbfc9c211c0e4b",
-      "originId": "tiinex-docs-39889512",
+      "checksum": "4ec6d17ef55f51c2305ede8e2f22c8c4a9324c478489114adb86a33664d4d156",
+      "sourceBlobSha": "0162368365b452ea134b71bf52ced7554a7c5abc",
+      "originId": "tiinex-docs-39889512-accepted-local",
       "originTrustRole": "canonical-core"
     },
     {
@@ -198,6 +198,36 @@
       "checksum": "b6fe9893d9ce66734ab249a22796ca77de75f441a4b6eaa3352ad75a1c2405df",
       "sourceBlobSha": "c36472b0d20ad97d01cc1ca78a50fc69ce35fdae",
       "originId": "tiinex-docs-053d46ce",
+      "originTrustRole": "canonical-core"
+    },
+    {
+      "schemaId": "tiinex.validation.finding.v1",
+      "kind": "concrete",
+      "role": "validation-finding-artifact",
+      "path": "validation/finding/tiinex.validation.finding.v1.schema.json",
+      "checksum": "92fd06f3650f8cca172cc80bd88fc71e129365b8e2d16d9ec001451c957faf05",
+      "sourceBlobSha": "82ff49e380d8cf2fd5c3e3eca7fa1ef2f15a8be5",
+      "originId": "tiinex-docs-78a36734",
+      "originTrustRole": "canonical-core"
+    },
+    {
+      "schemaId": "tiinex.validation.method.v1",
+      "kind": "concrete",
+      "role": "validation-method-artifact",
+      "path": "validation/method/tiinex.validation.method.v1.schema.json",
+      "checksum": "e405c92a5b6ddc367505c59c828a8388b8880141db465f9eae9f9bd5db0e29c8",
+      "sourceBlobSha": "12ad3ecedb3d027417377e069a50b2188bbf9052",
+      "originId": "tiinex-docs-39889512",
+      "originTrustRole": "canonical-core"
+    },
+    {
+      "schemaId": "tiinex.validation.report.v1",
+      "kind": "concrete",
+      "role": "validation-report-artifact",
+      "path": "validation/report/tiinex.validation.report.v1.schema.json",
+      "checksum": "4c5eef641e21f93ea98b48c266141af1e18d3ef97a461e9adbe6cbd9cfeaf882",
+      "sourceBlobSha": "6637c34db3d4946a30560fd011ca71a1f5b9011c",
+      "originId": "tiinex-docs-39889512",
       "originTrustRole": "canonical-core"
     },
     {
@@ -271,6 +301,17 @@
       "trustRole": "canonical-core"
     },
     {
+      "id": "tiinex-docs-39889512-accepted-local",
+      "label": "Axiom-accepted local Tiinex docs schema-contract overlay at 39889512 base",
+      "kind": "accepted-local-overlay",
+      "repository": "Tiinex/docs",
+      "ref": "master",
+      "sourceCommit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core",
+      "publicationState": "accepted-local-unpublished"
+    },
+    {
       "id": "tiinex-docs-0fdce5f2-accepted-local",
       "label": "Anchor-accepted local Tiinex docs Workspace Representation contract at 0fdce5f2 base",
       "kind": "accepted-local-overlay",
@@ -298,6 +339,27 @@
       "repository": "Tiinex/docs",
       "ref": "8435cd46a3773a38301659da716785dc6465072c",
       "sourceCommit": "8435cd46a3773a38301659da716785dc6465072c",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core"
+    },
+    {
+      "id": "tiinex-docs-e713557f-accepted-local",
+      "label": "Axiom-accepted local Tiinex docs Decision repair at e713557f base",
+      "kind": "accepted-local-overlay",
+      "repository": "Tiinex/docs",
+      "ref": "master",
+      "sourceCommit": "e713557f8be630967571d11a73f9ecd05ae329ce",
+      "rootPath": ".topics/.schemas",
+      "trustRole": "canonical-core",
+      "publicationState": "accepted-local-unpublished"
+    },
+    {
+      "id": "tiinex-docs-78a36734",
+      "label": "Tiinex docs canonical snapshot 78a36734",
+      "kind": "github-tree",
+      "repository": "Tiinex/docs",
+      "ref": "78a3673444666f1145be4feca6e7eb1476a44281",
+      "sourceCommit": "78a3673444666f1145be4feca6e7eb1476a44281",
       "rootPath": ".topics/.schemas",
       "trustRole": "canonical-core"
     }

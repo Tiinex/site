@@ -1,11 +1,14 @@
 import { executeCanonicalTransitionLocalCreate } from './canonicalTransitionLocalCreateCommand.js';
 import { executeCanonicalReferenceLocalCreate } from './canonicalReferenceLocalCreateCommand.js';
+import { executeSchemaFactoryLocalCreate } from './schemaFactoryLocalCreateCommand.js';
 import { BUNDLED_CANONICAL_TRANSITION_DEFINITIONS, BUNDLED_CANONICAL_TRANSITION_SCHEMA_CACHE } from '../transitions/canonicalTransition.productDefaults.js';
 import { canonicalCreationProductSettlementState } from './canonicalCreationProductSettlement.js';
+import { isSchemaFactoryViewerCreateAction } from '../schemas/schema.factory.viewerProjection.js';
 
 export function createCanonicalCreationProductController(input = {}) {
   const executeTransition = input.executeTransitionCommand || executeCanonicalTransitionLocalCreate;
   const executeReference = input.executeReferenceCommand || executeCanonicalReferenceLocalCreate;
+  const executeFactory = input.executeFactoryCommand || executeSchemaFactoryLocalCreate;
   const currentState = () => input.getState?.() || {};
   const lifecycle = () => input.getLifecycle?.() || null;
   const persistenceOwnership = () => input.getPersistenceOwnership?.() || null;
@@ -28,6 +31,20 @@ export function createCanonicalCreationProductController(input = {}) {
     return settle(result, workspaceId, action);
   }
 
+  function createFactoryRecord(parentRecord, action, values, options = {}) {
+    const sourceState = currentState();
+    const workspaceId = String(options.workspaceId || dialogWorkspaceId() || sourceState.activeWorkspaceId || '').trim();
+    const result = executeFactory({ lifecycle: lifecycle(), state: sourceState, workspaceId, currentRecordId: parentRecord?.id || '', action, values, placementFolder: options.placementFolder || '', persistenceOwnership: persistenceOwnership() });
+    if (!result?.ok) { input.setNotice?.(result?.notice || 'Could not create schema-factory local artifact.'); return result; }
+    return settle(result, workspaceId, action);
+  }
+
+  function createWorkspaceArtifactRecord(parentRecord, action, values, options = {}) {
+    return isSchemaFactoryViewerCreateAction(action)
+      ? createFactoryRecord(parentRecord, action, values, options)
+      : createTransitionRecord(parentRecord, action, values, options);
+  }
+
   function createReferenceRecord(subjectRecord, action, targetOption) {
     const sourceState = currentState();
     const workspaceId = recordAction()?.workspaceId || sourceState.activeWorkspaceId || '';
@@ -36,5 +53,5 @@ export function createCanonicalCreationProductController(input = {}) {
     return settle(result, workspaceId, action);
   }
 
-  return Object.freeze({ createTransitionRecord, createReferenceRecord });
+  return Object.freeze({ createTransitionRecord, createFactoryRecord, createWorkspaceArtifactRecord, createReferenceRecord });
 }

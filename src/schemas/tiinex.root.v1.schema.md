@@ -5,6 +5,15 @@
   - Current Schema: [tiinex.root.v1](tiinex.root.v1.schema.md)
   - Created At: 2026-06-14 00:00:00
   - Summary: Root schema for Tiinex lineage artifacts with repair-note support.
+- Repairs
+  - Parent recovery locality correction
+    - Target: Schema Validation Contract / Parent Origin and Schema Reference Fields
+    - Note: Parent recovery no longer requires fabricated relative locality. Local recovery uses truthful relative paths; external or historical recovery uses a qualified version-stable locator when local relative recovery is unavailable. Published schema references use immutable canonical locators when available. Transport closure may augment recovery for an already-truthful Parent edge but does not create missing source Origin authority; bounded export must preserve a usable recovery route or fail closed.
+    - Reason: Cross-repository lineage exposed that a universal relative requirement forced duplicate Parent material and weakened bounded transport and exact source recovery.
+  - Human-first shared semantic surface clarification
+    - Target: Root Semantics
+    - Note: Human-readable declared artifact meaning is the primary shared semantic surface; LLM recovery and machine validation/generation must preserve that same non-contradictory declared meaning within their explicit authority surfaces.
+    - Reason: Anchor accepted the bounded Axiom finding that this cross-schema invariant was strongly distributed in current authority but not stated once canonically at Root.
 
 ---
 
@@ -32,6 +41,8 @@ If `Parent` is absent, the artifact is the root of its local lineage.
 Parent absence does not erase origin or provenance. It only means no parent edge is declared.
 
 If `Repairs` exists, the artifact declares known repair, correction, or trust-impacting context that should remain visible to later readers and tools.
+
+Human-readable declared artifact meaning is the primary shared semantic surface. LLMs may recover or explain that same declared meaning without inventing missing authority. Machines may validate or generate only the explicit machine contract surfaces. Machine validation may be stricter about acceptance shape, but it must not create a contradictory semantic meaning. LLM or runtime-private state must not silently override or invent artifact semantic authority.
 
 ## Contract Reading Model
 
@@ -131,6 +142,7 @@ Known Category Labels
 - Group Shape
 - Header Sections
 - Integrity Authority
+- Inheritance Overrides
 - Instance Target
 - Known Category Labels
 - List Marker
@@ -233,6 +245,45 @@ Rules
 - Override semantics must identify which inherited requirement is being replaced and how the replacement is interpreted.
 - Validators must not guess override behavior when a descendant schema does not define it.
 - A descendant extension must not silently redeclare an inherited contract category label as if it were new.
+
+### Inheritance Overrides
+
+Entry Shape
+
+- Named Declaration
+
+Required Fields
+
+- Merge Operation
+- Parent Schema
+- Parent Node
+- Child Node
+
+Optional Fields
+
+- Reason
+- Effective Result
+
+Field Value Constraints
+
+- Merge Operation
+  - Allowed Value: override
+  - Domain Policy: closed
+
+Rules
+
+- `Inheritance Overrides` is the canonical schema-local machine category for explicit inherited contract replacement.
+- The declaration name identifies one override declaration within the declaring child schema.
+- `Merge Operation` must be exactly `override`; unsupported operations are unresolved and must not be guessed.
+- `Parent Schema` must resolve to an actual ancestor of the declaring child schema in the active lineage.
+- `Parent Node` and `Child Node` each use the exact path shape `Schema Validation Contract / <third-level group> / <category label>` and must resolve exactly once.
+- The declaring child schema is the child schema identity; no duplicate `Child Schema` field is part of the inline declaration.
+- A qualified override deactivates only the exact addressed parent contribution and activates the exact addressed child replacement contribution while retaining declaration and contributor provenance.
+- Competing declarations for the same exact parent contribution, malformed declarations, unresolved lineage, missing or ambiguous nodes, or non-ancestor parents are unresolved/error.
+- Source order, filename order, directory adjacency, prose wording, and schema identity must not choose a winner.
+- When both addressed nodes are `Required Shape`, parent ordinary instance-field groups whose Root-authorized exact second-level target heading is required by the parent shape but absent from the child replacement shape become inactive; groups targeting surviving headings remain additive.
+- If Required Shape heading identity or ordinary target ownership cannot be resolved exactly, the override is unresolved rather than guessed.
+- Standalone `tiinex.schema.inheritance.v1` artifacts may document, propose, test, audit, or migrate an inheritance relationship, but they do not silently add or change schema-local compilation authority.
 
 ### Contract Cardinality
 
@@ -562,10 +613,6 @@ Required When
 
 - Parent exists
 
-Required Fields
-
-- browse + git
-
 Allowed Labels
 
 - relative
@@ -584,14 +631,23 @@ Ordering
 
 Rules
 
-- `Origin` supports recovery.
+- `Origin` supports recovery and must remain truthful to the Parent representation actually available or qualified for recovery.
 - `Origin` must not replace `Trace`.
+- Every Parent must expose at least one truthful recovery locator.
+- When the Parent representation is directly recoverable in the same qualified materialization and source scope as the child, `relative` must identify that directly recoverable representation.
+- A local copy or recovery representation must not be manufactured solely to satisfy a `relative` requirement when the Parent is not naturally present in that materialization and source scope.
+- When no truthful directly recoverable `relative` Parent representation is available, `Origin` must include a qualified version-stable recovery locator through a supported adapter.
+- `browse + git` is one version-stable recovery form only when it identifies the exact published Parent representation through an immutable Git revision; a mutable branch or latest-style URL is not equivalent to version-stable recovery.
+- A directly recoverable local or unpublished Parent does not require a `browse + git` entry merely to satisfy continuity.
+- When both a truthful local recovery route and a qualified immutable published route exist, both may be declared; Root does not require publication saturation for ordinary artifacts.
+- `browse + git` must not be invented, guessed, or synthesized when no qualified published Git representation is available.
+- Package or transport closure may provide additional recovery for material omitted by transport scope, but it must not rewrite semantic Parent identity or forge source publication provenance.
+- Package or transport closure is separate from the Parent artifact's own `Origin` contract. It may preserve or augment recovery for an already-truthful Parent edge, but it does not make a Parent valid when the artifact envelope itself exposes no truthful recovery locator for the source or qualified representation it declares.
+- If bounded transport would leave every declared or otherwise qualified Parent recovery route unusable to the recipient, transport tooling must preserve an exact recovery mapping or representation, rely on an already-qualified version-stable route, expand transport scope, or fail closed; it must not silently ship an unrecoverable Parent edge.
 - Every origin candidate should identify the same parent artifact.
 - Origin candidates must not mix alternate parents.
-- `browse + git` gives the portable archive permalink for the parent artifact.
-- `browse + git` should be commit-pinned when available.
-- `absolute` paths are local recovery hints, not portable authority.
-- Additional origin labels may be introduced by descendant schemas as envelope extensions.
+- `absolute` paths are supplemental local recovery hints. They are not portable authority and do not replace a required truthful `relative` route or a required version-stable external recovery route.
+- Additional origin labels may be introduced by descendant schemas as envelope extensions, including other adapters that can prove version-stable recovery.
 
 ### Current
 
@@ -638,12 +694,12 @@ Rules
 - Tools must preserve the declared schema identifier separately from locator-resolution state and must not derive schema identity from a path, filename, host, repository, branch name, or other locator shape.
 - A locator that resolves successfully does not by itself prove that the resolved bytes are the exact intended schema representation; exact-representation qualification depends on the locator's own stability/identity semantics and any applicable integrity or source authority.
 - Markdown Link is preferred when a truthful useful schema representation locator is available.
-- For a published artifact that references a different already-published canonical schema representation, an immutable canonical locator should be preferred when one is available.
+- For a published artifact that references a different already-published canonical schema representation, an immutable canonical locator must be used when one is available.
 - `commit-pinned browse + git` is one current example of an immutable canonical locator; GitHub and commit hashes are not the semantic definition of immutable schema location.
 - A mutable branch/latest locator may be useful for discovery or current-material traversal, but it must not be treated as equivalent to an immutable exact-representation locator.
 - A relative self-link is valid for a schema's self-reference when it continues to resolve to that same representation as the file moves together with itself.
 - Relative or local locators are valid for local/unpublished schema material when they are the truthful available route; authors and tools must not fabricate a published immutable locator that does not yet exist.
-- A relative locator to another schema may remain useful inside one copied workspace or package, but publication tooling should prefer a stronger immutable canonical locator for a different already-published schema when that stronger route is available.
+- A relative locator to another schema may remain useful inside one copied workspace or package, but publication tooling must use a stronger immutable canonical locator for a different already-published schema when that stronger route is available.
 - Plain Schema Id is allowed when no useful locator is available or when local context already resolves the schema id.
 - Plain Schema Id preserves schema-identifier truth only; consumers must not infer one exact schema representation from the identifier alone when exact representation material matters.
 - When a Markdown Link target is resolved, a mismatch between the declared link-label schema identifier and the resolved schema representation's declared semantic identity must remain a contradiction/unresolved reference rather than being repaired from filename, path, or locator text.
@@ -806,4 +862,4 @@ Rules
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: ytxP-n3eCw5pq3_frFj_VtlnQ5SCelN9mm06fso16uk
+  - Value: i4ajpsCBpiv6VAseG7dNjrSxIXGegW0QwA2vabx0E28

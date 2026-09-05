@@ -17,6 +17,8 @@ import { transitionProductContextForWorkspace } from '../../transitions/transiti
 import { TimePortalBanner, TimePortalCompactMarker } from './workspace.timePortal.views.jsx';
 import { WorkspaceSelectionSurface } from './workspace.selection.views.jsx';
 
+const WorkspaceGraphState = React.lazy(() => import('./workspace.graph.views.jsx').then((module) => ({ default: module.WorkspaceGraphState })));
+
 export { AssetDetailDialog } from './workspace.cards.views.jsx';
 export { RecordDetailDialog, RecordMarkdownDialog, RecordActionDialog, CreateWorkspaceDialog, RenameWorkspaceDialog, CloseWorkspaceDialog } from './workspace.recordDialogs.views.jsx';
 export { WorkspaceCanonicalCreateDialog } from './workspace.canonicalTaskDialog.views.jsx';
@@ -40,7 +42,7 @@ function lineageControlsReadyForTraversal(traversal = null) {
   return traversal.complete === true;
 }
 
-export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], selectionSession = null, onSelectionChoose, onSelectionCancel, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
+export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface({ workspace, state, referenceRecords = [], graphWorkspaces = [], selectionSession = null, onSelectionChoose, onSelectionCancel, layoutMode = 'expanded', onLayoutMode, onClose, onRenameWorkspace, onVerse, onQuery, onOpenDisplayOptions, onOpenAddDialog, onOpenCreateArtifact, onShareWorkspace, onExportWorkspace, onCloseSource, onDropFiles, onOpenRecord, onOpenGraphRecord, onFocusRecordLineage, onOpenAsset, onShareRecord, onRecordAction, onOpenSchema, onToggleTreeFolder, onSourceTransportRefresh, onOpenGovernance, onViewScroll, stageScrollTop, expandedLineageRecordIds = [], lineageAuditReport = null, lineageLoadReport = null, onToggleLineageCard, onRunLineageAudit, onLoadFullLineage, timePortal = null, historicalReadModel = null, readOnlyHistorical = false, onLoadHistoricalSnapshot, onReturnToLatest }) {
   const stageRef = useRef(null);
   const restoreKey = `${workspace?.id || 'workspace'}:${state.view?.workspaceVerse || 'feed'}:${state.view?.query || ''}:${state.view?.selectedRecordId || ''}`;
   useEffect(() => {
@@ -53,7 +55,7 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
   const requestedVerse = state.view?.workspaceVerse || 'feed';
   const selectionActive = Boolean(selectionSession?.ok);
   const selectionVerse = String(selectionSession?.presentation?.verse || '');
-  const verse = selectionActive && ['feed', 'tree'].includes(selectionVerse) ? selectionVerse : readOnlyHistorical && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
+  const verse = selectionActive && ['feed', 'tree'].includes(selectionVerse) ? selectionVerse : readOnlyHistorical && !['feed', 'tree', 'graph'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const lineageVerse = verse === 'lineage';
   const allRecords = Array.isArray(workspace.records) ? workspace.records : [];
   const transitionProductActionsVisible = !selectionActive && !readOnlyHistorical && (verse === 'feed' || verse === 'lineage');
@@ -160,6 +162,8 @@ export const WorkspaceColumnSurface = React.memo(function WorkspaceColumnSurface
       <section ref={stageRef} className="tx-primary-stage tx-column-primary-stage" aria-label="Column feed" onScroll={(event) => onViewScroll?.(verse, event.currentTarget.scrollTop)} data-workspace-verse={verse}>
         {verse === 'tree'
           ? <WorkspaceTreeState workspace={workspace} query={selectionActive ? '' : query} records={selectionActive ? allRecords : records} assets={assets} auditById={auditById} expandedFolders={state.view?.expandedTreeFolders} onToggleTreeFolder={onToggleTreeFolder} onOpenRecord={onOpenRecord} onFocusRecordLineage={onFocusRecordLineage} onOpenAsset={onOpenAsset} readOnly={readOnlyHistorical || selectionActive} selectionActive={selectionActive} selectionCandidates={selectionCandidates} onSelectCandidate={onSelectionChoose} />
+          : verse === 'graph'
+            ? <React.Suspense fallback={<div className="tx-graph-loading" role="status">Loading Node Graph Verse…</div>}><WorkspaceGraphState workspace={workspace} graphWorkspaces={graphWorkspaces} query={query} selectedRecordId={selectedRecordId} onOpenRecord={onOpenGraphRecord} readOnly={readOnlyHistorical} /></React.Suspense>
           : verse === 'lineage'
             ? <WorkspaceLineageState workspace={workspace} query={query} records={allRecords} selectedRecordId={selectedRecordId} auditById={auditById} onOpenRecord={onOpenRecord} onRecordAction={onRecordAction} onFocusRecordLineage={onFocusRecordLineage} onShareRecord={onShareRecord} onOpenSchema={onOpenSchema} lineageAuditReport={lineageAuditReport} lineageLoadReport={lineageLoadReport} lineageReady={lineageLoadReady} expandedRecordIds={expandedLineageRecordIds} displayOptions={displayOptions} onToggleLineageCard={onToggleLineageCard} actionStateKey={interactionRevision} workspaceRecords={allRecords} workspaceId={workspace.id} transitionProductContext={transitionProductContext} />
           : verse === 'audit'
@@ -195,6 +199,7 @@ function workspaceColumnSurfacePropsEqual(previous = {}, next = {}) {
   return previous.workspace === next.workspace
     && previous.state === next.state
     && previous.referenceRecords === next.referenceRecords
+    && previous.graphWorkspaces === next.graphWorkspaces
     && previous.selectionSession === next.selectionSession
     && previous.expandedLineageRecordIds === next.expandedLineageRecordIds
     && previous.lineageAuditReport === next.lineageAuditReport

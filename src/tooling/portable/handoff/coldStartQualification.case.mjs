@@ -174,6 +174,7 @@ const grounding = groundPortableColdConsumer({
   provider: { id: 'provider-a', name: 'Provider A' },
   hostIdentity: { id: 'host-a', name: 'Host A' },
   session: { id: 'session-a', name: 'Current Session' },
+  holderBinding: { holderId: 'session-a', roleLabel: 'Loom' },
   participants: [
     { id: 'p1', label: 'Operator contribution stream', identities: ['operator-declared'], roles: ['operator', 'reviewer'], verification: 'declared', transportChannel: 'chat-thread' },
     { id: 'p2', label: 'Implementation consumer', identities: ['consumer-session'], roles: ['Loom'], verification: 'unverified', transportChannel: 'chat-thread' }
@@ -191,6 +192,10 @@ assert.equal(grounding.role.state, 'qualified');
 assert.equal(grounding.role.material.artifact.roleLabel, 'Loom');
 assert.equal(grounding.role.exactBoundaryLoaded.inScope, 'portable implementation and deterministic qualification fixtures');
 assert.equal(grounding.role.predecessor.state, 'declared');
+assert.equal(grounding.holderBinding.state, 'qualified');
+assert.equal(grounding.holderBinding.roleLabel, 'Loom');
+assert.equal(grounding.holderBinding.holderId, 'session-a');
+assert.equal(grounding.holderBinding.inferredFromTransport, false);
 assert.equal(grounding.interaction.nonExecutionMode, true);
 assert.equal(grounding.interaction.executionExpected, false);
 assert.equal(grounding.interaction.oneShotAssumed, false);
@@ -204,6 +209,26 @@ assert.equal(grounding.capabilities.discovery.profile.capabilities.interaction.a
 assert.equal(grounding.capabilities.discovery.profile.capabilities.interaction.humanConfirmation, true);
 assert.equal(grounding.capabilities.discovery.profile.capabilities.interaction.authenticationRequest, true);
 assert.equal(grounding.capabilities.discovery.profile.capabilities.interaction.copyableTextPresentation, true);
+
+const unresolvedHolderGrounding = groundPortableColdConsumer({
+  bundle: packageBuilt.bundle,
+  participants: [{ id: 'p', roles: ['Loom'] }],
+  interaction: { mode: 'execution' }
+});
+assert.equal(unresolvedHolderGrounding.role.state, 'qualified');
+assert.equal(unresolvedHolderGrounding.holderBinding.state, 'unresolved');
+assert.equal(unresolvedHolderGrounding.holderBinding.inferredFromTransport, false);
+assert.equal(unresolvedHolderGrounding.status, 'degraded');
+
+const mismatchedHolderGrounding = groundPortableColdConsumer({
+  bundle: packageBuilt.bundle,
+  holderBinding: { holderId: 'session-b', roleLabel: 'Axiom' },
+  participants: [{ id: 'p', roles: ['Loom'] }],
+  interaction: { mode: 'execution' }
+});
+assert.equal(mismatchedHolderGrounding.holderBinding.state, 'blocked');
+assert.equal(mismatchedHolderGrounding.status, 'blocked');
+assert(mismatchedHolderGrounding.findings.some((finding) => finding.code === 'portable.cold-start.holder-binding.role-mismatch'));
 
 const roleMissingPackage = buildRecipientRelativeHandoffTransportPackage({
   workspace: { id: 'tiinex-site', title: 'tiinex-site', name: 'tiinex-site', records: [], assets: [] },

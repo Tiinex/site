@@ -25,6 +25,7 @@ import {
   validatePortableArtifactDraft
 } from './engine.facade.js';
 import { portableLineageOperationDescriptors } from './lineage/lineage.operations.js';
+import { portableReductionOperationDescriptors } from './reduction/reduction.operations.js';
 import { createPortableArtifactSet, preparePortableMaterialization } from './materialization/materialization.facade.js';
 import { processPortableLiveTurn, readPortableLiveLineage } from './live/live.lineage.js';
 import { exportPortableLiveLineage } from './live/live.export.js';
@@ -304,6 +305,7 @@ export const portableOperationCatalog = Object.freeze({
     handler: planPortableArtifactRepairs
   }),
   ...Object.fromEntries(portableLineageOperationDescriptors.map((descriptor) => [descriptor.name, operation(descriptor)])),
+  ...Object.fromEntries(portableReductionOperationDescriptors.map((descriptor) => [descriptor.name, operation(descriptor)])),
   'inspect-assets': operation({
     name: 'inspect-assets',
     description: 'Index binary assets, MIME/media kind, local references, locators, and required host analysis capabilities without interpreting asset content.',

@@ -72,6 +72,16 @@ export function compileOrdinaryInstanceFieldGroups({ groups = [], declarations =
   return Object.freeze(out);
 }
 
+export function compileOrdinaryGroupContribution(group = {}, authority = null) {
+  if (authority?.state !== 'available') return null;
+  const requiredFields = categoryItems(group, ['Required Fields']).map(cleanToken);
+  const optionalFields = categoryItems(group, ['Optional Fields']).map(cleanToken);
+  if (!requiredFields.length && !optionalFields.length) return null;
+  if (categoryItems(group, ['Entry Shape']).length) return null;
+  if ([...requiredFields, ...optionalFields].some((field) => !isOrdinaryUnqualifiedField(field))) return null;
+  return compileOrdinaryContribution(group, authority);
+}
+
 function isOrdinaryInstanceFieldGroup(group = {}, declarationGroups = new Set(), authoritySources = new Set()) {
   if (declarationGroups.has(exactToken(group.name))) return false;
   const contributors = group.contributors?.length ? group.contributors : [group];

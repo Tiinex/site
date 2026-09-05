@@ -1,0 +1,23 @@
+{
+  "schemaId": "tiinex.validation.finding.v1",
+  "kind": "concrete",
+  "role": "validation-finding-artifact",
+  "module": "./tiinex.validation.finding.v1.schema.js",
+  "snapshot": "./tiinex.validation.finding.v1.schema.md",
+  "canonicalUri": "tiinex://schemas/validation/finding/tiinex.validation.finding.v1",
+  "permalink": "https://github.com/Tiinex/docs/blob/78a3673444666f1145be4feca6e7eb1476a44281/.topics/.schemas/validation/finding/tiinex.validation.finding.v1.schema.md",
+  "rawUrl": "https://raw.githubusercontent.com/Tiinex/docs/78a3673444666f1145be4feca6e7eb1476a44281/.topics/.schemas/validation/finding/tiinex.validation.finding.v1.schema.md",
+  "sourcePath": ".topics/.schemas/validation/finding/tiinex.validation.finding.v1.schema.md",
+  "sourceRepository": "Tiinex/docs",
+  "sourceCommit": "78a3673444666f1145be4feca6e7eb1476a44281",
+  "sourceBlobSha": "82ff49e380d8cf2fd5c3e3eca7fa1ef2f15a8be5",
+  "checksum": {
+    "algorithm": "sha256",
+    "value": "92fd06f3650f8cca172cc80bd88fc71e129365b8e2d16d9ec001451c957faf05"
+  },
+  "capabilityContract": "tiinex.schema.module.v1",
+  "snapshotCompleteness": "exact-canonical-docs-snapshot",
+  "bindingVersion": "tiinex.web.schema-binding.v1",
+  "originId": "tiinex-docs-78a36734",
+  "originTrustRole": "canonical-core"
+}

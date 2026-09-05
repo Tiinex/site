@@ -4,6 +4,7 @@ import { C14N_V2_METHOD_ID } from '../../../integrity/integrity.methodReference.
 import { resolveLineage } from '../../../lineage/lineage.resolve.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { portableFinding } from '../findings.js';
+import { buildLineagePostRepairAudit } from './lineage.integrity.apply.audit.js';
 import { normalizePublicationProviderReceipts } from './lineage.publicationProviderReceipts.js';
 import { applyStructureAwareLineageMutation } from './lineage.integrity.apply.structure.js';
 import { providerMaterialMatches, targetAuthorizedByDeclaredParent } from './lineage.integrity.apply.evidence.js';
@@ -73,11 +74,12 @@ export function applyPortableLineageIntegrityRepair(input = {}, options = {}) {
     }
   }
 
+  const resultingRecords = [...working.values()];
   const changedRecords = [...changedPaths].map((path) => working.get(path)).filter(Boolean);
   const blocked = receipts.some((receipt) => receipt.status === 'blocked');
   const changed = changedRecords.length > 0;
   const status = blocked ? (changed ? 'partial-blocked' : 'blocked') : changed ? 'changed' : 'no-op';
-  return resultEnvelope({ status, records, changedRecords, receipts, findings });
+  return resultEnvelope({ status, records: resultingRecords, changedRecords, receipts, findings });
 }
 
 function classifyRepair({ path, record, step, approval, parentPath, parentChanged, working, providerEvidence }) {
@@ -272,13 +274,15 @@ function normalizeApprovals(value) {
 function resultEnvelope({ status, records, changedRecords = [], receipts = [], findings = [] }) {
   const frozenReceipts = Object.freeze(receipts.map((receipt) => Object.freeze(receipt)));
   const humanReceipt = frozenReceipts.map((receipt) => humanReceiptLine(receipt)).join('\n');
+  const reAudit = buildLineagePostRepairAudit(records, changedRecords);
   return Object.freeze({
     schema: PORTABLE_LINEAGE_INTEGRITY_APPLY_SCHEMA_ID,
     status,
     changeset: Object.freeze({ schema: 'tiinex.portable.local-lineage-repair-changeset.v1', records: Object.freeze(changedRecords.map((record) => Object.freeze({ ...record }))), changedPaths: Object.freeze(changedRecords.map((record) => record.path)), sourceMutation: false, remoteWrite: false, publicationMutation: false }),
     receipts: frozenReceipts,
     humanReceipt,
-    boundary: Object.freeze({ explicitRepairPlanRequired: true, perArtifactApprovalRequired: true, structureAwareEditing: true, bodyMutationAuthorized: false, sourceMutation: false, remoteWrite: false, publicationMutation: false, representationDiffFailClosed: true }),
+    reAudit,
+    boundary: Object.freeze({ explicitRepairPlanRequired: true, perArtifactApprovalRequired: true, structureAwareEditing: true, bodyMutationAuthorized: false, sourceMutation: false, remoteWrite: false, publicationMutation: false, representationDiffFailClosed: true, postRepairReAuditRequired: true, sharedAuditCapability: true }),
     inputRecordCount: records.length,
     findings: Object.freeze(findings)
   });

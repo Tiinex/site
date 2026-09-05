@@ -104,7 +104,7 @@ function normalizeWorkspaceViewForWorkspace(view = {}, workspace = null) {
 
 function normalizeWorkspaceView(view = {}) {
   const next = Object.assign({}, DEFAULT_WORKSPACE_VIEW, view || {});
-  if (!['feed', 'tree', 'lineage', 'audit'].includes(String(next.workspaceVerse || ''))) next.workspaceVerse = 'feed';
+  if (!['feed', 'tree', 'graph', 'lineage', 'audit'].includes(String(next.workspaceVerse || ''))) next.workspaceVerse = 'feed';
   next.layoutMode = next.layoutMode === 'compact' ? 'compact' : 'expanded';
   const timePortal = normalizeTimePortalView(next.timePortal);
   if (timePortal) next.timePortal = timePortal;

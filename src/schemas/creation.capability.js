@@ -7,6 +7,7 @@ import { canonicalRootCreatedAt } from './creation.rootMetadata.js';
 import { snapshotOrdinaryCreationExecutionInput } from './creation.executionSnapshot.js';
 import { qualifyCreationSchemaReferences, schemaReferenceAuthoritiesForCreation } from './creation.schemaReferences.js';
 import { C14N_V2_METHOD_ID, integrityMethodReferenceAuthorityForCreation } from '../integrity/integrity.methodReference.js';
+import { representativeCreationValue, qualifyStructuredCreationInputFidelity } from './creation.factoryQualification.js';
 
 export const ARTIFACT_CREATION_AUTHORITY_SECTION = 'Artifact Creation Contract';
 const executionQualificationCache = new WeakMap();
@@ -110,18 +111,23 @@ function probeOrdinaryCreationExecution(module = {}, authority = {}, implementat
       requiredInputs,
       optionalInputs: Object.freeze([...(creation.optionalInputs || [])]),
       requiredSections: Object.freeze([...(creation.requiredSections || [])]),
+      representationSections: Object.freeze([...(creation.representationSections || [])]),
       toolingConfigurationFields: Object.freeze([...(creation.toolingConfigurationFields || [])]),
       inputBindings,
+      supplementalRequiredFields: Object.freeze([...(creation.supplementalRequiredFields || [])]),
       requiredShape: Object.freeze([...(creation.requiredShape || [])])
     })
   });
   const unsupported = requiredInputs.filter((name) => {
     const binding = inputBindings.find((item) => String(item?.input || '') === String(name || ''));
-    return !binding || !['section-body', 'root-current-summary-body-title'].includes(String(binding.kind || ''));
+    return !binding || !['section-body', 'root-current-summary-body-title', 'ordinary-field', 'ordinary-group', 'named-declaration-section'].includes(String(binding.kind || ''));
   });
   if (unsupported.length) return Object.freeze({ state: 'unavailable', qualificationScope: 'representative-preflight', reason: 'required-input-binding-unavailable', findings: Object.freeze(unsupported.map((name) => `No exact qualified representation binding exists for required creation input: ${name}.`)), inputFidelity: 'representative-failed' });
 
-  const values = Object.freeze(Object.fromEntries(requiredInputs.map((name, index) => [name, `TIINEX_CREATE_INPUT_${index + 1}_${sentinelToken(name)}`])));
+  const values = Object.freeze(Object.fromEntries(requiredInputs.map((name, index) => {
+    const binding = inputBindings.find((item) => String(item?.input || '') === String(name || ''));
+    return [name, representativeCreationValue(name, index, binding, authority?.compiledContract?.validationContract || null)];
+  })));
   const rawInput = Object.freeze({ values, createdAt: '2026-08-20T00:00:00.000Z' });
   const snapshot = snapshotOrdinaryCreationExecutionInput(contract, rawInput);
   let output;
@@ -167,16 +173,18 @@ function qualifyOrdinaryCreationExecutionResult(module = {}, authority = {}, con
   if (parsedParentHasAnyValue(parsed?.envelope?.parent || {})) inputFindings.push('Standalone create execution invented Continuity Parent truth.');
   for (const name of requiredInputs) {
     const binding = inputBindings.find((item) => String(item?.input || '') === String(name || ''));
-    if (!binding || !['section-body', 'root-current-summary-body-title'].includes(String(binding.kind || ''))) { inputFindings.push(`No exact qualified representation binding exists for required creation input: ${name}.`); continue; }
+    if (!binding || !['section-body', 'root-current-summary-body-title', 'ordinary-field', 'ordinary-group', 'named-declaration-section'].includes(String(binding.kind || ''))) { inputFindings.push(`No exact qualified representation binding exists for required creation input: ${name}.`); continue; }
     if (!Object.prototype.hasOwnProperty.call(values, name)) { inputFindings.push(`Required creation input is missing under exact declared identity: ${name}.`); continue; }
-    const expected = String(values[name]);
+    const expected = values[name];
     if (binding.kind === 'root-current-summary-body-title') {
-      if (String(parsed?.envelope?.current?.summary || '') !== expected) inputFindings.push(`Required input ${name} was not preserved exactly in Current Summary.`);
-      if (String(parsed?.body?.title || '') !== expected) inputFindings.push(`Required input ${name} was not preserved exactly in the body title.`);
+      const expectedText = String(expected);
+      if (String(parsed?.envelope?.current?.summary || '') !== expectedText) inputFindings.push(`Required input ${name} was not preserved exactly in Current Summary.`);
+      if (String(parsed?.body?.title || '') !== expectedText) inputFindings.push(`Required input ${name} was not preserved exactly in the body title.`);
     } else if (binding.kind === 'section-body') {
+      const expectedText = String(expected);
       const occurrences = representationQualification.observed?.sectionBodies?.[binding.section] || [];
       const observed = occurrences.length === 1 ? occurrences[0] : undefined;
-      if (observed !== expected) inputFindings.push(`Required input ${name} was not preserved exactly in unique section ${binding.section}.`);
+      if (observed !== expectedText) inputFindings.push(`Required input ${name} was not preserved exactly in unique section ${binding.section}.`);
     }
   }
   const createdAt = representationQualification.observed?.createdAt || [];
@@ -190,17 +198,19 @@ function qualifyOrdinaryCreationExecutionResult(module = {}, authority = {}, con
   }
   const requiredShapeQualification = qualifyRequiredShapeCoverage(module?.artifactCreation?.implementation || {}, creation, input, markdown, representationQualification);
   const portableFindings = [];
+  let exactValidation = null;
   const portableValidationContract = authority?.compiledContract?.validationContract || module?.schemaSource?.qualify?.()?.compiledContract?.validationContract || null;
   if (!portableValidationContract) portableFindings.push('Portable Root + target structural validation projection is unavailable.');
   else {
     try {
-      const exactValidation = validatePortableContractInstance({ markdown, compiledContract: portableValidationContract });
+      exactValidation = validatePortableContractInstance({ markdown, compiledContract: portableValidationContract });
       if (exactValidation.status !== 'valid') {
         portableFindings.push(`Portable Root + target structural validation is ${exactValidation.status}.`);
         for (const finding of exactValidation.findings || []) if (finding?.severity === 'error') portableFindings.push(String(finding?.message || finding?.code || 'portable-contract-validation-error'));
       }
     } catch (error) { portableFindings.push(String(error?.message || error || 'portable-contract-validation-failed')); }
   }
+  if (exactValidation) inputFindings.push(...qualifyStructuredCreationInputFidelity(requiredInputs, inputBindings, values, exactValidation));
   const integrity = canonicalC14nV2SelfState(markdown);
   const integrityFindings = integrity.state === 'verified' ? [] : [`Creation result self-integrity is not verified: ${integrity.reason || integrity.state}.`];
   const inputBindingQualification = Object.freeze({ state: inputFindings.length ? 'failed' : 'qualified', findings: Object.freeze(inputFindings) });
@@ -251,9 +261,23 @@ function qualifyRequiredShapeCoverage(implementation = {}, creation = {}, input 
   }
   const covered = new Set(residualResult?.coveredItemIds || []);
   for (const item of residualItems) if (!covered.has(item.id)) findings.push(`Residual Artifact Creation Required Shape item is not qualified: ${item.id}.`);
+  for (const item of genericItems) if (String(item?.primitive?.kind || '') === 'body-prose-block' && !hasQualifiedBodyProseBlock(markdown)) findings.push(`Generic body-prose-block Required Shape item is not qualified: ${item.id}.`);
   findings.push(...(residualResult?.findings || []));
   const qualified = representationQualification.state === 'qualified' && findings.length === 0 && residualResult.state === 'qualified';
   return Object.freeze({ state: qualified ? 'qualified' : 'unavailable', coverage: qualified ? 'complete-declared-required-shape' : 'incomplete-declared-required-shape', genericItemIds: Object.freeze(genericItems.map((item) => item.id)), residualItemIds: Object.freeze(residualItems.map((item) => item.id)), coveredResidualItemIds: Object.freeze([...covered]), findings: Object.freeze(findings) });
+}
+
+function hasQualifiedBodyProseBlock(markdown = '') {
+  let body = '';
+  try { body = String(parseArtifactMarkdown(markdown)?.body?.text || ''); }
+  catch { return false; }
+  const lines = body.replace(/\r\n?/g, '\n').split('\n');
+  const firstBodyHeading = lines.findIndex((line) => /^#\s+\S/.test(line));
+  if (firstBodyHeading < 0) return false;
+  const firstSecondLevel = lines.findIndex((line, index) => index > firstBodyHeading && /^##\s+\S/.test(line));
+  if (firstSecondLevel < 0) return false;
+  const block = lines.slice(firstBodyHeading + 1, firstSecondLevel).join('\n').trim();
+  return Boolean(block) && !/^#{1,6}\s+/m.test(block);
 }
 
 function creationValues(input = {}) {
@@ -262,5 +286,4 @@ function creationValues(input = {}) {
   return Object.freeze({ ...alternate, ...explicit });
 }
 function parsedParentHasAnyValue(parent = {}) { return Boolean(parent?.schema?.id || parent?.trace || parent?.origin || parent?.boundary || parent?.createdAt); }
-function sentinelToken(value = '') { return String(value || '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'INPUT'; }
 function executionMarkdown(result) { if (typeof result === 'string') return result; return typeof result?.markdown === 'string' ? result.markdown : ''; }

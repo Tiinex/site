@@ -33,6 +33,7 @@ import { durableLocalMutationDecision, DurableLocalMutationOperation } from './d
 import { runLocalDraftDiscardCommand, runLocalDraftUpdateCommand } from './localDraftMutationCommand.js';
 import { useWorkspaceSelectionProductController } from './useWorkspaceSelectionProductController.jsx';
 import { createCanonicalCreationProductController } from './canonicalCreationProductController.js';
+import { schemaFactoryViewerProofActions } from './schemaFactoryViewerProof.js';
 import { useCanonicalReferenceSelectionOptions } from './useCanonicalReferenceSelectionOptions.js';
 import { useCanonicalPlacementSelectionOptions } from './useCanonicalPlacementSelectionOptions.js';
 import { captureWorkspaceSelectionOriginContext, restoreWorkspaceSelectionOriginContext } from './workspaceSelectionOriginContext.js';
@@ -92,6 +93,7 @@ export function TiinexApp() {
   const startupPresentation = useMemo(() => startupPresentationFor({ startupPhase, state }), [startupPhase, state]);
   const active = activeWorkspace(state);
   const referenceParticipantRecords = useMemo(() => (state.workspaces || []).flatMap((workspace) => (workspace.records || []).map((record) => ({ ...record, workspaceIds: [...new Set([...(record.workspaceIds || []), workspace.id].filter(Boolean))] }))), [state.workspaces]);
+  const graphParticipantWorkspaces = useMemo(() => (state.workspaces || []).map((workspace) => hydrateUiWorkspace(workspace)), [state.workspaces]);
   const activeWorkspaceConfig = active?.workspaceConfig || workspaceConfig;
   const activeUi = useMemo(() => hydrateUiWorkspace(active), [active]);
   const viewportWidth = useViewportWidth();
@@ -679,7 +681,10 @@ export function TiinexApp() {
   const referenceSelectionOptions = useCanonicalReferenceSelectionOptions({ state, actionRecord, recordAction, actionWorkspace });
   const placementSelectionOptions = useCanonicalPlacementSelectionOptions({ state, actionRecord, recordAction, actionWorkspace, dialog, dialogWorkspace });
   const workspaceCreateActions = useMemo(() => dialog === 'create-artifact' && dialogWorkspace?.id
-    ? transitionProductActionsForWorkspace({ workspaceId: dialogWorkspace.id })
+    ? Object.freeze([
+      ...transitionProductActionsForWorkspace({ workspaceId: dialogWorkspace.id }),
+      ...schemaFactoryViewerProofActions()
+    ])
     : Object.freeze([]), [dialog, dialogWorkspace?.id]);
   const governanceDialogSource = dialog === 'source-governance' && dialogWorkspaceUi?.sources
     ? dialogWorkspaceUi.sources.find((source) => source.id === sourceContinuationId) || null
@@ -733,6 +738,7 @@ export function TiinexApp() {
                 workspace={presentedWorkspace}
                 state={surfaceState || state}
                 referenceRecords={referenceParticipantRecords}
+                graphWorkspaces={graphParticipantWorkspaces}
                 layoutMode={selection.session ? 'expanded' : layoutMode}
                 selectionSession={selection.session}
                 onSelectionChoose={selection.choose}
@@ -750,6 +756,7 @@ export function TiinexApp() {
                 onCloseSource={(sourceId) => closeSource(sourceId, workspace.id)}
                 onDropFiles={historicalResolved ? undefined : (fileList, options = {}) => addLocalFiles(fileList, Object.assign({}, options, { workspaceId: workspace.id }))}
                 onOpenRecord={(recordId) => openRecord(recordId, workspace.id)}
+                onOpenGraphRecord={(targetWorkspaceId, recordId) => openRecord(recordId, targetWorkspaceId || workspace.id)}
                 onFocusRecordLineage={(recordId) => focusRecordLineage(recordId, workspace.id)}
                 onOpenAsset={(assetId) => openAsset(assetId, workspace.id)}
                 onShareRecord={(record) => shareRecord(record, workspace.id)}
@@ -782,7 +789,7 @@ export function TiinexApp() {
       {notice ? <div className="tx-toast" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notice" onClick={() => setNotice('')}>×</button></div> : null}
       <footer className="tx-footer" translate="no" title="Powered by Tiinex">Powered by <a href="https://github.com/Tiinex" target="_blank" rel="noopener noreferrer">Tiinex</a></footer>
       {dialog === 'create-workspace' ? <CreateWorkspaceDialog error={createError} onSubmit={createWorkspace} onDismiss={dismissDialog} /> : null}
-      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createTransitionRecord} /> : null}
+      {dialog === 'create-artifact' && dialogWorkspace ? <WorkspaceCanonicalCreateDialog workspace={dialogWorkspaceUi || dialogWorkspace} actions={workspaceCreateActions} placementTargets={placementSelectionOptions.dialog?.options || []} selectionSession={selection.session} selectionResult={selection.result} onBeginSelection={selection.begin} onSelectionConsumed={selection.consume} onDismiss={dismissDialog} onCreate={canonicalCreation.createWorkspaceArtifactRecord} /> : null}
       {dialog === 'rename-workspace' && dialogWorkspace ? <RenameWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onSubmit={renameWorkspace} onDismiss={dismissDialog} /> : null}
       {dialog === 'close-workspace' && dialogWorkspace ? <CloseWorkspaceDialog workspace={dialogWorkspaceUi || dialogWorkspace} onDismiss={dismissDialog} onConfirm={() => closeWorkspace(dialogWorkspace.id)} /> : null}
       {activeRecord ? <RecordDetailDialog record={activeRecord} onDismiss={dismissRecord} onLineage={activeRecord?.historicalSnapshot ? null : () => { const recordId = activeRecord.id; dismissRecord(); focusRecordLineage(recordId, active?.id || ''); }} onShare={activeRecord?.historicalSnapshot ? null : () => shareRecord(activeRecord)} /> : null}

@@ -43,7 +43,7 @@ export function inspectCreationRepresentation(markdown = '', options = {}) {
 export function qualifyRootCreationRepresentation(markdown = '', contract = {}) {
   const creation = contract?.creation || {};
   const summaryBound = (creation.inputBindings || []).some((item) => item?.kind === 'root-current-summary-body-title');
-  const sections = [...new Set([...(creation.requiredSections || []), ...(creation.inputBindings || []).filter((item) => item?.kind === 'section-body').map((item) => item.section).filter(Boolean)])];
+  const sections = [...new Set([...(creation.representationSections || []), ...(creation.requiredSections || []), ...(creation.inputBindings || []).map((item) => item?.section).filter(Boolean)])];
   const observed = inspectCreationRepresentation(markdown, { boundSections: sections });
   const findings = [];
   expectCount(findings, 'Continuity Context heading', observed.continuityContextHeadings, 1);
@@ -179,7 +179,7 @@ function escapeRegExp(value = '') { return String(value || '').replace(/[.*+?^${
 
 export function qualifyContinuationCreationRepresentation(markdown = '', contract = {}, parentRecord = {}, options = {}) {
   const creation = contract?.creation || {};
-  const sections = [...new Set([...(creation.requiredSections || []), ...(creation.inputBindings || []).filter((item) => item?.kind === 'section-body').map((item) => item.section).filter(Boolean)])];
+  const sections = [...new Set([...(creation.representationSections || []), ...(creation.requiredSections || []), ...(creation.inputBindings || []).map((item) => item?.section).filter(Boolean)])];
   const observed = inspectCreationRepresentation(markdown, { boundSections: sections });
   const findings = [];
   expectCount(findings, 'Continuity Context heading', observed.continuityContextHeadings, 1);

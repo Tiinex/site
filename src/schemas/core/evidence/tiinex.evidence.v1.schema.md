@@ -52,6 +52,16 @@ Rules
 - Evidence body sections replace the generic preservation body for artifacts whose current schema is `tiinex.evidence.v1`.
 - Parent preservation specialization applies to the artifact body only; it does not alter root continuity, integrity, or parent-origin requirements.
 
+Inheritance Overrides
+
+- evidence-preservation-body-structure
+  - Merge Operation: override
+  - Parent Schema: tiinex.preservation.v1
+  - Parent Node: Schema Validation Contract / Preservation Body / Required Shape
+  - Child Node: Schema Validation Contract / Evidence Body / Required Shape
+  - Reason: Evidence specializes Preservation by replacing only the generic Preservation artifact-body structure while retaining compatible non-structural Preservation semantics and provenance.
+  - Effective Result: Evidence body structure is authoritative for Evidence artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Evidence sections remain active.
+
 ### Evidence Body
 
 Required Shape

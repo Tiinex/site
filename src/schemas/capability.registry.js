@@ -1,6 +1,7 @@
 import { schemaRegistry } from './registry.js';
 import { resolveSchemaModule as resolveRegisteredSchemaModule } from './resolver.js';
 import { qualifyArtifactCreationCapability } from './creation.capability.js';
+import { buildSchemaFactoryDescriptor } from './schema.factory.descriptor.js';
 
 export const SCHEMA_CAPABILITY_REGISTRY_SCHEMA_ID = 'tiinex.schema.capability.registry.v1';
 export const SCHEMA_CAPABILITY_DESCRIPTOR_SCHEMA_ID = 'tiinex.schema.capability.descriptor.v1';
@@ -56,15 +57,18 @@ export function resolveSchemaCapabilities(input = {}, options = {}) {
 export function describeSchemaCapabilities(module = {}, context = {}) {
   const capabilityInput = module.capabilities || {};
   const surfaces = makeSurfaceCapabilityMap(module, capabilityInput);
+  const generation = qualifyArtifactCreationCapability(module, 'create-artifact');
   const actions = makeActionCapabilityMap(module, capabilityInput);
   const implementation = {
     validate: typeof module.validate === 'function' || hasQualifiedCompiledValidation(module),
     present: typeof module.present === 'function',
+    generation: generation.implementation?.state === 'implemented',
     transitions: Boolean(module.transitions && (typeof module.transitions === 'function' || Object.keys(module.transitions || {}).length)),
     findings: Boolean(module.findings),
     i18n: Boolean(module.i18n)
   };
   const findings = validateSingleSchemaCapabilityDescriptor({ module, surfaces, actions, implementation, context });
+  const factory = buildSchemaFactoryDescriptor(module, { surfaces, actions, implementation, generation, fallback: normalizeFallbackPolicy(module, capabilityInput), findings });
   return {
     schema: SCHEMA_CAPABILITY_DESCRIPTOR_SCHEMA_ID,
     moduleId: module.id || '',
@@ -88,6 +92,7 @@ export function describeSchemaCapabilities(module = {}, context = {}) {
     surfaces,
     actions,
     implementation,
+    factory,
     availability: summarizeAvailability({ surfaces, actions, findings }),
     boundaries: normalizeStringList(capabilityInput.boundaries),
     sourceAccess: normalizeStringList(capabilityInput.sourceAccess),
@@ -146,8 +151,10 @@ function makeActionCapabilityMap(module = {}, capabilities = {}) {
   actions.read = capability('read', Boolean(module.id && module.binding), 'registered module with binding');
   actions.validate = capability('validate', typeof module.validate === 'function' || hasQualifiedCompiledValidation(module), typeof module.validate === 'function' ? 'schema-specific validation implementation' : 'qualified compiled schema validation contract');
   actions.present = capability('present', typeof module.present === 'function', 'presentation implementation');
-  const creation = qualifyArtifactCreationCapability(module, 'create-artifact');
-  actions.create = capability('create', creation.ready || declaredActions.has('create-workspace'), creation.ready ? 'qualified schema creation authority + installed implementation' : 'ordinary creation requires semantic authority and implementation capability');
+  const explicitWorkspaceCreate = declaredActions.has('create-workspace');
+  actions.create = capability('create', explicitWorkspaceCreate, explicitWorkspaceCreate
+    ? 'explicit non-artifact workspace action authority'
+    : 'invocable artifact creation requires separately qualified canonical Transition Definition applicability; Artifact Creation Contract authority alone is generation authority');
   actions.continue = capability('continue', false, 'canonical Transition Definition owns Continue applicability; companion transition metadata is non-authoritative');
   actions.reference = capability('reference', false, 'canonical Transition Definition owns Reference applicability; companion transition metadata is non-authoritative');
   actions.fallback = capability('fallback', capabilities.canRenderFallback === true || Boolean(capabilities.fallback) || module.id === 'tiinex.root.v1', 'fallback policy');

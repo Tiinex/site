@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../adapters/node/handoff.manufacture.js';
+import { entryFromEnumeration } from '../adapters/node/handoff.manufacture.requirements.js';
 import { safeWorkspaceToken } from '../adapters/node/handoff.manufacture.multiRoot.js';
 import { runPortableCli } from '../adapters/cli/cli.run.js';
 import { groundContinuationOperationInput, materializeGroundWorkspaceCliOutput } from '../adapters/cli/cli.ground-materialize.js';
@@ -17,6 +18,7 @@ import { C14N_V2_VALIDATOR_TARGET } from '../../../integrity/integrity.methodRef
 import { recipientFacingV2PackageZipBuffer } from '../output/recipientV2.zip.js';
 import { loadNodePortableInput } from '../input/node.input.js';
 import { inspectRecipientFacingV2Topology } from './recipientV2.inspect.js';
+import { projectHandoffHumanOutput } from './carrierProjection.js';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-multi-root-'));
 try {
@@ -74,6 +76,17 @@ try {
   assert.equal(twoRoutes.carrierProjection.mode, 'shared');
   assert.deepEqual(twoRoutes.carrierProjection.routes.map((route) => route.workspaceId).sort(), ['docs', 'site']);
   assert.equal(twoRoutes.pointerEntrypointProjection.entries.length, 2);
+  const sharedHumanOutput = projectHandoffHumanOutput({ projection: twoRoutes.carrierProjection, route: 'handoff-route:site:.topics/015-handoff.trace.md' });
+  assert.equal(sharedHumanOutput.status, 'ready');
+  assert.match(sharedHumanOutput.primary.filename, /anchor-to-axiom-and-loom\.handoff-package\.zip$/, 'shared outer filename must include every recipient in deterministic qualified-route order');
+  const sharedMultiRouteContinuedRoot = path.join(root, 'continued-shared-multi-route-site');
+  const sharedMultiRouteContinued = await materializeGroundWorkspaceCliOutput({
+    readiness: { state: 'grounded-to-act' },
+    authority: { route: { workspaceId: 'site' } }
+  }, { bundle: twoRoutes.bundle }, { continue: sharedMultiRouteContinuedRoot });
+  assert.equal(sharedMultiRouteContinued.continuationMaterialization.state, 'materialized');
+  assert.equal(sharedMultiRouteContinued.continuationMaterialization.workspaceId, 'site');
+  assert.equal(await readFile(path.join(sharedMultiRouteContinuedRoot, '.topics', 'site-context.md'), 'utf8'), '# Site context\n', 'generic recipient-v2 multi-route continuation must materialize the explicitly selected Workspace');
 
   const longPrefix = 'required-context:' + 'shared-route-material-'.repeat(8);
   const longCache = {
@@ -104,6 +117,8 @@ try {
   await writeFile(path.join(businessRoot, '.topics', 'anchor-role.trace.md'), roleMarkdown('Anchor'), 'utf8');
   await writeFile(path.join(businessRoot, '.topics', 'axiom-role.trace.md'), roleMarkdown('Axiom'), 'utf8');
   await writeFile(path.join(businessRoot, '.topics', 'loom-role.trace.md'), roleMarkdown('Loom'), 'utf8');
+  await mkdir(path.join(businessRoot, '.topics', 'roles'), { recursive: true });
+  await writeFile(path.join(businessRoot, '.topics', 'roles', '001-6-kodax-role.trace.md'), roleMarkdown('Kodax'), 'utf8');
   const loomRoutePath = '.topics/tooling/001-1-1-1-1-1-anchor-to-loom-artifact-first-shared-carrier-hardening-handoff.trace.md';
   const axiomRoutePath = '.topics/role-authority/001-1-1-1-1-1-anchor-to-axiom-human-first-domain-neutral-canonical-clarification-handoff.trace.md';
   await mkdir(path.join(siteRoot, '.topics', 'tooling'), { recursive: true });
@@ -211,12 +226,50 @@ try {
 
   const packageParentPath = path.join(root, 'shared-package-parent.zip');
   await writeFile(packageParentPath, recipientFacingV2PackageZipBuffer(shared.bundle, { inspection: shared.inspection }));
+  const crossWorkspaceGroundLines = [];
+  const crossWorkspaceGroundCode = await runPortableCli([
+    'ground', packageParentPath,
+    '--route', shared.inspection.routes[0].pointerPath,
+    '--holder-role', 'Loom',
+    '--include-required-context', 'all',
+    '--compact'
+  ], { log: (value) => crossWorkspaceGroundLines.push(value), error: (value) => crossWorkspaceGroundLines.push(value) }, { runtimeRoot });
+  assert.equal(crossWorkspaceGroundCode, 0, crossWorkspaceGroundLines.join('\n'));
+  const crossWorkspaceGround = JSON.parse(crossWorkspaceGroundLines.at(-1));
+  const docsRequiredContext = crossWorkspaceGround.requiredContext?.items?.find((item) => item.requirementId === 'required:carried-docs-context');
+  assert(docsRequiredContext, 'cold ground must project the cross-workspace Required Context manufactured from the carried Docs Workspace');
+  assert.equal(docsRequiredContext.state, 'qualified');
+  assert.equal(docsRequiredContext.workspaceId, 'docs');
+  assert.equal(docsRequiredContext.innerPath, '.topics/docs-context.md');
+  assert.equal(crossWorkspaceGround.requiredContext.missingFromWorkspaceSnapshots, 0, 'manufacture and cold ground must agree on carried cross-workspace Required Context visibility');
+
+  const parentBusinessArchivePath = shared.inspection.workspaces.find((item) => item.workspaceId === 'business')?.workspaceArchivePath;
+  const parentBusinessArchive = shared.bundle.files.find((file) => file.path === parentBusinessArchivePath);
+  const parentBusinessEntries = await zipBufferToImportEntries(packageFileBytes(parentBusinessArchive), { source: 'untargeted-kodax-business-workspace', excludeRepositoryInternals: true });
+  assert.equal(parentBusinessEntries.errors.length, 0);
+  assert.equal(parentBusinessEntries.entries.some((entry) => entry.path === '.topics/roles/001-6-kodax-role.trace.md'), true, 'complete Business Workspace must carry an untargeted Kodax Role entry before any child route references it');
+
+  const duplicateEnumeration = { materialization: { entries: [
+    { path: '.topics/roles/001-6-kodax-role.trace.md', data: Uint8Array.from([1]) },
+    { path: '.topics/roles/001-6-kodax-role.trace.md', data: Uint8Array.from([2]) }
+  ] } };
+  assert.equal(entryFromEnumeration(duplicateEnumeration, '.topics/roles/001-6-kodax-role.trace.md'), null, 'ambiguous exact workspace/path targets must fail closed instead of selecting provider order');
+
+  await writeFile(path.join(siteRoot, loomRoutePath), qualifiedHandoffFixture({
+    title: 'Loom to Anchor package-parent return fixture',
+    from: 'Loom',
+    to: 'Anchor',
+    fromReference: 'business::.topics/loom-role.trace.md',
+    toReference: 'business::.topics/anchor-role.trace.md',
+    purpose: 'prove package-parent return preserves workspace-qualified endpoint Role material without explicit rebinding',
+    createdAt: '2026-08-23 18:02:00',
+    requiredContext: `- carried-docs-context
+  - Material: exact Docs context inherited from the parent carrier
+  - Material Reference: [Docs Context](docs::.topics/docs-context.md)
+  - Purpose: prove inherited cross-workspace Required Context remains cold-groundable
+  - Availability: available`
+  }), 'utf8');
   await writeFile(path.join(siteRoot, 'content', 'modified-site.txt'), 'current Site root must override the carried parent Site Workspace\n', 'utf8');
-  const packageParentBindingsPath = path.join(root, 'package-parent-bindings.json');
-  await writeFile(packageParentBindingsPath, `${JSON.stringify({
-    'external://roles/anchor': { workspaceId: 'business', path: '.topics/anchor-role.trace.md' },
-    'external://roles/loom': { workspaceId: 'business', path: '.topics/loom-role.trace.md' }
-  }, null, 2)}\n`, 'utf8');
   const packageParentChildOutputDir = path.join(root, 'package-parent-child-output');
   const packageParentLines = [];
   const packageParentCode = await runPortableCli([
@@ -225,7 +278,6 @@ try {
     '--workspace-id', 'site',
     '--workspace-target', 'workspace.workspace.md',
     '--package-parent', packageParentPath,
-    '--material-bindings', packageParentBindingsPath,
     '--output-dir', packageParentChildOutputDir,
     '--built-at', '2026-08-23T18:02:00.000Z',
     '--compact'
@@ -273,6 +325,85 @@ try {
   ], { log: (value) => childColdStartLines.push(value), error: (value) => childColdStartLines.push(value) }, { runtimeRoot });
   assert.equal(childColdStartCode, 0, childColdStartLines.join('\n'));
   assert.equal(JSON.parse(childColdStartLines.at(-1)).status, 'preferred-pass');
+
+
+  const siblingOutputDir = path.join(root, 'package-parent-sibling-output');
+  const siblingLines = [];
+  const siblingCode = await runPortableCli([
+    'manufacture-handoff-package', siteRoot,
+    '--handoff', loomRoutePath,
+    '--workspace-id', 'site',
+    '--workspace-target', 'workspace.workspace.md',
+    '--package-parent', packageParentPath,
+    '--output-dir', siblingOutputDir,
+    '--built-at', '2026-08-23T18:03:00.000Z',
+    '--compact'
+  ], { log: (value) => siblingLines.push(value), error: (value) => siblingLines.push(value) }, { runtimeRoot });
+  assert.equal(siblingCode, 0, siblingLines.join('\n'));
+  const siblingCli = JSON.parse(siblingLines.at(-1));
+  assert.equal(siblingCli.status, 'ready');
+  assert.equal(packageParentCli.carrierLineage.parentDimension, siblingCli.carrierLineage.parentDimension, 'parallel returns must share the same exact parent dimension');
+  assert.equal(packageParentCli.carrierLineage.dimension, `${packageParentCli.carrierLineage.parentDimension}-1`);
+  assert.equal(siblingCli.carrierLineage.dimension, `${siblingCli.carrierLineage.parentDimension}-2`, 'second return from the same parent must receive the next atomically reserved sibling dimension');
+  assert.notEqual(packageParentCli.primaryOutput.path, siblingCli.primaryOutput.path);
+
+  const kodaxPackageParentRoutePath = '.topics/tooling/001-1-1-1-1-2-loom-to-kodax-untargeted-endpoint-role-handoff.trace.md';
+  await writeFile(path.join(siteRoot, kodaxPackageParentRoutePath), qualifiedHandoffFixture({
+    title: 'Loom to Kodax package-parent untargeted endpoint Role fixture',
+    from: 'Loom',
+    to: 'Kodax',
+    fromReference: 'business::.topics/loom-role.trace.md',
+    toReference: 'business::.topics/roles/001-6-kodax-role.trace.md',
+    purpose: 'prove an explicit workspace-qualified Role resolves from the complete inherited Business Workspace even when no parent route targeted it',
+    createdAt: '2026-08-23 18:01:30'
+  }), 'utf8');
+  const kodaxOutputDir = path.join(root, 'package-parent-kodax-output');
+  const kodaxLines = [];
+  const kodaxCode = await runPortableCli([
+    'manufacture-handoff-package', siteRoot,
+    '--handoff', kodaxPackageParentRoutePath,
+    '--workspace-id', 'site',
+    '--workspace-target', 'workspace.workspace.md',
+    '--package-parent', packageParentPath,
+    '--output-dir', kodaxOutputDir,
+    '--built-at', '2026-08-23T18:01:30.000Z',
+    '--compact'
+  ], { log: (value) => kodaxLines.push(value), error: (value) => kodaxLines.push(value) }, { runtimeRoot });
+  assert.equal(kodaxCode, 0, kodaxLines.join('\n'));
+  const kodaxCli = JSON.parse(kodaxLines.at(-1));
+  assert.equal(kodaxCli.status, 'ready');
+  const kodaxBundle = await loadNodePortableInput([kodaxCli.primaryOutput.path]);
+  const kodaxInspection = inspectRecipientFacingV2Topology(kodaxBundle);
+  assert.equal(kodaxInspection.status, 'valid');
+  const kodaxToRole = kodaxInspection.endpointRoles.find((item) => item.endpointParty === 'to');
+  assert.equal(kodaxToRole?.targetWorkspaceId, 'business');
+  assert.equal(kodaxToRole?.targetInnerPath, '.topics/roles/001-6-kodax-role.trace.md');
+  assert.equal(kodaxToRole?.targetCarrierKind, 'workspace-archive-entry');
+
+  const missingRoleRoutePath = '.topics/tooling/001-1-1-1-1-3-loom-to-missing-role-handoff.trace.md';
+  await writeFile(path.join(siteRoot, missingRoleRoutePath), qualifiedHandoffFixture({
+    title: 'Loom to missing Role fail-closed fixture',
+    from: 'Loom',
+    to: 'Missing',
+    fromReference: 'business::.topics/loom-role.trace.md',
+    toReference: 'business::.topics/roles/001-999-missing-role.trace.md',
+    purpose: 'prove an absent exact workspace-qualified Role target remains unresolved',
+    createdAt: '2026-08-23 18:01:40'
+  }), 'utf8');
+  const missingRoleLines = [];
+  const missingRoleCode = await runPortableCli([
+    'manufacture-handoff-package', siteRoot,
+    '--handoff', missingRoleRoutePath,
+    '--workspace-id', 'site',
+    '--workspace-target', 'workspace.workspace.md',
+    '--package-parent', packageParentPath,
+    '--built-at', '2026-08-23T18:01:40.000Z',
+    '--compact'
+  ], { log: (value) => missingRoleLines.push(value), error: (value) => missingRoleLines.push(value) }, { runtimeRoot });
+  assert.equal(missingRoleCode, 2, missingRoleLines.join('\n'));
+  const missingRole = JSON.parse(missingRoleLines.at(-1));
+  assert.equal(missingRole.status, 'blocked');
+  assert.equal(missingRole.findings.some((item) => item.code === 'portable.handoff-material.endpoint-role.unresolved'), true, 'missing exact workspace-qualified endpoint Role must remain fail-closed');
 
   await assert.rejects(
     prepareNodeHandoffManufacturingInput({

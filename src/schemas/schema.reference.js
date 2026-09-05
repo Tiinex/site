@@ -5,7 +5,10 @@ export const SCHEMA_REFERENCE_MATERIAL_COHERENCE_SCHEMA_ID = 'tiinex.site.schema
 
 export function schemaReferenceAuthorityFromBinding(schemaId = '', binding = {}, sourceAuthority = null, sourceQualification = null) {
   const id = String(schemaId || binding?.schemaId || '').trim();
-  const exactSourceTargets = canonicalGithubSchemaSourceTargets(sourceAuthority);
+  const localUnpublished = String(binding?.publicationState || '').toLowerCase().includes('unpublished');
+  const exactSourceTargets = localUnpublished
+    ? Object.freeze({ state: 'unavailable', targets: Object.freeze([]), findings: Object.freeze(['Binding is explicitly unpublished; remote source targets are not creation reference authority.']) })
+    : canonicalGithubSchemaSourceTargets(sourceAuthority);
   const exactTargets = exactSourceTargets.state === 'qualified' ? [...exactSourceTargets.targets] : [];
   const semanticMaterialIdentity = normalizeMaterialIdentity(sourceQualification?.materialIdentity || {});
   const sourceQualified = sourceQualification?.state === 'qualified' && semanticMaterialIdentity.state === 'qualified';

@@ -1,5 +1,5 @@
-import { runAudit } from '../audit/audit.run.js';
-import { auditReport } from '../audit/audit.report.js';
+import { auditPortableRecord } from '../tooling/portable/audit/audit.capability.js';
+import { buildPortableLineageIntegrityRepairProjection } from '../tooling/portable/lineage/lineage.integrity.projection.js';
 import { resolveAuditLineage } from '../audit/lineage/auditLineage.resolve.js';
 import { schemaReadPresentation } from '../schemas/companion.js';
 import { schemaIdForRecord } from '../schemas/schema.identity.js';
@@ -10,6 +10,7 @@ export function buildWorkspaceAuditView(workspace = {}, input = {}) {
   const records = Array.isArray(input.records) ? input.records : (Array.isArray(workspace.records) ? workspace.records : []);
   const query = String(input.query || '').trim().toLowerCase();
   const lineage = resolveAuditLineage(records);
+  const repair = buildPortableLineageIntegrityRepairProjection({ records });
   const items = records.map((record) => auditRecord(record));
   const visibleItems = query ? items.filter((item) => auditItemMatchesQuery(item, query)) : items;
   const visibleIds = new Set(visibleItems.map((item) => item.id));
@@ -25,6 +26,7 @@ export function buildWorkspaceAuditView(workspace = {}, input = {}) {
     boundary: 'Loaded material only. Audit validates Tiinex leaf candidates, keeps plain Markdown as supporting material, and reports missing lineage targets without network guesses.',
     query,
     items: visibleItems,
+    repair,
     lineage: {
       schema: lineage.schema,
       edges: lineage.edges || [],
@@ -39,43 +41,33 @@ export function buildWorkspaceAuditView(workspace = {}, input = {}) {
 
 function auditRecord(record = {}) {
   const markdown = typeof record.markdown === 'string' ? record.markdown : '';
-  let result;
-  try {
-    result = runAudit({ markdown, record });
-  } catch (error) {
-    result = {
-      status: 'invalid-or-incomplete',
-      artifact: { schemaId: schemaIdForRecord(record), moduleId: 'tiinex.root.v1', fallbackUsed: true },
-      summary: { error: 1, warning: 0, info: 0, preserve: 0 },
-      findings: [{ severity: 'error', code: 'audit.exception', message: error?.message || 'Audit failed.', source: 'tiinex.workspace.loadedAuditView.v1' }]
-    };
-  }
-  const report = auditReport(result);
+  const result = auditPortableRecord(record);
   const read = schemaReadPresentation(record, { compact: true, maxSections: 1 });
   return {
-    id: record.id || record.path || record.title || '',
-    title: record.title || result.artifact?.title || 'Untitled artifact',
+    id: result.id || record.id || record.path || record.title || '',
+    title: record.title || result.title || 'Untitled artifact',
     path: record.path || '',
     sourceLabel: record.source?.label || '',
     sourceBacked: Boolean(record.source?.adapterId && record.source.adapterId !== 'local'),
     status: result.status,
-    schemaId: report.schemaId || schemaIdForRecord(record),
-    moduleId: report.moduleId || '',
-    fallbackUsed: Boolean(report.fallbackUsed || read.fallbackUsed),
-    readState: read.readState || (report.fallbackUsed ? 'root-fallback' : 'schema-owned'),
+    schemaId: result.schemaId || schemaIdForRecord(record),
+    moduleId: result.resolution?.moduleId || '',
+    fallbackUsed: Boolean(result.resolution?.fallbackUsed || read.fallbackUsed),
+    readState: read.readState || (result.resolution?.fallbackUsed ? 'root-fallback' : 'schema-owned'),
     schemaCoverage: read.schemaCoverage || 'missing-schema',
     bodyAvailability: result.materialAvailability?.status === 'pending-unavailable' ? 'unavailable-body' : (read.bodyAvailability || (markdown ? 'available' : 'unavailable-body')),
-    validation: report.validation || result.validation || null,
-    validationState: report.validation?.state || result.validation?.state || 'validation-unknown',
-    validationCoverage: report.validation?.coverage || result.validation?.coverage || 'unknown',
-    childValidator: report.validation?.childValidator || result.validation?.childValidator || 'unknown',
-    rootValidator: report.validation?.rootValidator || result.validation?.rootValidator || 'unknown',
-    integrityMethodVersions: report.validation?.integrityMethodVersions || result.validation?.integrityMethodVersions || [],
+    validation: result.validation || null,
+    validationState: result.validation?.state || 'validation-unknown',
+    validationCoverage: result.validation?.coverage || 'unknown',
+    childValidator: result.validation?.childValidator || 'unknown',
+    rootValidator: result.validation?.rootValidator || 'unknown',
+    integrityMethodVersions: result.validation?.integrityMethodVersions || [],
     exactCompanion: Boolean(read.exactCompanion),
-    summary: report.summary || {},
-    findings: report.findings || [],
+    summary: result.summary || {},
+    findings: result.findings || [],
     markdownAvailable: Boolean(markdown),
     materialAvailability: result.materialAvailability?.status || (markdown ? 'available' : 'unknown'),
+    capabilityBoundary: result.capabilityBoundary || null,
     record
   };
 }

@@ -21,6 +21,9 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/tooling/portable/adapters/cli/cli.run.case.mjs",
   "src/tooling/portable/adapters/cli/cli.common-output.case.mjs",
   "src/tooling/portable/input/node.input.case.mjs",
+  "src/tooling/portable/audit/audit.capability.case.mjs",
+  "src/tooling/portable/lineage/lineage.integrity.shared-capability.case.mjs",
+  "src/tooling/portable/reduction/reduction.preflight.case.mjs",
   "tools/run-checkpointed-plan.case.mjs"
 ]),
   "workspace/source": Object.freeze([
@@ -42,6 +45,7 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/transitions/record.transitions.case.mjs",
   "src/transitions/canonicalTransition.schemaCache.case.mjs",
   "src/schemas/schema.companionContract.case.mjs",
+  "src/schemas/schema.factory.case.mjs",
   "src/validation/validateArtifact.case.mjs",
   "src/acceptance/postV423CanonicalTransitionProductVerticalSlice.case.mjs",
   "src/acceptance/postV470SchemaReadingContractMaterializationIdentitySourceCoalescingAuthorityCorrection.case.mjs"
@@ -52,6 +56,8 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/app/workspaceEntrypointProductRouting.case.mjs",
   "src/app/workspaceSpineProductRouting.case.mjs",
   "src/app/workspaceNavigationParity.case.mjs",
+  "src/app/nodeGraphVerse.case.mjs",
+  "src/app/schemaFactoryViewerProof.case.mjs",
   "src/app/canonicalCreationProductSettlement.case.mjs",
   "src/acceptance/postV437M0ETimePortalProductParityClosure.case.mjs",
   "src/acceptance/knownScenarios.case.mjs"

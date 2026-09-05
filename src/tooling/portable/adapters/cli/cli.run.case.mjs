@@ -212,6 +212,125 @@ console.log('✓ common author façade infers Parent and owns sealing, audit, st
 
 
 {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-common-author-chain-'));
+  try {
+    const bundledDecisionSchemaPath = 'src/schemas/core/decision/tiinex.decision.v1.schema.md';
+    const decisionSchemaTarget = path.join(root, bundledDecisionSchemaPath);
+    await mkdir(path.dirname(decisionSchemaTarget), { recursive: true });
+    await copyFile(path.resolve(bundledDecisionSchemaPath), decisionSchemaTarget);
+    await mkdir(path.join(root, '.tiinex'), { recursive: true });
+    await writeFile(path.join(root, '.tiinex/continuation.json'), `${JSON.stringify({
+      schema: 'tiinex.portable.ground-continuation-state.v1',
+      version: 1,
+      roleLabel: 'Loom'
+    }, null, 2)}\n`, 'utf8');
+
+    const bodyFromArtifact = async (sourcePath, targetName) => {
+      const markdown = await readFile(path.resolve(sourcePath), 'utf8');
+      const body = markdown.split('\n---\n')[1].trim();
+      const target = path.join(root, targetName);
+      await writeFile(target, `${body}\n`, 'utf8');
+      return target;
+    };
+    const runAuthor = async (args) => {
+      const lines = [];
+      const io = { log: (value) => lines.push(value), error: (value) => lines.push(value) };
+      const code = await runPortableCli(['author', root, ...args, '--compact'], io, portableCanonicalBootstrapRuntime);
+      return { code, result: JSON.parse(lines.at(-1)) };
+    };
+
+    const decisionBody = await bodyFromArtifact('.topics/tooling/017-1-sigma-foundation-major-plan-approval-decision.trace.md', 'decision-body.md');
+    const handoffBody = await bodyFromArtifact('.topics/tooling/016-3-anchor-to-loom-common-author-continuation-repair-handoff.trace.md', 'handoff-body.md');
+    const taskBody = await bodyFromArtifact('.topics/tooling/016-common-author-continuation-schema-authority-repair.task.trace.md', 'task-body.md');
+    const evidenceBody = await bodyFromArtifact('.topics/tooling/016-1-anchor-fresh-common-author-continuation-failure-evidence.trace.md', 'evidence-body.md');
+
+    const decisionPath = '.topics/tooling/common-author-chain-decision.trace.md';
+    const decision = await runAuthor([
+      '--schema', 'tiinex.decision.v1', '--path', decisionPath, '--body', decisionBody,
+      '--title', 'Common Author Chain Decision', '--summary', 'Common Author Chain Decision', '--why', 'Exercise bare-ID Decision continuation.', '--no-parent'
+    ]);
+    assert.equal(decision.code, 0);
+    assert.equal(decision.result.status, 'qualified');
+    const decisionMarkdown = await readFile(path.join(root, decisionPath), 'utf8');
+    assert.match(decisionMarkdown, /Current Schema: tiinex\.decision\.v1\n/, 'accepted-local unpublished Decision remains a bare semantic schema id');
+
+    const handoffPath = '.topics/tooling/common-author-chain-handoff.trace.md';
+    const handoff = await runAuthor([
+      '--schema', 'tiinex.handoff.v1', '--path', handoffPath, '--body', handoffBody,
+      '--title', 'Common Author Chain Handoff', '--summary', 'Common Author Chain Handoff', '--why', 'Prove Decision to Handoff continuation.', '--parent', decisionPath
+    ]);
+    assert.equal(handoff.code, 0);
+    assert.equal(handoff.result.status, 'qualified');
+    assert.equal(handoff.result.artifact.parentPath, decisionPath);
+    assert.equal(handoff.result.artifact.selfIntegrity, 'verified');
+    const handoffMarkdown = await readFile(path.join(root, handoffPath), 'utf8');
+    assert.match(handoffMarkdown, /Parent Schema: \[tiinex\.decision\.v1\]\(\.\.\/\.\.\/src\/schemas\/core\/decision\/tiinex\.decision\.v1\.schema\.md\)/, 'bare parent schema id must recover an exact child-relative bundled schema locator');
+
+    const taskPath = '.topics/tooling/common-author-chain-task.trace.md';
+    const task = await runAuthor([
+      '--schema', 'tiinex.task.v1', '--path', taskPath, '--body', taskBody,
+      '--title', 'Common Author Chain Task', '--summary', 'Common Author Chain Task', '--why', 'Exercise an additional ordinary schema pair.', '--no-parent'
+    ]);
+    assert.equal(task.code, 0);
+    assert.equal(task.result.status, 'qualified');
+
+    const evidencePath = '.topics/tooling/common-author-chain-evidence.trace.md';
+    const evidence = await runAuthor([
+      '--schema', 'tiinex.evidence.v1', '--path', evidencePath, '--body', evidenceBody,
+      '--title', 'Common Author Chain Evidence', '--summary', 'Common Author Chain Evidence', '--why', 'Prove Task to Evidence continuation is schema-generic.', '--parent', taskPath
+    ]);
+    assert.equal(evidence.code, 0);
+    assert.equal(evidence.result.status, 'qualified');
+    assert.equal(evidence.result.artifact.parentPath, taskPath);
+    assert.equal(evidence.result.artifact.selfIntegrity, 'verified');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+console.log('✓ common author chains Decision→Handoff and Task→Evidence without manual schema-authority repair passed');
+
+
+{
+  const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-common-author-schema-authority-fail-closed-'));
+  try {
+    const bundledDecisionSchemaPath = 'src/schemas/core/decision/tiinex.decision.v1.schema.md';
+    const decisionSchemaTarget = path.join(root, bundledDecisionSchemaPath);
+    await mkdir(path.dirname(decisionSchemaTarget), { recursive: true });
+    await writeFile(decisionSchemaTarget, '# tampered local schema material\n', 'utf8');
+    await mkdir(path.join(root, '.tiinex'), { recursive: true });
+    await writeFile(path.join(root, '.tiinex/continuation.json'), `${JSON.stringify({ schema: 'tiinex.portable.ground-continuation-state.v1', version: 1, roleLabel: 'Loom' }, null, 2)}\n`, 'utf8');
+    const bodyFromArtifact = async (sourcePath, targetName) => {
+      const markdown = await readFile(path.resolve(sourcePath), 'utf8');
+      const target = path.join(root, targetName);
+      await writeFile(target, `${markdown.split('\n---\n')[1].trim()}\n`, 'utf8');
+      return target;
+    };
+    const decisionBody = await bodyFromArtifact('.topics/tooling/017-1-sigma-foundation-major-plan-approval-decision.trace.md', 'decision-body.md');
+    const handoffBody = await bodyFromArtifact('.topics/tooling/016-3-anchor-to-loom-common-author-continuation-repair-handoff.trace.md', 'handoff-body.md');
+    const decisionPath = '.topics/tooling/common-author-unresolved-decision.trace.md';
+    const firstLines = [];
+    assert.equal(await runPortableCli([
+      'author', root, '--schema', 'tiinex.decision.v1', '--path', decisionPath, '--body', decisionBody,
+      '--title', 'Unresolved Decision', '--summary', 'Unresolved Decision', '--why', 'Set up fail-closed Parent authority regression.', '--no-parent', '--compact'
+    ], { log: (value) => firstLines.push(value), error: (value) => firstLines.push(value) }, portableCanonicalBootstrapRuntime), 0);
+
+    const childPath = '.topics/tooling/common-author-unresolved-handoff.trace.md';
+    const lines = [];
+    const code = await runPortableCli([
+      'author', root, '--schema', 'tiinex.handoff.v1', '--path', childPath, '--body', handoffBody,
+      '--title', 'Unresolved Handoff', '--summary', 'Unresolved Handoff', '--why', 'Must fail closed without exact local schema bytes.', '--parent', decisionPath, '--compact'
+    ], { log: (value) => lines.push(value), error: (value) => lines.push(value) }, portableCanonicalBootstrapRuntime);
+    assert.equal(code, 1);
+    assert.equal(JSON.parse(lines.at(-1)).error, 'portable.cli.author.parent.schema-authority.required');
+    await assert.rejects(access(path.join(root, childPath)), /ENOENT/, 'failed Parent schema-authority recovery must not retain a child artifact');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+console.log('✓ common author Parent schema-authority recovery fails closed on mismatched bundled schema bytes passed');
+
+
+{
   const root = await mkdtemp(path.join(os.tmpdir(), 'tiinex-cli-low-level-handoff-'));
   try {
     await mkdir(path.join(root, '.tiinex'), { recursive: true });

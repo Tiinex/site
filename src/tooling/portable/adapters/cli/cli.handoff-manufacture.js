@@ -8,6 +8,7 @@ import { projectRecipientV2HumanOutput } from '../../handoff/recipientV2.humanOu
 import { inspectRecipientFacingV2Topology } from '../../handoff/recipientV2.inspect.js';
 import { carrierLineageFromCliParent, initialHandoffCarrierLineage, parentHandoffCarrierLineageFromBundle } from '../../handoff/carrierLineage.js';
 import { loadNodePortableInput } from '../../input/node.input.js';
+import { reserveHandoffSiblingIndex } from './cli.handoff-sibling-allocation.js';
 
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
@@ -61,7 +62,7 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
       if (parentInspection.status !== 'valid' && !parentLineage?.dimension) throw new Error('portable.cli.handoff-carrier.package-parent.invalid');
     }
     // Package-parent lineage is a human progress projection, not Workspace provider authority.
-    carrierLineage = carrierLineageFromCliParent({
+    const provisionalLineage = carrierLineageFromCliParent({
       bundle: parentBundle,
       parentPath: resolvedParent,
       parentBytes,
@@ -69,6 +70,20 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
       qualifiedParentLineage: parentLineage,
       major: Boolean(flags['package-major']),
       majorReason: flags['major-reason'] || ''
+    });
+    const siblingAllocation = await reserveHandoffSiblingIndex({
+      parentPackagePath: resolvedParent,
+      parentPackageSha256: provisionalLineage.parentPackageSha256,
+      parentDimension: provisionalLineage.parentDimension,
+      enabled: !flags['package-major'] && Boolean(flags.output || flags['output-dir'])
+    });
+    carrierLineage = flags['package-major'] ? provisionalLineage : carrierLineageFromCliParent({
+      bundle: parentBundle,
+      parentPath: resolvedParent,
+      parentBytes,
+      routeDimensions,
+      qualifiedParentLineage: parentLineage,
+      siblingIndex: siblingAllocation.siblingIndex
     });
     packageParentSha256 = String(carrierLineage.parentPackageSha256 || '');
   } else if (flags['package-major']) {

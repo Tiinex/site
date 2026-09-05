@@ -11,12 +11,13 @@ export function initialHandoffCarrierLineage() {
   return freezeLineage({ mode: 'root', dimension: '001', parentDimension: '', parentPackageSha256: '', parentPackageFilename: '', major: '001', majorReason: 'initial carrier root', checkpointKind: 'major' });
 }
 
-export function continueHandoffCarrierLineage(parent = {}) {
+export function continueHandoffCarrierLineage(parent = {}, siblingIndex = 1) {
   const normalized = normalizeParentLineage(parent);
   if (!normalized.dimension) throw new Error('portable.handoff-carrier-lineage.parent.unresolved');
+  const childIndex = normalizeSiblingIndex(siblingIndex);
   return freezeLineage({
     mode: 'continue',
-    dimension: `${normalized.dimension}-1`,
+    dimension: `${normalized.dimension}-${childIndex}`,
     parentDimension: normalized.dimension,
     parentPackageSha256: normalized.packageSha256,
     parentPackageFilename: normalized.packageFilename,
@@ -136,7 +137,7 @@ export function qualifyMajorCarrierReadiness(input = {}, lineage = {}) {
   });
 }
 
-export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', parentBytes = null, routeDimensions = [], qualifiedParentLineage = null, major = false, majorReason = '' } = {}) {
+export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', parentBytes = null, routeDimensions = [], qualifiedParentLineage = null, major = false, majorReason = '', siblingIndex = 1 } = {}) {
   const bytes = parentBytes ? packageFileBytes({ data: parentBytes }) : new Uint8Array();
   const packageIdentity = Object.freeze({
     packageSha256: bytes.byteLength ? sha256Hex(bytes) : '',
@@ -146,7 +147,13 @@ export function carrierLineageFromCliParent({ bundle = {}, parentPath = '', pare
   const parent = qualifiedDimension
     ? Object.freeze({ ...normalizeHandoffCarrierLineage(qualifiedParentLineage), ...packageIdentity })
     : parentHandoffCarrierLineageFromBundle(bundle, { routeDimensions, ...packageIdentity });
-  return major ? advanceHandoffCarrierMajor(parent, majorReason) : continueHandoffCarrierLineage(parent);
+  return major ? advanceHandoffCarrierMajor(parent, majorReason) : continueHandoffCarrierLineage(parent, siblingIndex);
+}
+
+function normalizeSiblingIndex(value = 1) {
+  const number = Number.parseInt(value, 10);
+  if (!Number.isFinite(number) || number < 1 || number > 9999) throw new Error('portable.handoff-carrier-lineage.sibling-index.invalid');
+  return number;
 }
 
 function freezeLineage(value = {}) {

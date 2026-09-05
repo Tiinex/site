@@ -17,6 +17,7 @@ const qualifiedAuthority = Object.freeze({
     pointerPath: '001-pointer.trace.md'
   }),
   role: Object.freeze({ state: 'qualified', endpoint: Object.freeze({ label: 'Loom', kind: 'role' }) }),
+  holderBinding: Object.freeze({ state: 'qualified', holderId: 'fixture-session', roleLabel: 'Loom', recipientRoleLabel: 'Loom', recipientCompatibility: 'matched', source: 'explicit-input', explicit: true, inferredFromTransport: false }),
   handoff: Object.freeze({ purpose: 'bounded current work', from: 'Anchor', to: 'Loom' }),
   mutationBoundary: Object.freeze({ sourceMutation: false, remoteWrite: false })
 });
@@ -27,7 +28,7 @@ const readyContextAudit = Object.freeze({
   workspaceMaterializations: Object.freeze([{ workspaceId: 'site' }])
 });
 
-function qualifiedTaskRecord({ path = TASK_PATH, status = 'draft/local', trace = '' } = {}) {
+function qualifiedTaskRecord({ path = TASK_PATH, status = 'draft/local', trace = '', dependencies = '- none' } = {}) {
   const parent = trace
     ? `- Parent\n  - Parent Schema: tiinex.task.v1\n  - Created At: 2026-09-02 00:00:00\n  - Trace: [Parent](${trace})\n  - Origin:\n    - [relative](${trace})\n`
     : '';
@@ -58,7 +59,7 @@ Exercise one bounded grounding-readiness invariant.
 
 ## Dependencies
 
-- none
+${dependencies}
 
 ---
 
@@ -111,6 +112,27 @@ function composeCase({ authority = qualifiedAuthority, continuation = Object.fre
   assert.match(result.authority.operationBoundary.boundary, /must not be interpreted as a prohibition on separately authorized downstream Workspace work/);
 }
 console.log('✓ grounding authority projection distinguishes operation safety from downstream semantic work authority passed');
+
+
+{
+  const unresolvedHolder = Object.freeze({ ...qualifiedAuthority, holderBinding: Object.freeze({ state: 'unresolved', holderId: '', roleLabel: '', recipientRoleLabel: 'Loom', recipientCompatibility: 'unresolved', source: 'none', explicit: false, inferredFromTransport: false }) });
+  const result = composeCase({ authority: unresolvedHolder });
+  assert.equal(result.readiness.state, 'grounded-to-discuss');
+  assert.equal(result.authority.role.state, 'qualified');
+  assert.equal(result.authority.holderBinding.state, 'unresolved');
+  assert.equal(result.readiness.reasons.some((item) => item.code === 'session-holder-role-binding-unresolved'), true);
+  assert.equal(result.readiness.nextAction.kind, 'declare-explicit-session-holder-role-binding');
+  assert.equal(result.readiness.nextAction.target, 'Loom');
+}
+console.log('✓ qualified recipient Role remains separate from unresolved consuming-session holder binding passed');
+
+{
+  const mismatchedHolder = Object.freeze({ ...qualifiedAuthority, status: 'blocked', holderBinding: Object.freeze({ state: 'blocked', holderId: 'fixture-session', roleLabel: 'Axiom', recipientRoleLabel: 'Loom', recipientCompatibility: 'mismatch', source: 'explicit-input', explicit: true, inferredFromTransport: false }) });
+  const result = composeCase({ authority: mismatchedHolder });
+  assert.equal(result.readiness.state, 'insufficient-grounding');
+  assert.equal(result.readiness.missingEvidence.some((item) => item.code === 'session-holder-role-binding-blocked'), true);
+}
+console.log('✓ explicit consuming-session holder Role mismatch blocks act-ready grounding passed');
 
 {
   const result = composeGroundingReadiness({
@@ -214,6 +236,23 @@ console.log('✓ grounding readiness refuses false-green act readiness when curr
   }
 }
 console.log('✓ grounding adversarial authority/context/Parent/staleness matrix has no false grounded-to-act outcomes passed');
+
+
+{
+  const negated = composeCase({ records: Object.freeze([
+    qualifiedTaskRecord({ dependencies: '- this transport-only condition must not block unrelated work' }),
+    routeRecord()
+  ]) });
+  assert.equal(negated.currentWork.blockers.length, 0, 'negated blocker wording must not become a positive blocker signal');
+
+  const genuine = composeCase({ records: Object.freeze([
+    qualifiedTaskRecord({ dependencies: '- waiting for explicit Anchor disposition' }),
+    routeRecord()
+  ]) });
+  assert.equal(genuine.currentWork.blockers.length, 1, 'genuine positive blocker wording must remain visible');
+  assert.equal(genuine.currentWork.blockers[0].basis, 'explicit-blocking-cue-in-task-dependencies');
+}
+console.log('✓ grounding blocker extraction is negation-safe without weakening genuine blockers passed');
 
 {
   const result = composeCase();

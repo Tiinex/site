@@ -3,6 +3,7 @@ import { parseArtifactMarkdown } from '../../../artifacts/artifact.parse.js';
 import { normalizePortableInput } from '../input/portable.input.js';
 import { portableFinding } from '../findings.js';
 import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
+import { hasPositiveBlockingCue } from './blockingCue.js';
 
 export const PORTABLE_OPERATING_OVERVIEW_SCHEMA_ID = 'tiinex.portable.operating-overview.v1';
 
@@ -374,7 +375,7 @@ function taskBlockerSignals(record = {}, qualification = {}) {
     }));
   }
   for (const dependency of sectionList(record.markdown, 'Dependencies')) {
-    if (!BLOCKER_TEXT.test(dependency)) continue;
+    if (!hasPositiveBlockingCue(dependency)) continue;
     out.push(Object.freeze({
       kind: 'task-dependency',
       ...overviewItem(record, qualification),

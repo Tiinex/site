@@ -139,9 +139,10 @@ try {
   const createOutput = [];
   assert.equal(await runPortableCli(['create-local-draft', schemaDir, '--schema', 'tiinex.evidence.v1', '--values', valuesPath, '--parent', parentPath, '--title', 'CLI Evidence'], { log(value) { createOutput.push(value); }, error() {} }), 2, 'legacy readable-schema parent draft must remain materialized but semantic validation errors make the CLI nonzero');
   const createdDraft = JSON.parse(createOutput[0]);
-  assert.equal(createdDraft.status, 'created-invalid');
-  assert.equal(createdDraft.qualification.exactRuntimeValidation, false);
-  assert.equal(createdDraft.draft.markdown.includes('## Evidence Material'), true);
+  assert.equal(createdDraft.status, 'blocked', 'exact Evidence creation must fail closed when the supplied Parent authority is not coherent');
+  assert.equal(createdDraft.qualification.exactCreateToolingAvailable, true);
+  assert.equal(createdDraft.qualification.parentAuthorityQualification, 'invalid');
+  assert.equal(createdDraft.draft, null);
 
   const packageValuesPath = path.join(root, 'package-topic-values.json');
   await writeFile(packageValuesPath, JSON.stringify({
@@ -157,7 +158,7 @@ try {
   const packageStaged = { ...packageDraft.draft, qualification: packageDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
 
   const sessionPath = path.join(root, 'session.json');
-  const staged = { ...createdDraft.draft, qualification: createdDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
+  const staged = { ...packageDraft.draft, qualification: packageDraft.qualification, lifecycleStatus: 'draft', sourceMode: 'local-portable-staged' };
   await writeFile(sessionPath, JSON.stringify(openPortableSession({ files: directoryInput.files, stagedArtifacts: [staged], currentFocus: staged.path }).snapshot()), 'utf8');
   const checkpointOutput = [];
   assert.equal(await runPortableCli(['create-checkpoint', sessionPath, '--created-at', '2026-07-23T04:00:00.000Z'], { log(value) { checkpointOutput.push(value); }, error() {} }), 0);

@@ -227,8 +227,9 @@ export function WorkspaceDropHint({ workspace, hasMaterial }) {
 
 export function ModeToolbar({ state, query, displayOptions, selectedRecord, lineageLoadReport = null, lineageReady = false, onVerse, onQuery, onOpenDisplayOptions, onRunLineageAudit, onLoadFullLineage, readOnly = false }) {
   const requestedVerse = state.view?.workspaceVerse || 'feed';
-  const verse = readOnly && !['feed', 'tree'].includes(requestedVerse) ? 'feed' : requestedVerse;
+  const verse = readOnly && !['feed', 'tree', 'graph'].includes(requestedVerse) ? 'feed' : requestedVerse;
   const discoveryVerse = verse === 'feed' || verse === 'tree';
+  const graphVerse = verse === 'graph';
   const lineageVerse = verse === 'lineage';
   const auditVerse = verse === 'audit';
   const selectedRecordId = String(state.view?.selectedRecordId || '');
@@ -236,22 +237,28 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
   const lineageAttempted = Boolean(lineageVerse && selectedRecord && (lineageReady || selectedLineageReport));
   const lineageComplete = Boolean(lineageAttempted && (lineageReady || (selectedLineageReport && selectedLineageReport.state === 'complete' && !selectedLineageReport.hasMissing)));
   const needsLineageLoad = Boolean(lineageVerse && selectedRecord && (!selectedLineageReport || selectedLineageReport.state !== 'complete' || selectedLineageReport.hasMissing));
-  const modeLabel = lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
+  const modeLabel = graphVerse ? 'GRAPH ORIENTATION' : lineageVerse ? 'LINEAGE MODE' : auditVerse ? 'AUDIT DETAILS' : 'DISCOVERY MODE';
   const activeDisplayConstraintCount = displayOptionsActiveConstraintCount(displayOptions, lineageVerse ? 'lineage' : 'discovery');
   const lineageReturnVerse = state.view?.lineageReturnVerse === 'tree' ? 'tree' : 'feed';
   const returnVerse = auditVerse && selectedRecord ? 'lineage' : lineageVerse ? lineageReturnVerse : 'feed';
-  const canDisplayOptions = readOnly || discoveryVerse || lineageAttempted;
-  const canSearch = !lineageVerse || lineageAttempted;
+  const canDisplayOptions = discoveryVerse || lineageAttempted;
+  const canSearch = graphVerse || !lineageVerse || lineageAttempted;
   return (
     <div className="tx-mode-strip tx-column-toolbar" aria-label="Mode controls">
       <strong className="tx-mode-name">{modeLabel}</strong>
       {discoveryVerse ? (
-        <div className="tx-segment" aria-label="Discovery view">
-          <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
-          <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
-        </div>
+        <>
+          <div className="tx-segment" aria-label="Discovery view">
+            <button type="button" className={verse === 'feed' ? 'tx-active' : ''} onClick={() => onVerse('feed')}>Feed</button>
+            <button type="button" className={verse === 'tree' ? 'tx-active' : ''} onClick={() => onVerse('tree')}>Tree</button>
+          </div>
+          <button type="button" className="tx-mode-action-button tx-mode-graph-button" onClick={() => onVerse('graph')} aria-label="Open Node Graph Verse">Graph</button>
+        </>
       ) : (
-        <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
+        <>
+          <button type="button" className="tx-mode-return" onClick={() => onVerse(returnVerse)}>← Back</button>
+          {lineageVerse && selectedRecord ? <button type="button" className="tx-mode-action-button tx-mode-graph-button" onClick={() => onVerse('graph')} aria-label="Open selected artifact in Node Graph Verse">Graph</button> : null}
+        </>
       )}
       {!readOnly && needsLineageLoad ? (
         <button type="button" className="tx-mode-load-lineage-button" onClick={onLoadFullLineage} title="Load or retry the full lineage index from available source/direct transport before Audit" aria-label="Load full lineage">
@@ -272,7 +279,7 @@ export function ModeToolbar({ state, query, displayOptions, selectedRecord, line
       {canSearch ? (
         <label className="tx-search-field tx-search-field-icon">
           <Icon name="search" />
-          <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={lineageVerse ? 'Search loaded lineage…' : 'Search title/body/schema/path…'} />
+          <input value={query} onChange={(event) => onQuery(event.target.value)} type="search" placeholder={graphVerse ? 'Search graph title/schema/path…' : lineageVerse ? 'Search loaded lineage…' : 'Search title/body/schema/path…'} />
         </label>
       ) : null}
     </div>

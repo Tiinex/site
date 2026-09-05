@@ -18,6 +18,8 @@ import { compileFieldValueConstraints, resolveFieldDomainConstraintsAcrossChain 
 import { compileMachineShapeDefinitions as compileShapes, resolveFieldDomainShapeAuthoritiesAcrossChain as resolveShapeAuthorities, summarizeMachineShapeAuthority as summarizeShapeAuthority } from './contract.machine-shape.js';
 import { compileFieldShapeRequirements, resolveFieldShapeRequirements } from './contract.field-shape.compile.js';
 import { compileContractConstraints } from './contract.constraints.js';
+import { applySchemaInheritanceOverrides } from './contract.inheritance.js';
+import { compileInlineSchemaInheritanceOverrides } from './contract.inheritance.inline.js';
 
 export const PORTABLE_COMPILED_CONTRACT_SCHEMA_ID = 'tiinex.portable.compiled-schema-contract.v1';
 
@@ -47,6 +49,7 @@ export function compilePortableSchemaContract(input = '') {
   const bodyOptionalFields = schemaFieldsByContractOwner(document, declarations, 'Optional Fields');
   const machineShapeDefinitions = compileShapes(document);
   const rawFieldShapes = compileFieldShapeRequirements(document);
+  const inheritanceOverrides = compileInlineSchemaInheritanceOverrides(document);
   const rawConstraints = [
     ...compileFieldValueConstraints(document),
     ...compileContractConstraints(document, declarations)
@@ -86,6 +89,7 @@ export function compilePortableSchemaContract(input = '') {
       toolingConfigurationFields: Object.freeze(creationToolingConfigurationFields(document))
     }),
     declarations,
+    inheritanceOverrides,
     machineShapes: Object.freeze({
       schema: 'tiinex.portable.machine-shape-authority.v1',
       definitions: machineShapeDefinitions
@@ -99,11 +103,18 @@ export function compilePortableSchemaContract(input = '') {
 }
 
 
-export function compilePortableSchemaContractChain(inputs = []) {
+export function compilePortableSchemaContractChain(inputs = [], options = {}) {
   const compiled = (Array.isArray(inputs) ? inputs : [inputs]).filter(Boolean).map((input) => compilePortableSchemaContractForChain(input));
-  const qualification = qualifyContractChain(compiled);
+  const lineageQualification = qualifyContractChain(compiled);
   const leaf = compiled.at(-1) || compilePortableSchemaContract('');
-  const composition = qualification.state === 'contradictory' ? [leaf] : compiled;
+  const baseComposition = lineageQualification.state === 'contradictory' ? [leaf] : compiled;
+  const inheritance = lineageQualification.state === 'valid'
+    ? applySchemaInheritanceOverrides(baseComposition, options.inheritanceArtifacts || [])
+    : Object.freeze({ composition: Object.freeze(baseComposition), resolution: Object.freeze({ schema: 'tiinex.portable.schema-inheritance-resolution.v1', state: 'unresolved', applications: Object.freeze([]), findings: Object.freeze(['Schema inheritance overrides cannot be applied until lineage is valid.']) }) });
+  const composition = [...inheritance.composition];
+  const qualification = inheritance.resolution.state === 'unresolved'
+    ? Object.freeze({ state: 'unresolved', complete: false, lineage: Object.freeze([...lineageQualification.lineage]), findings: Object.freeze([...(lineageQualification.findings || []), ...(inheritance.resolution.findings || [])]) })
+    : lineageQualification;
   const requiredFields = unique(composition.flatMap((item) => item.validation.requiredFields || []));
   const requiredFieldKeys = new Set(requiredFields.map(exactToken));
   const optionalFields = unique(composition.flatMap((item) => item.validation.optionalFields || []))
@@ -135,6 +146,7 @@ export function compilePortableSchemaContractChain(inputs = []) {
     lineage: Object.freeze(qualification.lineage),
     suppliedLineage: Object.freeze(compiled.map((item) => item.schemaId).filter(Boolean)),
     lineageQualification: qualification,
+    inheritanceResolution: inheritance.resolution,
     validation: Object.freeze({
       groups: mergedValidationGroups,
       requiredSections,
@@ -157,7 +169,8 @@ export function compilePortableSchemaContractChain(inputs = []) {
       creationRules: Object.freeze(unique(composition.flatMap((item) => item.guidance.creationRules || [])))
     }),
     limitations: Object.freeze([
-      'Inheritance is additive. Explicit override semantics remain visible in contract groups and are not guessed by the compiler.',
+      'Inheritance is additive except where a Root-qualified inline Inheritance Overrides declaration deactivates one exact parent contribution.',
+      'Standalone tiinex.schema.inheritance.v1 records are evidence/audit inputs only and do not silently add schema-local compilation authority.',
       'Callers must inspect lineageQualification before treating a compiled chain as complete lineage truth.'
     ])
   });

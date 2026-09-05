@@ -7,6 +7,7 @@ import { groundPortableColdConsumer } from '../handoff/coldStartQualification.gr
 import { createColdStartMaterialContext, projectGroundedContinuation } from '../handoff/coldStartQualification.materials.js';
 import { auditHandoffPackageContextCarriage } from '../handoff/contextAudit.js';
 import { acceptedRecoveryMaterial, projectColdStartContinuity } from './grounding.continuity.js';
+import { projectGroundingAuthority } from './grounding.readiness.authority.js';
 
 export const PORTABLE_GROUNDING_READINESS_SCHEMA_ID = 'tiinex.portable.grounding-readiness.v1';
 
@@ -100,15 +101,29 @@ export function composeGroundingReadiness({ mode = 'loaded-material', authority 
   const inferred = [];
   const unresolved = [];
   const humanOnly = [];
+  let holderBindingActReady = !handoffMode;
 
   if (handoffMode) {
     const route = authority?.selectedRoute || null;
     const roleState = String(authority?.role?.state || 'unresolved');
+    const holderState = String(authority?.holderBinding?.state || 'unresolved');
     if (!route || String(authority?.status || '') === 'blocked') missing(missingEvidence, unresolved, 'authority-route-unqualified', 'The selected Handoff route is not qualified for this grounding result.');
     else known.push(evidence('qualified-handoff-route', 'qualified', route.id || route.pointerPath || 'selected-route'));
     if (roleState === 'qualified' || roleState === 'not-applicable') known.push(evidence('recipient-role-boundary', roleState, authority?.role?.endpoint?.label || 'recipient'));
     else if (roleState === 'blocked') missing(missingEvidence, unresolved, 'recipient-role-blocked', 'The Handoff recipient Role boundary is blocked or contradictory.');
     else missing(missingEvidence, unresolved, 'recipient-role-unresolved', 'The Handoff recipient Role boundary is not qualified for act-ready grounding.');
+
+    if (holderState === 'qualified' || holderState === 'not-applicable') {
+      holderBindingActReady = true;
+      known.push(evidence('session-holder-role-binding', holderState, authority?.holderBinding?.roleLabel || authority?.role?.endpoint?.label || 'recipient'));
+    } else if (holderState === 'blocked') {
+      holderBindingActReady = false;
+      missing(missingEvidence, unresolved, 'session-holder-role-binding-blocked', 'The explicit consuming-session holder Role contradicts the selected Handoff recipient Role.');
+    } else {
+      holderBindingActReady = false;
+      unresolved.push(evidence('session-holder-role-binding', 'unresolved', `recipient Role ${authority?.role?.endpoint?.label || authority?.handoff?.to || 'recipient'} is qualified separately from the consuming session`));
+      reasons.push(reason('session-holder-role-binding-unresolved', 'The selected recipient Role does not assign itself to this consuming session. Supply an explicit matching session holder Role binding before act-ready continuation.'));
+    }
 
     const required = Array.isArray(requiredContext) ? requiredContext : [];
     const unresolvedRequired = required.filter((entry) => entry.state !== 'qualified');
@@ -166,8 +181,8 @@ export function composeGroundingReadiness({ mode = 'loaded-material', authority 
 
   let state = 'grounded-to-act';
   if (missingEvidence.length) state = 'insufficient-grounding';
-  else if (!handoffMode || !topology.currentFrontier.length || humanOnly.length) state = 'grounded-to-discuss';
-  if (state === 'grounded-to-act') reasons.push(reason('bounded-act-ready', 'Selected Handoff authority, Required Context, carried Workspace coverage, cold-start continuity to a qualified semantic root, the selected-route Parent-lineage leaf, and declared current-work frontier evidence are all resolved enough for the next bounded action.'));
+  else if (!handoffMode || !holderBindingActReady || !topology.currentFrontier.length || humanOnly.length) state = 'grounded-to-discuss';
+  if (state === 'grounded-to-act') reasons.push(reason('bounded-act-ready', 'Selected Handoff authority, explicit consuming-session holder Role binding, Required Context, carried Workspace coverage, cold-start continuity to a qualified semantic root, the selected-route Parent-lineage leaf, and declared current-work frontier evidence are all resolved enough for the next bounded action.'));
 
   return Object.freeze({
     schema: PORTABLE_GROUNDING_READINESS_SCHEMA_ID,
@@ -176,16 +191,16 @@ export function composeGroundingReadiness({ mode = 'loaded-material', authority 
       state,
       reasons: Object.freeze(reasons.slice(0, MAX_ITEMS)),
       missingEvidence: Object.freeze(missingEvidence.slice(0, MAX_ITEMS)),
-      nextAction: nextActionFor(state, topology, continuity)
+      nextAction: nextActionFor(state, topology, continuity, authority)
     }),
-    authority: projectAuthority(authority, mode),
+    authority: projectGroundingAuthority(authority, mode),
     coverage: Object.freeze({
       mode,
       loadedRecords: records.length,
       relevantRecords: relevantIds.size,
       requiredContext: Object.freeze({
         declared: requiredContext.length,
-        matchedInWorkspaceSnapshots: requiredRecordResolution.ids.size,
+        matchedInWorkspaceSnapshots: requiredRecordResolution.matched,
         missingFromWorkspaceSnapshots: requiredRecordResolution.missing.length,
         items: requiredContextProjection.items,
         itemsOmitted: requiredContextProjection.itemsOmitted,
@@ -273,25 +288,9 @@ function projectCurrentWork(topology = {}, records = [], includeCurrentWork = fa
   });
 }
 
-function projectAuthority(authority, mode) {
-  if (!authority || mode !== 'routed-handoff-package') return Object.freeze({ state: 'not-supplied', route: null, handoff: null, role: null, operationBoundary: null });
-  const mutationBoundary = authority.mutationBoundary || null;
-  return Object.freeze({
-    state: String(authority.status || ''),
-    route: authority.selectedRoute ? Object.freeze({ id: authority.selectedRoute.id || '', pointerPath: authority.selectedRoute.pointerPath || '', workspaceId: authority.selectedRoute.workspaceId || '' }) : null,
-    handoff: authority.handoff ? Object.freeze({ purpose: authority.handoff.purpose || '', from: authority.handoff.from || '', to: authority.handoff.to || '', completionExpectation: authority.handoff.completionExpectation || null }) : null,
-    role: authority.role ? Object.freeze({ state: authority.role.state || '', label: authority.role.endpoint?.label || '', kind: authority.role.endpoint?.kind || '' }) : null,
-    operationBoundary: mutationBoundary ? Object.freeze({
-      ...mutationBoundary,
-      scope: 'current-grounding-operation-only',
-      semanticAuthority: 'Handoff/Task/Role artifacts govern downstream work authority; this operation boundary neither grants nor revokes source-edit authority.',
-      boundary: 'Describes the non-mutating behavior and host-safety limits of the current Tooling grounding operation only. It must not be interpreted as a prohibition on separately authorized downstream Workspace work.'
-    }) : null
-  });
-}
-
-function nextActionFor(state, topology, continuity = {}) {
-  if (state === 'grounded-to-act') return Object.freeze({ kind: 'continue-bounded-handoff-work', target: topology.currentFrontier[0]?.path || '', basis: 'qualified authority + required context + cold-start root continuity + selected-route Parent leaf + declared current-work frontier' });
+function nextActionFor(state, topology, continuity = {}, authority = null) {
+  if (state === 'grounded-to-act') return Object.freeze({ kind: 'continue-bounded-handoff-work', target: topology.currentFrontier[0]?.path || '', basis: 'qualified authority + explicit session holder Role binding + required context + cold-start root continuity + selected-route Parent leaf + declared current-work frontier' });
+  if (state === 'grounded-to-discuss' && String(authority?.holderBinding?.state || 'unresolved') === 'unresolved') return Object.freeze({ kind: 'declare-explicit-session-holder-role-binding', target: authority?.role?.endpoint?.label || authority?.handoff?.to || '', basis: 'recipient Role qualification is separate from consuming-session holder binding; no transport/provider/assistant-user identity inference is permitted' });
   if (state === 'grounded-to-discuss') return Object.freeze({ kind: topology.currentFrontier.length ? 'obtain-bounded-action-authority-or-human-gate' : 'resolve-current-work-frontier', target: topology.currentTasks[0]?.path || '', basis: 'discussion-ready but act-readiness condition is unresolved' });
   if (continuity?.state === 'unproven') return Object.freeze({
     kind: continuity.recovery?.state === 'host-action-available' ? 'recover-required-parent-with-host-action' : 'request-exact-required-parent-material',

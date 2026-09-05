@@ -16,13 +16,14 @@ export function runtimeProjectionForFiles(markdownPath, bindingPath) {
   const sourceChecksum = crypto.createHash('sha256').update(sourceBytes).digest('hex');
   const sourceBlobSha = crypto.createHash('sha1').update(Buffer.concat([Buffer.from(`blob ${sourceBytes.length}\0`, 'utf8'), sourceBytes])).digest('hex');
   const creation = compiled?.creation || {};
-  const inputBindings = Object.freeze(creationInputBindings(document, creation));
-  const requiredShape = Object.freeze(creationRequiredShapeItems(document, creation, inputBindings));
   // Validation authority is independent of whether ordinary creation inputs can be
   // represented by the exact renderer. Every installed readable schema with a
   // complete bundled lineage gets a compact validation projection; creation
   // representability remains separately qualified by inputBindings below.
   const validationContract = runtimeValidationContractForSchema(markdownPath, bindingPath);
+  const inputBindings = Object.freeze(creationInputBindings(document, creation, validationContract));
+  const requiredShape = Object.freeze(creationRequiredShapeItems(document, creation, inputBindings));
+  const supplementalRequiredFields = Object.freeze(creationSupplementalRequiredFields(document, inputBindings, validationContract));
   return Object.freeze({
     schema: SCHEMA_RUNTIME_PROJECTION_ID,
     generator: SCHEMA_RUNTIME_PROJECTION_GENERATOR,
@@ -40,6 +41,7 @@ export function runtimeProjectionForFiles(markdownPath, bindingPath) {
       requiredSections: Object.freeze([...(creation.requiredSections || [])]),
       toolingConfigurationFields: Object.freeze([...(creation.toolingConfigurationFields || [])]),
       inputBindings,
+      supplementalRequiredFields,
       requiredShape
     })
   });
@@ -61,6 +63,7 @@ function creationRequiredShapeItems(document = {}, creation = {}, inputBindings 
         const id = `${schemaId}#artifact-creation/${String(group?.name || 'group')}/required-shape/${line || index + 1}`;
         let primitive = Object.freeze({ kind: 'residual' });
         if (sourceText === 'first heading uses `# {{summary}}`' && summaryBinding) primitive = Object.freeze({ kind: 'body-title-summary', input: String(summaryBinding.input || '') });
+        else if (sourceText === 'non-empty unheaded prose block after the first body heading and before the first second-level section') primitive = Object.freeze({ kind: 'body-prose-block', position: 'after-first-body-heading-before-first-second-level-section' });
         else {
           const match = sourceText.match(/^`## ([^`]+)` section$/);
           if (match && sectionBindings.has(match[1])) primitive = Object.freeze({ kind: 'section-body', section: match[1], input: String(sectionBindings.get(match[1])?.input || '') });
@@ -72,24 +75,130 @@ function creationRequiredShapeItems(document = {}, creation = {}, inputBindings 
   return out;
 }
 
-function creationInputBindings(document = {}, creation = {}) {
+function creationInputBindings(document = {}, creation = {}, validationContract = {}) {
+  const schemaId = String(document?.schemaId || '').trim();
   const sectionByIdentity = new Map(requiredCreationSections(document).map((name) => [String(name), String(name)]));
   const contentInputIdentities = new Set(requiredCreationContentInputs(document).map((name) => String(name)));
+  const ordinaryGroups = validationContract?.validation?.ordinaryGroups || [];
+  const declarations = validationContract?.declarations || [];
   return (creation.requiredInputs || []).map((name) => {
     const input = String(name || '').trim();
     if (contentInputIdentities.has(input) && sectionByIdentity.has(input)) return Object.freeze({ input, kind: 'section-body', section: sectionByIdentity.get(input) });
     if (contentInputIdentities.has(input) && input === 'Summary') return Object.freeze({ input, kind: 'root-current-summary-body-title', section: '' });
-    return Object.freeze({ input, kind: 'unmapped', section: '' });
+
+    const declarationMatches = declarations.filter((contract) => {
+      const targets = (contract?.targetHeadings || []).map((heading) => String(heading || '').replace(/^##\s+/, '').trim());
+      return String(contract?.group || '') === input || targets.includes(input);
+    });
+    if (declarationMatches.length === 1) {
+      const contract = declarationMatches[0];
+      const section = String((contract.targetHeadings || [])[0] || '').replace(/^##\s+/, '').trim() || input;
+      return Object.freeze({
+        input,
+        kind: 'named-declaration-section',
+        section,
+        group: String(contract.group || input),
+        requiredFields: Object.freeze([...(contract.requiredFields || [])]),
+        optionalFields: Object.freeze([...(contract.optionalFields || [])]),
+        allowLiteralNone: Boolean(contract.allowLiteralNone)
+      });
+    }
+
+    const fieldMatches = [];
+    for (const group of ordinaryGroups) {
+      const localContributors = (group?.contributors || []).filter((contributor) => String(contributor?.sourceSchemaId || '') === schemaId && [...(contributor?.requiredFields || []), ...(contributor?.optionalFields || [])].includes(input));
+      if (localContributors.length !== 1) continue;
+      fieldMatches.push({ group, contributor: localContributors[0] });
+    }
+    const requiredFieldMatches = fieldMatches.filter(({ contributor }) => (contributor.requiredFields || []).includes(input));
+    const qualifiedFieldMatches = fieldMatches.length === 1 ? fieldMatches : requiredFieldMatches.length === 1 ? requiredFieldMatches : [];
+    if (qualifiedFieldMatches.length === 1) {
+      const { group, contributor } = qualifiedFieldMatches[0];
+      return Object.freeze({
+        input,
+        kind: 'ordinary-field',
+        section: String(group?.target?.title || group?.group || ''),
+        group: String(group?.group || ''),
+        field: input,
+        sourceSchemaId: schemaId,
+        requirement: (contributor.requiredFields || []).includes(input) ? 'required' : 'optional'
+      });
+    }
+    const groupMatches = ordinaryGroups.filter((group) => {
+      const title = String(group?.target?.title || group?.group || '').trim();
+      return String(group?.group || '') === input || title === input;
+    });
+    if (groupMatches.length === 1) {
+      const group = groupMatches[0];
+      return Object.freeze({
+        input,
+        kind: 'ordinary-group',
+        section: String(group?.target?.title || group?.group || input),
+        group: String(group?.group || input),
+        requiredFields: Object.freeze([...(group.requiredFields || [])]),
+        optionalFields: Object.freeze([...(group.optionalFields || [])]),
+        sourceSchemaIds: Object.freeze(uniqueStrings((group.contributors || []).map((item) => item?.sourceSchemaId)))
+      });
+    }
+
+    return Object.freeze({ input, kind: 'unmapped', section: '', reason: fieldMatches.length > 1 ? 'ambiguous-current-schema-field-ownership' : 'no-qualified-generic-representation' });
   });
 }
 
+function creationSupplementalRequiredFields(document = {}, inputBindings = [], validationContract = {}) {
+  const schemaId = String(document?.schemaId || '').trim();
+  const representedSections = new Set(inputBindings.map((item) => String(item?.section || '')).filter(Boolean));
+  const wholeGroupBindings = new Set(inputBindings.filter((item) => ['ordinary-group', 'section-body'].includes(String(item?.kind || ''))).map((item) => String(item?.group || item?.section || '')));
+  const boundFields = new Set(inputBindings.filter((item) => item?.kind === 'ordinary-field').map((item) => `${String(item?.group || '')}\u0000${String(item?.field || item?.input || '')}`));
+  const out = [];
+  for (const group of validationContract?.validation?.ordinaryGroups || []) {
+    const section = String(group?.target?.title || group?.group || '');
+    const groupName = String(group?.group || '');
+    if (!representedSections.has(section) || String(group?.target?.requiredness || '') !== 'required' || wholeGroupBindings.has(groupName) || wholeGroupBindings.has(section)) continue;
+    for (const field of group?.requiredFields || []) {
+      const key = `${groupName}\u0000${String(field || '')}`;
+      if (boundFields.has(key)) continue;
+      const sources = uniqueStrings((group?.contributors || []).filter((item) => (item?.requiredFields || []).includes(field)).map((item) => item?.sourceSchemaId));
+      if (!sources.length || sources.includes(schemaId)) continue;
+      out.push(Object.freeze({
+        section,
+        group: groupName,
+        field: String(field || ''),
+        sourceSchemaIds: Object.freeze(sources),
+        representation: 'neutral-placeholder',
+        value: supplementalRepresentativeValue(validationContract, groupName, field)
+      }));
+    }
+  }
+  return out;
+}
+
+function supplementalRepresentativeValue(validationContract = {}, group = '', field = '') {
+  const closed = (validationContract?.constraints || []).filter((item) => item?.kind === 'field-domain'
+    && String(item?.targetGroup || item?.sourceGroup || '') === String(group || '')
+    && String(item?.field || '') === String(field || '')
+    && String(item?.authorityQualification || 'valid') === 'valid'
+    && String(item?.domainPolicy || '') === 'closed');
+  if (closed.length) {
+    const sets = closed.map((item) => [...(item.allowedValues || [])]);
+    const shared = (sets[0] || []).find((value) => sets.every((set) => set.includes(value)));
+    if (shared !== undefined) return String(shared);
+  }
+  return 'unknown / not supplied at creation';
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean))];
+}
 
 function runtimeValidationContractForSchema(markdownPath, bindingPath) {
   const index = schemaDocumentIndex(projectRootForBinding(bindingPath));
   const targetMarkdown = fs.readFileSync(markdownPath, 'utf8');
   const targetDocument = parsePortableSchemaDocument(targetMarkdown);
-  const lineage = schemaLineageMarkdown(targetDocument?.schemaId || '', index);
-  const compiled = compilePortableSchemaContractChain(lineage);
+  const lineage = schemaLineageItems(targetDocument?.schemaId || '', index);
+  const compiled = compilePortableSchemaContractChain(lineage.map((item) => item.markdown), {
+    inheritanceArtifacts: lineage.flatMap((item) => item.inheritanceArtifacts || [])
+  });
   return specializeCompactValidationContract(compactValidationContract(compiled), targetDocument, targetMarkdown);
 }
 
@@ -132,6 +241,7 @@ function compactValidationContract(compiled = {}) {
     schemaId: String(compiled?.schemaId || ''),
     lineage: Object.freeze([...(compiled?.lineage || [])]),
     lineageQualification: compiled?.lineageQualification || Object.freeze({ state: 'unresolved', complete: false, lineage: Object.freeze([]), findings: Object.freeze(['Validation lineage unavailable.']) }),
+    inheritanceResolution: compiled?.inheritanceResolution || Object.freeze({ schema: 'tiinex.portable.schema-inheritance-resolution.v1', state: 'not-declared', applications: Object.freeze([]), findings: Object.freeze([]) }),
     validation: Object.freeze({
       groups: Object.freeze(uniqueRequiredFields.length ? [Object.freeze({
         name: 'Runtime Required Fields',
@@ -157,21 +267,23 @@ function schemaDocumentIndex(root) {
     const markdownPath = bindingPath.replace(/\.schema\.json$/, '.schema.md');
     if (!fs.existsSync(markdownPath)) continue;
     const markdown = fs.readFileSync(markdownPath, 'utf8');
+    const binding = JSON.parse(fs.readFileSync(bindingPath, 'utf8'));
     const document = parsePortableSchemaDocument(markdown);
     const schemaId = String(document?.schemaId || '').trim();
-    if (schemaId) index.set(schemaId, { markdown, document });
+    const inheritanceArtifacts = Object.freeze((binding?.inheritanceCompanions || []).map((relativePath) => path.resolve(path.dirname(bindingPath), String(relativePath || ''))).filter((candidate) => fs.existsSync(candidate)).map((candidate) => fs.readFileSync(candidate, 'utf8')));
+    if (schemaId) index.set(schemaId, { markdown, document, inheritanceArtifacts });
   }
   return index;
 }
 
-function schemaLineageMarkdown(schemaId, index, seen = new Set()) {
+function schemaLineageItems(schemaId, index, seen = new Set()) {
   const id = String(schemaId || '').trim();
   if (!id || seen.has(id)) throw new Error(`schema-runtime-projection-lineage-invalid:${id || 'unknown'}`);
   const item = index.get(id);
   if (!item) throw new Error(`schema-runtime-projection-lineage-missing:${id}`);
   const next = new Set(seen); next.add(id);
   const parent = String(item.document?.parentSchemaId || '').trim();
-  return Object.freeze([...(parent ? schemaLineageMarkdown(parent, index, next) : []), item.markdown]);
+  return Object.freeze([...(parent ? schemaLineageItems(parent, index, next) : []), item]);
 }
 
 function projectRootForBinding(bindingPath) {

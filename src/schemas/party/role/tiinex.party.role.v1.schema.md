@@ -53,6 +53,15 @@ Rules
 - Holder Relationship preserves related-party semantics without becoming identity proof.
 - Parent party specialization applies to the artifact body only; it does not alter root continuity, integrity, or parent-origin requirements.
 
+Inheritance Overrides
+
+- party-role-party-body-structure
+  - Merge Operation: override
+  - Parent Schema: tiinex.party.v1
+  - Parent Node: Schema Validation Contract / Party Body / Required Shape
+  - Child Node: Schema Validation Contract / Party Role Body / Required Shape
+  - Reason: Party Role specializes Party by replacing only the generic Party artifact-body structure while retaining compatible non-structural Party semantics and provenance.
+  - Effective Result: Party Role body structure is authoritative for Party Role artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Party Role sections remain active.
 
 ### Party Role Body
 
@@ -286,4 +295,4 @@ The body headings required for artifacts using this schema are: `## Role Identit
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: 7Uks6PbkiAVbdB0MOVxDnj6wg1-9r-3iVaHLvzVVhMA
+  - Value: 7MPpGEU856hbgLogGREj4UM_PQDXe_3XA9wZ2Pm1btI

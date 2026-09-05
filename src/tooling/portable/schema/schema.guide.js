@@ -14,7 +14,7 @@ import { resolvePortableLlmCompanion } from './llm.companion.js';
 import { compilePortableSchemaContract } from './contract.compile.js';
 
 export const PORTABLE_SCHEMA_GUIDE_SCHEMA_ID = 'tiinex.llm.schema-guide.v1';
-export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '3';
+export const PORTABLE_SCHEMA_GUIDE_COMPILER_VERSION = '4';
 
 export function buildPortableSchemaGuide(input = {}, options = {}) {
   const schemaId = String(input.schemaId || options.schemaId || '').trim();
@@ -95,6 +95,7 @@ export function buildPortableSchemaGuide(input = {}, options = {}) {
       runtimeResolvedThrough: resolution.descriptor?.moduleId || 'tiinex.root.v1',
       runtimeFallbackUsed: Boolean(resolution.fallbackUsed)
     }),
+    factoryDescriptor: resolution.descriptor?.factory || null,
     requiredInputs: Object.freeze(limitList(requiredInputs, detail === 'compact' ? 18 : 80)),
     requiredStructure: Object.freeze(limitList(requiredSections, detail === 'compact' ? 14 : 80)),
     requiredFields: Object.freeze(limitList(requiredFields, detail === 'compact' ? 24 : 120)),

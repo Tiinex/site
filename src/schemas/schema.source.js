@@ -61,6 +61,8 @@ export function defineBundledSchemaSource(binding = {}, projection = {}, options
         requiredSections: runtimeProjection.creation.requiredSections,
         toolingConfigurationFields: runtimeProjection.creation.toolingConfigurationFields,
         inputBindings: runtimeProjection.creation.inputBindings,
+        supplementalRequiredFields: runtimeProjection.creation.supplementalRequiredFields,
+        representationSections: deriveCreationRepresentationSections(runtimeProjection.creation.inputBindings, validationContract),
         requiredShape: runtimeProjection.creation.requiredShape
       })
     }) : null;
@@ -176,6 +178,17 @@ export function qualifiedCreationAuthorityFromSchemaSource(module = {}) {
   });
 }
 
+
+function deriveCreationRepresentationSections(inputBindings = [], validationContract = null) {
+  void validationContract;
+  const ordered = [];
+  for (const item of inputBindings || []) {
+    const name = String(item?.section || '').trim();
+    if (name && !ordered.includes(name)) ordered.push(name);
+  }
+  return Object.freeze(ordered);
+}
+
 function normalizeRuntimeProjection(value = {}) {
   const creation = value?.creation || {};
   return Object.freeze({
@@ -194,8 +207,9 @@ function normalizeRuntimeProjection(value = {}) {
       optionalInputs: Object.freeze([...(creation?.optionalInputs || [])].map((item) => String(item || '')).filter(Boolean)),
       requiredSections: Object.freeze([...(creation?.requiredSections || [])].map((item) => String(item || '')).filter(Boolean)),
       toolingConfigurationFields: Object.freeze([...(creation?.toolingConfigurationFields || [])].map((item) => String(item || '')).filter(Boolean)),
-      inputBindings: Object.freeze([...(creation?.inputBindings || [])].map((item) => Object.freeze({ input: String(item?.input || '').trim(), kind: String(item?.kind || '').trim(), section: String(item?.section || '').trim() })).filter((item) => item.input)),
-      requiredShape: Object.freeze([...(creation?.requiredShape || [])].map((item) => Object.freeze({ id: String(item?.id || ''), sourceSchemaId: String(item?.sourceSchemaId || ''), group: String(item?.group || ''), category: String(item?.category || ''), line: Number(item?.line || 0), sourceText: String(item?.sourceText || ''), primitive: Object.freeze({ kind: String(item?.primitive?.kind || 'residual'), input: String(item?.primitive?.input || ''), section: String(item?.primitive?.section || '') }) })).filter((item) => item.id))
+      inputBindings: Object.freeze([...(creation?.inputBindings || [])].map((item) => deepFreezeJson(item)).filter((item) => String(item?.input || '').trim())),
+      supplementalRequiredFields: Object.freeze([...(creation?.supplementalRequiredFields || [])].map((item) => deepFreezeJson(item)).filter((item) => String(item?.field || '').trim())),
+      requiredShape: Object.freeze([...(creation?.requiredShape || [])].map((item) => Object.freeze({ id: String(item?.id || ''), sourceSchemaId: String(item?.sourceSchemaId || ''), group: String(item?.group || ''), category: String(item?.category || ''), line: Number(item?.line || 0), sourceText: String(item?.sourceText || ''), primitive: Object.freeze({ kind: String(item?.primitive?.kind || 'residual'), input: String(item?.primitive?.input || ''), section: String(item?.primitive?.section || ''), position: String(item?.primitive?.position || '') }) })).filter((item) => item.id))
     })
   });
 }
@@ -207,6 +221,7 @@ function freezeRuntimeValidationContract(value = {}) {
     schemaId: String(value?.schemaId || '').trim(),
     lineage: Array.isArray(value?.lineage) ? value.lineage : [],
     lineageQualification: value?.lineageQualification || {},
+    inheritanceResolution: value?.inheritanceResolution || {},
     validation: value?.validation || {},
     declarations: Array.isArray(value?.declarations) ? value.declarations : [],
     constraints: Array.isArray(value?.constraints) ? value.constraints : [],

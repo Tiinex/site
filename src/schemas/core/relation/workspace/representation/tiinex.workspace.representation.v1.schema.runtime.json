@@ -24,6 +24,14 @@
       ],
       "findings": []
     },
+    "inheritanceResolution": {
+      "schema": "tiinex.portable.schema-inheritance-resolution.v1",
+      "state": "not-declared",
+      "declarations": [],
+      "applications": [],
+      "corroborations": [],
+      "findings": []
+    },
     "validation": {
       "groups": [
         {
@@ -435,9 +443,7 @@
             "Parent exists"
           ],
           "requiredSections": [],
-          "requiredFields": [
-            "browse + git"
-          ],
+          "requiredFields": [],
           "requiredEntries": [],
           "allowedLabels": [
             "relative",
@@ -525,7 +531,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -645,7 +651,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -654,7 +660,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -704,7 +710,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -824,7 +830,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -833,7 +839,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -883,7 +889,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1003,7 +1009,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1012,7 +1018,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1062,7 +1068,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1182,7 +1188,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1191,7 +1197,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1220,6 +1226,41 @@
       ]
     },
     "declarations": [
+      {
+        "group": "Inheritance Overrides",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Merge Operation",
+          "Parent Schema",
+          "Parent Node",
+          "Child Node"
+        ],
+        "optionalFields": [
+          "Reason",
+          "Effective Result"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Inheritance Overrides` is the canonical schema-local machine category for explicit inherited contract replacement.",
+          "The declaration name identifies one override declaration within the declaring child schema.",
+          "`Merge Operation` must be exactly `override`; unsupported operations are unresolved and must not be guessed.",
+          "`Parent Schema` must resolve to an actual ancestor of the declaring child schema in the active lineage.",
+          "`Parent Node` and `Child Node` each use the exact path shape `Schema Validation Contract / <third-level group> / <category label>` and must resolve exactly once.",
+          "The declaring child schema is the child schema identity; no duplicate `Child Schema` field is part of the inline declaration.",
+          "A qualified override deactivates only the exact addressed parent contribution and activates the exact addressed child replacement contribution while retaining declaration and contributor provenance.",
+          "Competing declarations for the same exact parent contribution, malformed declarations, unresolved lineage, missing or ambiguous nodes, or non-ancestor parents are unresolved/error.",
+          "Source order, filename order, directory adjacency, prose wording, and schema identity must not choose a winner.",
+          "When both addressed nodes are `Required Shape`, parent ordinary instance-field groups whose Root-authorized exact second-level target heading is required by the parent shape but absent from the child replacement shape become inactive; groups targeting surviving headings remain additive.",
+          "If Required Shape heading identity or ordinary target ownership cannot be resolved exactly, the override is unresolved rather than guessed.",
+          "Standalone `tiinex.schema.inheritance.v1` artifacts may document, propose, test, audit, or migrate an inheritance relationship, but they do not silently add or change schema-local compilation authority."
+        ]
+      },
       {
         "group": "Field Value Constraints",
         "entryShape": [
@@ -1532,6 +1573,30 @@
     "constraints": [
       {
         "kind": "field-domain",
+        "sourceSchemaId": "tiinex.root.v1",
+        "sourceGroup": "Inheritance Overrides",
+        "field": "Merge Operation",
+        "allowedValues": [
+          "override"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 269,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.root.v1"
+        ],
+        "targetGroup": "Inheritance Overrides",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      },
+      {
+        "kind": "field-domain",
         "sourceSchemaId": "tiinex.workspace.representation.v1",
         "sourceGroup": "Representation Binding",
         "field": "Workspace Artifact",
@@ -1569,7 +1634,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
               "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1689,7 +1754,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               }
             },
             "visibleDefinitions": [
@@ -1698,7 +1763,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "grammarProfile": "tiinex.lexical.shape.v1",
                 "definitionQualification": "valid",
@@ -1748,7 +1813,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
               "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1868,7 +1933,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               }
             },
             "visibleDefinitions": [
@@ -1877,7 +1942,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "grammarProfile": "tiinex.lexical.shape.v1",
                 "definitionQualification": "valid",
@@ -2175,7 +2240,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
               "grammarProfile": "tiinex.lexical.shape.v1",
@@ -2295,7 +2360,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               }
             },
             "visibleDefinitions": [
@@ -2304,7 +2369,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "grammarProfile": "tiinex.lexical.shape.v1",
                 "definitionQualification": "valid",
@@ -2354,7 +2419,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
               "grammarProfile": "tiinex.lexical.shape.v1",
@@ -2474,7 +2539,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               }
             },
             "visibleDefinitions": [
@@ -2483,7 +2548,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "grammarProfile": "tiinex.lexical.shape.v1",
                 "definitionQualification": "valid",
@@ -2651,7 +2716,7 @@
           "sourceSchemaId": "tiinex.root.v1",
           "sourceGroup": "Machine Shape Authority",
           "declarationSource": {
-            "line": 357
+            "line": 408
           },
           "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
           "grammarProfile": "tiinex.lexical.shape.v1",
@@ -2785,7 +2850,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             },
             "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
             "grammarProfile": "tiinex.lexical.shape.v1",
@@ -2905,7 +2970,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             }
           },
           "visibleDefinitions": [
@@ -2914,7 +2979,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "grammarProfile": "tiinex.lexical.shape.v1",
               "definitionQualification": "valid",
@@ -2977,125 +3042,222 @@
     "inputBindings": [
       {
         "input": "Workspace Artifact",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Binding",
+        "group": "Representation Binding",
+        "field": "Workspace Artifact",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Representation Payload",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Binding",
+        "group": "Representation Binding",
+        "field": "Representation Payload",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Representation Kind",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Binding",
+        "group": "Representation Binding",
+        "field": "Representation Kind",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Coverage",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Binding",
+        "group": "Representation Binding",
+        "field": "Coverage",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Binding State",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Binding",
+        "group": "Representation Binding",
+        "field": "Binding State",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Workspace Tree Root",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Workspace Tree Root",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Workspace Artifact Inner Path",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Workspace Artifact Inner Path",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Archive Entry Root",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Archive Entry Root",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Path Mapping",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Path Mapping",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Collision Policy",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Collision Policy",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Decoder Requirement",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Representation Correlation",
+        "group": "Representation Correlation",
+        "field": "Decoder Requirement",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Activation Rule",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Activation Rule",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Payload Integrity Requirement",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Payload Integrity Requirement",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Coverage Requirement",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Coverage Requirement",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Staleness Rule",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Staleness Rule",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Selection Rule",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Selection Rule",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Multi-Workspace Isolation",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provider Qualification",
+        "group": "Provider Qualification",
+        "field": "Multi-Workspace Isolation",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Parent Boundary",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Relation Boundary",
+        "group": "Relation Boundary",
+        "field": "Parent Boundary",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Workspace Identity Boundary",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Relation Boundary",
+        "group": "Relation Boundary",
+        "field": "Workspace Identity Boundary",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Payload Identity Boundary",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Relation Boundary",
+        "group": "Relation Boundary",
+        "field": "Payload Identity Boundary",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Transport Boundary",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Relation Boundary",
+        "group": "Relation Boundary",
+        "field": "Transport Boundary",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Outer Integrity Boundary",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Relation Boundary",
+        "group": "Relation Boundary",
+        "field": "Outer Integrity Boundary",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Does Not Prove",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Does Not Prove",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       },
       {
         "input": "Must Not Be Used As",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Must Not Be Used As",
+        "sourceSchemaId": "tiinex.workspace.representation.v1",
+        "requirement": "required"
       }
     ],
+    "supplementalRequiredFields": [],
     "requiredShape": []
   }
 }

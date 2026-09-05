@@ -199,6 +199,7 @@ function compactGroundAuthority(authority = {}) {
   const route = authority.route || {};
   const handoff = authority.handoff || {};
   const role = authority.role || {};
+  const holderBinding = authority.holderBinding || {};
   const operationBoundary = authority.operationBoundary || {};
   return Object.freeze({
     state: String(authority.state || ''),
@@ -217,6 +218,16 @@ function compactGroundAuthority(authority = {}) {
       state: String(role.state || ''),
       label: String(role.label || ''),
       kind: String(role.kind || '')
+    }),
+    holderBinding: Object.freeze({
+      state: String(holderBinding.state || ''),
+      holderId: String(holderBinding.holderId || ''),
+      roleLabel: String(holderBinding.roleLabel || ''),
+      recipientRoleLabel: String(holderBinding.recipientRoleLabel || ''),
+      recipientCompatibility: String(holderBinding.recipientCompatibility || ''),
+      source: String(holderBinding.source || ''),
+      explicit: Boolean(holderBinding.explicit),
+      inferredFromTransport: Boolean(holderBinding.inferredFromTransport)
     }),
     operationBoundary: Object.freeze({
       sourceMutation: Boolean(operationBoundary.sourceMutation),

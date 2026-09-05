@@ -59,6 +59,7 @@ export function groundPortableColdConsumer(input = {}, options = {}) {
 
   const bundle = input.bundle || input.package || input;
   const role = groundRecipientRole(input, handoff, bundle, orientation, selectedRoute, findings, materialContext);
+  const holderBinding = groundHolderBinding(input, handoff, findings);
   const participation = groundParticipation(input, handoff, bundle, orientation, selectedRoute, findings, materialContext);
   const interaction = groundInteraction(input, handoff);
 
@@ -67,7 +68,7 @@ export function groundPortableColdConsumer(input = {}, options = {}) {
   }
 
   const blocked = findings.some((finding) => finding.severity === 'error');
-  const degraded = degradedCapture.active || role.state === 'degraded' || interaction.modeState === 'unresolved' || participation.participantState === 'unresolved';
+  const degraded = degradedCapture.active || role.state === 'degraded' || holderBinding.state === 'unresolved' || interaction.modeState === 'unresolved' || participation.participantState === 'unresolved';
   return deepFreeze({
     schema: PORTABLE_COLD_CONSUMER_GROUNDING_SCHEMA_ID,
     version: 1,
@@ -77,6 +78,7 @@ export function groundPortableColdConsumer(input = {}, options = {}) {
     selectedRoute,
     handoff,
     role,
+    holderBinding,
     participation,
     interaction,
     capabilities: Object.freeze({
@@ -178,6 +180,72 @@ function groundRecipientRole(input, handoff, bundle, orientation, selectedRoute,
     authorityBoundaryLoaded: selected ? selected.authorityBoundary : null,
     interpretationLimitsLoaded: selected ? selected.interpretationLimits : null,
     boundary: 'A Handoff `To Kind: role` endpoint remains bounded even when current Role material is missing. Matching Role material qualifies the loaded boundary but does not prove a human holder, consent, or authority beyond the Role artifact itself.'
+  });
+}
+
+
+function groundHolderBinding(input, handoff, findings) {
+  const raw = input.holderBinding || input.sessionHolderBinding || input.sessionRoleBinding || {};
+  const explicit = typeof raw === 'string' ? { roleLabel: raw } : (raw && typeof raw === 'object' ? raw : {});
+  const roleLabel = String(explicit.roleLabel || explicit.role || input.holderRole || input.sessionRole || '').trim();
+  const holderId = String(explicit.holderId || explicit.sessionId || explicit.id || input.holderId || '').trim();
+  const recipientRoleLabel = String(handoff.to || '').trim();
+  const recipientRoleKind = normalizeToken(handoff.toKind || (recipientRoleLabel ? 'role' : ''));
+  const roleRecipient = recipientRoleKind === 'role';
+  const explicitlySupplied = Boolean(roleLabel || holderId);
+
+  if (!roleRecipient) return deepFreeze({
+    state: 'not-applicable',
+    holderId,
+    roleLabel,
+    recipientRoleLabel,
+    recipientCompatibility: 'not-applicable',
+    source: explicitlySupplied ? 'explicit-input' : 'none',
+    explicit: explicitlySupplied,
+    inferredFromTransport: false,
+    boundary: 'The selected Handoff recipient is not a Role endpoint, so no consuming-session Role holder binding is required or inferred.'
+  });
+
+  if (!roleLabel) {
+    if (holderId) findings.push(portableFinding('warning', 'portable.cold-start.holder-binding.role-missing', 'A consuming-session holder identifier was supplied without an explicit Role capacity; the holder binding remains unresolved.', { holderId, recipientRole: recipientRoleLabel }));
+    return deepFreeze({
+      state: 'unresolved',
+      holderId,
+      roleLabel: '',
+      recipientRoleLabel,
+      recipientCompatibility: 'unresolved',
+      source: explicitlySupplied ? 'explicit-input' : 'none',
+      explicit: explicitlySupplied,
+      inferredFromTransport: false,
+      boundary: 'Recipient Role and consuming-session holder are separate. No holder Role is inferred from route selection, transport identity, provider identity, assistant/user position, or participant declarations.'
+    });
+  }
+
+  if (recipientRoleLabel && normalizeComparable(roleLabel) !== normalizeComparable(recipientRoleLabel)) {
+    findings.push(portableFinding('error', 'portable.cold-start.holder-binding.role-mismatch', 'Explicit consuming-session holder Role does not match the selected Handoff recipient Role.', { holderRole: roleLabel, recipientRole: recipientRoleLabel }));
+    return deepFreeze({
+      state: 'blocked',
+      holderId,
+      roleLabel,
+      recipientRoleLabel,
+      recipientCompatibility: 'mismatch',
+      source: 'explicit-input',
+      explicit: true,
+      inferredFromTransport: false,
+      boundary: 'An explicit holder Role mismatch is contradictory and blocks act-ready grounding. Tooling does not relabel the session to make the route fit.'
+    });
+  }
+
+  return deepFreeze({
+    state: 'qualified',
+    holderId,
+    roleLabel,
+    recipientRoleLabel,
+    recipientCompatibility: 'matched',
+    source: 'explicit-input',
+    explicit: true,
+    inferredFromTransport: false,
+    boundary: 'Explicit consuming-session Role-capacity binding only. This binds the current Tooling invocation/session to the selected recipient Role capacity; it does not prove a human identity, consent, or authority beyond the qualified Handoff/Role/Task boundaries.'
   });
 }
 

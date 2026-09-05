@@ -81,20 +81,103 @@ function renderParent(parent) {
 }
 
 function contractDrivenBodyMarkdown(contract = {}, { title = '', values = {} } = {}) {
-  const sections = Array.isArray(contract?.creation?.requiredSections) ? contract.creation.requiredSections : [];
-  const bindings = Array.isArray(contract?.creation?.inputBindings) ? contract.creation.inputBindings : [];
+  const creation = contract?.creation || {};
+  const bindings = Array.isArray(creation.inputBindings) ? creation.inputBindings : [];
+  const supplementalRequiredFields = Array.isArray(creation.supplementalRequiredFields) ? creation.supplementalRequiredFields : [];
+  const sections = Array.isArray(creation.representationSections) && creation.representationSections.length
+    ? creation.representationSections
+    : (Array.isArray(creation.requiredSections) ? creation.requiredSections : []);
   if (!sections.length) throw new Error('creation-representation-required-sections-unavailable');
   const lines = [`# ${title}`];
+  if ((creation.requiredShape || []).some((item) => String(item?.primitive?.kind || '') === 'body-prose-block')) {
+    lines.push('', 'Provide the required unheaded body prose here.');
+  }
   for (const section of sections) {
-    const binding = bindings.find((candidate) => candidate?.kind === 'section-body' && candidate?.section === section);
-    if (!binding) throw new Error(`creation-input-binding-unavailable:${section}`);
-    const value = creationValue(values, binding.input);
-    if (value === undefined || String(value).trim() === '') throw new Error(`creation-required-input-missing:${binding.input}`);
-    lines.push('', `## ${section}`, '', String(value));
+    const sectionBindings = bindings.filter((candidate) => candidate?.section === section && candidate?.kind !== 'root-current-summary-body-title');
+    if (!sectionBindings.length) throw new Error(`creation-input-binding-unavailable:${section}`);
+    lines.push('', `## ${section}`, '');
+    if (sectionBindings.length === 1 && sectionBindings[0]?.kind === 'section-body') {
+      const binding = sectionBindings[0];
+      const value = creationValue(values, binding.input);
+      if (value === undefined || String(value).trim() === '') throw new Error(`creation-required-input-missing:${binding.input}`);
+      lines.push(String(value));
+      continue;
+    }
+    const fieldBindings = sectionBindings.filter((binding) => binding?.kind === 'ordinary-field');
+    const groupBindings = sectionBindings.filter((binding) => binding?.kind === 'ordinary-group');
+    const declarationBindings = sectionBindings.filter((binding) => binding?.kind === 'named-declaration-section');
+    if (fieldBindings.length && groupBindings.length) throw new Error(`creation-section-binding-ambiguous:${section}`);
+    if ((fieldBindings.length || groupBindings.length) && declarationBindings.length) throw new Error(`creation-section-binding-ambiguous:${section}`);
+    if (declarationBindings.length > 1 || groupBindings.length > 1) throw new Error(`creation-section-binding-ambiguous:${section}`);
+    if (fieldBindings.length) {
+      for (const binding of fieldBindings) {
+        const value = creationValue(values, binding.input);
+        if (value === undefined) throw new Error(`creation-required-input-missing:${binding.input}`);
+        lines.push(`- ${binding.field || binding.input}: ${exactOneLineValue(value, binding.input)}`);
+      }
+      for (const supplemental of supplementalRequiredFields.filter((item) => String(item?.section || '') === String(section || ''))) {
+        lines.push(`- ${supplemental.field}: ${exactOneLineValue(supplemental.value, supplemental.field)}`);
+      }
+      continue;
+    }
+    if (groupBindings.length === 1) {
+      lines.push(...renderOrdinaryGroupBinding(groupBindings[0], creationValue(values, groupBindings[0].input)));
+      continue;
+    }
+    if (declarationBindings.length === 1) {
+      lines.push(...renderNamedDeclarationBinding(declarationBindings[0], creationValue(values, declarationBindings[0].input)));
+      continue;
+    }
+    throw new Error(`creation-input-binding-unavailable:${section}`);
   }
   return lines.join('\n');
 }
 
+function renderOrdinaryGroupBinding(binding = {}, value) {
+  const object = structuredObject(value, binding.input);
+  const required = [...(binding.requiredFields || [])];
+  const optional = [...(binding.optionalFields || [])];
+  const allowed = new Set([...required, ...optional]);
+  for (const field of required) if (!Object.prototype.hasOwnProperty.call(object, field)) throw new Error(`creation-required-structured-field-missing:${binding.input}:${field}`);
+  for (const field of Object.keys(object)) if (!allowed.has(field)) throw new Error(`creation-structured-field-unqualified:${binding.input}:${field}`);
+  const lines = [];
+  for (const field of [...required, ...optional]) {
+    if (!Object.prototype.hasOwnProperty.call(object, field)) continue;
+    lines.push(`- ${field}: ${exactOneLineValue(object[field], `${binding.input}.${field}`)}`);
+  }
+  return lines;
+}
+
+function renderNamedDeclarationBinding(binding = {}, value) {
+  if (typeof value === 'string' && value === 'none' && binding.allowLiteralNone === true) return ['- none'];
+  if (!Array.isArray(value) || value.length === 0) throw new Error(`creation-declaration-list-required:${binding.input}`);
+  const required = [...(binding.requiredFields || [])];
+  const optional = [...(binding.optionalFields || [])];
+  const allowed = new Set([...required, ...optional]);
+  const seen = new Set();
+  const lines = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error(`creation-declaration-entry-invalid:${binding.input}`);
+    const name = exactOneLineValue(entry.name, `${binding.input}.name`);
+    if (name === 'none') throw new Error(`creation-declaration-name-reserved:${binding.input}`);
+    if (seen.has(name)) throw new Error(`creation-declaration-name-duplicate:${binding.input}:${name}`);
+    seen.add(name);
+    const fields = structuredObject(entry.fields, `${binding.input}.${name}.fields`);
+    for (const field of required) if (!Object.prototype.hasOwnProperty.call(fields, field)) throw new Error(`creation-required-structured-field-missing:${binding.input}:${field}`);
+    for (const field of Object.keys(fields)) if (!allowed.has(field)) throw new Error(`creation-structured-field-unqualified:${binding.input}:${field}`);
+    lines.push(`- ${name}`);
+    for (const field of [...required, ...optional]) {
+      if (!Object.prototype.hasOwnProperty.call(fields, field)) continue;
+      lines.push(`  - ${field}: ${exactOneLineValue(fields[field], `${binding.input}.${name}.${field}`)}`);
+    }
+  }
+  return lines;
+}
+
+function structuredObject(value, label = 'value') {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`creation-structured-object-required:${label}`);
+  return value;
+}
 function creationValues(input = {}) {
   const explicit = input.values && typeof input.values === 'object' && !Array.isArray(input.values) ? input.values : {};
   const alternate = input.inputs && typeof input.inputs === 'object' && !Array.isArray(input.inputs) ? input.inputs : {};

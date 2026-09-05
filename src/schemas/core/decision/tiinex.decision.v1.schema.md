@@ -198,7 +198,7 @@ Rules
 Required Shape
 
 - first heading uses `# {{summary}}`
-- summary sentence placeholder below the title
+- non-empty unheaded prose block after the first body heading and before the first second-level section
 - `## Decision` section
 - `## Basis` section
 - `## Consequences` section
@@ -206,7 +206,8 @@ Required Shape
 Rules
 
 - Generated decision artifacts should begin with the decision title as the first body heading.
-- The generated body should include one orienting sentence before the first named section.
+- The generated body must include one non-empty unheaded prose block after the first body heading and before the first second-level section.
+- That prose block may contain one or more human-readable sentences and may be authored content or placeholder guidance; exact lexical wording is not contract authority.
 - `Decision` should state the operative outcome and decision state.
 - `Basis` should explain why that outcome was chosen.
 - `Consequences` should state what now follows from the decision.
@@ -223,4 +224,4 @@ Rules
 
 - sha256-base64url-c14n-v2
   - Towards: self
-  - Value: BlXrn7NlflHc7UzQ4j98mD4Yj9qOyoNwxaRw-PQO-ps
+  - Value: HbQgKciHQObim8yJ3Xi5qWOMprTq3_Hq9BDKYYoVvm0

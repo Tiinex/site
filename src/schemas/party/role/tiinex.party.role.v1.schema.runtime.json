@@ -2,10 +2,10 @@
   "schema": "tiinex.site.schema-runtime-projection.v1",
   "generator": "schema-runtime-projection-v1",
   "schemaId": "tiinex.party.role.v1",
-  "sourceChecksum": "7556148015a657eaf3e35ce680126d3f397e4e5bc36d071edee22d88a7a391fd",
-  "sourceBlobSha": "912d64079439850eff2e18702fae3e36b19f52d2",
-  "sourceBytes": 9678,
-  "bindingChecksum": "7556148015a657eaf3e35ce680126d3f397e4e5bc36d071edee22d88a7a391fd",
+  "sourceChecksum": "16b6bd63b9ba6044906aa9daa9bd289881171ddc875b3b9e7c2158470ad27828",
+  "sourceBlobSha": "16687051579d5c850591d4bf4e2dbd9705f83983",
+  "sourceBytes": 10364,
+  "bindingChecksum": "16b6bd63b9ba6044906aa9daa9bd289881171ddc875b3b9e7c2158470ad27828",
   "validationContract": {
     "schema": "tiinex.site.compact-portable-validation-contract.v1",
     "schemaId": "tiinex.party.role.v1",
@@ -22,6 +22,118 @@
         "tiinex.party.v1",
         "tiinex.party.role.v1"
       ],
+      "findings": []
+    },
+    "inheritanceResolution": {
+      "schema": "tiinex.portable.schema-inheritance-resolution.v1",
+      "state": "qualified",
+      "declarations": [
+        {
+          "name": "party-role-party-body-structure",
+          "sourceSchemaId": "tiinex.party.role.v1",
+          "sourceGroup": "Parent Party Specialization",
+          "declarationLine": 58,
+          "operation": "override",
+          "parentSchemaId": "tiinex.party.v1",
+          "parentNode": "Schema Validation Contract / Party Body / Required Shape",
+          "childNode": "Schema Validation Contract / Party Role Body / Required Shape",
+          "reason": "Party Role specializes Party by replacing only the generic Party artifact-body structure while retaining compatible non-structural Party semantics and provenance.",
+          "effectiveResult": "Party Role body structure is authoritative for Party Role artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Party Role sections remain active."
+        }
+      ],
+      "applications": [
+        {
+          "handle": "party-role-party-body-structure",
+          "declaration": {
+            "sourceSchemaId": "tiinex.party.role.v1",
+            "sourceGroup": "Parent Party Specialization",
+            "name": "party-role-party-body-structure",
+            "line": 58,
+            "reason": "Party Role specializes Party by replacing only the generic Party artifact-body structure while retaining compatible non-structural Party semantics and provenance.",
+            "effectiveResult": "Party Role body structure is authoritative for Party Role artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Party Role sections remain active."
+          },
+          "operation": "override",
+          "parentSchemaId": "tiinex.party.v1",
+          "childSchemaId": "tiinex.party.role.v1",
+          "parentNode": "Schema Validation Contract / Party Body / Required Shape",
+          "childNode": "Schema Validation Contract / Party Role Body / Required Shape",
+          "state": "applied",
+          "deactivatedContributions": [
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Party Body",
+              "category": "Required Shape",
+              "state": "inactive",
+              "items": [
+                "first body heading after the continuity envelope",
+                "`## Party Identity` section",
+                "`## Party Boundary` section",
+                "`## Role Or Capacity` section",
+                "`## Reference And Privacy Boundary` section",
+                "`## Use With Other Schemas` section",
+                "`## Interpretation Limits` section"
+              ],
+              "declarationName": "party-role-party-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Party Identity",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "party-role-party-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Party Boundary",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "party-role-party-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Role Or Capacity",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "party-role-party-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Reference And Privacy Boundary",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "party-role-party-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.party.v1",
+              "group": "Use With Other Schemas",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "party-role-party-body-structure"
+            }
+          ],
+          "replacementContribution": {
+            "sourceSchemaId": "tiinex.party.role.v1",
+            "group": "Party Role Body",
+            "category": "Required Shape",
+            "state": "active",
+            "items": [
+              "first body heading after the continuity envelope",
+              "`## Role Identity` section",
+              "`## Role Boundary` section",
+              "`## Authority And Responsibility Boundary` section",
+              "`## Holder Relationship` section",
+              "`## Interpretation Limits` section"
+            ],
+            "declarationName": "party-role-party-body-structure"
+          }
+        }
+      ],
+      "corroborations": [],
       "findings": []
     },
     "validation": {
@@ -45,48 +157,13 @@
       "requiredSections": [
         "Continuity Context",
         "Continuity Integrity",
-        "Party Identity",
-        "Party Boundary",
-        "Role Or Capacity",
-        "Reference And Privacy Boundary",
-        "Use With Other Schemas",
-        "Interpretation Limits",
         "Role Identity",
         "Role Boundary",
         "Authority And Responsibility Boundary",
-        "Holder Relationship"
+        "Holder Relationship",
+        "Interpretation Limits"
       ],
       "requiredHeadings": [
-        {
-          "level": 2,
-          "title": "Party Identity",
-          "source": "`## Party Identity` section"
-        },
-        {
-          "level": 2,
-          "title": "Party Boundary",
-          "source": "`## Party Boundary` section"
-        },
-        {
-          "level": 2,
-          "title": "Role Or Capacity",
-          "source": "`## Role Or Capacity` section"
-        },
-        {
-          "level": 2,
-          "title": "Reference And Privacy Boundary",
-          "source": "`## Reference And Privacy Boundary` section"
-        },
-        {
-          "level": 2,
-          "title": "Use With Other Schemas",
-          "source": "`## Use With Other Schemas` section"
-        },
-        {
-          "level": 2,
-          "title": "Interpretation Limits",
-          "source": "`## Interpretation Limits` section"
-        },
         {
           "level": 2,
           "title": "Role Identity",
@@ -106,6 +183,11 @@
           "level": 2,
           "title": "Holder Relationship",
           "source": "`## Holder Relationship` section"
+        },
+        {
+          "level": 2,
+          "title": "Interpretation Limits",
+          "source": "`## Interpretation Limits` section"
         }
       ],
       "requiredEntries": [
@@ -120,236 +202,6 @@
         }
       ],
       "ordinaryGroups": [
-        {
-          "group": "Party Identity",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Party Identity",
-            "title": "Party Identity",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Party Label",
-            "Party Kind"
-          ],
-          "optionalFields": [
-            "Canonical Identifier",
-            "Alias",
-            "Public Name",
-            "Private Descriptor"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.party.v1",
-              "group": "Party Identity",
-              "requiredFields": [
-                "Party Label",
-                "Party Kind"
-              ],
-              "optionalFields": [
-                "Canonical Identifier",
-                "Alias",
-                "Public Name",
-                "Private Descriptor"
-              ],
-              "target": {
-                "heading": "## Party Identity",
-                "title": "Party Identity",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Party Boundary",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Party Boundary",
-            "title": "Party Boundary",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "In Scope",
-            "Out Of Scope"
-          ],
-          "optionalFields": [
-            "Organization Boundary",
-            "Group Boundary",
-            "Role Boundary",
-            "Temporal Boundary"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.party.v1",
-              "group": "Party Boundary",
-              "requiredFields": [
-                "In Scope",
-                "Out Of Scope"
-              ],
-              "optionalFields": [
-                "Organization Boundary",
-                "Group Boundary",
-                "Role Boundary",
-                "Temporal Boundary"
-              ],
-              "target": {
-                "heading": "## Party Boundary",
-                "title": "Party Boundary",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Role Or Capacity",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Role Or Capacity",
-            "title": "Role Or Capacity",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Capacity",
-            "Capacity Context"
-          ],
-          "optionalFields": [
-            "Role",
-            "Authority Claim",
-            "Responsibility",
-            "Stakeholder Context"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.party.v1",
-              "group": "Role Or Capacity",
-              "requiredFields": [
-                "Capacity",
-                "Capacity Context"
-              ],
-              "optionalFields": [
-                "Role",
-                "Authority Claim",
-                "Responsibility",
-                "Stakeholder Context"
-              ],
-              "target": {
-                "heading": "## Role Or Capacity",
-                "title": "Role Or Capacity",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Reference And Privacy Boundary",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Reference And Privacy Boundary",
-            "title": "Reference And Privacy Boundary",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Reference Safety",
-            "Disclosure Boundary"
-          ],
-          "optionalFields": [
-            "Contact Boundary",
-            "Personal Data Boundary",
-            "Sensitive Context"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.party.v1",
-              "group": "Reference And Privacy Boundary",
-              "requiredFields": [
-                "Reference Safety",
-                "Disclosure Boundary"
-              ],
-              "optionalFields": [
-                "Contact Boundary",
-                "Personal Data Boundary",
-                "Sensitive Context"
-              ],
-              "target": {
-                "heading": "## Reference And Privacy Boundary",
-                "title": "Reference And Privacy Boundary",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Use With Other Schemas",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Use With Other Schemas",
-            "title": "Use With Other Schemas",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Usable As",
-            "Must Reference Separately"
-          ],
-          "optionalFields": [
-            "Project Use",
-            "Event Use",
-            "Invitation Use",
-            "Availability Use",
-            "Attestation Use"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.party.v1",
-              "group": "Use With Other Schemas",
-              "requiredFields": [
-                "Usable As",
-                "Must Reference Separately"
-              ],
-              "optionalFields": [
-                "Project Use",
-                "Event Use",
-                "Invitation Use",
-                "Availability Use",
-                "Attestation Use"
-              ],
-              "target": {
-                "heading": "## Use With Other Schemas",
-                "title": "Use With Other Schemas",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
         {
           "group": "Interpretation Limits",
           "qualification": "valid",
@@ -658,9 +510,7 @@
             "Parent exists"
           ],
           "requiredSections": [],
-          "requiredFields": [
-            "browse + git"
-          ],
+          "requiredFields": [],
           "requiredEntries": [],
           "allowedLabels": [
             "relative",
@@ -730,7 +580,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -850,7 +700,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -859,7 +709,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -909,7 +759,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1029,7 +879,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1038,7 +888,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1088,7 +938,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1208,7 +1058,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1217,7 +1067,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1267,7 +1117,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1387,7 +1237,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1396,7 +1246,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1425,6 +1275,41 @@
       ]
     },
     "declarations": [
+      {
+        "group": "Inheritance Overrides",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Merge Operation",
+          "Parent Schema",
+          "Parent Node",
+          "Child Node"
+        ],
+        "optionalFields": [
+          "Reason",
+          "Effective Result"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Inheritance Overrides` is the canonical schema-local machine category for explicit inherited contract replacement.",
+          "The declaration name identifies one override declaration within the declaring child schema.",
+          "`Merge Operation` must be exactly `override`; unsupported operations are unresolved and must not be guessed.",
+          "`Parent Schema` must resolve to an actual ancestor of the declaring child schema in the active lineage.",
+          "`Parent Node` and `Child Node` each use the exact path shape `Schema Validation Contract / <third-level group> / <category label>` and must resolve exactly once.",
+          "The declaring child schema is the child schema identity; no duplicate `Child Schema` field is part of the inline declaration.",
+          "A qualified override deactivates only the exact addressed parent contribution and activates the exact addressed child replacement contribution while retaining declaration and contributor provenance.",
+          "Competing declarations for the same exact parent contribution, malformed declarations, unresolved lineage, missing or ambiguous nodes, or non-ancestor parents are unresolved/error.",
+          "Source order, filename order, directory adjacency, prose wording, and schema identity must not choose a winner.",
+          "When both addressed nodes are `Required Shape`, parent ordinary instance-field groups whose Root-authorized exact second-level target heading is required by the parent shape but absent from the child replacement shape become inactive; groups targeting surviving headings remain additive.",
+          "If Required Shape heading identity or ordinary target ownership cannot be resolved exactly, the override is unresolved rather than guessed.",
+          "Standalone `tiinex.schema.inheritance.v1` artifacts may document, propose, test, audit, or migrate an inheritance relationship, but they do not silently add or change schema-local compilation authority."
+        ]
+      },
       {
         "group": "Field Value Constraints",
         "entryShape": [
@@ -1734,7 +1619,32 @@
         ]
       }
     ],
-    "constraints": [],
+    "constraints": [
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.root.v1",
+        "sourceGroup": "Inheritance Overrides",
+        "field": "Merge Operation",
+        "allowedValues": [
+          "override"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 269,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.root.v1"
+        ],
+        "targetGroup": "Inheritance Overrides",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      }
+    ],
     "machineShapes": {
       "schema": "tiinex.portable.machine-shape-authority.v1",
       "definitions": [
@@ -1744,7 +1654,7 @@
           "sourceSchemaId": "tiinex.root.v1",
           "sourceGroup": "Machine Shape Authority",
           "declarationSource": {
-            "line": 357
+            "line": 408
           },
           "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
           "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1878,7 +1788,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             },
             "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
             "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1998,7 +1908,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             }
           },
           "visibleDefinitions": [
@@ -2007,7 +1917,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "grammarProfile": "tiinex.lexical.shape.v1",
               "definitionQualification": "valid",
@@ -2043,50 +1953,87 @@
     "inputBindings": [
       {
         "input": "Role Label",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Role Identity",
+        "group": "Role Identity",
+        "field": "Role Label",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Role Kind",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Role Identity",
+        "group": "Role Identity",
+        "field": "Role Kind",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "In Scope",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Role Boundary",
+        "group": "Role Boundary",
+        "field": "In Scope",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Out Of Scope",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Role Boundary",
+        "group": "Role Boundary",
+        "field": "Out Of Scope",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "May Do",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Authority And Responsibility Boundary",
+        "group": "Authority And Responsibility Boundary",
+        "field": "May Do",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Does Not Authorize",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Authority And Responsibility Boundary",
+        "group": "Authority And Responsibility Boundary",
+        "field": "Does Not Authorize",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Holder State",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Holder Relationship",
+        "group": "Holder Relationship",
+        "field": "Holder State",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Does Not Prove",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Does Not Prove",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       },
       {
         "input": "Must Not Be Treated As",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Must Not Be Treated As",
+        "sourceSchemaId": "tiinex.party.role.v1",
+        "requirement": "required"
       }
     ],
+    "supplementalRequiredFields": [],
     "requiredShape": []
   }
 }

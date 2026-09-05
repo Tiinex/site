@@ -28,18 +28,21 @@ export function buildPortableLineageIntegrityRepairProjection(input = {}, option
     step: stepsByPath.get(normalizePath(artifact.path)) || null,
     receipt: receiptByPath.get(normalizePath(artifact.path)) || null,
     approval: approvals.get(normalizePath(artifact.path)) || null,
+    record: recordsByPath.get(normalizePath(artifact.path || '')) || null,
     parentRecord: recordsByPath.get(normalizePath(artifact.exactParent?.path || '')) || null,
     intake,
     host
   }));
 
   const status = projectionStatus(opportunities);
+  const repairGroups = buildRepairGroups(opportunities, inspection.findings || []);
   return Object.freeze({
     schema: PORTABLE_LINEAGE_INTEGRITY_REPAIR_PROJECTION_SCHEMA_ID,
     status,
     intake,
     opportunities: Object.freeze(opportunities),
     summary: summarizeOpportunities(opportunities),
+    repairGroups,
     preparedRepairPlan,
     application: applicationSummary(application),
     host,
@@ -114,7 +117,7 @@ function prepareProjectionRepairPlan(inspection = {}, records = [], providerEvid
   });
 }
 
-function projectOpportunity({ artifact = {}, step = null, receipt = null, approval = null, parentRecord = null, intake = {}, host = {} }) {
+function projectOpportunity({ artifact = {}, step = null, receipt = null, approval = null, record = null, parentRecord = null, intake = {}, host = {} }) {
   const permalink = step?.action === 'update-parent-origin-permalink' && Boolean(step?.projectionEvidence);
   const localResultReady = receipt && ['changed', 'no-op'].includes(String(receipt.status || ''));
   const state = localResultReady ? 'local-result-ready' : opportunityState(artifact, step);
@@ -133,7 +136,7 @@ function projectOpportunity({ artifact = {}, step = null, receipt = null, approv
     findingClass,
     severity,
     trustImpact: trustImpactFor(artifact, state),
-    artifact: Object.freeze({ id: String(artifact.id || ''), path: normalizePath(artifact.path || ''), title: String(artifact.title || artifact.path || ''), schemaId: String(artifact.schemaId || '') }),
+    artifact: Object.freeze({ id: String(artifact.id || ''), path: normalizePath(artifact.path || ''), title: String(artifact.title || artifact.path || ''), schemaId: String(artifact.schemaId || ''), repository: String(record?.source?.repository || record?.source?.repo || ''), sourceMode: String(record?.sourceMode || record?.source?.adapterId || '') }),
     parentTarget: Object.freeze({
       id: String(artifact.exactParent?.id || ''),
       path: normalizePath(artifact.exactParent?.path || ''),
@@ -170,6 +173,44 @@ function projectOpportunity({ artifact = {}, step = null, receipt = null, approv
       receipt: receipt ? receiptEvidence(receipt) : null
     })
   });
+}
+
+
+function buildRepairGroups(opportunities = [], findings = []) {
+  const findingByPath = new Map();
+  for (const finding of findings || []) {
+    const path = normalizePath(finding?.artifactBoundary?.path || finding?.evidencePath || finding?.ref || finding?.path || '');
+    if (!path) continue;
+    const list = findingByPath.get(path) || [];
+    list.push(finding);
+    findingByPath.set(path, list);
+  }
+  const groups = new Map();
+  for (const opportunity of opportunities || []) {
+    const repository = String(opportunity?.artifact?.repository || '').trim() || 'local-workspace';
+    const action = String(opportunity?.machineEvidence?.planAction || 'no-change');
+    const key = `${repository}::${action}`;
+    if (!groups.has(key)) groups.set(key, { repository, action, artifacts: [] });
+    const path = normalizePath(opportunity?.artifact?.path || '');
+    const artifactFindings = findingByPath.get(path) || [];
+    groups.get(key).artifacts.push(Object.freeze({
+      path,
+      id: String(opportunity?.artifact?.id || ''),
+      state: String(opportunity?.state || ''),
+      severity: String(opportunity?.severity || ''),
+      findingCodes: Object.freeze([...new Set(artifactFindings.map((finding) => String(finding.code || '')).filter(Boolean))].sort()),
+      cascadeImpact: opportunity?.cascadeImpact || Object.freeze({ count: 0, descendants: Object.freeze([]) })
+    }));
+  }
+  return Object.freeze([...groups.values()].sort((a, b) => `${a.repository}:${a.action}`.localeCompare(`${b.repository}:${b.action}`)).map((group, index) => Object.freeze({
+    id: `repair-group-${index + 1}`,
+    repository: group.repository,
+    action: group.action,
+    artifactCount: group.artifacts.length,
+    cascadeDescendantCount: group.artifacts.reduce((sum, artifact) => sum + Number(artifact.cascadeImpact?.count || 0), 0),
+    artifacts: Object.freeze(group.artifacts),
+    boundary: 'Batch/repository grouping is a projection only. Per-artifact findings, approvals, cascade impact, and receipts remain authoritative for apply; grouping never authorizes mutation.'
+  })));
 }
 
 function classifyProjectionIntake(material = {}, input = {}) {

@@ -92,6 +92,7 @@ export function resolveRequiredContextRecords(requiredContext = [], records = []
   const byPath = new Map(records.map((record) => [String(record.path || ''), record]));
   const ids = new Set();
   const missing = [];
+  let matched = 0;
   for (const entry of requiredContext || []) {
     if (entry.state !== 'qualified') continue;
     const workspaceId = String(entry.workspaceId || '').trim();
@@ -99,10 +100,21 @@ export function resolveRequiredContextRecords(requiredContext = [], records = []
     if (!workspaceId || !innerPath) continue;
     const expectedPath = `${workspaceId}/${innerPath}`;
     const record = byPath.get(expectedPath);
-    if (record) ids.add(record.id);
-    else missing.push(`${entry.requirementId || entry.name || expectedPath}: exact qualified context was not found at ${expectedPath} inside the complete carried Workspace snapshots.`);
+    if (record) { ids.add(record.id); matched += 1; continue; }
+    if (isExactHydratedWorkspaceContext(entry)) { matched += 1; continue; }
+    missing.push(`${entry.requirementId || entry.name || expectedPath}: exact qualified context was not found at ${expectedPath} inside the complete carried Workspace snapshots.`);
   }
-  return Object.freeze({ ids, missing: Object.freeze(missing) });
+  return Object.freeze({ ids, matched, missing: Object.freeze(missing) });
+}
+
+function isExactHydratedWorkspaceContext(entry = {}) {
+  if (String(entry.providerMode || '') !== 'archive') return false;
+  if (!['hydrated-text', 'qualified-locator-only'].includes(String(entry.contentState || ''))) return false;
+  const expectedBytes = Number(entry.bytes || 0);
+  const actualBytes = Number(entry.actualBytes || 0);
+  const expectedSha = String(entry.sha256 || '').trim().toLowerCase();
+  const actualSha = String(entry.actualSha256 || '').trim().toLowerCase();
+  return expectedBytes > 0 && expectedBytes === actualBytes && /^[0-9a-f]{64}$/.test(expectedSha) && expectedSha === actualSha;
 }
 
 export function resolveSelectedRouteRecords(authority = {}, records = []) {

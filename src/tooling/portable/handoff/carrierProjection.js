@@ -74,7 +74,7 @@ export function projectHandoffHumanOutput(input = {}) {
   const selected = selectRoute(projection, input.route || input.routePath || input.routeId || '');
   if (selected.state !== 'qualified') findings.push(finding('error', `portable.handoff-human-output.route.${selected.state}`, selected.state === 'selection-required' ? 'Shared carrier output requires explicit selection of one qualified Handoff route.' : 'Requested Handoff route is not qualified by the carrier projection.', { selector: String(input.route || input.routePath || input.routeId || '') }));
   const instance = normalizeInstance(input.collisionInstance || input.instance || 1);
-  const filename = selected.route ? carrierFilenameForInstance(selected.route.projectedFilename, instance) : '';
+  const filename = selected.route ? carrierFilenameForInstance(projectedOuterFilename(projection, selected.route), instance) : '';
   const routeWorkspace = selected.route ? findProjectedHandoffCarrierWorkspace(projection, selected.route.workspaceId) : null;
   const transportText = selected.route ? transportTextForRoute(routeWorkspace || projection.workspace || {}, selected.route) : '';
   const status = findings.some((item) => item.severity === 'error') ? (selected.state === 'selection-required' ? 'selection-required' : 'blocked') : 'ready';
@@ -108,6 +108,23 @@ export function carrierFilenameForInstance(filename = '', instance = 1) {
   return value.toLowerCase().endsWith(suffix) ? `${value.slice(0, -suffix.length)}--${number}${suffix}` : `${value}--${number}`;
 }
 
+
+
+function projectedOuterFilename(projection = {}, selectedRoute = {}) {
+  if (String(projection.mode || '') !== 'shared') return String(selectedRoute.projectedFilename || '');
+  const routes = (projection.routes || []).filter((route) => route.state === 'qualified');
+  const recipients = [...new Set(routes.map((route) => String(route.parties?.to || '').trim()).filter(Boolean))];
+  const senders = [...new Set(routes.map((route) => String(route.parties?.from || '').trim()).filter(Boolean))];
+  const workspace = findProjectedHandoffCarrierWorkspace(projection, selectedRoute.workspaceId) || projection.workspace || {};
+  const dimension = String(projection.lineage?.dimension || selectedRoute.dimension || '').trim();
+  if (senders.length !== 1 || !recipients.length || !workspace.slug || !dimension) return String(selectedRoute.projectedFilename || '');
+  const recipientSegment = recipients.map(slug).filter(Boolean).join('-and-');
+  return `${slug(workspace.slug)}-${slug(dimension)}-${slug(senders[0])}-to-${recipientSegment}.handoff-package.zip`;
+}
+
+function slug(value = '') {
+  return String(value || '').trim().toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 120);
+}
 
 function normalizeRouteSpecs(value, descriptor, defaultWorkspace = null) {
   const supplied = Array.isArray(value) ? value : value ? [value] : [];

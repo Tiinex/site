@@ -4,6 +4,8 @@ import { parseArtifactMarkdown } from '../../../../artifacts/artifact.parse.js';
 import { buildArtifactCreationContract } from '../../../../schemas/creation.contracts.js';
 import { renderArtifactCreationDraftMarkdown } from '../../../../schemas/creation.renderer.js';
 import { canonicalC14nV2SelfState } from '../../../../integrity/integrity.c14nV2.js';
+import { sha256Hex, utf8Bytes } from '../../../../export/package.bytes.js';
+import { resolveSchemaModule } from '../../../../schemas/resolver.js';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { runPortableOperation } from '../../operation.catalog.js';
 
@@ -25,7 +27,7 @@ export async function runCommonAuthorCli(parsed = {}, runtime = {}) {
 
   const parentRelativePath = resolveParentRelativePath(flags, state);
   const parentPath = parentRelativePath ? safeWorkspaceTarget(workspaceRoot, parentRelativePath) : '';
-  const parentRecord = parentPath ? await parentRecordFromArtifact(parentPath, parentRelativePath) : {};
+  const parentRecord = parentPath ? await parentRecordFromArtifact(parentPath, parentRelativePath, { workspaceRoot, childRelativePath: artifactRelativePath }) : {};
   const transitionType = String(flags.transition || defaultTransition(schemaId, Boolean(parentPath))).trim();
   const contract = buildArtifactCreationContract({ schemaId, transitionType });
   const title = String(flags.title || firstHeading(bodyMarkdown) || state?.roleLabel || schemaId).trim();
@@ -107,15 +109,19 @@ export async function runCommonAuthorCli(parsed = {}, runtime = {}) {
   }
 }
 
-async function parentRecordFromArtifact(parentPath, parentRelativePath) {
+async function parentRecordFromArtifact(parentPath, parentRelativePath, context = {}) {
   const markdown = await readFile(parentPath, 'utf8');
   const parsed = parseArtifactMarkdown(markdown);
   const current = parsed.envelope?.current || {};
   const schemaId = String(current.schema?.id || '').trim();
   const schemaTarget = String(current.schema?.target || '').trim();
   const self = canonicalC14nV2SelfState(markdown);
-  if (!schemaId || !schemaTarget) throw new Error('portable.cli.author.parent.schema-authority.required');
+  if (!schemaId) throw new Error('portable.cli.author.parent.schema-authority.required');
   if (self.state !== 'verified') throw new Error(`portable.cli.author.parent.integrity.${self.reason || self.state}`);
+  const schemaReferenceAuthority = schemaTarget
+    ? exactDeclaredSchemaReferenceAuthority(schemaId, schemaTarget)
+    : await recoverQualifiedLocalSchemaReferenceAuthority(schemaId, context);
+  if (!schemaReferenceAuthority) throw new Error('portable.cli.author.parent.schema-authority.required');
   return Object.freeze({
     id: parentRelativePath,
     path: parentRelativePath,
@@ -125,11 +131,57 @@ async function parentRecordFromArtifact(parentPath, parentRelativePath) {
     createdAt: String(current.createdAt || ''),
     markdown,
     recoveryMode: 'local-relative',
-    schemaReferenceAuthority: Object.freeze({
-      schemaId,
-      exactTargets: Object.freeze([schemaTarget]),
-      preferredTarget: schemaTarget,
-      resolutionState: 'qualified'
+    schemaReferenceAuthority
+  });
+}
+
+function exactDeclaredSchemaReferenceAuthority(schemaId, schemaTarget) {
+  return Object.freeze({
+    schemaId,
+    exactTargets: Object.freeze([schemaTarget]),
+    preferredTarget: schemaTarget,
+    resolutionState: 'qualified'
+  });
+}
+
+async function recoverQualifiedLocalSchemaReferenceAuthority(schemaId, context = {}) {
+  const workspaceRoot = path.resolve(String(context.workspaceRoot || '.'));
+  const childRelativePath = normalizeWorkspaceRelativePath(context.childRelativePath || '');
+  const resolution = resolveSchemaModule({ schemaId });
+  const module = resolution?.fallbackUsed ? null : resolution?.module || null;
+  const source = module?.schemaSource || null;
+  const qualification = typeof source?.qualify === 'function' ? source.qualify() : null;
+  const materialIdentity = qualification?.materialIdentity || {};
+  const bundledPath = normalizeWorkspaceRelativePath(source?.bundledPath || '');
+  const expectedSha256 = String(materialIdentity.sha256 || qualification?.checksum || '').trim().toLowerCase();
+  if (!module || String(module.id || '') !== schemaId) return null;
+  if (qualification?.state !== 'qualified' || materialIdentity?.state !== 'qualified' || String(materialIdentity.schemaId || '') !== schemaId) return null;
+  if (!bundledPath || !childRelativePath || !expectedSha256) return null;
+
+  let localMarkdown;
+  try { localMarkdown = await readFile(safeWorkspaceTarget(workspaceRoot, bundledPath), 'utf8'); }
+  catch { return null; }
+  if (sha256Hex(utf8Bytes(localMarkdown)).toLowerCase() !== expectedSha256) return null;
+
+  let localParsed;
+  try { localParsed = parseArtifactMarkdown(localMarkdown); }
+  catch { return null; }
+  if (String(localParsed.envelope?.current?.schema?.id || '').trim() !== schemaId) return null;
+
+  const childDir = path.posix.dirname(childRelativePath);
+  const preferredTarget = path.posix.relative(childDir === '.' ? '' : childDir, bundledPath);
+  if (!preferredTarget || path.posix.isAbsolute(preferredTarget)) return null;
+  return Object.freeze({
+    schemaId,
+    exactTargets: Object.freeze([preferredTarget]),
+    preferredTarget,
+    resolutionState: 'qualified',
+    targetAuthority: 'qualified-local-bundled-schema-material',
+    resolutionEvidence: Object.freeze({
+      state: 'qualified',
+      kind: 'workspace-bundled-schema-byte-match',
+      workspacePath: bundledPath,
+      sha256: expectedSha256
     })
   });
 }

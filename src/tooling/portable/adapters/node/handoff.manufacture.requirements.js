@@ -286,7 +286,9 @@ function safeDecodeURIComponent(value = '') { try { return decodeURIComponent(va
 function escapeRegExp(value = '') { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 export function entryFromEnumeration(enumeration = {}, relative = '') {
-  return (enumeration.materialization?.entries || []).find((entry) => normalizeRelativePath(entry.path) === normalizeRelativePath(relative)) || null;
+  const normalized = normalizeRelativePath(relative);
+  const matches = (enumeration.materialization?.entries || []).filter((entry) => normalizeRelativePath(entry.path) === normalized);
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function materialCandidateFromWorkspaceEntry(requirement, workspaceId, relative, entry, enumeration) {

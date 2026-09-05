@@ -1,5 +1,4 @@
 import { parseArtifactMarkdown } from '../../artifacts/artifact.parse.js';
-import { runAudit } from '../../audit/audit.run.js';
 import { resolveLineage } from '../../lineage/lineage.resolve.js';
 import { traverseLoadedLineage } from '../../lineage/lineage.traverse.js';
 import { resolveSchemaCapabilities } from '../../schemas/capability.registry.js';
@@ -7,9 +6,9 @@ import { buildArtifactCreationContract, validateArtifactCreationContract } from 
 import { schemaCanonicalBinding, schemaReadPresentation } from '../../schemas/companion.js';
 import { schemaRegistry } from '../../schemas/registry.js';
 import { findSchemaMaterial, normalizePortableInput, suppliedSchemaParentId } from './input/portable.input.js';
-import { normalizePortableFinding, portableFinding } from './findings.js';
+import { portableFinding } from './findings.js';
 import { normalizePortableDepth as normalizeDepth, normalizePortableSchemaIds as normalizeSchemaIds, portableOperationResult as operationResult } from './operation.result.js';
-import { qualifyAuditResult, qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
+import { qualifyCapabilityResolution, qualifyCreationContract, qualifyWriterBrief } from './qualification.js';
 import { buildPortableSchemaGuide, planPortableArtifact, readPortableSchemaGuideSections } from './schema/schema.guide.js';
 import { buildPortableRepairPlan, explainPortableFindings, validatePortableDraft } from './draft/draft.operations.js';
 import { createPortableLocalDraft, stagePortableDraft } from './draft/draft.create.js';
@@ -18,7 +17,7 @@ import { discoverPortableHostCapabilities } from './host/host.capabilities.js';
 import { listPortableMaterialProviders, resolvePortableSchemaChainMaterial, resolvePortableSchemaMaterial } from './providers/schema.providers.js';
 import { inspectPortableAssets, preparePortableAssetAnalysis } from './assets/asset.operations.js';
 import { preparePortableTask } from './orchestration/task.prepare.js';
-import { portableRuntimeValidationContractForSchema } from './schema/qualifiedLocalRoot.runtime.js';
+import { auditPortableRecords } from './audit/audit.capability.js';
 export { planPortableLineageIntegrity, projectPortableLineageIntegrityRepair, applyPortableLineageIntegrity, searchPortableLineage } from './lineage/lineage.operations.js';
 
 export const PORTABLE_RESULT_SCHEMA_ID = 'tiinex.portable.operation.result.v1';
@@ -193,14 +192,11 @@ export function inspectPortableMaterial(input = {}, options = {}) {
 
 export function auditPortableMaterial(input = {}, options = {}) {
   const material = normalizePortableInput(input);
-  const audits = material.records.map((record) => {
-    const runtimeProjection = portableRuntimeValidationContractForSchema(record.schemaId || record.currentSchemaId || '');
-    return sanitizeAudit(runAudit({ record, markdown: record.markdown, validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null }), record, options);
-  });
-  const findings = [...material.findings, ...audits.flatMap((audit) => audit.findings || [])];
+  const shared = auditPortableRecords(material.records, options);
+  const findings = [...material.findings, ...(shared.findings || [])];
   return operationResult('audit', {
-    boundary: material.boundary,
-    audits,
+    boundary: Object.freeze({ ...material.boundary, sharedCapability: shared.boundary }),
+    audits: shared.audits,
     findings
   });
 }
@@ -408,35 +404,6 @@ export function planPortableArtifactRepairs(input = {}, options = {}) {
   const repairPlan = buildPortableRepairPlan(input, options);
   const findings = Array.isArray(input?.findings) ? input.findings : input?.validation?.findings || input?.audit?.findings || [];
   return operationResult('repair-plan', { repairPlan, findings });
-}
-
-function sanitizeAudit(result = {}, record = {}, options = {}) {
-  const parsed = result.parsed || null;
-  return Object.freeze({
-    id: record.id || record.path || '',
-    path: record.path || '',
-    status: result.status || '',
-    schemaId: parsed?.envelope?.current?.schema?.id || result.artifact?.schemaId || record.schemaId || '',
-    resolution: Object.freeze({
-      status: result.resolution?.status || '',
-      moduleId: result.resolution?.module?.id || result.artifact?.moduleId || '',
-      fallbackUsed: Boolean(result.resolution?.fallbackUsed || result.artifact?.fallbackUsed),
-      unresolvedSchemaId: result.resolution?.unresolvedSchemaId || ''
-    }),
-    artifact: result.artifact || null,
-    parsed: parsed ? Object.freeze({
-      title: parsed.title,
-      hasContinuityContext: parsed.hasContinuityContext,
-      hasIntegrity: parsed.hasIntegrity,
-      envelope: parsed.envelope,
-      body: Object.freeze({ title: parsed.body?.title || '', sections: Object.freeze([...(parsed.body?.sections || [])]) })
-    }) : null,
-    findings: Object.freeze((result.findings || []).map((finding) => normalizePortableFinding(finding))),
-    summary: result.summary || null,
-    materialAvailability: result.materialAvailability || null,
-    qualification: qualifyAuditResult(result),
-    ...(options.includeMarkdown ? { markdown: record.markdown || '' } : {})
-  });
 }
 
 function sanitizeLineage(result = {}) {

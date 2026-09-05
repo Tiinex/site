@@ -11,7 +11,7 @@ export function planPortableLineageIntegrity(input = {}, options = {}) {
 
 export function applyPortableLineageIntegrity(input = {}, options = {}) {
   const application = applyPortableLineageIntegrityRepair(input, options);
-  return operationResult('lineage-integrity-apply', { status: application.status, application, changeset: application.changeset, receipts: application.receipts, humanReceipt: application.humanReceipt, boundary: application.boundary, findings: application.findings || [] });
+  return operationResult('lineage-integrity-apply', { status: application.status, application, changeset: application.changeset, receipts: application.receipts, humanReceipt: application.humanReceipt, reAudit: application.reAudit, boundary: application.boundary, findings: application.findings || [] });
 }
 
 export function projectPortableLineageIntegrityRepair(input = {}, options = {}) {

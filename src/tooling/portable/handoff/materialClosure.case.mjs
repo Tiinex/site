@@ -68,7 +68,7 @@ function selectedFixtureHandoff(input = {}) {
 const currentRoot = schemaRegistry.byId.get('tiinex.root.v1');
 const currentHandoff = schemaRegistry.byId.get('tiinex.handoff.v1');
 assert.equal(currentRoot.binding.sourceCommit, '3988951208eb9a8926e84ab42625d4b42fa00c2d');
-assert.equal(currentRoot.binding.sourceBlobSha, '1398960010b919d266a7451f59bbfc9c211c0e4b');
+assert.equal(currentRoot.binding.sourceBlobSha, '0162368365b452ea134b71bf52ced7554a7c5abc');
 assert.equal(currentRoot.schemaSource.qualify().state, 'qualified');
 assert.equal(currentHandoff.binding.sourceCommit, '3988951208eb9a8926e84ab42625d4b42fa00c2d');
 assert.equal(currentHandoff.binding.sourceBlobSha, '2332023aecf690279805d34c7e512a9f9799c20d');

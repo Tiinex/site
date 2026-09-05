@@ -19,8 +19,11 @@ import { feedbackSchemaModule } from './core/feedback/tiinex.feedback.v1.schema.
 import { signalSchemaModule } from './core/signal/tiinex.signal.v1.schema.js';
 import { discoverySchemaModule } from './discovery/tiinex.discovery.v1.schema.js';
 import { discoveryFindingSchemaModule } from './discovery/finding/tiinex.discovery.finding.v1.schema.js';
+import { validationFindingSchemaModule } from './validation/finding/tiinex.validation.finding.v1.schema.js';
+import { validationMethodSchemaModule } from './validation/method/tiinex.validation.method.v1.schema.js';
+import { validationReportSchemaModule } from './validation/report/tiinex.validation.report.v1.schema.js';
 
-const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, taskSchemaModule, interpretationSchemaModule, relationSchemaModule, workspaceRepresentationSchemaModule, preservationSchemaModule, evidenceSchemaModule, signalSchemaModule, feedbackSchemaModule, decisionSchemaModule, discoverySchemaModule, discoveryFindingSchemaModule, handoffSchemaModule, partyRoleSchemaModule, partyOrganizationSchemaModule, projectSchemaModule, reductionSchemaModule, moduleSchemaModule, surfaceSchemaModule];
+const modules = [rootSchemaModule, workspaceSchemaModule, topicSchemaModule, taskSchemaModule, interpretationSchemaModule, relationSchemaModule, workspaceRepresentationSchemaModule, preservationSchemaModule, evidenceSchemaModule, signalSchemaModule, feedbackSchemaModule, decisionSchemaModule, discoverySchemaModule, discoveryFindingSchemaModule, validationFindingSchemaModule, validationMethodSchemaModule, validationReportSchemaModule, handoffSchemaModule, partyRoleSchemaModule, partyOrganizationSchemaModule, projectSchemaModule, reductionSchemaModule, moduleSchemaModule, surfaceSchemaModule];
 const byId = new Map(modules.map((module) => [module.id, module]));
 const byChecksum = new Map(modules.map((module) => [module.binding.checksum.value, module]));
 

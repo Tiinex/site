@@ -19,7 +19,6 @@ export const ROOT_SCHEMA_ID = 'tiinex.root.v1';
 export function listCreatableArtifactSchemas(registry = schemaRegistry) {
   const modules = Array.isArray(registry.modules) ? registry.modules : [];
   return modules
-    .filter((module) => module?.kind === 'concrete' && module?.role === 'core-artifact')
     .map((module) => buildArtifactCreationContract({ schemaId: module.id, module }))
     .filter((contract) => contract.status === 'ready');
 }
@@ -41,19 +40,20 @@ export function buildArtifactCreationContract(input = {}, options = {}) {
   const creationCapability = qualifyArtifactCreationCapability(module, transitionType);
   const creationAuthority = creationCapability.authority?.compiledContract?.creation || {};
   const creation = Object.freeze({
-    requiredInputs: Object.freeze([...(creationAuthority.requiredInputs || [])]),
-    optionalInputs: Object.freeze([...(creationAuthority.optionalInputs || [])]),
-    requiredSections: Object.freeze([...(creationAuthority.requiredSections || [])]),
-    toolingConfigurationFields: Object.freeze([...(creationAuthority.toolingConfigurationFields || [])]),
-    inputBindings: Object.freeze([...(creationAuthority.inputBindings || [])]),
-    requiredShape: Object.freeze([...(creationAuthority.requiredShape || [])])
+    requiredInputs: list(creationAuthority.requiredInputs),
+    optionalInputs: list(creationAuthority.optionalInputs),
+    requiredSections: list(creationAuthority.requiredSections),
+    representationSections: list(creationAuthority.representationSections),
+    toolingConfigurationFields: list(creationAuthority.toolingConfigurationFields),
+    inputBindings: list(creationAuthority.inputBindings),
+    supplementalRequiredFields: list(creationAuthority.supplementalRequiredFields),
+    requiredShape: list(creationAuthority.requiredShape)
   });
   const renderer = creationCapability.implementation?.state === 'implemented'
     ? { status: CapabilityStatus.implemented, ...(creationCapability.implementation.renderer || {}) }
     : { status: CapabilityStatus.unavailable, id: '', scope: transitionType };
   const isCreatable = creationCapability.authority?.state === 'qualified' && renderer.status === CapabilityStatus.implemented && !fallbackUsed;
   const findings = [];
-
   if (!schemaId) findings.push(error('creation.schema.required', 'Creation contract requires a target schema id.'));
   if (fallbackUsed) findings.push(error('creation.schema.fallback-blocked', `Cannot create ${schemaId || 'unknown schema'} through Root fallback; choose an implemented schema module.`));
   if (creationCapability.authority?.state !== 'qualified') findings.push(error('creation.authority.missing', `${schemaId || 'target schema'} does not expose an exact Artifact Creation Contract authority.`));
@@ -324,6 +324,8 @@ function originMatchesPath(origin = '', path = '') { return normalizePath(origin
 function normalizePath(value = '') { return String(value || '').replace(/^https?:\/\/github\.com\/[^/]+\/[^/]+\/blob\/[^/]+\//, '').replace(/^https?:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//, '').replace(/^\/+/, '').replace(/\\/g, '/'); }
 function normalizeFinding(finding = {}) { return { severity: finding.severity || 'info', code: finding.code || 'creation.finding', message: finding.message || '', source: finding.source || ARTIFACT_CREATION_CONTRACT_SCHEMA_ID }; }
 function finding(severity, code, message) { return { severity, code, message, source: ARTIFACT_CREATION_CONTRACT_SCHEMA_ID }; }
+function list(value) { return Object.freeze([...(value || [])]); }
+
 function error(code, message) { return finding('error', code, message); }
 function warning(code, message) { return finding('warning', code, message); }
 

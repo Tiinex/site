@@ -44,8 +44,9 @@ export function stateWithRecordLineageFocused(state = {}, workspaceId = '', reco
 
 
 export function workspaceVerseNavigationPatch(verse = 'feed') {
-  const normalizedVerse = verse === 'tree' || verse === 'lineage' ? verse : 'feed';
+  const normalizedVerse = verse === 'tree' || verse === 'graph' || verse === 'lineage' ? verse : 'feed';
   if (normalizedVerse === 'lineage') return { workspaceVerse: 'lineage' };
+  if (normalizedVerse === 'graph') return { workspaceVerse: 'graph', lineageAuditReport: null };
   return {
     workspaceVerse: normalizedVerse,
     lineageReturnVerse: '',

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
 import { groundInput } from './cli.ground-recovery.js';
+import { prepareQualifyColdStartCommandInput } from './cli.cold-start-input.js';
 
 export async function commandInput(parsed, runtime = {}) {
   const flags = parsed.flags;
@@ -94,31 +95,7 @@ export async function commandInput(parsed, runtime = {}) {
     return { input: { ...host, host, ingressKind: flags.ingress || flags.kind || parsed.positionals[0] || 'routed-handoff-package', toolingInvocationAvailable: Boolean(flags['tooling-invocation']) }, options: {} };
   }
 
-  if (parsed.command === 'qualify-cold-start') {
-    const evidenceFile = flags.evidence || flags.trace || flags.input || '';
-    if (evidenceFile) {
-      const evidence = JSON.parse(await readFile(evidenceFile, 'utf8'));
-      return { input: { ...evidence, ingressKind: flags.ingress || evidence.ingressKind || evidence.kind || 'routed-handoff-package' }, options: {} };
-    }
-    const packagePath = String(flags.package || parsed.positionals[0] || '').trim();
-    if (!packagePath) throw new Error('portable.cli.cold-start-package-or-evidence.required');
-    const material = await loadNodePortableInput([packagePath], { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] });
-    const interaction = await readOptionalJson(flags.interaction);
-    return {
-      input: {
-        ...material,
-        bundle: material,
-        ingressKind: flags.ingress || flags.kind || 'routed-handoff-package',
-        route: flags.route || '',
-        packageSourcePath: packagePath,
-        preTakeover: flags['pre-takeover'] || 'unverified',
-        hostEvidenceSource: flags['evidence-source'] || '',
-        interaction: interaction.interaction || interaction,
-        toolingAvailable: flags['tooling-unavailable'] ? false : true
-      },
-      options: {}
-    };
-  }
+  if (parsed.command === 'qualify-cold-start') return prepareQualifyColdStartCommandInput(parsed, flags);
 
   if (parsed.command === 'project-grounding-readiness') {
     const packagePath = String(flags.package || parsed.positionals[0] || flags.input || '').trim();
@@ -133,6 +110,7 @@ export async function commandInput(parsed, runtime = {}) {
         packageSourcePath: packagePath,
         includeLegacyTopics: Boolean(flags['include-legacy-topics']),
         includeRequiredContext: flags['include-required-context'] || '',
+        holderBinding: { roleLabel: flags['holder-role'] || '', holderId: flags['holder-id'] || '' },
         host,
         recoveryAcceptance
       },
@@ -352,6 +330,15 @@ export async function commandInput(parsed, runtime = {}) {
     const draft = draftFromMaterial(material, flags.draft || '');
     return { input: { ...material, ...draft, schemaId: flags.schema || draft.schemaId || '' }, options };
   }
+  if (parsed.command === 'reduction-preflight') return {
+    input: {
+      ...material,
+      candidates: splitFlag(flags.candidate || flags.candidates),
+      reductionArtifactPath: flags.reduction || flags['reduction-artifact'] || '',
+      immutableSources: await readOptionalJson(flags['immutable-sources'])
+    },
+    options
+  };
   if (parsed.command === 'search-lineage') return {
     input: {
       ...material,

@@ -8,8 +8,8 @@ export function portableCliHelpText(commandPrefix = '', surfaceCommand = '') {
     'Tiinex portable tooling',
     '',
     'Common path (same command for humans and LLMs):',
-    `${command} ground <handoff-package.zip> --route <Continue-from>`,
-    `${command} ground <handoff-package.zip> --route <Continue-from> --continue <workspace-dir>`,
+    `${command} ground <handoff-package.zip> --route <Continue-from> [--holder-role <recipient-role>]`,
+    `${command} ground <handoff-package.zip> --route <Continue-from> --holder-role <recipient-role> --continue <workspace-dir>`,
     `${command} author <workspace-dir> --schema <schema-id> --path <workspace-relative-artifact> --body <body.md> [--parent <workspace-relative-parent>] [--title <title>] [--summary <summary>] [--why <why>]`,
     `${command} handoff <workspace-dir>`,
     '',
@@ -31,12 +31,12 @@ function commonCommandHelp(command, surfaceCommand) {
   if (surfaceCommand === 'ground') return [
     'Tiinex portable tooling — ground',
     '',
-    `${command} ground <handoff-package.zip> --route <Continue-from>`,
-    `${command} ground <handoff-package.zip> --route <Continue-from> --continue <workspace-dir>`,
+    `${command} ground <handoff-package.zip> --route <Continue-from> [--holder-role <recipient-role>]`,
+    `${command} ground <handoff-package.zip> --route <Continue-from> --holder-role <recipient-role> --continue <workspace-dir>`,
     '',
-    'Reads and qualifies the exact selected Handoff route. The default projection keeps readiness, recipient authority boundary, Required Context closure, continuity/blockers, current Task identity, and exact next action compact; add `--full` for the full qualified receipt.',
+    'Reads and qualifies the exact selected Handoff route. The default projection keeps readiness, recipient authority boundary, explicit consuming-session holder binding, Required Context closure, continuity/blockers, current Task identity, and exact next action compact; add `--full` for the full qualified receipt.',
     'Add `--include-required-context <requirement-id,name|all>` and/or `--include-current-work` only when exact body text is needed. `ground --continue` includes the bounded current Task body needed to proceed, retains Required Context counts and continuity/recovery state, and does not repeat qualified Required Context item paths or root-detail receipts unless explicitly requested (or `--full` is used).',
-    'After `grounded-to-act`, `--continue` materializes the selected carried Workspace into an empty local directory and writes runtime-only `.tiinex/continuation.json`. The grounding operation itself is non-mutating; downstream work authority comes from qualified Handoff/Task/Role artifacts, not from that operation-safety fact.',
+    'For a Role recipient, `--holder-role <recipient-role>` is an explicit consuming-session Role-capacity binding; it is never inferred from route selection, provider identity, or assistant/user position. Without it, the holder remains unresolved and grounding stays discussion-only. After `grounded-to-act`, `--continue` materializes the selected carried Workspace into an empty local directory and writes runtime-only `.tiinex/continuation.json`. The grounding operation itself is non-mutating; downstream work authority comes from qualified Handoff/Task/Role artifacts, not from that operation-safety fact.',
     '',
     `Advanced/internal catalog: ${command} operations`
   ];

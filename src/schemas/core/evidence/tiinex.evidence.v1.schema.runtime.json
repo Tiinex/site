@@ -2,10 +2,10 @@
   "schema": "tiinex.site.schema-runtime-projection.v1",
   "generator": "schema-runtime-projection-v1",
   "schemaId": "tiinex.evidence.v1",
-  "sourceChecksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
-  "sourceBlobSha": "430367bb717d93e396a50c993dc011f8d129bf54",
-  "sourceBytes": 11464,
-  "bindingChecksum": "c9ae2b3db15c4af51300eba808bdce2c0e18d7f4a657ef4892e28375a1b6be08",
+  "sourceChecksum": "b6c06684af1d5fa181ebf37f04ffb0c226ef5b4f46fccd53b5ec12676ab8c551",
+  "sourceBlobSha": "e3d135424ae2eba30d26ab8b1a48c7d8cdd0e639",
+  "sourceBytes": 12180,
+  "bindingChecksum": "b6c06684af1d5fa181ebf37f04ffb0c226ef5b4f46fccd53b5ec12676ab8c551",
   "validationContract": {
     "schema": "tiinex.site.compact-portable-validation-contract.v1",
     "schemaId": "tiinex.evidence.v1",
@@ -22,6 +22,110 @@
         "tiinex.preservation.v1",
         "tiinex.evidence.v1"
       ],
+      "findings": []
+    },
+    "inheritanceResolution": {
+      "schema": "tiinex.portable.schema-inheritance-resolution.v1",
+      "state": "qualified",
+      "declarations": [
+        {
+          "name": "evidence-preservation-body-structure",
+          "sourceSchemaId": "tiinex.evidence.v1",
+          "sourceGroup": "Parent Preservation Specialization",
+          "declarationLine": 57,
+          "operation": "override",
+          "parentSchemaId": "tiinex.preservation.v1",
+          "parentNode": "Schema Validation Contract / Preservation Body / Required Shape",
+          "childNode": "Schema Validation Contract / Evidence Body / Required Shape",
+          "reason": "Evidence specializes Preservation by replacing only the generic Preservation artifact-body structure while retaining compatible non-structural Preservation semantics and provenance.",
+          "effectiveResult": "Evidence body structure is authoritative for Evidence artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Evidence sections remain active."
+        }
+      ],
+      "applications": [
+        {
+          "handle": "evidence-preservation-body-structure",
+          "declaration": {
+            "sourceSchemaId": "tiinex.evidence.v1",
+            "sourceGroup": "Parent Preservation Specialization",
+            "name": "evidence-preservation-body-structure",
+            "line": 57,
+            "reason": "Evidence specializes Preservation by replacing only the generic Preservation artifact-body structure while retaining compatible non-structural Preservation semantics and provenance.",
+            "effectiveResult": "Evidence body structure is authoritative for Evidence artifacts; parent-only structural body groups become inactive, while compatible parent contributions targeting surviving Evidence sections remain active."
+          },
+          "operation": "override",
+          "parentSchemaId": "tiinex.preservation.v1",
+          "childSchemaId": "tiinex.evidence.v1",
+          "parentNode": "Schema Validation Contract / Preservation Body / Required Shape",
+          "childNode": "Schema Validation Contract / Evidence Body / Required Shape",
+          "state": "applied",
+          "deactivatedContributions": [
+            {
+              "sourceSchemaId": "tiinex.preservation.v1",
+              "group": "Preservation Body",
+              "category": "Required Shape",
+              "state": "inactive",
+              "items": [
+                "first body heading after the continuity envelope",
+                "`## Preserved Material` section",
+                "`## Preservation Act` section",
+                "`## Provenance` section",
+                "`## Fidelity And Loss` section",
+                "`## Custody Or Storage Boundary` section",
+                "`## Interpretation Limits` section"
+              ],
+              "declarationName": "evidence-preservation-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.preservation.v1",
+              "group": "Preserved Material",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "evidence-preservation-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.preservation.v1",
+              "group": "Preservation Act",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "evidence-preservation-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.preservation.v1",
+              "group": "Fidelity And Loss",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "evidence-preservation-body-structure"
+            },
+            {
+              "sourceSchemaId": "tiinex.preservation.v1",
+              "group": "Custody Or Storage Boundary",
+              "category": "ordinary-instance-field-group",
+              "state": "inactive",
+              "items": [],
+              "declarationName": "evidence-preservation-body-structure"
+            }
+          ],
+          "replacementContribution": {
+            "sourceSchemaId": "tiinex.evidence.v1",
+            "group": "Evidence Body",
+            "category": "Required Shape",
+            "state": "active",
+            "items": [
+              "first body heading after the continuity envelope",
+              "`## Supported Claim Or Question` section",
+              "`## Provenance` section",
+              "`## Evidence Material` section",
+              "`## Preservation And Fidelity` section",
+              "`## Interpretation Limits` section"
+            ],
+            "declarationName": "evidence-preservation-body-structure"
+          }
+        }
+      ],
+      "corroborations": [],
       "findings": []
     },
     "validation": {
@@ -45,51 +149,22 @@
       "requiredSections": [
         "Continuity Context",
         "Continuity Integrity",
-        "Preserved Material",
-        "Preservation Act",
-        "Provenance",
-        "Fidelity And Loss",
-        "Custody Or Storage Boundary",
-        "Interpretation Limits",
         "Supported Claim Or Question",
+        "Provenance",
         "Evidence Material",
-        "Preservation And Fidelity"
+        "Preservation And Fidelity",
+        "Interpretation Limits"
       ],
       "requiredHeadings": [
         {
           "level": 2,
-          "title": "Preserved Material",
-          "source": "`## Preserved Material` section"
-        },
-        {
-          "level": 2,
-          "title": "Preservation Act",
-          "source": "`## Preservation Act` section"
+          "title": "Supported Claim Or Question",
+          "source": "`## Supported Claim Or Question` section"
         },
         {
           "level": 2,
           "title": "Provenance",
           "source": "`## Provenance` section"
-        },
-        {
-          "level": 2,
-          "title": "Fidelity And Loss",
-          "source": "`## Fidelity And Loss` section"
-        },
-        {
-          "level": 2,
-          "title": "Custody Or Storage Boundary",
-          "source": "`## Custody Or Storage Boundary` section"
-        },
-        {
-          "level": 2,
-          "title": "Interpretation Limits",
-          "source": "`## Interpretation Limits` section"
-        },
-        {
-          "level": 2,
-          "title": "Supported Claim Or Question",
-          "source": "`## Supported Claim Or Question` section"
         },
         {
           "level": 2,
@@ -100,6 +175,11 @@
           "level": 2,
           "title": "Preservation And Fidelity",
           "source": "`## Preservation And Fidelity` section"
+        },
+        {
+          "level": 2,
+          "title": "Interpretation Limits",
+          "source": "`## Interpretation Limits` section"
         }
       ],
       "requiredEntries": [
@@ -114,98 +194,6 @@
         }
       ],
       "ordinaryGroups": [
-        {
-          "group": "Preserved Material",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Preserved Material",
-            "title": "Preserved Material",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Material Description",
-            "Material Kind"
-          ],
-          "optionalFields": [
-            "Material Reference",
-            "External Payload",
-            "Represented Subject",
-            "Source"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.preservation.v1",
-              "group": "Preserved Material",
-              "requiredFields": [
-                "Material Description",
-                "Material Kind"
-              ],
-              "optionalFields": [
-                "Material Reference",
-                "External Payload",
-                "Represented Subject",
-                "Source"
-              ],
-              "target": {
-                "heading": "## Preserved Material",
-                "title": "Preserved Material",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Preservation Act",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Preservation Act",
-            "title": "Preservation Act",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Preservation Method",
-            "Preservation Time Or State"
-          ],
-          "optionalFields": [
-            "Actor",
-            "Tool",
-            "Adapter",
-            "Capture Conditions"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.preservation.v1",
-              "group": "Preservation Act",
-              "requiredFields": [
-                "Preservation Method",
-                "Preservation Time Or State"
-              ],
-              "optionalFields": [
-                "Actor",
-                "Tool",
-                "Adapter",
-                "Capture Conditions"
-              ],
-              "target": {
-                "heading": "## Preservation Act",
-                "title": "Preservation Act",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
         {
           "group": "Provenance",
           "qualification": "valid",
@@ -275,98 +263,6 @@
               "target": {
                 "heading": "## Provenance",
                 "title": "Provenance",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Fidelity And Loss",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Fidelity And Loss",
-            "title": "Fidelity And Loss",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Fidelity Notes",
-            "Known Losses"
-          ],
-          "optionalFields": [
-            "Transformation",
-            "Redaction",
-            "Excerpting",
-            "Uncertainty"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.preservation.v1",
-              "group": "Fidelity And Loss",
-              "requiredFields": [
-                "Fidelity Notes",
-                "Known Losses"
-              ],
-              "optionalFields": [
-                "Transformation",
-                "Redaction",
-                "Excerpting",
-                "Uncertainty"
-              ],
-              "target": {
-                "heading": "## Fidelity And Loss",
-                "title": "Fidelity And Loss",
-                "level": 2,
-                "authority": "root-same-name-default",
-                "qualification": "valid"
-              }
-            }
-          ]
-        },
-        {
-          "group": "Custody Or Storage Boundary",
-          "qualification": "valid",
-          "target": {
-            "heading": "## Custody Or Storage Boundary",
-            "title": "Custody Or Storage Boundary",
-            "level": 2,
-            "authority": "root-same-name-default",
-            "requiredness": "required",
-            "qualification": "valid",
-            "findings": []
-          },
-          "requiredFields": [
-            "Storage Or Custody State",
-            "Reuse Boundary"
-          ],
-          "optionalFields": [
-            "Retention",
-            "Privacy Boundary",
-            "Safety Boundary",
-            "Permission Boundary"
-          ],
-          "contributors": [
-            {
-              "sourceSchemaId": "tiinex.preservation.v1",
-              "group": "Custody Or Storage Boundary",
-              "requiredFields": [
-                "Storage Or Custody State",
-                "Reuse Boundary"
-              ],
-              "optionalFields": [
-                "Retention",
-                "Privacy Boundary",
-                "Safety Boundary",
-                "Permission Boundary"
-              ],
-              "target": {
-                "heading": "## Custody Or Storage Boundary",
-                "title": "Custody Or Storage Boundary",
                 "level": 2,
                 "authority": "root-same-name-default",
                 "qualification": "valid"
@@ -666,9 +562,7 @@
             "Parent exists"
           ],
           "requiredSections": [],
-          "requiredFields": [
-            "browse + git"
-          ],
+          "requiredFields": [],
           "requiredEntries": [],
           "allowedLabels": [
             "relative",
@@ -738,7 +632,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -858,7 +752,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -867,7 +761,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -917,7 +811,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1037,7 +931,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1046,7 +940,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1096,7 +990,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1216,7 +1110,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1225,7 +1119,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1275,7 +1169,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 },
                 "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
                 "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1395,7 +1289,7 @@
                 "sourceSchemaId": "tiinex.root.v1",
                 "sourceGroup": "Machine Shape Authority",
                 "declarationSource": {
-                  "line": 357
+                  "line": 408
                 }
               },
               "visibleDefinitions": [
@@ -1404,7 +1298,7 @@
                   "sourceSchemaId": "tiinex.root.v1",
                   "sourceGroup": "Machine Shape Authority",
                   "declarationSource": {
-                    "line": 357
+                    "line": 408
                   },
                   "grammarProfile": "tiinex.lexical.shape.v1",
                   "definitionQualification": "valid",
@@ -1433,6 +1327,41 @@
       ]
     },
     "declarations": [
+      {
+        "group": "Inheritance Overrides",
+        "entryShape": [
+          "Named Declaration"
+        ],
+        "requiredFields": [
+          "Merge Operation",
+          "Parent Schema",
+          "Parent Node",
+          "Child Node"
+        ],
+        "optionalFields": [
+          "Reason",
+          "Effective Result"
+        ],
+        "declarationFields": [],
+        "allowedLabels": [],
+        "allowedShapes": [],
+        "targetHeadings": [],
+        "allowLiteralNone": false,
+        "rules": [
+          "`Inheritance Overrides` is the canonical schema-local machine category for explicit inherited contract replacement.",
+          "The declaration name identifies one override declaration within the declaring child schema.",
+          "`Merge Operation` must be exactly `override`; unsupported operations are unresolved and must not be guessed.",
+          "`Parent Schema` must resolve to an actual ancestor of the declaring child schema in the active lineage.",
+          "`Parent Node` and `Child Node` each use the exact path shape `Schema Validation Contract / <third-level group> / <category label>` and must resolve exactly once.",
+          "The declaring child schema is the child schema identity; no duplicate `Child Schema` field is part of the inline declaration.",
+          "A qualified override deactivates only the exact addressed parent contribution and activates the exact addressed child replacement contribution while retaining declaration and contributor provenance.",
+          "Competing declarations for the same exact parent contribution, malformed declarations, unresolved lineage, missing or ambiguous nodes, or non-ancestor parents are unresolved/error.",
+          "Source order, filename order, directory adjacency, prose wording, and schema identity must not choose a winner.",
+          "When both addressed nodes are `Required Shape`, parent ordinary instance-field groups whose Root-authorized exact second-level target heading is required by the parent shape but absent from the child replacement shape become inactive; groups targeting surviving headings remain additive.",
+          "If Required Shape heading identity or ordinary target ownership cannot be resolved exactly, the override is unresolved rather than guessed.",
+          "Standalone `tiinex.schema.inheritance.v1` artifacts may document, propose, test, audit, or migrate an inheritance relationship, but they do not silently add or change schema-local compilation authority."
+        ]
+      },
       {
         "group": "Field Value Constraints",
         "entryShape": [
@@ -1742,7 +1671,32 @@
         ]
       }
     ],
-    "constraints": [],
+    "constraints": [
+      {
+        "kind": "field-domain",
+        "sourceSchemaId": "tiinex.root.v1",
+        "sourceGroup": "Inheritance Overrides",
+        "field": "Merge Operation",
+        "allowedValues": [
+          "override"
+        ],
+        "allowedShapes": [],
+        "domainPolicy": "closed",
+        "declarationLine": 269,
+        "declarationQualification": "valid",
+        "declarationFindings": [],
+        "targetMode": "local",
+        "targetOwnership": "source-local",
+        "ownershipSourceSchemaIds": [
+          "tiinex.root.v1"
+        ],
+        "targetGroup": "Inheritance Overrides",
+        "appliesToTarget": "",
+        "authorityQualification": "valid",
+        "authorityFindings": [],
+        "allowedShapeAuthorities": []
+      }
+    ],
     "machineShapes": {
       "schema": "tiinex.portable.machine-shape-authority.v1",
       "definitions": [
@@ -1752,7 +1706,7 @@
           "sourceSchemaId": "tiinex.root.v1",
           "sourceGroup": "Machine Shape Authority",
           "declarationSource": {
-            "line": 357
+            "line": 408
           },
           "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
           "grammarProfile": "tiinex.lexical.shape.v1",
@@ -1886,7 +1840,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             },
             "visibilityPolicy": "lineage-prefix-ancestors-and-same-source",
             "grammarProfile": "tiinex.lexical.shape.v1",
@@ -2006,7 +1960,7 @@
             "sourceSchemaId": "tiinex.root.v1",
             "sourceGroup": "Machine Shape Authority",
             "declarationSource": {
-              "line": 357
+              "line": 408
             }
           },
           "visibleDefinitions": [
@@ -2015,7 +1969,7 @@
               "sourceSchemaId": "tiinex.root.v1",
               "sourceGroup": "Machine Shape Authority",
               "declarationSource": {
-                "line": 357
+                "line": 408
               },
               "grammarProfile": "tiinex.lexical.shape.v1",
               "definitionQualification": "valid",
@@ -2054,63 +2008,123 @@
     "inputBindings": [
       {
         "input": "Supported Claim Or Question",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Supported Claim Or Question",
+        "group": "Supported Claim Or Question",
+        "field": "Supported Claim Or Question",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Evidence Role",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Supported Claim Or Question",
+        "group": "Supported Claim Or Question",
+        "field": "Evidence Role",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Known Source",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provenance",
+        "group": "Provenance",
+        "field": "Known Source",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Preservation Basis",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provenance",
+        "group": "Provenance",
+        "field": "Preservation Basis",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Provenance Limits",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Provenance",
+        "group": "Provenance",
+        "field": "Provenance Limits",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Material",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Evidence Material",
+        "group": "Evidence Material",
+        "field": "Material",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Material Kind",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Evidence Material",
+        "group": "Evidence Material",
+        "field": "Material Kind",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Preservation State",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Preservation And Fidelity",
+        "group": "Preservation And Fidelity",
+        "field": "Preservation State",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Fidelity Notes",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Preservation And Fidelity",
+        "group": "Preservation And Fidelity",
+        "field": "Fidelity Notes",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Known Losses",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Preservation And Fidelity",
+        "group": "Preservation And Fidelity",
+        "field": "Known Losses",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Does Not Prove",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Does Not Prove",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
       },
       {
         "input": "Must Not Be Treated As",
-        "kind": "unmapped",
-        "section": ""
+        "kind": "ordinary-field",
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Must Not Be Treated As",
+        "sourceSchemaId": "tiinex.evidence.v1",
+        "requirement": "required"
+      }
+    ],
+    "supplementalRequiredFields": [
+      {
+        "section": "Interpretation Limits",
+        "group": "Interpretation Limits",
+        "field": "Not Yet Used As",
+        "sourceSchemaIds": [
+          "tiinex.preservation.v1"
+        ],
+        "representation": "neutral-placeholder",
+        "value": "unknown / not supplied at creation"
       }
     ],
     "requiredShape": []
