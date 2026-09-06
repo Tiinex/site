@@ -61,6 +61,17 @@ node tools/tiinex-portable.mjs ground <handoff-package.zip> --route <Continue-fr
 
 The default receipt is bounded and fail-visible: it separates `grounded-to-act`, `grounded-to-discuss`, and `insufficient-grounding`, derives leaf topology only from declared `Parent`, and keeps Required Context bodies opt-in via `--include-required-context`.
 
+## Artifacted work lifecycle and readiness
+
+Tiinex keeps work progression deliberately split instead of treating one status label as completion. For one exact qualified controlling Task, shared Tooling can project the same lifecycle for CLI, LLM, Viewer, and VS Code consumers through `project-lifecycle-readiness`.
+
+```text
+failed criteria → bounded child work → qualified convergence → ready for re-test
+→ authoritative re-test → explicit closure OR more bounded work
+```
+
+`ready-for-retest` is derived readiness only; it is not a pass. A passing re-test is not closure. Missing or ambiguous lineage, currentness, criteria coverage, validation method, or governing authority fails closed instead of being guessed. A qualified Reduction may carry current re-test inputs within its declared loss boundary, but Reduction existence, file disappearance, cleanup, branch state, or descendant count never proves completion. Consumers should use the shared normalized projection rather than inventing local lifecycle rules.
+
 ## Supported local start
 
 With dependencies already available:

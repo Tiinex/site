@@ -28,6 +28,7 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/tooling/portable/audit/audit.capability.case.mjs",
   "src/tooling/portable/lineage/lineage.integrity.shared-capability.case.mjs",
   "src/tooling/portable/reduction/reduction.preflight.case.mjs",
+  "src/tooling/portable/lifecycle/lifecycle.readiness.case.mjs",
   "tools/run-checkpointed-plan.case.mjs"
 ]),
   "workspace/source": Object.freeze([

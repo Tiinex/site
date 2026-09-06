@@ -134,6 +134,13 @@ package
 
 It returns one explicit `nextAction`, such as collecting missing inputs, calling a host repository provider, creating a local draft, repairing findings, staging, or exposing an asset to host vision.
 
+## Project Artifacted Work Lifecycle Without Inventing Status
+
+When one exact qualified controlling Task must be evaluated for work progression, use the shared read-only `project-lifecycle-readiness` operation. Supply the exact material, controlling Task, and explicit upstream-qualified normalized facts required by the operation instead of deriving lifecycle truth from prose or labels. The result deliberately keeps three surfaces separate: derived `readiness`, authoritative `retest`, and explicit `closure`.
+
+The intended cycle is `failed criteria -> bounded child work -> qualified convergence -> ready-for-retest -> authoritative re-test -> explicit closure or more bounded work`. `ready-for-retest` never means pass, and pass never means closure. Missing or ambiguous lineage, current representative/currentness, criteria coverage, validation method, re-test/closure currentness, or governing authority remains `unresolved`. Direct qualified Task-to-Task Parent continuity may establish the bounded child-work scope; Parent is not generalized into dependency, acceptance, readiness, project, or organization semantics. Qualified Reduction material may contribute only as an explicitly normalized current representative/re-test-input carrier within its declared carry-forward/loss boundary; it is never completion proof.
+
+CLI, LLM, Viewer, and VS Code consumers should consume this same normalized operation result and must not create consumer-local lifecycle heuristics from Root `Status`, arbitrary lifecycle strings, Validation Report existence, authorship/human presence, filenames, timestamps, branch/file state, descendant count, Reduction count, or cleanup.
 
 ## Qualify Cold-start Behavior Separately From Recovery
 

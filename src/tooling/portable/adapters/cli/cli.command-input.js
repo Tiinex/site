@@ -330,6 +330,11 @@ export async function commandInput(parsed, runtime = {}) {
     const draft = draftFromMaterial(material, flags.draft || '');
     return { input: { ...material, ...draft, schemaId: flags.schema || draft.schemaId || '' }, options };
   }
+  if (parsed.command === 'project-lifecycle-readiness') {
+    const value = await readOptionalJson(flags.facts);
+    const facts = value.facts || value;
+    return { input: { ...material, facts, controllingTask: flags['controlling-task'] || flags.task || value.controllingTask || '', workObligations: value.workObligations || facts.workObligations || [] }, options };
+  }
   if (parsed.command === 'reduction-preflight') return {
     input: {
       ...material,
@@ -366,7 +371,6 @@ export async function commandInput(parsed, runtime = {}) {
   };
   return { input: material, options };
 }
-
 
 const LEGACY_TOPICS_GROUNDING_COMMANDS = new Set(['inspect', 'audit', 'project-operating-overview', 'project-grounding-readiness', 'resolve-lineage', 'search-lineage', 'prepare-task']);
 

@@ -30,6 +30,14 @@ Branch authority:
 - PoC parity means comparing the observed PoC behavior on `master` + `poc-monolith` with the active `refactor` implementation;
 - never infer current authority merely because a branch is named `master` or is the repository default.
 
+Lifecycle/readiness boundary:
+- use the shared `project-lifecycle-readiness` operation when one exact qualified controlling Task must be projected into lifecycle state;
+- keep `readiness`, authoritative `retest`, and explicit `closure` separate: `ready-for-retest` is not pass, and pass is not closure;
+- failed criteria may expand bounded child work; qualified child convergence may enable re-test but does not establish acceptance;
+- fail closed on missing or ambiguous lineage, representative currentness, criteria coverage, method, or governing authority;
+- Reduction may contribute qualified current re-test inputs within its declared loss boundary, but Reduction/file absence/cleanup/branch state never proves completion;
+- CLI, LLM, Viewer, and VS Code consumers must consume the shared normalized projection rather than inventing consumer-local lifecycle truth.
+
 Current/history boundary:
 - current working source is not automatically a public release;
 - source-only material without dependencies does not prove runtime/browser readiness;
