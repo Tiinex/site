@@ -1,0 +1,27 @@
+{
+  "schema": "tiinex.pilot.execution-attachment-manifest.v1",
+  "controllingTask": ".topics/viewer/003-3-1-5-1-5-3-pilot-ual-front-row-human-boundary-retry-task.trace.md",
+  "executionMode": "human-mediated-only",
+  "directPilotToolSubstitutionAllowed": false,
+  "waitStateAfterInstruction": "awaiting-human-execution-result",
+  "orderIsAuthoritative": true,
+  "attachments": [
+    {
+      "order": 1,
+      "filename": "003-3-1-5-1-5-3-1-input-01-front-row-motion-authority.png",
+      "sha256": "87ff0e9144b7976e25cdbcda6f7e003be7c5e30871690aa757ef60adbb9ca9f0",
+      "role": "focused-motion-authority",
+      "purpose": "Defines the eight authored walk phases for one observation direction."
+    },
+    {
+      "order": 2,
+      "filename": "003-3-1-5-1-5-3-1-input-02-identity-authority.png",
+      "sha256": "ed54f4023c2c411686c199da8d48a7356f7f0171ae9102441a9cc14688b2c67b",
+      "role": "character-identity-authority",
+      "purpose": "Defines Plaything identity, clothing, materials, and visual style."
+    }
+  ],
+  "exactHumanVisibleInputFile": "003-3-1-5-1-5-3-1-execution-request.md",
+  "adaptationPolicy": "none; Pilot emits the human instructions and then waits. Pilot must not directly perform the delegated generation.",
+  "expectedReturn": "one exact human-mediated external generated source when exposed, plus actual execution evidence and immediate Pilot-to-Anchor return Handoff"
+}

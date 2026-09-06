@@ -1,0 +1,126 @@
+{
+  "schema": "tiinex.playthings.ual-template-factory-proof.v0.1",
+  "source_zip": "/mnt/data/Universal Animation Library[Standard].zip",
+  "source_glb": "/mnt/data/ual_template_factory_v01/Universal Animation Library[Standard]/Unreal-Godot/UAL1_Standard.glb",
+  "license": "CC0 1.0 Universal (from bundled License.txt)",
+  "animation_count": 43,
+  "animation_names": [
+    "A_TPose",
+    "Crouch_Fwd_Loop",
+    "Crouch_Idle_Loop",
+    "Dance_Loop",
+    "Death01",
+    "Driving_Loop",
+    "Fixing_Kneeling",
+    "Hit_Chest",
+    "Hit_Head",
+    "Idle_Loop",
+    "Idle_Talking_Loop",
+    "Idle_Torch_Loop",
+    "Interact",
+    "Jog_Fwd_Loop",
+    "Jump_Land",
+    "Jump_Loop",
+    "Jump_Start",
+    "PickUp_Table",
+    "Pistol_Aim_Down",
+    "Pistol_Aim_Neutral",
+    "Pistol_Aim_Up",
+    "Pistol_Idle_Loop",
+    "Pistol_Reload",
+    "Pistol_Shoot",
+    "Punch_Cross",
+    "Punch_Jab",
+    "Push_Loop",
+    "Roll",
+    "Sitting_Enter",
+    "Sitting_Exit",
+    "Sitting_Idle_Loop",
+    "Sitting_Talking_Loop",
+    "Spell_Simple_Enter",
+    "Spell_Simple_Exit",
+    "Spell_Simple_Idle_Loop",
+    "Spell_Simple_Shoot",
+    "Sprint_Loop",
+    "Swim_Fwd_Loop",
+    "Swim_Idle_Loop",
+    "Sword_Attack",
+    "Sword_Idle",
+    "Walk_Formal_Loop",
+    "Walk_Loop"
+  ],
+  "proof_animation": "Walk_Loop",
+  "duration_seconds": 1.3333333730697632,
+  "sample_times_seconds": [
+    0.0,
+    0.1666666716337204,
+    0.3333333432674408,
+    0.5000000149011612,
+    0.6666666865348816,
+    0.833333358168602,
+    1.0000000298023224,
+    1.1666667014360428
+  ],
+  "side_yaw_degrees": 0,
+  "yaw_scores": {
+    "0": [
+      0.01357402254014241,
+      0.5757018746455309
+    ],
+    "90": [
+      0.15494685163643085,
+      0.4474045103874816
+    ],
+    "180": [
+      0.013574022540142415,
+      0.5757018746455309
+    ],
+    "270": [
+      0.15494685163643085,
+      0.4474045103874815
+    ]
+  },
+  "limb_color_contract": {
+    "left_arm": [
+      255,
+      125,
+      40,
+      255
+    ],
+    "right_arm": [
+      50,
+      155,
+      255,
+      255
+    ],
+    "left_leg": [
+      235,
+      65,
+      95,
+      255
+    ],
+    "right_leg": [
+      80,
+      205,
+      110,
+      255
+    ],
+    "torso": [
+      65,
+      70,
+      80,
+      255
+    ],
+    "head": [
+      245,
+      205,
+      70,
+      255
+    ]
+  },
+  "outputs": {
+    "2x4": "walk-loop-colored-authority-2x4.png",
+    "8x8": "walk-loop-colored-authority-8x8.png",
+    "preview": "walk-loop-colored-authority-preview.webp"
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "schema": "tiinex.playthings.phase2-motion-review.v0.1",
+  "source": "/mnt/data/pilot_identity_motion_return_inspect/assets/003-3-1-5-2-2-generated-motion-01.png",
+  "source_size": [
+    1536,
+    1024
+  ],
+  "mode": "RGBA",
+  "alpha_extrema": [
+    0,
+    254
+  ],
+  "cell_size": [
+    384,
+    512
+  ],
+  "adjacent_iou": [
+    {
+      "from": 1,
+      "to": 2,
+      "iou": 0.8213949658903787
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "iou": 0.41087582756355184
+    },
+    {
+      "from": 3,
+      "to": 4,
+      "iou": 0.4720500185450114
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "iou": 0.5355549088086923
+    },
+    {
+      "from": 5,
+      "to": 6,
+      "iou": 0.5768236155159795
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "iou": 0.618089387841559
+    },
+    {
+      "from": 7,
+      "to": 8,
+      "iou": 0.39322566173171825
+    },
+    {
+      "from": 8,
+      "to": 1,
+      "iou": 0.7153656444349131
+    }
+  ],
+  "mean_adjacent_iou": 0.5679225037914755,
+  "stabilization": [
+    {
+      "frame": 1,
+      "anchor": [
+        196.8234955272493,
+        194.5150704870888
+      ],
+      "floor_y": 496,
+      "dx": 23,
+      "dy": 24
+    },
+    {
+      "frame": 2,
+      "anchor": [
+        187.62493522775816,
+        194.50070269983343
+      ],
+      "floor_y": 496,
+      "dx": 32,
+      "dy": 24
+    },
+    {
+      "frame": 3,
+      "anchor": [
+        172.14328122003016,
+        182.82268208547626
+      ],
+      "floor_y": 496,
+      "dx": 48,
+      "dy": 24
+    },
+    {
+      "frame": 4,
+      "anchor": [
+        184.52814088179056,
+        193.28162337207698
+      ],
+      "floor_y": 496,
+      "dx": 35,
+      "dy": 24
+    },
+    {
+      "frame": 5,
+      "anchor": [
+        200.53994648868425,
+        184.32698634158606
+      ],
+      "floor_y": 481,
+      "dx": 19,
+      "dy": 39
+    },
+    {
+      "frame": 6,
+      "anchor": [
+        193.36028443455504,
+        183.07390381132367
+      ],
+      "floor_y": 481,
+      "dx": 27,
+      "dy": 39
+    },
+    {
+      "frame": 7,
+      "anchor": [
+        175.81041324556062,
+        181.9592097652161
+      ],
+      "floor_y": 481,
+      "dx": 44,
+      "dy": 39
+    },
+    {
+      "frame": 8,
+      "anchor": [
+        195.74766533237016,
+        185.52450709449866
+      ],
+      "floor_y": 481,
+      "dx": 24,
+      "dy": 39
+    }
+  ],
+  "webp": {
+    "file": "phase2-stabilized-preview.webp",
+    "lossless": true,
+    "alpha_exact_after_roundtrip": true
+  }
+}

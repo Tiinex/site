@@ -1,0 +1,24 @@
+{
+  "schema": "tiinex.pilot.execution-attachment-manifest.v1",
+  "controllingTask": ".topics/viewer/003-3-1-5-1-pilot-ual-8x8-locomotion-master-generation-task.trace.md",
+  "orderIsAuthoritative": true,
+  "attachments": [
+    {
+      "order": 1,
+      "filename": "003-3-1-5-1-1-input-01-motion-direction-authority.png",
+      "sha256": "04c20b0e3233c0840a35d7b9b8f06160bfb5a60a7bceadac84b53ca0a6f3ee88",
+      "role": "motion-and-direction-authority",
+      "purpose": "Defines 8x8 row directions, column timing, and authored humanoid Walk_Loop motion. Visual mannequin/color styling is not output style authority."
+    },
+    {
+      "order": 2,
+      "filename": "003-3-1-5-1-1-input-02-identity-authority.png",
+      "sha256": "ed54f4023c2c411686c199da8d48a7356f7f0171ae9102441a9cc14688b2c67b",
+      "role": "character-identity-authority",
+      "purpose": "Defines the living Plaything identity, clothing, materials, proportions, and visual style. Existing layout or motion in this image is not motion authority."
+    }
+  ],
+  "exactHumanVisibleInputFile": "003-3-1-5-1-1-execution-request.md",
+  "adaptationPolicy": "none; Pilot projects the exact user-visible input and attachment order. Pure host confirmation may be answered minimally without changing substance.",
+  "expectedReturn": "one exact generated source image file when exposed by the host, plus actual execution evidence and immediate Pilot-to-Anchor return Handoff"
+}

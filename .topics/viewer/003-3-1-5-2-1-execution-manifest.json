@@ -1,0 +1,42 @@
+{
+  "schema": "tiinex.pilot.multi-turn-execution-manifest.v1",
+  "controllingTask": ".topics/viewer/003-3-1-5-2-pilot-clean-identity-then-motion-retarget-task.trace.md",
+  "phases": [
+    {
+      "phase": 1,
+      "label": "clean-static-identity-master",
+      "attachments": [
+        {
+          "order": 1,
+          "filename": "003-3-1-5-2-1-input-01-neutral-turnaround-layout.png",
+          "sha256": "ab1717d593091872be33f1f6840e44b12bf68cbbd6a3afad2af3d69e9a12f214",
+          "role": "neutral-turnaround-layout-authority"
+        }
+      ],
+      "exactHumanVisibleInput": "phase1 in 003-3-1-5-2-1-execution-plan.md",
+      "expectedReturn": "one exact static 4-view identity master image"
+    },
+    {
+      "phase": 2,
+      "label": "motion-retarget",
+      "attachments": [
+        {
+          "order": 1,
+          "filename": "003-3-1-5-2-1-input-02-walk-motion-authority.png",
+          "sha256": "b59ab1658987c6b038e2ce586155bd91f1b65636bc5bac219f207997a229e9d4",
+          "role": "walk-motion-authority"
+        },
+        {
+          "order": 2,
+          "dynamicSource": "exact-phase-1-generated-identity-master",
+          "role": "character-identity-authority"
+        }
+      ],
+      "exactHumanVisibleInput": "phase2 in 003-3-1-5-2-1-execution-plan.md",
+      "expectedReturn": "one exact 2x4 eight-frame motion source image"
+    }
+  ],
+  "adaptationPolicy": "none except pure host confirmation",
+  "retryPolicy": "none unless separately delegated",
+  "finalReturn": "one execution Evidence + Pilot-to-Anchor Handoff carrying exact observable Phase-1 and Phase-2 outputs and anomalies"
+}
