@@ -5,6 +5,7 @@ import { loadNodePortableInput } from '../../input/node.input.js';
 import { prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
 import { groundInput } from './cli.ground-recovery.js';
 import { prepareQualifyColdStartCommandInput } from './cli.cold-start-input.js';
+import { reductionPreflightCliInput } from './cli.reduction-input.js';
 
 export async function commandInput(parsed, runtime = {}) {
   const flags = parsed.flags;
@@ -335,15 +336,7 @@ export async function commandInput(parsed, runtime = {}) {
     const facts = value.facts || value;
     return { input: { ...material, facts, controllingTask: flags['controlling-task'] || flags.task || value.controllingTask || '', workObligations: value.workObligations || facts.workObligations || [] }, options };
   }
-  if (parsed.command === 'reduction-preflight') return {
-    input: {
-      ...material,
-      candidates: splitFlag(flags.candidate || flags.candidates),
-      reductionArtifactPath: flags.reduction || flags['reduction-artifact'] || '',
-      immutableSources: await readOptionalJson(flags['immutable-sources'])
-    },
-    options
-  };
+  if (parsed.command === 'reduction-preflight') return reductionPreflightCliInput({ material, flags, options, readOptionalJson, splitFlag });
   if (parsed.command === 'search-lineage') return {
     input: {
       ...material,

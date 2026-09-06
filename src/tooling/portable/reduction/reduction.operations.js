@@ -6,6 +6,8 @@ export function preflightPortableReductionOperation(input = {}, options = {}) {
   return operationResult('reduction-preflight', {
     status: preflight.status,
     destructiveEligible: preflight.destructiveEligible,
+    composition: preflight.composition,
+    eligibility: preflight.eligibility,
     inventory: preflight.inventory,
     reduction: preflight.reduction,
     candidates: preflight.candidates,
@@ -18,7 +20,7 @@ export function preflightPortableReductionOperation(input = {}, options = {}) {
 export const portableReductionOperationDescriptors = Object.freeze([
   Object.freeze({
     name: 'reduction-preflight',
-    description: 'Inventory loaded material and fail closed on proposed disappearing semantic leaves unless an exact pre-delete Reduction artifact, immutable leaf recovery, lifecycle eligibility, and leaf-to-collapse-boundary Parent-span proof are explicit.',
+    description: 'Project ordinary hierarchical Reduction composition/recovery and, only when an exact destructive candidate set is supplied, a separate fail-closed eligible|blocked|unresolved destructive-lineage qualification bound to exact inputs. The operation is read-only and never authorizes apply.',
     safety: 'planning-only-read-only',
     inputSchema: 'tiinex.portable.reduction-preflight.request.v1',
     sourceMutation: false,
