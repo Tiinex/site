@@ -323,8 +323,3 @@ same basename + distinct query target
 The URL pathname remains presentation-only and cannot replace another external artifact merely because its basename matches. Same-title Tasks from different external parents continue through the established fallback allocator and retain exact URL Parent/Origin lineage.
 
 `sourceTarget.rawUrl` remains the normalized fetch URL Tiinex requested from transport (including GitHub blob→raw normalization). It is intentionally not rewritten to an HTTP client's post-redirect `response.url`; redirect-chain authority is outside this bounded source contract.
-## Current Carrier Major 003 production-method pointer
-
-Candidate method checkpoint: `reference/playthings/production/carrier-003/board-first-v05/`.
-
-Recover `METHOD.md` first. The directory freezes proof-of-two visual-source boards, deterministic extraction/validation code, cross-board pressure evidence, ordered motion-contact reviews, and animated previews. It intentionally precedes and does not lock the larger schema/artifact presentation-family requirements.

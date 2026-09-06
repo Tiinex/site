@@ -1,0 +1,167 @@
+{
+  "source": "/mnt/data/pilot_return_current/site/.topics/viewer/003-3-1-2-generated-01.png",
+  "size": [
+    1448,
+    1086
+  ],
+  "mode": "RGBA",
+  "sha256": "32f82698c036b7d83ecdce1e4d7fad1ed0423024ae0c79311b3906aa426dfcc7",
+  "alpha_extrema": [
+    0,
+    255
+  ],
+  "grid": [
+    2,
+    4
+  ],
+  "cell_size": [
+    362,
+    543
+  ],
+  "frames": [
+    {
+      "index": 1,
+      "bbox": [
+        51,
+        16,
+        314,
+        515
+      ],
+      "floor_y": 512,
+      "upper_anchor": [
+        184.393,
+        203.052
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 2,
+      "bbox": [
+        124,
+        13,
+        265,
+        515
+      ],
+      "floor_y": 513,
+      "upper_anchor": [
+        188.252,
+        198.407
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 3,
+      "bbox": [
+        41,
+        11,
+        268,
+        517
+      ],
+      "floor_y": 512,
+      "upper_anchor": [
+        168.308,
+        201.249
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 4,
+      "bbox": [
+        38,
+        13,
+        301,
+        514
+      ],
+      "floor_y": 510,
+      "upper_anchor": [
+        178.299,
+        200.39
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 5,
+      "bbox": [
+        57,
+        9,
+        331,
+        515
+      ],
+      "floor_y": 512,
+      "upper_anchor": [
+        192.706,
+        200.437
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 6,
+      "bbox": [
+        117,
+        8,
+        269,
+        523
+      ],
+      "floor_y": 519,
+      "upper_anchor": [
+        184.407,
+        198.574
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 7,
+      "bbox": [
+        78,
+        8,
+        268,
+        525
+      ],
+      "floor_y": 521,
+      "upper_anchor": [
+        176.914,
+        197.78
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    },
+    {
+      "index": 8,
+      "bbox": [
+        40,
+        8,
+        309,
+        516
+      ],
+      "floor_y": 513,
+      "upper_anchor": [
+        183.357,
+        196.113
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  ]
+}

@@ -1,0 +1,208 @@
+{
+  "source_sha256": "32f82698c036b7d83ecdce1e4d7fad1ed0423024ae0c79311b3906aa426dfcc7",
+  "output": "/mnt/data/pilot_return_current/site/reference/playthings/production/carrier-003/pilot-walk-seed-01/003-3-1-4-stable-walk-left.png",
+  "grid": [
+    2,
+    4
+  ],
+  "cell_size": [
+    362,
+    543
+  ],
+  "safe_margin_px": 22,
+  "shared_scale": 0.965183752417795,
+  "placements": [
+    {
+      "index": 1,
+      "source_bbox": [
+        51,
+        16,
+        314,
+        515
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        54,
+        39
+      ],
+      "dest_size": [
+        254,
+        482
+      ],
+      "margins": {
+        "left": 54,
+        "top": 39,
+        "right": 54,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 2,
+      "source_bbox": [
+        124,
+        13,
+        265,
+        515
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        113,
+        36
+      ],
+      "dest_size": [
+        136,
+        485
+      ],
+      "margins": {
+        "left": 113,
+        "top": 36,
+        "right": 113,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 3,
+      "source_bbox": [
+        41,
+        11,
+        268,
+        517
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        71,
+        33
+      ],
+      "dest_size": [
+        219,
+        488
+      ],
+      "margins": {
+        "left": 71,
+        "top": 33,
+        "right": 72,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 4,
+      "source_bbox": [
+        38,
+        13,
+        301,
+        514
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        54,
+        37
+      ],
+      "dest_size": [
+        254,
+        484
+      ],
+      "margins": {
+        "left": 54,
+        "top": 37,
+        "right": 54,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 5,
+      "source_bbox": [
+        57,
+        9,
+        331,
+        515
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        49,
+        33
+      ],
+      "dest_size": [
+        264,
+        488
+      ],
+      "margins": {
+        "left": 49,
+        "top": 33,
+        "right": 49,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 6,
+      "source_bbox": [
+        117,
+        8,
+        269,
+        523
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        107,
+        24
+      ],
+      "dest_size": [
+        147,
+        497
+      ],
+      "margins": {
+        "left": 107,
+        "top": 24,
+        "right": 108,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 7,
+      "source_bbox": [
+        78,
+        8,
+        268,
+        525
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        89,
+        22
+      ],
+      "dest_size": [
+        183,
+        499
+      ],
+      "margins": {
+        "left": 89,
+        "top": 22,
+        "right": 90,
+        "bottom": 22
+      }
+    },
+    {
+      "index": 8,
+      "source_bbox": [
+        40,
+        8,
+        309,
+        516
+      ],
+      "scale": 0.965183752417795,
+      "dest_xy": [
+        51,
+        31
+      ],
+      "dest_size": [
+        260,
+        490
+      ],
+      "margins": {
+        "left": 51,
+        "top": 31,
+        "right": 51,
+        "bottom": 22
+      }
+    }
+  ]
+}

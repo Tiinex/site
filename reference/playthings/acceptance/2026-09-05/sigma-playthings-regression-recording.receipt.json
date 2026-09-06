@@ -1,0 +1,33 @@
+{
+  "schema": "tiinex.playthings.acceptance-source-receipt.v1",
+  "source": {
+    "kind": "sigma-uploaded-screen-recording",
+    "uploadedName": "6e13a2ae-448e-4fe3-a218-4758167cca9c.mp4",
+    "sha256": "71c534481f98005dc643d9b03980576a8ecbb436d95719ed38b4628f22d0b5cc",
+    "durationSeconds": 610.24,
+    "video": {
+      "codec": "h264",
+      "width": 1918,
+      "height": 1198
+    },
+    "audio": {
+      "codec": "aac"
+    },
+    "carriedInFreshAnchorPackage": false,
+    "reason": "The exact source recording is approximately 300 MiB and is preserved by receipt/hash rather than embedded; derived visual review sheets are carried for bounded fresh-Anchor inspection."
+  },
+  "derivedReviewMaterial": [
+    {
+      "path": "sigma-playthings-regression-contact.jpg",
+      "sha256": "ab9ea75395f83b5179f781618984d7ea85a1fe590ee92e1ac486b7f33fa4d03d",
+      "derivation": "frame-contact-sheet-from-source-recording",
+      "semanticAuthority": "none"
+    },
+    {
+      "path": "sigma-playthings-world-regression-sequence.jpg",
+      "sha256": "36556b611e9a49210ceb19afe17a4e5338ceb9841f250d3e954d7eb008e7fac8",
+      "derivation": "frame-contact-sheet-from-source-recording",
+      "semanticAuthority": "none"
+    }
+  ]
+}

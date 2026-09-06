@@ -1,0 +1,21 @@
+{
+  "schema": "tiinex.playthings.pilot-execution-request.v0.1",
+  "purpose": "Bounded first Pilot role test through a human-operated image-generation context.",
+  "orderedAttachments": [
+    {
+      "order": 1,
+      "file": "01-motion-authority-walk-left-8phase.png",
+      "role": "motion-authority",
+      "sha256": "0171935a156cedc09247304d6f9c2d16f900589949b15d5827c02269a8dd8e01"
+    },
+    {
+      "order": 2,
+      "file": "02-identity-authority-plaything-left-profile.png",
+      "role": "identity-authority",
+      "sha256": "f943b5c1b66a69273541d08df2027082df5e9909b0a3031fe4f1f0d08da27d22"
+    }
+  ],
+  "exactUserInputSource": "execution-request.md",
+  "expectedReturn": "one exact generated image file plus execution evidence and Pilot-to-Anchor return Handoff package",
+  "acceptanceAuthority": "Anchor retains review/disposition; Pilot returns execution result only"
+}
