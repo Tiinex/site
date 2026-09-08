@@ -1,98 +1,15 @@
-# Tiinex/site
+# Tiinex Site
 
-**Current source identity:** Tiinex Site v470 (`v470`). This checkpoint label is repository/build identity, not a claim that the current Foundation work is a qualified public release.
+Official thin deployment above `@tiinex/app` and `@tiinex/core`.
 
-`Tiinex/site` is the current Viewer, reference implementation, and shared Tooling source used to exercise Tiinex artifacts and provenance workflows.
+`src/main.jsx` mounts the public App entrypoint. `tiinex.config.js` owns deployment id, explicit Verse registrations, companion providers, resource readers and optional initial Workspaces. Shared application and semantic implementations are not copied into this repository.
 
-Tiinex itself is broader than this repository. Its primary semantic authority lives in readable artifacts and maintained schemas, especially in `Tiinex/docs`; organizational priorities and human acceptance live in `Tiinex/business`.
+## Current checkpoint
 
-## What this repository is
+The reusable Viewer source has moved to App. Headless checks and static browser import/syntax checks pass separately; a real dependency-equipped React/Vite build and browser mounting are still required. This is not yet a playable Playthings release.
 
-Current Foundation work here covers:
+Run `npm ci`, `npm test`, and `npm run build` once the exact Core/App packages are available. Before publication, install exact npm tarballs in an isolated consumer; do not copy source or use cross-repository source imports.
 
-- the Viewer/reference implementation;
-- shared portable Tooling for reading, validating, grounding, and carrying Tiinex artifacts;
-- Handoff-package cold start and return manufacture;
-- validation/qualification support used by Business, Docs, and Site workspaces together.
+Playthings's supplied source is a headless foundation without a public React entrypoint. No fake Playthings module is registered. When that entrypoint exists, register `{ id, label, load: () => import('@tiinex/playthings/react') }` in `tiinex.config.js`.
 
-This repository is **not** a general-purpose AI runtime, and the current working branch must not be mistaken for a qualified public release merely because its source is available.
-
-## Current status
-
-The Foundation path is active and intentionally conservative.
-
-Current qualified work has demonstrated, among other things:
-
-- cold-start recovery from a routed Handoff package;
-- complete Business + Docs + Site workspace carriage for Foundation turns;
-- package-parent reuse for unchanged carried workspaces;
-- focused Tooling/Foundation validation without introducing new static debt.
-
-Some broader release/closure checks can still be blocked by host dependency availability. A source-only checkout without installed dependencies does not claim runtime/browser readiness.
-
-Historical implementation notes and prior version narratives remain recoverable in Git history; they are not the current first-contact surface.
-
-## Branch roles
-
-Do not infer implementation authority from conventional Git branch names.
-
-- `refactor` — **current active implementation** for the Viewer/reference implementation and shared Tooling during Foundation work.
-- `master` — **PoC evidence**. It is a historical product/interaction baseline, not the current implementation target.
-- `poc-monolith` — **PoC evidence**. It preserves the PoC monolith lineage and is not the current implementation target.
-
-Viewer parity work compares the behavior demonstrated by the PoC evidence (`master` + `poc-monolith`) against the active `refactor` implementation. A later explicit repository decision may change these roles; branch naming alone never does.
-
-## LLM / machine first contact
-
-Read [`llms.txt`](./llms.txt) first.
-
-The portable bootstrap source is:
-
-- [`src/tooling/portable/bootstrap/tiinex.llm.bootstrap.md`](./src/tooling/portable/bootstrap/tiinex.llm.bootstrap.md)
-- [`src/tooling/portable/bootstrap/tiinex.llm.bootstrap.pointer.json`](./src/tooling/portable/bootstrap/tiinex.llm.bootstrap.pointer.json)
-
-The bootstrap is a routing and Tooling aid, **not semantic authority**. Prefer an exact commit or qualified release when retrieving it remotely; disclose when a moving branch was used.
-
-For a qualified routed Handoff after Tooling orientation, the common decision-grounding path is identical for humans and LLMs:
-
-```bash
-node tools/tiinex-portable.mjs ground <handoff-package.zip> --route <Continue-from>
-```
-
-The default receipt is bounded and fail-visible: it separates `grounded-to-act`, `grounded-to-discuss`, and `insufficient-grounding`, derives leaf topology only from declared `Parent`, and keeps Required Context bodies opt-in via `--include-required-context`.
-
-## Artifacted work lifecycle and readiness
-
-Tiinex keeps work progression deliberately split instead of treating one status label as completion. For one exact qualified controlling Task, shared Tooling can project the same lifecycle for CLI, LLM, Viewer, and VS Code consumers through `project-lifecycle-readiness`.
-
-```text
-failed criteria → bounded child work → qualified convergence → ready for re-test
-→ authoritative re-test → explicit closure OR more bounded work
-```
-
-`ready-for-retest` is derived readiness only; it is not a pass. A passing re-test is not closure. Missing or ambiguous lineage, currentness, criteria coverage, validation method, or governing authority fails closed instead of being guessed. A qualified Reduction may carry current re-test inputs within its declared loss boundary, but Reduction existence, file disappearance, cleanup, branch state, or descendant count never proves completion. Consumers should use the shared normalized projection rather than inventing local lifecycle rules.
-
-## Supported local start
-
-With dependencies already available:
-
-```bash
-npm run dev
-```
-
-Expected local address:
-
-```text
-http://127.0.0.1:5173/
-```
-
-If dependency installation cannot complete, treat runtime/build qualification as blocked rather than silently downgrading it to a pass.
-
-## Where to continue
-
-- Tiinex identity and public orientation: `Tiinex/.github`
-- Maintained schemas and semantic contracts: `Tiinex/docs`
-- Organizational truth, priorities, and acceptance: `Tiinex/business`
-- Portable Tooling entrypoint: `tools/tiinex-portable.mjs`
-
-Read the declared artifacts and qualification evidence before inferring current capability from filenames, branch names, old release notes, or historical implementation prose.
+Historic `.topics` artifacts are preserved pending qualified reduction in Round 2. The new `.topics/025-thin-site-deployment-task.trace.md` points to the controlling Business task. The old lockfile is preserved at `docs/migration/pre-split-package-lock.json` as input evidence, not current install authority.

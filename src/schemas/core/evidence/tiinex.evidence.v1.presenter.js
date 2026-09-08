@@ -1,1 +1,0 @@
-export function evidencePresent(artifact, context = {}) { return { title: artifact?.title || 'Evidence', summary: artifact?.summary || 'Preserved material used to support, illuminate, test, or challenge a claim or question.', badges: ['concrete', 'tiinex.evidence.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }

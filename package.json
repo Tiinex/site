@@ -1,51 +1,33 @@
 {
   "name": "tiinex-site",
-  "version": "0.2.289-v470",
+  "version": "0.3.0-turn1.1",
   "private": true,
-  "description": "Tiinex Site v470: Schema Reading-Contract Materialization Identity + Source Coalescing Authority Correction.",
   "type": "module",
+  "description": "Official Tiinex web deployment using the versioned @tiinex/app application.",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
-    "validate": "node tools/check-checkpoint-identity.mjs && node tools/check-icon-imports.mjs && node tools/check-architecture-shape.mjs && node tools/check-browser-import-boundary.mjs && node tools/check-package-lock-platforms.mjs && node tools/validate-static.mjs && node tools/validate-schema-bindings.mjs && node tools/check-schema-runtime-projections.mjs && node tools/validate-workspace-schema.mjs && node tools/foundation-acceptance.test.mjs",
-    "ui:shape": "node tools/check-ui-shape.mjs",
-    "test": "node tools/foundation-acceptance.test.mjs",
-    "metrics": "node tools/collect-metrics.mjs",
-    "storage:scan": "node tools/inspect-storage.mjs",
-    "build:public": "node tools/ensure-deps.mjs && node tools/build-public.mjs",
-    "public:check": "node tools/check-public-build.mjs",
-    "usecase:uc001": "node tools/check-uc001.mjs",
-    "runtime:smoke": "node tools/check-runtime-startup.mjs",
-    "portable:smoke": "node tools/tiinex-portable.mjs operations --compact && node tools/tiinex-portable.mjs inspect src/artifacts/fixtures/topic.trace.md --compact",
-    "typecheck": "npx --no-install tsc -p tsconfig.json",
-    "architecture:shape": "node tools/check-architecture-shape.mjs",
-    "browser:imports": "node tools/check-browser-import-boundary.mjs",
-    "validate:smoke": "node tools/run-validation-profile.mjs --profile smoke",
-    "validate:tooling-iteration": "node tools/run-validation-profile.mjs --profile focused/tooling",
-    "validate:restartable": "node tools/run-validation-chain.mjs --script validate",
-    "tooling:profile-validation": "node tools/profile-validation-chain.mjs --script validate",
-    "tooling:closure-plan": "node tools/run-checkpointed-plan.mjs",
-    "tooling:search": "node tools/search-tooling-context.mjs",
-    "validate:integration": "node tools/run-validation-profile.mjs --profile integration",
-    "validate:static:diagnostic": "node tools/validate-static-regression-aware.mjs --mode diagnostic",
-    "validate:closure": "node tools/run-validation-profile.mjs --profile closure",
-    "validation:inspect:smoke": "node tools/run-validation-profile.mjs --profile smoke --inspect",
-    "validation:inspect:focused": "node tools/run-validation-profile.mjs --profile focused/tooling --inspect",
-    "validation:inspect:integration": "node tools/run-validation-profile.mjs --profile integration --inspect",
-    "validation:inspect:closure": "node tools/run-validation-profile.mjs --profile closure --inspect"
-  },
-  "engines": {
-    "node": ">=18"
+    "build": "vite build",
+    "build:public": "vite build",
+    "test": "node --test test/*.test.mjs",
+    "validate": "npm test && npm run build"
   },
   "dependencies": {
+    "@tiinex/app": "0.1.0",
+    "@tiinex/core": "0.1.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "@fortawesome/fontawesome-svg-core": "7.3.1",
     "@fortawesome/free-regular-svg-icons": "7.3.1",
     "@fortawesome/free-solid-svg-icons": "7.3.1",
-    "@fortawesome/react-fontawesome": "3.4.0",
+    "@fortawesome/react-fontawesome": "3.4.0"
+  },
+  "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "typescript": "7.0.2",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=22.14"
   },
   "packageManager": "npm@10.9.2"
 }

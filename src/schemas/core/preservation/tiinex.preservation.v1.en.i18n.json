@@ -1,6 +1,0 @@
-{
-  "label": "Preservation",
-  "summary": "Captured or preserved material made available for later judgment.",
-  "preservation.section.missing": "Missing required preservation section: {section}.",
-  "preservation.sections.present": "Required preservation sections are present."
-}

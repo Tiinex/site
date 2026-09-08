@@ -1,1 +1,0 @@
-export function preservationPresent(artifact, context = {}) { return { title: artifact?.title || 'Preservation', summary: artifact?.summary || 'Captured or preserved material made available for later judgment.', badges: ['concrete', 'tiinex.preservation.v1'], disclosure: context.degraded ? 'degraded' : 'normal' }; }

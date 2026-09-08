@@ -5,6 +5,11 @@ dist/
 desktop.ini
 .DS_Store
 *.log
-*.zip
 last-message-to-user-from-other-llm.md
 test-environment-full-conversation.md
+
+.release/
+*.tgz
+.tiinex/
+*.zip
+delivery/

@@ -1,1 +1,0 @@
-export function moduleValidate(artifact) { return [{ severity: 'info', code: 'tiinex.schema.module.v1.validation.scaffold', message: 'Initial schema validation scaffold; authoritative contract parsing comes next.' }]; }
