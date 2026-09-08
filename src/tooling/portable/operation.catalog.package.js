@@ -6,6 +6,15 @@ import { manufactureRecipientRelativeHandoffPackage } from './handoff/manufactur
 import { projectPortableHandoffCarrierOutputFromPackage } from './handoff/recipientV2.humanOutput.js';
 import { orientColdConsumerFromHandoffPackage } from './handoff/coldConsumerEntrypoint.js';
 import { auditHandoffPackageContextCarriage } from './handoff/contextAudit.js';
+import { projectPortableWorkspaceLandingPlan } from './handoff/workspaceLandingPlan.js';
+import { projectPortableEditorAssistance } from './editor/editor.assistance.js';
+import { projectQualifiedHandoffLeaves } from './handoff/handoffLeafProjection.js';
+import { projectPortableAuthoringParent } from './editor/authoring.parent.js';
+import { projectQualifiedWorkspacePackageSources } from './handoff/workspacePackageSources.js';
+import { projectPortableHandoffAuthoringPlan } from './handoff/handoffAuthoringPlan.js';
+import { projectQualifiedHandoffEndpoints } from './handoff/handoffEndpointProjection.js';
+import { projectPortableOperatorContext } from './handoff/operatorContextProjection.js';
+import { projectPortableStagedValidation } from './editor/staged.validation.js';
 
 export function createPortablePackageOperationEntries({ operation, wrapPortableResult, sessionOperationResult }) {
   return Object.freeze({
@@ -50,6 +59,69 @@ export function createPortablePackageOperationEntries({ operation, wrapPortableR
     safety: 'read-only',
     inputSchema: 'tiinex.portable.handoff-context-carriage-audit.request.v1',
     handler: (input = {}) => wrapPortableResult('audit-handoff-package-context', auditHandoffPackageContextCarriage(input))
+  }),
+  'project-workspace-landing': operation({
+    name: 'project-workspace-landing',
+    description: 'Project qualified carried Workspaces onto explicit local Git repository facts for one fail-closed human landing confirmation without extracting, writing, committing, pushing, or creating semantic authority.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.workspace-landing-plan.request.v1',
+    handler: (input = {}) => wrapPortableResult('project-workspace-landing', projectPortableWorkspaceLandingPlan(input))
+  }),
+  'project-editor-assistance': operation({
+    name: 'project-editor-assistance',
+    description: 'Project exact shared validator findings, deterministic source locations where provable, and bounded deterministic hygiene repairs for editor hosts.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-editor-assistance', projectPortableEditorAssistance(input))
+  }),
+  'project-authoring-parent': operation({
+    name: 'project-authoring-parent',
+    description: 'Project one exactly audited local Tiinex artifact into shared continuation-authoring Parent input without inventing schema-reference qualification.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-authoring-parent', projectPortableAuthoringParent(input))
+  }),
+  'project-handoff-leaves': operation({
+    name: 'project-handoff-leaves',
+    description: 'Project currently qualified Handoff leaves from loaded source using exact shared Handoff validation and declared Parent continuity.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-handoff-leaves', projectQualifiedHandoffLeaves(input))
+  }),
+  'project-workspace-package-sources': operation({
+    name: 'project-workspace-package-sources',
+    description: 'Project exact qualified local Workspace artifacts into explicit package-builder source candidates without manufacturing or creating Workspace authority.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-workspace-package-sources', projectQualifiedWorkspacePackageSources(input))
+  }),
+  'project-handoff-authoring-plan': operation({
+    name: 'project-handoff-authoring-plan',
+    description: 'Project the shared root or continuation path allocation for native Handoff authoring from exact local material without creating an artifact.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-handoff-authoring-plan', projectPortableHandoffAuthoringPlan(input))
+  }),
+  'project-handoff-endpoints': operation({
+    name: 'project-handoff-endpoints',
+    description: 'Project exactly qualified Role/Party artifacts into explicit Handoff endpoint choices with stable Workspace-artifact references and no holder inference.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-handoff-endpoints', projectQualifiedHandoffEndpoints(input))
+  }),
+  'project-operator-context': operation({
+    name: 'project-operator-context',
+    description: 'Project one explicit multi-root operator context with qualified Workspace identities, Handoff leaves, Role/Party endpoints, and pointerless selection.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-operator-context', projectPortableOperatorContext(input))
+  }),
+  'project-staged-validation': operation({
+    name: 'project-staged-validation',
+    description: 'Validate explicit staged Tiinex paths plus only their required loaded local Parent closure without auditing unrelated non-staged artifacts.',
+    safety: 'planning-only-read-only',
+    inputSchema: 'tiinex.portable.input.v1',
+    handler: (input = {}) => wrapPortableResult('project-staged-validation', projectPortableStagedValidation(input))
   }),
   'build-runtime-package': operation({
     name: 'build-runtime-package',

@@ -1851,7 +1851,40 @@
         }
       ],
       "findings": []
-    }
+    },
+    "lineageAuthority": [
+      {
+        "schemaId": "tiinex.root.v1",
+        "source": {
+          "repository": "Tiinex/docs",
+          "commit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+          "path": ".topics/.schemas/tiinex.root.v1.schema.md",
+          "publicationState": "accepted-local-unpublished",
+          "snapshotCompleteness": "exact-axiom-canonical-unpublished-bounded-workspace-contract"
+        },
+        "parentSchemaId": "",
+        "parentSourceCandidates": []
+      },
+      {
+        "schemaId": "tiinex.validation.report.v1",
+        "source": {
+          "repository": "Tiinex/docs",
+          "commit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+          "path": ".topics/.schemas/validation/report/tiinex.validation.report.v1.schema.md",
+          "publicationState": "",
+          "snapshotCompleteness": "exact-canonical-docs-snapshot"
+        },
+        "parentSchemaId": "tiinex.root.v1",
+        "parentSourceCandidates": [
+          {
+            "provider": "github",
+            "repository": "Tiinex/docs",
+            "commit": "5b1b3db377b8bc95ba99d0a9ef1fe441cdab24cb",
+            "path": ".topics/.schemas/tiinex.root.v1.schema.md"
+          }
+        ]
+      }
+    ]
   },
   "creation": {
     "declared": true,

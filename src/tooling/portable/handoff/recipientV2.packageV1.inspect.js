@@ -5,14 +5,16 @@ import { buildHandoffWorkspaceByteProvider, inspectStoredWorkspaceArchive } from
 import { qualifyHandoffWorkspaceTarget } from './workspaceTargetConformance.js';
 import { inspectRecipientV2Artifact, parseRecipientV2ExternalPayload, parseRecipientV2Facts } from './recipientV2.artifacts.js';
 import { RECIPIENT_V2_READ_PATH } from './recipientV2.topology.js';
+import { recipientColdProjection } from './recipientV2.coldProjection.js';
 import { buildPackageLocalParentResolver, inspectEndpointRolePointers, inspectParticipantRolePointers, inspectRoutePointers, parentTrace } from './recipientV2.lineage.js';
 import { finding } from './recipientV2.topology.materials.js';
-import { indexRecipientFiles, recipientColdProjection, recipientWorkspaceDescriptor, virtualCacheMaterial } from './recipientV2.inspect.helpers.js';
+import { indexRecipientFiles, recipientWorkspaceDescriptor, virtualCacheMaterial } from './recipientV2.inspect.helpers.js';
 import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
 import { projectRecipientV2EndpointRoles, projectRecipientV2ParticipantRoles, projectRecipientV2Routes } from './recipientV2.inspect.projection.js';
 import { RECIPIENT_V2_PACKAGE_V1_FORMAT_ID, RECIPIENT_V2_PACKAGE_V1_ROOT_PATH, RECIPIENT_V2_PACKAGE_V1_SCHEMA_ID } from './recipientV2.packageV1.constants.js';
-import { parseHandoffPackageV1, validatePackageFields } from './recipientV2.packageV1.contract.js';
+import { parseHandoffPackageV1, validatePackageFields, WORKSPACE_PACKAGE_ROLE } from './recipientV2.packageV1.contract.js';
 import { deriveVisibleFacts, validateRouteClosure } from './recipientV2.packageV1.inspect.helpers.js';
+import { workspaceCarrierProjection } from './recipientV2.packageV1.workspaceProjection.js';
 import { byteEqual, currentSchemaId, decodeUtf8, dedupeFindings, deepFreeze, oneFile } from './recipientV2.packageV1.shared.js';
 
 export function inspectRecipientFacingV2PackageV1(bundle = {}, options = {}) {
@@ -125,25 +127,30 @@ export function inspectRecipientFacingV2PackageV1(bundle = {}, options = {}) {
   const routePointers = generatedArtifacts.filter((item) => item.schemaId === 'tiinex.pointer.v1' && item.facts?.role === 'handoff-route' && item.status === 'qualified');
   const endpointRolePointers = generatedArtifacts.filter((item) => item.schemaId === 'tiinex.pointer.v1' && item.facts?.role === 'endpoint-role' && item.status === 'qualified');
   const participantRolePointers = generatedArtifacts.filter((item) => item.schemaId === 'tiinex.pointer.v1' && item.facts?.role === 'participant-role' && item.status === 'qualified');
-  inspectEndpointRolePointers(endpointRolePointers, workspaceParts, caches, findings);
-  inspectParticipantRolePointers(participantRolePointers, workspaceParts, caches, findings);
-  const routeSpecs = routePointers.map((pointer) => ({ workspaceId: String(pointer.facts?.workspaceId || ''), path: String(pointer.facts?.workspaceRelativeHandoffPath || ''), purpose: '' }));
   const lineage = packageContract ? Object.freeze({ dimension: packageContract.carrierDimension, parentDimension: packageContract.parentCarrierDimension, checkpointKind: packageContract.carrierCheckpoint, majorReason: packageContract.majorReason || '' }) : null;
-  const carrierProjection = buildHandoffCarrierProjection({ bundle: semanticBundle, descriptor, workspaceByteProvider, carrierLineage: lineage, routes: routeSpecs });
-  if (carrierProjection.status !== 'ready') findings.push(finding('error', 'portable.handoff-package-v1.routes-unqualified', 'Selected Handoff Pointer does not independently resolve to qualified authoritative Handoff bytes.', { causes: carrierProjection.findings || [] }));
-  inspectRoutePointers(routePointers, carrierProjection, workspaceParts, endpointRolePointers, participantRolePointers, index, findings);
-  validateRouteClosure(routePointers, endpointRolePointers, participantRolePointers, caches, workspaceParts, findings);
-  if (routePointers.length !== 1) findings.push(finding('error', 'portable.handoff-package-v1.route-count-invalid', 'Qualified package-v1 delivery requires exactly one selected Handoff Pointer.', { count: routePointers.length }));
-  for (const route of carrierProjection.routes || []) {
-    if (route.requiredClosure?.state !== 'qualified') findings.push(finding('error', 'portable.handoff-package-v1.required-closure-unqualified', 'Authoritative Handoff Required Context is not fully carried by exact Workspace snapshots or bounded cache.', { routeId: route.id || '' }));
-    for (const requirement of route.requiredClosure?.requirements || []) if (requirement.state === 'qualified' && !['workspace-archive-entry', 'materialized-required-material'].includes(String(requirement.resolution?.kind || ''))) findings.push(finding('error', 'portable.handoff-package-v1.external-closure-asset', 'Selected route closure requires a carrier kind not owned by complete Workspace snapshots or bounded cache.', { routeId: route.id || '', requirementId: requirement.requirementId || '', kind: requirement.resolution?.kind || '' }));
-  }
-  const allowedCacheRequirementIds = new Set();
-  for (const route of carrierProjection.routes || []) for (const requirement of route.requiredClosure?.requirements || []) if (requirement.requirementId) allowedCacheRequirementIds.add(String(requirement.requirementId));
-  for (const pointer of endpointRolePointers) if (pointer.facts?.endpointRequirementId) allowedCacheRequirementIds.add(String(pointer.facts.endpointRequirementId));
-  for (const pointer of participantRolePointers) if (pointer.facts?.participantRequirementId) allowedCacheRequirementIds.add(String(pointer.facts.participantRequirementId));
-  for (const cache of caches) {
-    for (const material of cache.facts?.materials || []) {
+  const workspaceMode = String(packageContract?.packageRole || '') === WORKSPACE_PACKAGE_ROLE;
+  let carrierProjection;
+  if (workspaceMode) {
+    if (routePointers.length || endpointRolePointers.length || participantRolePointers.length || caches.length) findings.push(finding('error', 'portable.handoff-package-v1.workspace-carrier.handoff-surface-present', 'Pointerless Workspace carrier must not expose Handoff route, Role pointer, or Handoff cache carriers.', { routes: routePointers.length, endpointRoles: endpointRolePointers.length, participantRoles: participantRolePointers.length, caches: caches.length }));
+    carrierProjection = workspaceCarrierProjection(workspaceParts, lineage);
+  } else {
+    inspectEndpointRolePointers(endpointRolePointers, workspaceParts, caches, findings);
+    inspectParticipantRolePointers(participantRolePointers, workspaceParts, caches, findings);
+    const routeSpecs = routePointers.map((pointer) => ({ workspaceId: String(pointer.facts?.workspaceId || ''), path: String(pointer.facts?.workspaceRelativeHandoffPath || ''), purpose: '' }));
+    carrierProjection = buildHandoffCarrierProjection({ bundle: semanticBundle, descriptor, workspaceByteProvider, carrierLineage: lineage, routes: routeSpecs });
+    if (carrierProjection.status !== 'ready') findings.push(finding('error', 'portable.handoff-package-v1.routes-unqualified', 'Selected Handoff Pointer does not independently resolve to qualified authoritative Handoff bytes.', { causes: carrierProjection.findings || [] }));
+    inspectRoutePointers(routePointers, carrierProjection, workspaceParts, endpointRolePointers, participantRolePointers, index, findings);
+    validateRouteClosure(routePointers, endpointRolePointers, participantRolePointers, caches, workspaceParts, findings);
+    if (routePointers.length !== 1) findings.push(finding('error', 'portable.handoff-package-v1.route-count-invalid', 'Qualified Handoff-carrier package-v1 delivery requires exactly one selected Handoff Pointer.', { count: routePointers.length }));
+    for (const route of carrierProjection.routes || []) {
+      if (route.requiredClosure?.state !== 'qualified') findings.push(finding('error', 'portable.handoff-package-v1.required-closure-unqualified', 'Authoritative Handoff Required Context is not fully carried by exact Workspace snapshots or bounded cache.', { routeId: route.id || '' }));
+      for (const requirement of route.requiredClosure?.requirements || []) if (requirement.state === 'qualified' && !['workspace-archive-entry', 'materialized-required-material'].includes(String(requirement.resolution?.kind || ''))) findings.push(finding('error', 'portable.handoff-package-v1.external-closure-asset', 'Selected route closure requires a carrier kind not owned by complete Workspace snapshots or bounded cache.', { routeId: route.id || '', requirementId: requirement.requirementId || '', kind: requirement.resolution?.kind || '' }));
+    }
+    const allowedCacheRequirementIds = new Set();
+    for (const route of carrierProjection.routes || []) for (const requirement of route.requiredClosure?.requirements || []) if (requirement.requirementId) allowedCacheRequirementIds.add(String(requirement.requirementId));
+    for (const pointer of endpointRolePointers) if (pointer.facts?.endpointRequirementId) allowedCacheRequirementIds.add(String(pointer.facts.endpointRequirementId));
+    for (const pointer of participantRolePointers) if (pointer.facts?.participantRequirementId) allowedCacheRequirementIds.add(String(pointer.facts.participantRequirementId));
+    for (const cache of caches) for (const material of cache.facts?.materials || []) {
       const requirementId = String(material.sourceRequirementId || material.requirementId || '');
       if (!requirementId || !allowedCacheRequirementIds.has(requirementId)) findings.push(finding('error', 'portable.handoff-package-v1.cache-over-expansion', 'Workspace dependency cache contains material not required by the selected Handoff route closure.', { cache: cache.artifact.path, requirementId }));
     }

@@ -3,8 +3,10 @@ import { inspectPortableToolingBootstrap } from './toolingBootstrap.js';
 import { upgradeRecipientRelativeHandoffTransportPackageV2 } from './materialClosure.archiveV2.js';
 import { buildRecipientRelativeHandoffV2DirectBaseline } from './materialClosure.archiveV2.direct.js';
 import { qualifyMajorCarrierReadiness } from './carrierLineage.js';
+import { manufactureRecipientRelativeWorkspacePackage } from './workspaceCarrier.manufacture.js';
 
 export function manufactureRecipientRelativeHandoffPackage(input = {}, options = {}) {
+  if (String(input.carrierMode || '') === 'workspace') return manufactureRecipientRelativeWorkspacePackage(input, options);
   const baseline = buildRecipientRelativeHandoffV2DirectBaseline(input, options);
   const upgraded = upgradeRecipientRelativeHandoffTransportPackageV2(baseline, input, options);
   const toolingBootstrapInspection = upgraded.inspection?.bootstrapInspection || inspectPortableToolingBootstrap(baseline.bundle || upgraded.bundle || {});

@@ -3,6 +3,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { compilePortableSchemaContract, compilePortableSchemaContractChain } from '../src/tooling/portable/schema/contract.compile.js';
 import { parsePortableSchemaDocument, requiredCreationContentInputs, requiredCreationSections } from '../src/tooling/portable/schema/schema.contract.js';
+import { parseArtifactMarkdown } from '../src/artifacts/artifact.parse.js';
+import { parseOriginReferenceValue } from '../src/sources/origin.references.js';
 
 export const SCHEMA_RUNTIME_PROJECTION_ID = 'tiinex.site.schema-runtime-projection.v1';
 export const SCHEMA_RUNTIME_PROJECTION_GENERATOR = 'schema-runtime-projection-v1';
@@ -199,7 +201,11 @@ function runtimeValidationContractForSchema(markdownPath, bindingPath) {
   const compiled = compilePortableSchemaContractChain(lineage.map((item) => item.markdown), {
     inheritanceArtifacts: lineage.flatMap((item) => item.inheritanceArtifacts || [])
   });
-  return specializeCompactValidationContract(compactValidationContract(compiled), targetDocument, targetMarkdown);
+  const compact = compactValidationContract(compiled);
+  return specializeCompactValidationContract(Object.freeze({
+    ...compact,
+    lineageAuthority: Object.freeze(lineage.map(projectLineageAuthority))
+  }), targetDocument, targetMarkdown);
 }
 
 function specializeCompactValidationContract(contract = {}, document = {}, markdown = '') {
@@ -271,7 +277,7 @@ function schemaDocumentIndex(root) {
     const document = parsePortableSchemaDocument(markdown);
     const schemaId = String(document?.schemaId || '').trim();
     const inheritanceArtifacts = Object.freeze((binding?.inheritanceCompanions || []).map((relativePath) => path.resolve(path.dirname(bindingPath), String(relativePath || ''))).filter((candidate) => fs.existsSync(candidate)).map((candidate) => fs.readFileSync(candidate, 'utf8')));
-    if (schemaId) index.set(schemaId, { markdown, document, inheritanceArtifacts });
+    if (schemaId) index.set(schemaId, { markdown, document, binding, inheritanceArtifacts });
   }
   return index;
 }
@@ -284,6 +290,34 @@ function schemaLineageItems(schemaId, index, seen = new Set()) {
   const next = new Set(seen); next.add(id);
   const parent = String(item.document?.parentSchemaId || '').trim();
   return Object.freeze([...(parent ? schemaLineageItems(parent, index, next) : []), item]);
+}
+
+
+function projectLineageAuthority(item = {}) {
+  const binding = item?.binding || {};
+  const parsed = parseArtifactMarkdown(String(item?.markdown || ''));
+  const parentSchemaId = String(item?.document?.parentSchemaId || parsed?.envelope?.parent?.schema?.id || '').trim();
+  const parentSourceCandidates = Object.freeze((parsed?.envelope?.parent?.originEntries || [])
+    .map((entry) => parseOriginReferenceValue(String(entry?.target || entry?.raw || '')))
+    .filter((entry) => entry?.kind === 'github-file' && /^[0-9a-f]{40}$/i.test(String(entry?.ref || '')))
+    .map((entry) => Object.freeze({
+      provider: 'github',
+      repository: String(entry.repository || ''),
+      commit: String(entry.ref || '').toLowerCase(),
+      path: String(entry.path || '')
+    })));
+  return Object.freeze({
+    schemaId: String(item?.document?.schemaId || binding?.schemaId || ''),
+    source: Object.freeze({
+      repository: String(binding?.sourceRepository || ''),
+      commit: String(binding?.sourceCommit || '').toLowerCase(),
+      path: String(binding?.sourcePath || ''),
+      publicationState: String(binding?.publicationState || ''),
+      snapshotCompleteness: String(binding?.snapshotCompleteness || '')
+    }),
+    parentSchemaId,
+    parentSourceCandidates
+  });
 }
 
 function projectRootForBinding(bindingPath) {

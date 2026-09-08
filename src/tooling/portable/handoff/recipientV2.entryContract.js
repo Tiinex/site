@@ -13,3 +13,16 @@ export function recipientV2EntryCurrentRead() {
     Object.freeze({ label: 'Fallback', value: 'fail closed when Tooling cannot qualify the selected route or its declared dependency/integrity evidence; native package archaeology is not a preferred-path substitute' })
   ]);
 }
+
+
+export function recipientV2WorkspaceEntryCurrentRead() {
+  return Object.freeze([
+    Object.freeze({ label: 'Bootstrap Exception', value: 'before Tiinex Tooling is available, use host capabilities only to read this entry/bootstrap node and extract the declared bootstrap ZIP into a writable runtime location; do not unpack Workspace payloads or perform package archaeology' }),
+    Object.freeze({ label: 'Tooling Entrypoint', value: '`runtime/tools/tiinex-portable.mjs` relative to the chosen bootstrap extraction root; use this exact path and do not search/list the extracted runtime to discover it' }),
+    Object.freeze({ label: 'First Tooling Invocation', value: '`node <bootstrap-root>/runtime/tools/tiinex-portable.mjs orient-handoff-package <untouched-workspace-package.zip>`' }),
+    Object.freeze({ label: 'Carrier Mode', value: 'pointerless Workspace carrier; no Handoff route, Continue-from Pointer, endpoint Role, current work, transfer, acceptance, completion, or participation is declared or inferred' }),
+    Object.freeze({ label: 'Route Selection', value: 'none; the canonical package role requires Route Placement Rule, Continue-From Rule, and Pre-Handoff Closure Rule to all be exactly `none`' }),
+    Object.freeze({ label: 'Next Action', value: 'after Tooling orientation, use only the qualified carried Workspace identities and exact Workspace landing/inspection operations required by the consuming workflow' }),
+    Object.freeze({ label: 'Fallback', value: 'fail closed when Tooling cannot qualify the package role, exact Workspace bindings, bootstrap, or all-none Route Discovery profile; native package archaeology is not a preferred-path substitute' })
+  ]);
+}

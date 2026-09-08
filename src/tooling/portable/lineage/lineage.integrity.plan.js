@@ -92,6 +92,7 @@ function inspectOneArtifact({ node, record, lineage, parentEdgesByChild, nodeByI
       id, path, schemaId: String(record.schemaId || ''), title: String(record.title || path),
       state: 'unsupported', reasons: [`parse-failed:${error?.message || 'unknown'}`],
       parentAvailability: state('unsupported', 'artifact-parse-failed'),
+      parentSchema: state('unsupported', 'artifact-parse-failed'),
       parentPrimarySelf: state('unsupported', 'artifact-parse-failed'),
       childSelf: state('unsupported', 'artifact-parse-failed'),
       parentTarget: state('unsupported', 'artifact-parse-failed'),
@@ -111,6 +112,7 @@ function inspectOneArtifact({ node, record, lineage, parentEdgesByChild, nodeByI
       state: childSelf.state === 'verified' ? 'healthy' : childSelf.state === 'mismatch' ? 'child-self-mismatch' : 'child-self-unavailable',
       reasons: childSelf.state === 'verified' ? [] : [childSelf.reason],
       parentAvailability: state('root', 'no-declared-parent'),
+      parentSchema: state('not-applicable', 'root-artifact'),
       parentPrimarySelf: state('not-applicable', 'root-artifact'),
       childSelf,
       parentTarget: state('not-applicable', 'root-artifact'),
@@ -125,6 +127,7 @@ function inspectOneArtifact({ node, record, lineage, parentEdgesByChild, nodeByI
   const exactParentRecord = exactParentNode?.record || null;
   const parentSelfRaw = exactParentRecord ? validatedC14nV2PrimarySelfDigest(exactParentRecord.markdown || '') : null;
   const parentPrimarySelf = exactParentRecord ? normalizeParentSelfState(parentSelfRaw) : state('unavailable', parentResolution.reason || 'parent-unavailable');
+  const parentSchema = inspectResolvedParentSchema(parentEnvelope, exactParentRecord, parentResolution);
   const publicationOrigin = classifyPortablePublicationOrigin(parentEnvelope, record, exactParentRecord, publicationProviderEvidence);
   const expectedIntegrityTarget = exactIntegrityTarget(parentEnvelope, publicationOrigin);
   const targetInspection = inspectParentTarget(parsed, exactParentRecord, expectedIntegrityTarget);
@@ -136,7 +139,7 @@ function inspectOneArtifact({ node, record, lineage, parentEdgesByChild, nodeByI
     publicationLocator: String(publicationOrigin.locator || '')
   });
   const reasons = [];
-  const primaryState = choosePrimaryState({ parentResolution, parentPrimarySelf, childSelf, targetInspection, publicationOrigin }, reasons);
+  const primaryState = choosePrimaryState({ parentResolution, parentSchema, parentPrimarySelf, childSelf, targetInspection, publicationOrigin }, reasons);
   const repairCandidate = Object.freeze({
     kind: targetInspection.state === 'missing' ? 'backfill' : targetInspection.state === 'mismatch' ? 'mismatch-review' : 'none',
     oldTargetDigest: String(targetInspection.declaredValue || ''),
@@ -148,6 +151,7 @@ function inspectOneArtifact({ node, record, lineage, parentEdgesByChild, nodeByI
     id, path, schemaId: String(record.schemaId || parsed.envelope?.current?.schema?.id || ''), title: String(record.title || parsed.title || path),
     state: primaryState, reasons,
     parentAvailability: parentResolution.state,
+    parentSchema,
     parentPrimarySelf,
     childSelf,
     parentTarget: targetInspection,
@@ -168,6 +172,21 @@ function resolveParentForNode(node, lineage, parentEdgesByChild, nodeById) {
   if (exact.length > 1) return { state: state('ambiguous', 'multiple-parent-edges'), reason: 'multiple-parent-edges', node: null };
   const missing = edges.find((edge) => edge.status === 'missing');
   return { state: state('unresolved', missing ? 'declared-parent-not-loaded' : 'declared-parent-unresolved'), reason: missing ? 'declared-parent-not-loaded' : 'declared-parent-unresolved', node: null };
+}
+
+function inspectResolvedParentSchema(parentEnvelope = {}, parentRecord = null, parentResolution = {}) {
+  const declared = String(parentEnvelope?.schema?.id || '');
+  if (!declared) return state('missing', 'parent-schema-missing');
+  if (!parentRecord?.markdown) return state('unavailable', parentResolution?.reason || 'resolved-parent-bytes-unavailable');
+  try {
+    const parsedParent = parseArtifactMarkdown(parentRecord.markdown || '');
+    const actual = String(parsedParent.envelope?.current?.schema?.id || '');
+    if (!actual) return state('unavailable', 'resolved-parent-current-schema-unavailable');
+    if (actual !== declared) return Object.freeze({ state: 'mismatch', reason: 'declared-parent-schema-disagrees-with-resolved-parent', declaredSchemaId: declared, resolvedSchemaId: actual });
+    return Object.freeze({ state: 'verified', reason: '', declaredSchemaId: declared, resolvedSchemaId: actual });
+  } catch (error) {
+    return state('unavailable', `resolved-parent-parse-failed:${error?.message || 'unknown'}`);
+  }
 }
 
 function exactIntegrityTarget(parentEnvelope = {}, publicationOrigin = {}) {
@@ -192,7 +211,7 @@ function inspectParentTarget(parsed = {}, parentRecord = null, expectedTarget = 
   return targetState(verification.state || 'unavailable', verification.reason || verification.state || 'unavailable', declaredValue, expectedTarget, declaredTarget, verification.targetValue);
 }
 
-function choosePrimaryState({ parentResolution, parentPrimarySelf, childSelf, targetInspection, publicationOrigin }, reasons) {
+function choosePrimaryState({ parentResolution, parentSchema, parentPrimarySelf, childSelf, targetInspection, publicationOrigin }, reasons) {
   const consider = (condition, value, reason) => {
     if (!condition) return '';
     if (reason) reasons.push(reason);
@@ -200,6 +219,8 @@ function choosePrimaryState({ parentResolution, parentPrimarySelf, childSelf, ta
   };
   return consider(parentResolution.state.state === 'ambiguous', 'parent-ambiguous', parentResolution.state.reason)
     || consider(parentResolution.state.state !== 'resolved', 'parent-unresolved', parentResolution.state.reason)
+    || consider(parentSchema.state === 'mismatch', 'parent-schema-mismatch', parentSchema.reason)
+    || consider(parentSchema.state !== 'verified', 'parent-schema-unavailable', parentSchema.reason)
     || consider(parentPrimarySelf.state === 'mismatch', 'parent-self-mismatch', parentPrimarySelf.reason)
     || consider(parentPrimarySelf.state !== 'verified', 'parent-self-unavailable', parentPrimarySelf.reason)
     || consider(childSelf.state === 'mismatch', 'child-self-mismatch', childSelf.reason)
@@ -228,7 +249,7 @@ function repairStepForArtifact(artifact, order) {
     if (artifact.parentAvailability.state !== 'resolved') blockers.push(`parent-${artifact.parentAvailability.state}`);
     if (artifact.parentPrimarySelf.state !== 'verified') blockers.push(`parent-self-${artifact.parentPrimarySelf.state}`);
     if (artifact.childSelf.state !== 'verified') blockers.push(`child-self-${artifact.childSelf.state}`);
-    if (artifact.publicationOrigin.state !== 'qualified') blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
+    if (!qualifiedPublicationOrigin(artifact.publicationOrigin.state)) blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
     if (!artifact.exactParent.expectedIntegrityTarget) blockers.push('parent-target-locator-unavailable');
     if (blockers.length) disposition = 'blocked';
   } else if (artifact.state === 'parent-target-mismatch') {
@@ -237,13 +258,13 @@ function repairStepForArtifact(artifact, order) {
     priority = 'blocking';
     blockers.push('existing-target-mismatch-is-not-refresh-authority');
     if (artifact.parentPrimarySelf.state !== 'verified') blockers.push(`parent-self-${artifact.parentPrimarySelf.state}`);
-    if (artifact.publicationOrigin.state !== 'qualified') blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
+    if (!qualifiedPublicationOrigin(artifact.publicationOrigin.state)) blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
   } else if (artifact.state !== 'healthy') {
     action = 'resolve-lineage-integrity-blocker';
     disposition = 'blocked';
     priority = 'blocking';
     blockers.push(...artifact.reasons);
-    if (artifact.publicationOrigin.state && !['qualified', 'not-applicable'].includes(artifact.publicationOrigin.state)) blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
+    if (artifact.publicationOrigin.state && !['qualified', 'qualified-local-relative', 'not-applicable'].includes(artifact.publicationOrigin.state)) blockers.push(`publication-origin-${artifact.publicationOrigin.state}`);
   }
 
   const descendants = willChangeSelf ? artifact.downstreamDescendants : [];
@@ -277,11 +298,21 @@ function repairStepForArtifact(artifact, order) {
 
 function inspectionFindings(artifact) {
   if (artifact.state === 'healthy') return [];
-  const severity = ['parent-target-mismatch', 'parent-self-mismatch', 'child-self-mismatch', 'parent-ambiguous'].includes(artifact.state) ? 'error' : 'warning';
+  const severity = ['parent-target-mismatch', 'parent-self-mismatch', 'child-self-mismatch', 'parent-ambiguous', 'parent-schema-mismatch'].includes(artifact.state) ? 'error' : 'warning';
+  const owner = findingOwnerForInspectionState(artifact.state);
   return [portableFinding(severity, `portable.lineage-integrity.${artifact.state}`, `Lineage integrity inspection classified ${artifact.path || artifact.id} as ${artifact.state}.`, {
     ref: artifact.path || artifact.id,
-    reason: artifact.reasons.join(', ')
+    reason: artifact.reasons.join(', '),
+    params: { ...owner, reason: artifact.reasons.join(', ') }
   })];
+}
+
+function findingOwnerForInspectionState(value = '') {
+  if (value === 'parent-schema-mismatch' || value === 'parent-schema-unavailable') return { field: 'Parent Schema' };
+  if (value === 'parent-unresolved' || value === 'parent-ambiguous') return { field: 'Trace' };
+  if (value.startsWith('parent-target') || value === 'parent-self-mismatch' || value === 'parent-self-unavailable' || value === 'child-self-mismatch' || value === 'child-self-unavailable') return { group: 'Continuity Integrity' };
+  if (value.startsWith('publication-origin')) return { group: 'Origin' };
+  return {};
 }
 
 function indexParentEdges(edges = []) {
@@ -328,7 +359,7 @@ function descendantsFor(id, map) { return Object.freeze([...(map.get(String(id |
 function nodePath(id, nodeById) { return String(nodeById.get(String(id || ''))?.path || id || ''); }
 function inspectionStatus(artifacts = []) {
   if (artifacts.every((artifact) => artifact.state === 'healthy')) return 'healthy';
-  if (artifacts.some((artifact) => ['parent-target-mismatch', 'parent-self-mismatch', 'child-self-mismatch', 'parent-ambiguous'].includes(artifact.state))) return 'attention-required';
+  if (artifacts.some((artifact) => ['parent-target-mismatch', 'parent-self-mismatch', 'child-self-mismatch', 'parent-ambiguous', 'parent-schema-mismatch'].includes(artifact.state))) return 'attention-required';
   return 'repair-planning-available';
 }
 function normalizeSelfState(value = {}) {
@@ -337,6 +368,7 @@ function normalizeSelfState(value = {}) {
 function normalizeParentSelfState(value = {}) {
   return Object.freeze({ state: value.state || 'unavailable', reason: value.reason || '', value: value.value || '', declaredValue: value.declaredValue || '', computedValue: value.computedValue || '' });
 }
+function qualifiedPublicationOrigin(value = '') { return value === 'qualified' || value === 'qualified-local-relative'; }
 function state(value, reason = '') { return Object.freeze({ state: value, reason }); }
 function targetState(value, reason = '', declaredValue = '', expectedTarget = '', declaredTarget = '', targetValue = '') { return Object.freeze({ state: value, reason, declaredValue, expectedTarget, declaredTarget, targetValue }); }
 function emptyParent() { return Object.freeze({ id: '', path: '', trace: '', expectedIntegrityTarget: '', publicationLocator: '' }); }

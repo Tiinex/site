@@ -6,7 +6,11 @@ export function classifyPortablePublicationOrigin(parentEnvelope = {}, childReco
   const browse = entries.filter((entry) => String(entry.label || '') === 'browse + git');
   if (relative.length > 1 || browse.length > 1) return publicationState('contradictory', 'duplicate-parent-origin-representation', browse[0]?.target || '', { locatorState: 'contradictory', evidenceState: 'rejected' });
   if (relative.length === 1 && parentEnvelope.trace && String(relative[0].target || '') !== String(parentEnvelope.trace || '')) return publicationState('contradictory', 'relative-origin-disagrees-with-trace', browse[0]?.target || '', { locatorState: 'contradictory', evidenceState: 'rejected' });
-  if (!browse.length) return publicationState('missing', 'browse-git-origin-missing', '', { locatorState: 'missing', evidenceState: 'not-applicable' });
+  if (!browse.length) {
+    const localTarget = String(relative[0]?.target || parentEnvelope.trace || '');
+    if (relative.length === 1 && localTarget && parentRecord?.markdown) return publicationState('qualified-local-relative', 'exact-loaded-parent-via-declared-relative-origin', localTarget, { locatorState: 'declared-relative-local', evidenceState: 'exact-loaded-parent' });
+    return publicationState('missing', 'browse-git-origin-missing', '', { locatorState: 'missing', evidenceState: 'not-applicable' });
+  }
   const locator = String(browse[0].target || '');
   if (!locator) return publicationState('unresolved', 'browse-git-origin-empty', '', { locatorState: 'empty', evidenceState: 'missing' });
 

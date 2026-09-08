@@ -17,6 +17,8 @@ export const FOUNDATION_TEST_GROUPS = Object.freeze({
   "src/tooling/portable/handoff/materialClosure.case.mjs",
   "src/tooling/portable/handoff/boundedWorkspaceRepresentation.case.mjs",
   "src/tooling/portable/handoff/multiRootManufacture.case.mjs",
+  "src/tooling/portable/handoff/workspaceLandingPlan.case.mjs",
+  "src/tooling/portable/handoff/operatorBridgeCore.case.mjs",
   "src/tooling/portable/grounding/grounding.readiness.case.mjs",
   "src/tooling/portable/grounding/grounding.capsule.case.mjs",
   "src/tooling/portable/grounding/grounding.semanticIntegration.case.mjs",

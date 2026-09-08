@@ -1,0 +1,60 @@
+# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Parent
+  - Parent Schema: [tiinex.handoff.v1](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md)
+  - Created At: 2026-09-06 14:58:34
+  - Trace: [023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md](023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md)
+  - Origin:
+    - [relative](023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md)
+- Current
+  - Current Schema: tiinex.evidence.v1
+  - Created At: 2026-09-06 16:06:09
+  - Authors: Loom
+  - Why: Preserve exact final implementation and qualification evidence for Anchor reconciliation without claiming Sigma acceptance, publication, canonical Docs completion, or Major closure.
+  - Summary: Qualified final shared Tooling and native VS Code operator implementation, deterministic VSIX, and real-carrier dogfood with pointerless manufacture still fail-closed pending canonical Docs follow-through.
+  - Status: ready/local
+
+---
+
+# Major 012 Final Native VS Code Operator Follow-Through — Loom Implementation Evidence
+
+## Supported Claim Or Question
+
+- Supported Claim Or Question: whether the bounded final Major 012 Loom tranche completes the accepted native VS Code human-operator surface over shared Tiinex Tooling — diagnostics and deterministic Quick Fixes, conservative Handoff-package discovery, branch-safe landing, independently governed post-landing commit/push/open-Handoff behavior, native Handoff authoring, native Handoff package building, explicit Workspace selection, and the accepted pointerless-carrier mechanics remaining fail-closed until canonical Docs follow-through — without making VS Code a second semantic core.
+- Evidence Role: supports Loom technical qualification and Anchor reconciliation of the final delegated implementation tranche before canonical Docs completion, Sigma human dogfood, publication, or Major 012 closure.
+
+## Provenance
+
+- Known Source: the exact Site continuation materialized from the qualified `023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md` route under explicit Loom holder binding; the qualified carried `vscode` Workspace materialized from the same received carrier; the untouched incoming `tiinex-site-009-1-1-2-1-anchor-to-loom.handoff-package.zip`; the final Site and VS Code source trees; the final shared-core snapshot; the deterministic VSIX; and the exact validation and real-carrier dogfood receipts described below.
+- Preservation Basis: final shared Site portable operations and permanent Foundation regressions, the standalone VS Code extension source and permanent bridge tests, the manifest-bound shared-core snapshot regenerated from the final qualified Site bytes, the byte-deterministic VSIX, the final package-declared-ingress/current-shared-core dogfood result, and this Evidence authored and integrity-sealed through Tiinex common-path authoring after final qualification.
+- Provenance Limits: local technical qualification does not prove canonical Docs materialization, Sigma human UX acceptance, Windows certification, successful landing into Sigma's actual repositories, remote publication, release readiness, broader Viewer/editor parity, or Major 012 closure.
+
+## Evidence Material
+
+- Material Kind: shared Site operator projections and manufacture safeguards, native VS Code host-adapter implementation, permanent automated regressions, manifest-bound current shared-core packaging, deterministic VSIX build evidence, native authoring/package-builder no-write qualification, and real-carrier landing-plan dogfood.
+- Material: Site now exposes shared `project-editor-assistance`, `project-authoring-parent`, `project-handoff-leaves`, `project-workspace-package-sources`, and `project-handoff-authoring-plan` surfaces plus the accepted two-mode Handoff-package mechanics. Editor assistance reuses exact shared validation and reports the most precise deterministic location available; only shared-core-provable hygiene repair is offered. Native Handoff authoring uses shared Handoff creation/validation/Parent/reference/integrity mechanics rather than extension-local Markdown grammar. Shared package-source projection performs exact repository-identity matching so multi-root VS Code code does not interpret repository identity itself. Shared Handoff leaves constrain route choices to currently qualified leaves. Shared package manufacture structurally distinguishes ordinary Handoff carriers from the accepted pointerless Workspace-carrier mode, but `No Handoff pointer` remains intentionally fail-closed with the canonical-follow-through dependency and emits no package until maintained Docs qualifies that mode. A shared local-continuity bug found by native-authoring smoke testing was corrected: an exactly verified local-relative Parent representation is accepted as `qualified` while the creation transition retains its explicit `qualified-local-continuity` authority state; no schema meaning was changed. A second native-authoring dogfood issue showed that whole-repository material must not become accidental creation-schema authority, so factory rendering now uses an isolated temporary material root after the real Workspace path and optional Parent have already been qualified. Root and continuation no-write authoring then qualified as `created-clean` and `created-local-continuity` with zero validation errors. The VS Code extension now registers native diagnostics and deterministic Code Actions, `tiinex.discovery = manual|auto` with conservative completed-package/debounce behavior and explicit inbox override, independent `commit = no|ask|yes`, `push = no|ask|yes`, and `openHandoff = no|ask|yes` policies all defaulting to `no`, whole-landing branch preflight with explicit safe switching only to existing clean local branches before any content write, exact selected-Handoff opening only when a qualified Handoff route exists, native `Create Handoff` and `Build Handoff Package` flows through the shared core, read-only From/To in package building, explicit qualified Workspace inclusion with complete-snapshot semantics owned by shared Tooling, retained Generate Tiinex Commit Message delegation, and separate explicit Stage/Commit/Push safety. Post-landing push is eligible only for the exact landing-created commit on the unchanged configured upstream; force push, upstream invention, unrelated ahead commits, detached HEAD, dirty branch-switches, traversal, ignored-material collision, editor-focus/cwd repository inference, and silent semantic fallback remain blocked. Final Site qualification passed focused/tooling 4/4 configured steps, TypeScript typecheck, architecture-shape, integration 12/12 configured steps, static regression diagnostic clean with inherited=0 / introduced=0 / resolved=13, and the full Foundation acceptance spine 70/70 cases. Final VS Code qualification passed TypeScript and 15/15 permanent bridge core cases. The final shared-core snapshot was regenerated from those exact Site bytes with bootstrap manifest SHA-256 `d1fd13573f329614addc5f44eb1fe2472ecd0e54b2d60bac6addc2ade578d347`, runtime representation SHA-256 `2cd95b5e9befd62c51ffa6ef0a679f1afa4744ca5fd2f4c0a6957eec156a8205`, 473 runtime files, and 5,072,196 runtime bytes. Two independent final VSIX builds were byte-identical: `tiinex-vscode-0.1.0.vsix`, 5,496,680 bytes, SHA-256 `507d7426446b4f7d463f818794077c60dfd9a6c8948af6569dbd6659fa140b75`, 511 archive entries; ZIP integrity testing reported no errors. Final real-carrier dogfood used the untouched incoming `tiinex-site-009-1-1-2-1-anchor-to-loom.handoff-package.zip`, its own package-declared bootstrap for ingress qualification, the final bundled current shared core for the new landing-plan projection, and real clean temporary Git repositories configured as `Tiinex/site@refactor` and `Tiinex/vscode@master`. Ingress was `ready` with all four carried Workspaces (`business`, `docs`, `site`, `vscode`) qualified. The bounded plan for `site` and `vscode` was `ready`, selected the incoming Site archive SHA-256 `4d01951a1ce944b103a168c63d89d418e1177899e07e1adee0fac9a09c3b9732` / 13,580,343 bytes and VS Code archive SHA-256 `7aff54a96da174effd478c49ac37284a9a98495ccc666f9cb577e95709e69d06` / 10,829,313 bytes, produced one explicit-human confirmation across two matched repositories, reported zero findings, and retained `sourceMutation=false`, `remoteWrite=false`, `commit=false`, `push=false`, and `acceptance=false`.
+
+## Preservation And Fidelity
+
+- Preservation State: final Site shared-core implementation and regressions, final standalone VS Code source and tests, generated manifest-bound shared-core snapshot, deterministic installable VSIX, final qualification receipts, and this Evidence are preserved for the required full-source Business+Docs+Site+vscode return. Runtime-only `.tiinex` state and disposable dogfood repositories remain non-canonical transport/runtime material; the received parent carrier remains untouched.
+- Fidelity Notes: the extension remains a thin host adapter. Package-declared bootstrap still owns ingress qualification for received packages; the bundled current Site runtime owns only newer shared operations needed by the installed extension. VS Code does not independently define Handoff/package/Workspace semantics, validator meaning, repository identity, commit-message derivation, or package coverage. No canonical Docs schema text was modified in this tranche, pointerless manufacture remains fail-closed, and no source/remote mutation occurred during final dogfood.
+- Known Losses: full terminal transcripts, disposable temporary Git repository paths, intermediate patches, and large machine receipts are not embedded. The decisive shared-core fixes, final operation boundaries, validation counts, shared-core identities, deterministic VSIX identity, real-carrier dogfood result, pointerless fail-closed dependency, and authority limits are preserved here and in the carried source.
+
+## Interpretation Limits
+
+- Does Not Prove: canonical pointerless Docs follow-through, Sigma human UX acceptance, Windows platform acceptance, successful real-user repository landing, remote publication, release readiness, broad editor/Viewer parity, destructive authority, or Major 012 closure.
+- Must Not Be Treated As: authority for VS Code to reinterpret Tiinex semantics; authority for the bundled current runtime to bypass package-declared ingress qualification; permission to manufacture pointerless Workspace carriers before canonical Docs qualification; permission to write dirty repositories, force/invent Git publication state, auto-commit/push outside explicit policy, claim landing equals acceptance, claim Sigma approval, or claim broader project completion.
+- Not Yet Used As: canonical Docs completion evidence, Sigma dogfood acceptance, publication evidence, release evidence, or Major 012 closure evidence.
+
+---
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: [023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md](023-3-1-1-1-1-1-1-anchor-to-loom-major-012-final-native-vscode-operator-follow-through-handoff.trace.md)
+  - Value: QXuVEvq9t95rh5--eSmZZh43sJ_NsdgumlhhnVSxl80
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: IWXX0lc-wtqqwrWuLnRN7K7AGxOCYb_ugG2CZ9pSc2w

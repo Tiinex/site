@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { prepareNodeHandoffManufacturingInput } from '../node/handoff.manufacture.js';
+import { prepareNodeWorkspaceCarrierManufacturingInput } from '../node/workspaceCarrier.manufacture.js';
 import { projectHandoffHumanOutput } from '../../handoff/carrierProjection.js';
 import { writePortableRuntimePackageZip } from '../../output/node.zip.js';
 import { writeRecipientFacingV2PackageZip } from '../../output/recipientV2.zip.js';
@@ -14,6 +15,9 @@ import { normalizeHandoffCarrierProfile } from '../../handoff/carrierProfile.js'
 export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime = {}) {
   const flags = parsed.flags || {};
   const workspaceRoot = flags.workspace || parsed.positionals?.[0] || '.';
+  const carrierMode = String(flags['carrier-mode'] || 'handoff').trim().toLowerCase();
+  if (!['handoff', 'workspace'].includes(carrierMode)) throw new Error(`portable.cli.handoff-carrier.carrier-mode.invalid:${carrierMode}`);
+  if (carrierMode === 'workspace') return prepareWorkspaceCarrierCliCommand(flags, workspaceRoot, runtime);
   const continuationState = parsed.surfaceCommand === 'handoff'
     ? await readGroundContinuationState(workspaceRoot)
     : {};
@@ -133,12 +137,13 @@ export async function prepareHandoffManufactureCliCommand(parsed = {}, runtime =
 }
 
 export async function materializeHandoffManufactureCliOutput(result = {}, flags = {}) {
-  let humanOutput = projectHandoffHumanOutput({
+  const workspaceMode = String(result.carrierProjection?.mode || '') === 'workspace';
+  let humanOutput = workspaceMode ? projectWorkspaceCarrierHumanOutput(result) : projectHandoffHumanOutput({
     projection: result.carrierProjection || {},
     route: flags.route || '',
     collisionInstance: flags['collision-instance'] || 1
   });
-  if (result.bundle?.transportFormat) humanOutput = projectRecipientV2HumanOutput(humanOutput, result.inspection || {});
+  if (!workspaceMode && result.bundle?.transportFormat) humanOutput = projectRecipientV2HumanOutput(humanOutput, result.inspection || {});
   const wantsWrite = Boolean(flags.output || flags['output-dir']);
   const blocked = result.status === 'blocked' || result.transportExecutable === false || Number(result.findingSummary?.counts?.error || 0) > 0;
   if (!wantsWrite || blocked) return summarizeHandoffManufactureCliOutput(result, {}, humanOutput, null);
@@ -149,8 +154,54 @@ export async function materializeHandoffManufactureCliOutput(result = {}, flags 
   const writeReceipt = writeBundle?.transportFormat
     ? await writeRecipientFacingV2PackageZip(writeBundle, target, writeBundle === result.bundle ? { inspection: result.inspection } : {})
     : await writePortableRuntimePackageZip(writeBundle, target);
+  if (workspaceMode && flags['transport-text']) throw new Error('portable.cli.workspace-carrier.transport-text.unavailable');
   const transportTextReceipt = flags['transport-text'] ? await writeTransportTextSidecar(humanOutput, target, flags['transport-text']) : null;
   return summarizeHandoffManufactureCliOutput(result, writeReceipt, humanOutput, transportTextReceipt);
+}
+
+async function prepareWorkspaceCarrierCliCommand(flags = {}, workspaceRoot = '.', runtime = {}) {
+  if (flags.handoff || flags.route || flags.routes || flags['handoff-routes'] || flags['workspace-routes']) throw new Error('portable.cli.workspace-carrier.handoff-route.forbidden');
+  const operatorCarrierProfile = await readOptionalJson(flags['carrier-profile']);
+  const expectedToolingBootstrap = await readOptionalJson(flags['tooling-bootstrap-manifest']);
+  const workspaceDescriptorValue = await readOptionalJson(flags['workspace-roots'] || flags['workspace-descriptors']);
+  const workspaceTargetValue = await readOptionalJson(flags['workspace-targets']);
+  const additionalWorkspaces = [...splitFlag(flags['additional-workspaces']), ...descriptorArray(workspaceDescriptorValue, 'workspaces')];
+  const verifyRoundtrip = !flags['no-roundtrip'];
+  const carrierProfile = selectCarrierProfile({ operator: operatorCarrierProfile, runtime: runtime.defaultCarrierProfile || null });
+  const input = await prepareNodeWorkspaceCarrierManufacturingInput({
+    workspaceRoot,
+    additionalWorkspaces,
+    workspaceId: flags['workspace-id'] || '',
+    workspaceTitle: flags['workspace-title'] || flags.title || '',
+    workspaceTargetPath: flags['workspace-target'] || flags['workspace-artifact'] || '',
+    workspaceTargets: workspaceTargetValue,
+    toolingBootstrap: flags['tooling-bootstrap'] || 'embedded',
+    expectedToolingBootstrap,
+    maxFiles: flags['max-files'],
+    bootstrapMaxFiles: flags['bootstrap-max-files'],
+    verifyRoundtrip,
+    createdAt: flags['built-at'] || undefined,
+    carrierLineage: Object.freeze({ ...initialHandoffCarrierLineage(), checkpointKind: 'progression', majorReason: '' }),
+    carrierProfile
+  }, runtime);
+  return { input, options: { verifyRoundtrip, packageInput: { builtAt: flags['built-at'] || undefined } } };
+}
+
+function projectWorkspaceCarrierHumanOutput(result = {}) {
+  const projection = result.carrierProjection || {};
+  const ready = result.status === 'ready' && projection.status === 'ready' && projection.mode === 'workspace' && (projection.routes || []).length === 0;
+  const dimension = String(projection.lineage?.dimension || '001');
+  const filename = `tiinex-workspace-${dimension}.handoff-package.zip`;
+  return Object.freeze({
+    schema: 'tiinex.portable.handoff-human-output.v1',
+    status: ready ? 'ready' : 'blocked',
+    primary: ready ? Object.freeze({ kind: 'workspace-package', filename, dimension, parentDimension: String(projection.lineage?.parentDimension || ''), checkpointKind: String(projection.lineage?.checkpointKind || ''), routeId: '', workspaceId: '', workspaceRelativeHandoffPath: '', collisionInstance: 1, singleHumanTransportChoice: true }) : null,
+    normalInlineRouting: null, sharedRouting: null,
+    presentation: Object.freeze({ kind: 'pointerless-workspace-carrier', label: 'Workspace carrier', authority: 'none' }),
+    normalEmissionBoundary: Object.freeze({ allowed: Object.freeze(['package-file']), forbidden: Object.freeze(['handoff-routing-text', 'continue-from-pointer']) }),
+    fallbackTransportText: null, selectedRoute: null, findings: Object.freeze([]),
+    boundary: 'Pointerless Workspace-carrier output projection only. No Handoff routing text exists because the package role declares no Handoff route.'
+  });
 }
 
 export function summarizeHandoffManufactureCliOutput(result = {}, writeReceipt = {}, humanOutput = null, transportTextReceipt = null) {

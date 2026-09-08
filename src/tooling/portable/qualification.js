@@ -43,11 +43,13 @@ export function qualifyAuditResult(result = {}) {
   if (result.status === 'supporting-material') limitations.push('Plain Markdown was retained as supporting material, not qualified as a Tiinex leaf.');
   if (result.status === 'pending-unavailable') limitations.push('Material was not loaded; validation remains pending.');
   const moduleExact = Boolean(requestedSchema && requestedSchema === resolvedThrough && !fallbackUsed);
+  const schemaAuthorityUnqualified = Boolean(result.schemaValidationAuthority && result.schemaValidationAuthority.state !== 'qualified');
+  if (schemaAuthorityUnqualified) limitations.push('Exact schema validation authority is unresolved; schema-specific contract and companion validation were withheld rather than projected from a same-id runtime module.');
   return makePortableQualification({
     requestedSchema,
     capability: 'validate',
     resolvedThrough,
-    exact: moduleExact && result.status !== 'pending-unavailable' && result.status !== 'supporting-material',
+    exact: moduleExact && !schemaAuthorityUnqualified && result.status !== 'pending-unavailable' && result.status !== 'supporting-material',
     moduleExact,
     capabilityStatus: result.status === 'pending-unavailable' ? 'pending' : 'implemented',
     resolutionStatus: result.resolution?.status || '',
@@ -58,7 +60,7 @@ export function qualifyAuditResult(result = {}) {
     parentCapabilitiesEvaluated: false,
     limitations,
     safeActions: ['preserve', 'inspect', 'traverse-loaded-parent'].filter((action) => result.status !== 'pending-unavailable' || action !== 'traverse-loaded-parent'),
-    blockedActions: fallbackUsed ? ['claim-exact-schema-valid'] : []
+    blockedActions: fallbackUsed || schemaAuthorityUnqualified ? ['claim-exact-schema-valid'] : []
   });
 }
 

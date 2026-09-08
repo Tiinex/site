@@ -1,5 +1,5 @@
 import { runAudit } from '../../../audit/audit.run.js';
-import { portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
+import { portableRuntimeValidationAuthorityForRecord, portableRuntimeValidationContractForSchema } from '../schema/qualifiedLocalRoot.runtime.js';
 import { normalizePortableFinding, portableFinding, summarizePortableFindings } from '../findings.js';
 import { qualifyAuditResult } from '../qualification.js';
 
@@ -7,13 +7,16 @@ export const PORTABLE_SHARED_AUDIT_CAPABILITY_SCHEMA_ID = 'tiinex.portable.share
 
 export function auditPortableRecord(record = {}, options = {}) {
   const schemaId = String(record.schemaId || record.currentSchemaId || '');
-  const runtimeProjection = portableRuntimeValidationContractForSchema(schemaId);
+  const requireExactSchemaAuthority = options.requireExactSchemaAuthority === true;
+  const runtimeAuthority = requireExactSchemaAuthority ? portableRuntimeValidationAuthorityForRecord(record) : null;
+  const runtimeProjection = requireExactSchemaAuthority ? runtimeAuthority : portableRuntimeValidationContractForSchema(schemaId);
   let result;
   try {
     result = runAudit({
       record,
       markdown: record.markdown,
-      validationContractOverride: runtimeProjection.state === 'qualified' ? runtimeProjection.compiledContract : null
+      validationContractOverride: runtimeProjection?.state === 'qualified' ? runtimeProjection.compiledContract : null,
+      schemaValidationAuthority: requireExactSchemaAuthority ? runtimeAuthority : null
     });
   } catch (error) {
     const finding = portableFinding('error', 'portable.audit.exception', error?.message || 'Audit failed.', {
@@ -83,6 +86,7 @@ function sanitizeSharedAudit(result = {}, record = {}, options = {}) {
     findings,
     summary: result.summary || null,
     validation: result.validation || null,
+    schemaValidationAuthority: result.schemaValidationAuthority || null,
     materialAvailability: result.materialAvailability || null,
     qualification: qualifyAuditResult(result),
     capabilityBoundary: Object.freeze({

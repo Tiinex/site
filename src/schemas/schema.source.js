@@ -221,6 +221,7 @@ function freezeRuntimeValidationContract(value = {}) {
     schemaId: String(value?.schemaId || '').trim(),
     lineage: Array.isArray(value?.lineage) ? value.lineage : [],
     lineageQualification: value?.lineageQualification || {},
+    lineageAuthority: Array.isArray(value?.lineageAuthority) ? value.lineageAuthority : [],
     inheritanceResolution: value?.inheritanceResolution || {},
     validation: value?.validation || {},
     declarations: Array.isArray(value?.declarations) ? value.declarations : [],

@@ -2990,7 +2990,59 @@
         }
       ],
       "findings": []
-    }
+    },
+    "lineageAuthority": [
+      {
+        "schemaId": "tiinex.root.v1",
+        "source": {
+          "repository": "Tiinex/docs",
+          "commit": "3988951208eb9a8926e84ab42625d4b42fa00c2d",
+          "path": ".topics/.schemas/tiinex.root.v1.schema.md",
+          "publicationState": "accepted-local-unpublished",
+          "snapshotCompleteness": "exact-axiom-canonical-unpublished-bounded-workspace-contract"
+        },
+        "parentSchemaId": "",
+        "parentSourceCandidates": []
+      },
+      {
+        "schemaId": "tiinex.relation.v1",
+        "source": {
+          "repository": "Tiinex/docs",
+          "commit": "053d46ce082d4ec261b82abc44ecca403d61e240",
+          "path": ".topics/.schemas/relation/tiinex.relation.v1.schema.md",
+          "publicationState": "",
+          "snapshotCompleteness": "exact-canonical-docs-snapshot"
+        },
+        "parentSchemaId": "tiinex.root.v1",
+        "parentSourceCandidates": [
+          {
+            "provider": "github",
+            "repository": "Tiinex/docs",
+            "commit": "2f5c1eea03aad31a0209f0484e17d2cc37d92dab",
+            "path": ".topics/.schemas/tiinex.root.v1.schema.md"
+          }
+        ]
+      },
+      {
+        "schemaId": "tiinex.workspace.representation.v1",
+        "source": {
+          "repository": "Tiinex/docs",
+          "commit": "0fdce5f265298321a41cd90cf5382bcb6ae31a13",
+          "path": ".topics/.schemas/relation/workspace/representation/tiinex.workspace.representation.v1.schema.md",
+          "publicationState": "accepted-local-unpublished",
+          "snapshotCompleteness": "exact-axiom-canonical-unpublished-bounded-workspace-contract"
+        },
+        "parentSchemaId": "tiinex.relation.v1",
+        "parentSourceCandidates": [
+          {
+            "provider": "github",
+            "repository": "Tiinex/docs",
+            "commit": "0fdce5f265298321a41cd90cf5382bcb6ae31a13",
+            "path": ".topics/.schemas/relation/tiinex.relation.v1.schema.md"
+          }
+        ]
+      }
+    ]
   },
   "creation": {
     "declared": true,

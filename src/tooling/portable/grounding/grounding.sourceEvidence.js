@@ -1,3 +1,4 @@
+import { parseWorkspaceEntrypoints } from '../handoff/workspaceSourceIdentity.js';
 const MAX_WORKSPACES = 8;
 const MAX_SOURCES = 8;
 
@@ -9,7 +10,7 @@ export function projectGroundingSourceEvidence({ records = [], contextAudit = nu
     const innerPath = normalizePath(workspace.sourceWorkspaceTargetInnerPath || '');
     const exactPath = workspaceId && innerPath ? `${workspaceId}/${innerPath}` : '';
     const record = exactPath ? byPath.get(exactPath) : null;
-    const declared = record ? workspaceEntrypoints(record.markdown || '') : [];
+    const declared = record ? parseWorkspaceEntrypoints(record.markdown || '') : [];
     const explicitProfile = profiles.get(workspaceId) || [];
     const sources = declared.length ? declared : explicitProfile;
     const unique = sources.length === 1 ? sources[0] : null;
@@ -43,31 +44,6 @@ export function projectGroundingSourceEvidence({ records = [], contextAudit = nu
     workspaces: Object.freeze(workspaces),
     boundary: 'Exact selected Workspace source artifact/profile only.'
   });
-}
-
-function workspaceEntrypoints(markdown = '') {
-  const body = section(markdown, 'Workspace Entrypoints');
-  if (!body) return [];
-  const chunks = body.split(/(?=^###\s+)/m).map((item) => item.trim()).filter(Boolean);
-  const out = [];
-  for (const chunk of chunks) {
-    const heading = chunk.match(/^###\s+(.+)$/m)?.[1]?.trim() || '';
-    const sourceKind = field(chunk, 'Source Kind');
-    const repository = field(chunk, 'Repository');
-    const ref = field(chunk, 'Ref');
-    const rootPath = field(chunk, 'Root Path');
-    if (!heading && !sourceKind && !repository && !ref && !rootPath) continue;
-    out.push(Object.freeze({
-      label: heading,
-      sourceKind,
-      repository,
-      ref,
-      rootPath,
-      remoteState: 'not-checked',
-      basis: 'qualified-durable-workspace-entrypoint'
-    }));
-  }
-  return out;
 }
 
 function profileIndex(value = []) {

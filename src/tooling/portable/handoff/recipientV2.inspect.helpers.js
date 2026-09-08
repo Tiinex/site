@@ -206,13 +206,6 @@ export function virtualCacheMaterial(cache = {}, findings = []) {
 }
 
 
-export function recipientColdProjection(carrier = {}, readPath = '001-1-READ-BEFORE-PROCEEDING.trace.md') {
-  const routes = Object.freeze((carrier.routes || []).map((route) => Object.freeze({ id: String(route.id || ''), state: String(route.state || ''), workspaceId: String(route.workspaceId || ''), workspaceRelativeHandoffPath: String(route.workspaceRelativePath || ''), packagePath: String(route.packagePath || ''), sha256: String(route.sha256 || ''), from: String(route.parties?.from || ''), to: String(route.parties?.to || '') })));
-  const workspaces = Object.freeze((carrier.workspaces || []).map((workspace) => Object.freeze({ id: String(workspace.id || ''), title: String(workspace.title || workspace.id || ''), slug: String(workspace.slug || ''), qualification: String(workspace.qualification || '') })));
-  const qualified = routes.filter((route) => route.state === 'qualified');
-  return deepFreeze({ schema: 'tiinex.portable.handoff-cold-consumer-projection.v1', version: 1, status: carrier.status === 'ready' ? 'ready' : 'blocked', controls: Object.freeze({ start: readPath, carrier: 'visible-qualified-artifacts', closure: 'visible-qualified-artifacts-plus-exact-payload-bytes', fileMap: 'not-exposed-in-v2', manifest: 'not-exposed-in-v2' }), preferredPath: Object.freeze({ ingressKind: 'routed-handoff-package', firstSemanticOperation: 'orient-handoff-package', groundingOperation: 'ground-cold-consumer', qualificationOperation: 'qualify-cold-start', minimalHostBootstrapActions: 1, nativeFallback: 'explicit-and-justified-only', providerSpecificSemanticAuthority: false }), workspaces, routes, selection: Object.freeze({ policy: String(carrier.selection?.policy || ''), qualifiedRouteCount: qualified.length, implicitRouteId: qualified.length === 1 ? qualified[0].id : '' }), authority: Object.freeze({ semanticAuthority: 'none', packageTruthRequired: true, routeBindingAuthority: 'qualified-visible-artifact-plus-exact-payload-byte-truth-only' }) });
-}
-
 export function isForbiddenLegacyV2Path(path = '') {
   const value = String(path || '');
   return value.startsWith('context/') || value.startsWith('handoff.workspaces/') || value.startsWith('tiinex.bootstrap/') || value.startsWith('tiinex.package/') || /^handoff-entrypoint-.*\.trace\.md$/i.test(value);

@@ -61,7 +61,7 @@ export function deriveVisibleFacts({ markdown = '', schemaId = '', packageContra
     const role = String(visible.role || '');
     if (!role) return null;
     const base = { factsFormat: 'portable-recipient-v2', factsVersion: 1, role };
-    if (role === 'recovery-orientation') return { ...base, format: RECIPIENT_V2_PACKAGE_V1_FORMAT_ID, packageRootPath: RECIPIENT_V2_PACKAGE_V1_ROOT_PATH, entryArtifactPath: RECIPIENT_V2_READ_PATH, routeSelectionAuthority: RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, siblingRouteInference: RECIPIENT_V2_SIBLING_ROUTE_INFERENCE };
+    if (role === 'recovery-orientation') { const workspaceMode = String(packageContract?.packageRole || '') === 'recipient-facing-workspace-carrier'; return { ...base, format: RECIPIENT_V2_PACKAGE_V1_FORMAT_ID, packageRole: String(packageContract?.packageRole || ''), packageRootPath: RECIPIENT_V2_PACKAGE_V1_ROOT_PATH, entryArtifactPath: RECIPIENT_V2_READ_PATH, routeAuthority: workspaceMode ? 'none' : 'qualified-handoff-route-pointer-plus-exact-handoff-bytes', routeSelectionAuthority: workspaceMode ? 'none' : RECIPIENT_V2_ROUTE_SELECTION_AUTHORITY, siblingRouteInference: workspaceMode ? false : RECIPIENT_V2_SIBLING_ROUTE_INFERENCE }; }
     if (role === 'handoff-route') {
       const workspaceId = String(visible.workspaceId || '');
       const binding = (packageContract?.workspaces || []).find((item) => item.workspaceId === workspaceId) || null;

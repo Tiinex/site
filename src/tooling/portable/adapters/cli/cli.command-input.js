@@ -3,9 +3,13 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { loadNodePortableInput } from '../../input/node.input.js';
 import { prepareHandoffManufactureCliCommand } from './cli.handoff-manufacture.js';
+import { prepareEditorAssistanceCliInput } from './cli.editor-assistance.js';
+import { prepareOperatorBridgeCliInput } from './cli.operator-bridge.js';
 import { groundInput } from './cli.ground-recovery.js';
 import { prepareQualifyColdStartCommandInput } from './cli.cold-start-input.js';
 import { reductionPreflightCliInput } from './cli.reduction-input.js';
+import {land} from './cli.land.js';
+import { OPERATIONS_WITHOUT_EXPLICIT_MATERIAL } from './cli.material-policy.js';
 
 export async function commandInput(parsed, runtime = {}) {
   const flags = parsed.flags;
@@ -149,8 +153,7 @@ export async function commandInput(parsed, runtime = {}) {
   const schemaAwareOperations = new Set(['resolve-schema-material', 'resolve-schema-chain-material', 'describe-schema-chain', 'make-writer-brief', 'schema-guide', 'read-schema-section', 'plan-artifact', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'update-local-draft', 'validate-draft', 'stage-draft', 'materialize-durable-findings', 'process-live-turn', 'export-live-lineage']);
   const defaultSchemaTargets = schemaAwareOperations.has(parsed.command) ? normalizeRuntimePaths(runtime.defaultSchemaMaterialPaths) : [];
   const schemaTargets = defaultSchemaTargets.filter((target) => !explicitTargets.includes(target));
-  const operationsWithoutMaterial = new Set(['prepare-task', 'prepare-materialization', 'create-local-artifact-set', 'create-local-draft', 'plan-host-action', 'accept-host-receipt', 'describe-checkpoint-gate', 'qualify-checkpoint', 'describe-schema-chain', 'schema-guide', 'plan-artifact', 'list-material-providers', 'resolve-schema-material', 'resolve-schema-chain-material', 'materialize-durable-findings', 'build-runtime-package', 'roundtrip-runtime-package', 'describe-cold-start-ingress', 'project-cold-start-host', 'qualify-cold-start', 'ground-cold-consumer']);
-  if (!explicitTargets.length && !schemaTargets.length && !operationsWithoutMaterial.has(parsed.command)) throw new Error('portable.cli.input.required');
+  if (!explicitTargets.length && !schemaTargets.length && !OPERATIONS_WITHOUT_EXPLICIT_MATERIAL.has(parsed.command)) throw new Error('portable.cli.input.required');
   const loadOptions = { maxFiles: flags['max-files'], maxTextBytes: flags['max-text-bytes'] };
   const explicitMaterial = explicitTargets.length ? await loadCliExplicitMaterial(explicitTargets, parsed.command, flags, loadOptions) : emptyMaterial();
   const defaultSchemaMaterial = schemaTargets.length ? decorateDefaultSchemaMaterial(await loadNodePortableInput(schemaTargets, loadOptions), runtime.defaultSchemaSource) : emptyMaterial();
@@ -159,6 +162,10 @@ export async function commandInput(parsed, runtime = {}) {
     input: { ...material, route: flags.route || '', collisionInstance: flags['collision-instance'] || 1 },
     options: {}
   };
+  if(parsed.command==='project-workspace-landing')return land(flags,material,readOptionalJson,splitFlag);
+  const operatorBridgeInput = await prepareOperatorBridgeCliInput(parsed.command, material, flags, readOptionalJson);
+  if (operatorBridgeInput) return operatorBridgeInput;
+  if (parsed.command === 'project-editor-assistance') return prepareEditorAssistanceCliInput(material, flags);
   const options = {
     startId: flags.start || '',
     direction: flags.direction || 'ancestors',

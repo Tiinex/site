@@ -49,7 +49,7 @@ export async function runPortableCli(argv = process.argv.slice(2), io = console,
 
     const materializationStartedAt = timingEnabled ? monotonicNowMs() : 0;
     let output = commonPathOutput || result;
-    if (parsed.command === 'manufacture-handoff-package' && (parsed.flags.output || parsed.flags['output-dir'])) {
+    if (parsed.command === 'manufacture-handoff-package') {
       output = await materializeHandoffManufactureCliOutput(result, parsed.flags);
     } else if (parsed.command === 'project-grounding-readiness' && (parsed.flags.continue || parsed.flags['materialize-workspace'] || parsed.flags['workspace-output'])) {
       output = await materializeGroundWorkspaceCliOutput(output, operationInput, parsed.flags);
