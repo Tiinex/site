@@ -1,6 +1,6 @@
 {
   "name": "tiinex-site",
-  "version": "0.3.0-turn1.1",
+  "version": "0.3.0-turn1.2",
   "private": true,
   "type": "module",
   "description": "Official Tiinex web deployment using the versioned @tiinex/app application.",
@@ -12,14 +12,15 @@
     "validate": "npm test && npm run build"
   },
   "dependencies": {
-    "@tiinex/app": "0.1.0",
-    "@tiinex/core": "0.1.0",
+    "@tiinex/app": "0.1.1",
+    "@tiinex/core": "0.1.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "@fortawesome/fontawesome-svg-core": "7.3.1",
     "@fortawesome/free-regular-svg-icons": "7.3.1",
     "@fortawesome/free-solid-svg-icons": "7.3.1",
-    "@fortawesome/react-fontawesome": "3.4.0"
+    "@fortawesome/react-fontawesome": "3.4.0",
+    "@tiinex/playthings": "0.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",
