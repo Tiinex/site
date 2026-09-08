@@ -52,8 +52,8 @@ Make the existing focused Tooling gate, restartable validation chain, checkpoint
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Tooling Development Loop Efficiency Discovery](001-tooling-development-loop-efficiency-discovery.trace.md)
-  - Value: QRZ5v4Q_RZEZqLFEHIfc0HzUgqGugoaYIQFm0xUtgcY
+  - Value: EowP5mvfYNLTbIadFEqskpkTICizXHdEY4tkhTHOY2E
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:OmKAWux4qQ80SmqOvyEzjHe3tahAzJduk7a6u1p79FY
+  - Value:z_VPXgTSmqoI-vA6iVbi3sjOVCmA5jxs36KR59SiPqk

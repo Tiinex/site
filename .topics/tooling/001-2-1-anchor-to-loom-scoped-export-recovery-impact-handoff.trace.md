@@ -123,8 +123,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Parent Recovery Runtime Reconciliation](001-2-parent-recovery-runtime-reconciliation-task.trace.md)
-  - Value: lk4fzC9ecLE-0pC8No4GEpqtmJx63DhsJyLpd29L60c
+  - Value: Ir9fh7BEVyeOCh9tiIFFMcsYfluFoNWlE2-KydxLaxc
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: mTOacOAyCjsvz0moUAMPLwyuZyI6ddk_-7lIrCCTB0Y
+  - Value: 1KLUdJMglDYADFvF_qKPwWQp-e1yW88K60af3VSnLog

@@ -53,8 +53,8 @@ Make current Site/portable Tooling consume the corrected local Root Parent-Origi
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Tooling Development Loop Efficiency Discovery](001-tooling-development-loop-efficiency-discovery.trace.md)
-  - Value: QRZ5v4Q_RZEZqLFEHIfc0HzUgqGugoaYIQFm0xUtgcY
+  - Value: EowP5mvfYNLTbIadFEqskpkTICizXHdEY4tkhTHOY2E
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: lk4fzC9ecLE-0pC8No4GEpqtmJx63DhsJyLpd29L60c
+  - Value: Ir9fh7BEVyeOCh9tiIFFMcsYfluFoNWlE2-KydxLaxc

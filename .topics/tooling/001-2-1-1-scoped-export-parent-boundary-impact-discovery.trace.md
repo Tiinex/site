@@ -105,8 +105,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Scoped Export Recovery Impact — Loom Handoff](001-2-1-anchor-to-loom-scoped-export-recovery-impact-handoff.trace.md)
-  - Value: mTOacOAyCjsvz0moUAMPLwyuZyI6ddk_-7lIrCCTB0Y
+  - Value: 1KLUdJMglDYADFvF_qKPwWQp-e1yW88K60af3VSnLog
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:WNqznexRQk06m3XpPCPMFOeJ7cScoqG_ieqN9hjDOEY
+  - Value:53Ts5934DmwHrvcPi-gyzzjHzUTkwG7KHWSvR2sH_Mk

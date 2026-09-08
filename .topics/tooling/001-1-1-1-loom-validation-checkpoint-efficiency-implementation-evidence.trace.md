@@ -78,8 +78,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Validation And Checkpoint Efficiency — Loom Handoff](001-1-1-anchor-to-loom-validation-checkpoint-efficiency-handoff.trace.md)
-  - Value: 9z7h89OapSwO9KB7T7hZwMNwhA6jejfkbd7XfNnAegE
+  - Value: sRZRcYso-pVfKOJxa1ldrRfTXlwdKoTGBJvoCZCC7wo
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: MqKjBCocUZBT4Tu8R8s8K9KooBNuRkbjEUToceY6AKw
+  - Value: ppgfOOq8ASbo1P7lVi-xljNyoRjdP72qm8f_7_WNuKs

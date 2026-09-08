@@ -131,8 +131,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Validation And Checkpoint Efficiency — Implementation Evidence](001-1-1-1-loom-validation-checkpoint-efficiency-implementation-evidence.trace.md)
-  - Value: MqKjBCocUZBT4Tu8R8s8K9KooBNuRkbjEUToceY6AKw
+  - Value: ppgfOOq8ASbo1P7lVi-xljNyoRjdP72qm8f_7_WNuKs
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: fvO61NvGqvp5K5zOmmlZflLw14WQPwfbWkf6YOH8QRY
+  - Value: BdeD9il8QmIqw2dZMOjQ0gFUlm0mNCZy2LOCsfbQQek

@@ -31,7 +31,9 @@
     "validation:inspect:smoke": "node tools/run-validation-profile.mjs --profile smoke --inspect",
     "validation:inspect:focused": "node tools/run-validation-profile.mjs --profile focused/tooling --inspect",
     "validation:inspect:integration": "node tools/run-validation-profile.mjs --profile integration --inspect",
-    "validation:inspect:closure": "node tools/run-validation-profile.mjs --profile closure --inspect"
+    "validation:inspect:closure": "node tools/run-validation-profile.mjs --profile closure --inspect",
+    "playthings:assets": "node tools/playthings/playthings-assets.mjs",
+    "playthings:assets:audit": "node tools/playthings/playthings-assets.mjs audit"
   },
   "engines": {
     "node": ">=18"

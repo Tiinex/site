@@ -6,7 +6,7 @@ animation at fixed timestamps and renders major humanoid bones with stable left/
 
 Example:
   python ual_motion_template_factory.py \
-    reference/playthings/external/ual-standard/UAL1_Standard.glb \
+    /path/to/UAL1_Standard.glb \
     --animation Walk_Loop --outdir /tmp/ual-walk --frames 8 --directions 8
 """
 from __future__ import annotations

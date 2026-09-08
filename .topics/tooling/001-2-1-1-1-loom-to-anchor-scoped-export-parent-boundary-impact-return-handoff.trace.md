@@ -115,8 +115,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Scoped Export Parent Boundary Impact Discovery](001-2-1-1-scoped-export-parent-boundary-impact-discovery.trace.md)
-  - Value: WNqznexRQk06m3XpPCPMFOeJ7cScoqG_ieqN9hjDOEY
+  - Value: 53Ts5934DmwHrvcPi-gyzzjHzUTkwG7KHWSvR2sH_Mk
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:QGSFmIbswXCwAMMdX3SWwq9tfWrJaXOuo8QeMi9VZzE
+  - Value:87P9qlFu7ybb8GRPDGn26PPaOiR3-LgmfqEuYanhz5I
