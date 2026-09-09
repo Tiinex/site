@@ -20,7 +20,7 @@
     "@fortawesome/free-regular-svg-icons": "7.3.1",
     "@fortawesome/free-solid-svg-icons": "7.3.1",
     "@fortawesome/react-fontawesome": "3.4.0",
-    "@tiinex/playthings": "0.1.0"
+    "@tiinex/verse-playthings": "0.1.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.0.3",

@@ -1,20 +1,28 @@
 # Tiinex Site
 
-Official thin deployment above `@tiinex/app` and `@tiinex/core`.
+Official thin web deployment of the shared Tiinex application.
 
-`src/main.jsx` mounts the public App entrypoint. `tiinex.config.js` owns deployment id, explicit Verse registrations, companion providers, resource readers and optional initial Workspaces. Shared application and semantic implementations are not copied into this repository.
+Site owns deployment composition and public hosting. Shared Viewer/application code lives in `@tiinex/app`; host-neutral artifact/schema/lineage/Handoff mechanics live in `@tiinex/core`; Verse implementation such as Playthings lives in its own package.
 
-## Current checkpoint
+## Runtime boundary
 
-The reusable Viewer source has moved to App. Headless checks and static browser import/syntax checks pass separately; a real dependency-equipped React/Vite build and browser mounting are still required. This is not yet a playable Playthings release.
+- `src/main.jsx` mounts `@tiinex/app/viewer`.
+- `tiinex.config.js` registers deployment-specific Verses, providers/readers and optional initial Workspaces.
+- `@tiinex/verse-playthings/app` currently supplies the Playthings descriptor used by this deployment.
+- Site must not contain copied App/Core implementation or import another repository's private `src/**` tree.
 
-Run `npm ci`, `npm test`, and `npm run build` once the exact Core/App packages are available. Before publication, install exact npm tarballs in an isolated consumer; do not copy source or use cross-repository source imports.
+## Development
 
-Playthings's supplied source is a headless foundation without a public React entrypoint. No fake Playthings module is registered. When that entrypoint exists, register `{ id, label, load: () => import('@tiinex/playthings/react') }` in `tiinex.config.js`.
+```sh
+npm ci
+npm test
+npm run build
+```
 
-Historic `.topics` artifacts are preserved pending qualified reduction in Round 2. The new `.topics/025-thin-site-deployment-task.trace.md` points to the controlling Business task. The old lockfile is preserved at `docs/migration/pre-split-package-lock.json` as input evidence, not current install authority.
+`npm run validate` runs the Site-owned deployment tests and the production Vite build. `tools/browser-smoke.py` is the dependency-equipped browser gate used by CI after Chromium is installed.
 
+## Authority and history
 
-## 2026-09-08 integration frontier
+Tiinex Docs remains canonical schema/semantic authority. Business owns initiative/human-gate context. Site repository placement does not transfer either authority.
 
-Site now registers the actual `@tiinex/playthings/app` descriptor and lazy React entrypoint. Run `npm run validate` and `python tools/browser-smoke.py` after installing the pinned dependencies. Source-set qualification and npm bootstrap instructions are in Core `docs/NPM-PUBLISH.md`. No local rendered/browser pass is claimed in the attached evidence.
+The old monolithic Viewer/Tooling `.topics` history is still present while Turn 2 qualifies its destructive Reduction. Current deployment work is rooted at `.topics/025-thin-site-deployment-task.trace.md` and `.topics/026-thin-site-hygiene-historical-reduction-task.trace.md`. Historical semantic files are not deleted until the shared reduction preflight has an exact immutable Git source identity and returns eligible.
