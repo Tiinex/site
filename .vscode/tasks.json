@@ -32,10 +32,6 @@
       "isBackground": true,
       "dependsOn": "Tiinex: ensure dependencies",
       "dependsOrder": "sequence",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
       "problemMatcher": {
         "owner": "tiinex-vite",
         "fileLocation": "absolute",
