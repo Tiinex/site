@@ -1,0 +1,1643 @@
+{
+  "name": "ai-provenance",
+  "displayName": "Tiinex Traceable Provenance",
+  "description": "Bounded TRACEABLE provenance runs, .trace.md evidence inspection, and reconstructed evidence viewing for VS Code.",
+  "version": "0.4.0",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Tiinex/ai-provenance.git"
+  },
+  "homepage": "https://github.com/Tiinex/ai-provenance",
+  "bugs": {
+    "url": "https://github.com/Tiinex/ai-provenance/issues"
+  },
+  "icon": "assets/logo-transparent.png",
+  "publisher": "tiinex",
+  "galleryBanner": {
+    "color": "#123a52",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.99.0",
+    "node": ">=20"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguageModelTool:list_traceable_agents",
+    "onLanguageModelTool:list_traceable_models",
+    "onLanguageModelTool:show_traceable_traces",
+    "onLanguageModelTool:view_traceable_subagent",
+    "onLanguageModelTool:run_traceable_subagent",
+    "onLanguageModelTool:transfer_trace",
+    "onLanguageModelTool:repair_traceable_lineage",
+    "onLanguageModelTool:validate_traceable_continuity"
+  ],
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "keywords": [
+    "provenance",
+    "traceable",
+    "evidence",
+    "trace",
+    "artifact",
+    "inspection",
+    "lineage",
+    "vscode"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languageModelTools": [
+      {
+        "name": "list_traceable_agents",
+        "displayName": "List Traceable Agents",
+        "userDescription": "List workspace-supported traceable agent display names and basic metadata.",
+        "modelDescription": "List the currently supported traceable agent artifacts discoverable from workspace .github/agents folders. Use this before runTrace when you need the exact display names the current workspace runtime can resolve without traversing repo files manually. This is read-only and returns a bounded markdown list. It reflects the current traceable runtime surface, not every host-private custom agent source that the native dropdown may know about.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "listTraceableAgents",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Optional display-name or stem filter for narrowing the returned traceable agents."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of traceable agents to include."
+            }
+          }
+        }
+      },
+      {
+        "name": "list_traceable_models",
+        "displayName": "List Traceable Models",
+        "userDescription": "List runtime-discoverable models that traceable subagent selection can currently see.",
+        "modelDescription": "List the language models visible to the current VS Code language-model runtime using the same broad model discovery surface that traceable-subagent recovery uses. This is read-only and bounded. Use it to preflight exact model ids before calling runTrace instead of waiting for a model-selection failure. Canonical usage: first call this with `sendableOnly: true` and an optional narrow `query`, then copy the exact returned model id into `runTrace.modelSelector.id` only when you need explicit model control. If a returned entry is marked blocked in the catalog output, do not pass it back into runTrace.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "listTraceableModels",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Optional filter against model id, vendor, family, or version."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of models to include."
+            },
+            "sendableOnly": {
+              "type": "boolean",
+              "description": "When true, only include models that the current access information permits sending requests to."
+            }
+          }
+        }
+      },
+      {
+        "name": "run_traceable_subagent",
+        "displayName": "Run Traceable Subagent",
+        "userDescription": "Run an experimental trace-first child lane with explicit request, budget, and tool-ledger output.",
+        "modelDescription": "Run an experimental Tiinex traceable subagent lane. This bounded child run returns a compact runtime tool ledger plus child trace, blocks self-reentry for runTrace, and treats native runSubagent delegation as opaque rather than fully trace-supported. OPERATIVE, EPISTEMIC, and NON_LEADING_EPISTEMIC keep userInput separate from parentTask; DIRECT uses only userInput as the fresh prompt; RESUME requires parentTracePath and resumes without fresh userInput, parentTask, or parentFrame. When parentTracePath is provided, the runtime treats the run as an artifact-backed continuation: it can carry bounded parent outcome summary and handover context forward, but DIRECT does not inherit prompt framing and RESUME stays prompt-free. When agentRole is provided, the runtime resolves a workspace .agent.md artifact and grounds the child from both its frontmatter and body. To avoid hidden model-cost drift, the runtime uses the agent artifact's declared model when it can translate it deterministically; otherwise it requires an exact model id in modelSelector.id and does not auto-select a fallback model. Prefer this for narrow grounded investigation slices rather than broad autonomous orchestration. Canonical usage: choose the input mode deliberately, keep `budgetPolicy` small, and restrict `allowedToolNames` to only the tool families the slice actually needs. Typical flow: use `list_traceable_agents` to find an exact role or `list_traceable_models` to preflight an explicit model, run a narrow lane, then inspect the returned evidence file with `viewTrace` instead of rerunning the child immediately.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "runTrace",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "userInput": {
+              "type": "string",
+              "description": "The original or near-original user wording or source material for the task being delegated. Keep this distinct from parentTask and do not rely on it as the desired answer shape. Required for prompt-carrying modes such as OPERATIVE, EPISTEMIC, NON_LEADING_EPISTEMIC, and DIRECT. Omit this in RESUME."
+            },
+            "parentTracePath": {
+              "type": "string",
+              "description": "Optional absolute or workspace-relative path to an existing parent .trace.md artifact. When provided, the runtime treats the run as an artifact-backed continuation and exports the child beside the parent unless exportToFolder is overridden. Classic prompted modes may inherit parent request fields by default, DIRECT must not inherit prompt framing, and RESUME stays prompt-free."
+            },
+            "parentTask": {
+              "type": "string",
+              "description": "The exact bounded investigative task that the parent wants the child lane to perform. Prefer non-leading wording that preserves inquiry without baking in the target conclusion. Required for OPERATIVE, EPISTEMIC, and NON_LEADING_EPISTEMIC. Omit this in DIRECT and RESUME."
+            },
+            "parentRoles": {
+              "description": "Optional source-side parent role display names for the current userInput. Accepts one exact display name string or an array of exact display names. Values are validated against the current `list_traceable_agents` catalog at call time and fail fast when a provided display name does not exist.",
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "outputMode": {
+              "type": "string",
+              "description": "Optional parent-facing output mode for the child run. When omitted, the runtime uses its normal bounded summary behavior, or summary-with-evidence-path when exportToFolder is present.",
+              "enum": [
+                "summary-with-evidence-path",
+                "full-markdown-with-evidence-path",
+                "evidence-path-only"
+              ]
+            },
+            "exportToFolder": {
+              "type": "string",
+              "description": "Optional absolute or workspace-relative folder path for tool-triggered evidence export. When provided, the run can write a `.trace.md` artifact there instead of requiring the interactive Export button."
+            },
+            "inputMode": {
+              "type": "string",
+              "description": "Input mode for the child lane. OPERATIVE, EPISTEMIC, and NON_LEADING_EPISTEMIC use the classic userInput plus parentTask form. DIRECT uses only userInput without injected parentTask or parentFrame. RESUME requires parentTracePath and resumes without any new userInput, parentTask, or parentFrame.",
+              "enum": [
+                "OPERATIVE",
+                "EPISTEMIC",
+                "NON_LEADING_EPISTEMIC",
+                "DIRECT",
+                "RESUME"
+              ]
+            },
+            "validationMode": {
+              "type": "string",
+              "description": "Optional validation strictness for non-leading or epistemic input shaping.",
+              "enum": [
+                "NONE",
+                "WARN",
+                "ERROR"
+              ]
+            },
+            "reveal": {
+              "type": "boolean",
+              "description": "When true, request opening the TRACEABLE panel or evidence surface according to the current provenance reveal settings."
+            },
+            "agentRole": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Optional agent role label or machine-facing agent stem to resolve to a workspace .agent.md artifact. When provided, the runtime grounds the child from that artifact's frontmatter and body."
+                },
+                "filePath": {
+                  "type": "string",
+                  "description": "Optional absolute or workspace-relative .agent.md path to use instead of resolving by role name."
+                }
+              }
+            },
+            "parentExpectations": {
+              "type": "object",
+              "properties": {
+                "expectedSteps": {
+                  "type": "array",
+                  "description": "Optional expected investigative steps the parent wants before trusting a strong conclusion. Use this for process checks rather than desired answers.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "expectedToolFamilies": {
+                  "type": "array",
+                  "description": "Optional tool families or specific tools the parent expects to appear in the trace as process evidence, not as proof that a particular conclusion is correct.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "disallowStrongConclusionWithoutEvidence": {
+                  "type": "boolean",
+                  "description": "When true, the child should avoid strong completion tone without grounded evidence."
+                }
+              }
+            },
+            "carriedContext": {
+              "type": "object",
+              "properties": {
+                "priorTurnsSummary": {
+                  "type": "string",
+                  "description": "Optional bounded summary of prior turns carried into the child run."
+                },
+                "fileContext": {
+                  "type": "array",
+                  "description": "Optional file paths or file-context labels carried into the child run.",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "reductions": {
+                  "type": "array",
+                  "description": "Optional compacted reductions or constraints that should remain explicit to the child.",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "wrapperPolicy": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Optional explicit lane name for the runtime wrapper."
+                },
+                "closureMode": {
+                  "type": "string",
+                  "description": "Closure contract for the child lane output.",
+                  "enum": [
+                    "open",
+                    "bounded-summary",
+                    "explicit-final"
+                  ]
+                }
+              }
+            },
+            "budgetPolicy": {
+              "type": "object",
+              "properties": {
+                "maxIterations": {
+                  "type": "number",
+                  "description": "Maximum number of model iterations for the child lane."
+                },
+                "maxToolCalls": {
+                  "type": "number",
+                  "description": "Maximum number of runtime-observed tool calls before the lane must stop or report notRun."
+                }
+              }
+            },
+            "modelSelector": {
+              "type": "object",
+              "properties": {
+                "vendor": {
+                  "type": "string",
+                  "description": "Optional model vendor to pair with an exact model id for the child run."
+                },
+                "family": {
+                  "type": "string",
+                  "description": "Optional model family to pair with an exact model id for the child run."
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Exact model id selector for the child run. If agentRole resolves to a model-bearing agent artifact, that role model wins when it can be translated deterministically. Otherwise, if this field is omitted, the runtime stops instead of auto-selecting a model implicitly."
+                },
+                "version": {
+                  "type": "string",
+                  "description": "Optional model version to pair with an exact model id for the child run."
+                }
+              }
+            },
+            "allowedToolNames": {
+              "type": "array",
+              "description": "Optional tool allowlist for the child lane. Entries may use host runtime tool names or prompt-reference aliases such as tiinex.ai-vscode-tools/listAgentSessions. When omitted, the lane uses the host tool list minus its default blocked set.",
+              "items": {
+                "type": "string"
+              }
+            },
+            "blockedToolNames": {
+              "type": "array",
+              "description": "Optional extra tool names to block for this run in addition to the default self/mutation blocklist. Entries may use host runtime tool names or prompt-reference aliases.",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "show_traceable_traces",
+        "displayName": "Show Traces",
+        "userDescription": "Show a bounded trace-and-schema structure view rooted at the workspace, a folder, or one trace file.",
+        "modelDescription": "Show bounded `.trace.md` structure without broad manual file hunting. This tool is read-only and builds a compact structure index over the current workspace. When `targetPath` is omitted, it returns a workspace overview. When `targetPath` points to a folder, it returns trace entries rooted there. When `targetPath` points to one `.trace.md` artifact, it centers on that trace and returns parent, sibling, child, connected-lineage, and suspicious coordinate-gap context as the selected detail level allows. Use `detailLevel: \"compact\" | \"standard\" | \"full\"` to control verbosity, `includeSchemas` when schema-note context matters, and `maxItems` with `offset` to keep larger result sets bounded. Canonical usage: start with `detailLevel: \"compact\"` or `detailLevel: \"standard\"`, add a narrow `targetPath` when you already know the relevant folder or trace, and only use `full` when you need deeper lineage detail.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "showTraces",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "targetPath": {
+              "type": "string",
+              "description": "Optional absolute or workspace-relative folder path or `.trace.md` path to center the structure view. Omit to inspect the whole current workspace."
+            },
+            "detailLevel": {
+              "type": "string",
+              "description": "Bounded verbosity for the returned structure view.",
+              "enum": [
+                "compact",
+                "standard",
+                "full"
+              ]
+            },
+            "maxItems": {
+              "type": "number",
+              "description": "Maximum number of bounded items to include in paged lists such as trace entries, connected nodes, schema notes, or suspicious gaps."
+            },
+            "offset": {
+              "type": "number",
+              "description": "Optional zero-based start offset for paging list-like sections."
+            },
+            "includeSchemas": {
+              "type": "boolean",
+              "description": "When true, include schema-note context from discovered `.schemas` folders when available."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "name": "view_traceable_subagent",
+        "displayName": "View Traceable Subagent",
+        "userDescription": "Inspect a stored TRACEABLE evidence artifact with bounded output and optional reconstructed-view reveal.",
+        "modelDescription": "Inspect one stored `.trace.md` TRACEABLE evidence artifact without rerunning the child lane. This tool is read-only: it parses the embedded Traceable State block, returns a bounded surface instead of dumping the whole artifact by default, and can reconstruct the TRACEABLE markdown output shape. Reuse `outputMode` when you want the same parent-facing output policy shape as `runTrace`; use `surface` when you want rendered output, a compact conversation brief, request summary, request contract, outcome, runtime decision, evidence basis, a replay-oriented timeline, carry handoff, lineage-scoped latest role state, lineage-scoped latest carry package, tool forensics, lineage, tool ledger, status history, aggregated tool/file summaries, or bounded state JSON. Use `maxItems` with `offset` to page through list-like surfaces safely. Canonical usage: call this with the evidenceFilePath returned by runTrace, start with `surface: \"conversation-brief\"`, `surface: \"summary\"`, or `surface: \"outcome\"`, then inspect `request-contract`, `runtime-decision`, `evidence-basis`, `timeline`, `carry-handoff`, `latest-role-state`, `latest-carry-package`, `tool-forensics`, `lineage`, `tool-ledger`, or `state-json` only when you need deeper provenance detail. Prefer this over rerunning the same child lane when evidence already exists.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "viewTrace",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "evidenceFilePath": {
+              "type": "string",
+              "description": "Absolute or workspace-relative path to a `.trace.md` evidence artifact containing an embedded Traceable State block."
+            },
+            "reveal": {
+              "type": "boolean",
+              "description": "When true, request opening the reconstructed TRACEABLE evidence view in an editor tab on the provenance surface."
+            },
+            "outputMode": {
+              "type": "string",
+              "description": "Optional parent-facing output mode to reuse when `surface` is omitted or set to `rendered-output`.",
+              "enum": [
+                "summary-with-evidence-path",
+                "full-markdown-with-evidence-path",
+                "evidence-path-only"
+              ]
+            },
+            "surface": {
+              "type": "string",
+              "description": "Bounded evidence surface to render.",
+              "enum": [
+                "rendered-output",
+                "conversation-brief",
+                "request-summary",
+                "request-contract",
+                "summary",
+                "outcome",
+                "runtime-decision",
+                "evidence-basis",
+                "timeline",
+                "carry-handoff",
+                "latest-role-state",
+                "latest-carry-package",
+                "tool-forensics",
+                "lineage",
+                "tool-ledger",
+                "status-history",
+                "tool-summary",
+                "file-summary",
+                "state-json"
+              ]
+            },
+            "roleName": {
+              "type": "string",
+              "description": "Optional exact role display name to inspect when surface is `latest-role-state`."
+            },
+            "senderId": {
+              "type": "string",
+              "description": "Optional sender id to inspect when surface is `latest-role-state`."
+            },
+            "maxItems": {
+              "type": "number",
+              "description": "Maximum number of bounded items to include for list-like surfaces."
+            },
+            "offset": {
+              "type": "number",
+              "description": "Optional zero-based start offset for paging list-like surfaces such as request-summary, timeline, tool-forensics, tool-ledger, status-history, tool-summary, and file-summary."
+            },
+            "includeSupportArtifacts": {
+              "type": "boolean",
+              "description": "When rendering reconstructed TRACEABLE markdown, include support-artifact references such as debug logs when available."
+            }
+          },
+          "required": [
+            "evidenceFilePath"
+          ]
+        }
+      },
+      {
+        "name": "repair_traceable_lineage",
+        "displayName": "Repair Trace Lineage",
+        "userDescription": "Repair a connected trace lineage component with checksum refresh and checkpoint commits when needed.",
+        "modelDescription": "Repair a connected `.trace.md` lineage component from one starting artifact using the extension's in-process lineage repair runtime. The runtime walks local parent/footer dependencies in both directions, runs continuity refresh across the whole connected component, and when `autoCommit` is not false it creates intermediate checkpoint commits so descendants never rotate against dirty parents. Use this instead of CLI scripts or VS Code tasks when the goal is to finish lineage repair on the real host surface an agent can call directly.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "repairTraceLineage",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "targetPath"
+          ],
+          "properties": {
+            "targetPath": {
+              "type": "string",
+              "description": "Absolute or workspace-relative path to the starting `.trace.md` artifact. The runtime repairs the full connected lineage component reachable from this start file."
+            },
+            "autoCommit": {
+              "type": "boolean",
+              "description": "When true or omitted, create checkpoint commits as needed so descendant checksums only refresh against committed parents. Set false to inspect blocked state without committing."
+            },
+            "commitMessagePrefix": {
+              "type": "string",
+              "description": "Optional commit message prefix for auto-created checkpoint commits."
+            },
+            "maxIterations": {
+              "type": "number",
+              "description": "Optional maximum number of repair iterations before the runtime fails fast."
+            }
+          }
+        }
+      },
+      {
+        "name": "validate_traceable_continuity",
+        "displayName": "Validate Traceable Continuity",
+        "userDescription": "Validate one markdown continuity artifact backward through parent links, checksums, and current runtime-shape findings.",
+        "modelDescription": "Validate one markdown continuity artifact backward through parent links using the shared continuity parser and checksum rules. This tool is read-only and returns a bounded markdown report with backward-link source, continuity-footer status, direct-parent integrity status when present, and current ai-provenance runtime-structure findings. Use this first when you need high-confidence proof that a trace or schema artifact still validates backward before considering audit or repair. Prefer this over improvising manual parent chasing when the goal is a repeatable proof-of-concept validation read.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "validateTrace",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute or workspace-relative path to a markdown continuity artifact such as a `.trace.md` file or schema markdown file."
+            },
+            "maxDepth": {
+              "type": "number",
+              "description": "Optional maximum number of backward parent hops to validate before stopping."
+            }
+          },
+          "required": [
+            "filePath"
+          ]
+        }
+      },
+      {
+        "name": "transfer_trace",
+        "displayName": "Transfer Trace",
+        "userDescription": "Move or copy one `.trace.md` artifact through the same Alone or Lineage semantics used by TRACEABLE move workflows.",
+        "modelDescription": "Transfer one `.trace.md` TRACEABLE artifact through the same bounded move planners that the TRACEABLE UX uses. This mutating tool supports `operation: \"move\" | \"copy\"` plus `action: \"alone\" | \"lineage\"`. `alone` rewrites the selected trace for the destination without carrying descendants. `lineage` preserves bounded lineage movement semantics and may require an explicit `lineageScope` when more than one meaningful scope is available. Use this when you need a controllable transfer surface for TRACEABLE artifacts instead of relying on Explorer drag-and-drop behavior. The tool fails fast on invalid state such as missing files, non-folder destinations, self-target copies, unsupported lineage scopes, or existing destination collisions.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "transferTrace",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "sourcePath",
+            "destinationFolderPath",
+            "operation",
+            "action"
+          ],
+          "properties": {
+            "sourcePath": {
+              "type": "string",
+              "description": "Absolute or workspace-relative path to the source `.trace.md` artifact."
+            },
+            "destinationFolderPath": {
+              "type": "string",
+              "description": "Absolute or workspace-relative path to the destination folder."
+            },
+            "operation": {
+              "type": "string",
+              "enum": [
+                "move",
+                "copy"
+              ],
+              "description": "Whether to move the source trace or copy it while leaving the original in place."
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "alone",
+                "lineage"
+              ],
+              "description": "`alone` rewrites only the selected trace for the destination. `lineage` preserves TRACEABLE lineage semantics."
+            },
+            "lineageScope": {
+              "type": "string",
+              "enum": [
+                "leaves",
+                "branch",
+                "tree",
+                "tree-plus-seeds"
+              ],
+              "description": "Optional lineage scope for `action: \"lineage\"`. Required when more than one meaningful lineage scope is available for the destination."
+            },
+            "reveal": {
+              "type": "boolean",
+              "description": "When true, open the first transferred `.trace.md` artifact after the operation completes."
+            }
+          }
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "tiinex.aiProvenance.openOverview",
+        "title": "Tiinex: Open AI Provenance Overview"
+      },
+      {
+        "command": "tiinex.aiProvenance.inspectTraceableEvidence",
+        "title": "Tiinex: Inspect TRACEABLE Evidence"
+      },
+      {
+        "command": "tiinex.aiProvenance.stopTraceableSubagent",
+        "title": "Tiinex: Stop TRACEABLE Run"
+      },
+      {
+        "command": "tiinex.aiProvenance.newTraceableChat",
+        "title": "New Traceable Chat"
+      },
+      {
+        "command": "tiinex.aiProvenance.resumeTraceableChat",
+        "title": "Resume Traceable Chat"
+      },
+      {
+        "command": "tiinex.aiProvenance.setDefaultNewTraceableChatExportFolder",
+        "title": "Set Default New Traceable Chat Export Folder"
+      },
+      {
+        "command": "tiinex.aiProvenance.rewriteMoveTrace",
+        "title": "Move Trace..."
+      },
+      {
+        "command": "tiinex.aiProvenance.rewriteCopyTrace",
+        "title": "Copy Trace..."
+      },
+      {
+        "command": "tiinex.aiProvenance.returnToParentTrace",
+        "title": "Return to Parent Trace..."
+      },
+      {
+        "command": "tiinex.aiProvenance.repairTraceLineage",
+        "title": "Repair Trace Lineage..."
+      },
+      {
+        "command": "tiinex.aiProvenance.validateTraceableContinuity",
+        "title": "Validate Traceable Continuity"
+      },
+      {
+        "command": "tiinex.aiProvenance.addFileToTraceableChat",
+        "title": "Add File to Traceable Chat"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableChatFromView",
+        "title": "Node...",
+        "shortTitle": "Node",
+        "icon": "$(plus)"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.topic",
+        "title": "Topic"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.zip",
+        "title": "Zip"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.signal",
+        "title": "Signal"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.task",
+        "title": "Task"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.reduction",
+        "title": "Reduction"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.runtime",
+        "title": "Runtime"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.feedback",
+        "title": "Feedback"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.machineRuntime",
+        "title": "Machine Runtime"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.evidence",
+        "title": "Evidence"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.encrypted",
+        "title": "Encrypted"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.decision",
+        "title": "Decision"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.continuation",
+        "title": "Continuation"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.capability",
+        "title": "Capability"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.broken",
+        "title": "Broken"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.archive",
+        "title": "Archive"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.aiRuntime",
+        "title": "AI Runtime"
+      },
+      {
+        "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.pointer",
+        "title": "Pointer"
+      },
+      {
+        "command": "tiinex.aiProvenance.openTraceableEvidenceEditor",
+        "title": "Open Reconstructed Traceable View",
+        "shortTitle": "Open Traceable View",
+        "icon": {
+          "light": "assets/logo-transparent.png",
+          "dark": "assets/logo-transparent.png"
+        }
+      },
+      {
+        "command": "tiinex.aiProvenance.reopenTraceableEvidenceSource",
+        "title": "Reopen as Source File",
+        "shortTitle": "Source",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "tiinex.aiProvenance.reopenTraceableEvidencePreview",
+        "title": "Reopen as Markdown Preview",
+        "shortTitle": "Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.refresh",
+        "title": "Refresh Lineage",
+        "shortTitle": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.configure",
+        "title": "Configure Lineage",
+        "shortTitle": "Configure",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.toggleTreeView",
+        "title": "Toggle Tree View",
+        "shortTitle": "Tree View",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setTreeView",
+        "title": "Tree View"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setListView",
+        "title": "List View"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setSortMode",
+        "title": "Set Sort..."
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.sortModifiedNewest",
+        "title": "Newest Modified"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.sortModifiedOldest",
+        "title": "Oldest Modified"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.sortCreatedNewest",
+        "title": "Newest Created"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.sortCreatedOldest",
+        "title": "Oldest Created"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.toggleLeavesOnly",
+        "title": "Toggle Leaf Only",
+        "shortTitle": "Leaves",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.showAllTopics",
+        "title": "Show All"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.showLeafTopics",
+        "title": "Leaf Only"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.toggleIncludeSchemas",
+        "title": "Toggle Schema Notes",
+        "shortTitle": "Schemas",
+        "icon": "$(symbol-interface)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.showSchemaNotes",
+        "title": "Schema Notes On"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.hideSchemaNotes",
+        "title": "Schema Notes Off"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.openMarkdownView",
+        "title": "Open Trace Markdown",
+        "shortTitle": "Open",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setDetailCompact",
+        "title": "Compact"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setDetailStandard",
+        "title": "Standard"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setDetailFull",
+        "title": "Full"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setTargetPath",
+        "title": "Set Target Path..."
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.clearTargetPath",
+        "title": "Clear Target Path"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setSchemaFilter",
+        "title": "Set Schema Filter..."
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.clearSchemaFilter",
+        "title": "Clear Schema Filter"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreated1h",
+        "title": "1h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreated2h",
+        "title": "2h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreated6h",
+        "title": "6h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreated24h",
+        "title": "24h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreatedToday",
+        "title": "Today"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterCreatedReset",
+        "title": "Reset"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModified1h",
+        "title": "1h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModified2h",
+        "title": "2h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModified6h",
+        "title": "6h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModified24h",
+        "title": "24h"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModifiedToday",
+        "title": "Today"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.filterModifiedReset",
+        "title": "Reset"
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setMaxItems",
+        "title": "Set Max Items..."
+      },
+      {
+        "command": "tiinex.aiProvenance.traceableStructure.setOffset",
+        "title": "Set Offset..."
+      }
+    ],
+    "submenus": [
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.viewMenu",
+        "label": "View"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.createMenu",
+        "label": "New"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.detailMenu",
+        "label": "Detail"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.filterMenu",
+        "label": "Filters"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.sortMenu",
+        "label": "Sort"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.createdTimeMenu",
+        "label": "Created"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.modifiedTimeMenu",
+        "label": "Modified"
+      },
+      {
+        "id": "tiinex.aiProvenance.traceableStructure.boundsMenu",
+        "label": "Bounds"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "tiinex.aiProvenance.createTraceableChatFromView",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "navigation@1"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.createMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@0"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.refresh",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "navigation@3"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.viewMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@1"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.detailMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@2"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.sortMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@3"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.filterMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@4"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.boundsMenu",
+          "when": "view == tiinex.aiProvenance.traceableStructure",
+          "group": "2_configuration@5"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.viewMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setTreeView",
+          "group": "1_view@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setListView",
+          "group": "1_view@2"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.createMenu": [
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.topic",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.topic",
+          "group": "1_schema@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.zip",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.zip",
+          "group": "1_schema@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.signal",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.signal",
+          "group": "1_schema@3"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.task",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.task",
+          "group": "1_schema@4"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.reduction",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.reduction",
+          "group": "1_schema@6"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.runtime",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.runtime",
+          "group": "1_schema@7"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.feedback",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.feedback",
+          "group": "1_schema@8"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.machineRuntime",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.machineRuntime",
+          "group": "1_schema@9"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.evidence",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.evidence",
+          "group": "1_schema@10"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.encrypted",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.encrypted",
+          "group": "1_schema@11"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.decision",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.decision",
+          "group": "1_schema@12"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.continuation",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.continuation",
+          "group": "1_schema@13"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.capability",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.capability",
+          "group": "1_schema@14"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.broken",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.broken",
+          "group": "1_schema@15"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.archive",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.archive",
+          "group": "1_schema@16"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.aiRuntime",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.aiRuntime",
+          "group": "1_schema@17"
+        },
+        {
+          "command": "tiinex.aiProvenance.createTraceableNodeFromView.schema.pointer",
+          "when": "tiinex.aiProvenance.traceableStructure.createAllowed.pointer",
+          "group": "1_schema@18"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.detailMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setDetailCompact",
+          "group": "1_detail@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setDetailStandard",
+          "group": "1_detail@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setDetailFull",
+          "group": "1_detail@3"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.sortMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.sortModifiedNewest",
+          "group": "1_sort@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.sortModifiedOldest",
+          "group": "1_sort@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.sortCreatedNewest",
+          "group": "1_sort@3"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.sortCreatedOldest",
+          "group": "1_sort@4"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.filterMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.showAllTopics",
+          "group": "1_visibility@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.showLeafTopics",
+          "group": "1_visibility@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.showSchemaNotes",
+          "group": "2_schema@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.hideSchemaNotes",
+          "group": "2_schema@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setTargetPath",
+          "group": "3_target@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.clearTargetPath",
+          "group": "3_target@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setSchemaFilter",
+          "group": "4_filter@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.clearSchemaFilter",
+          "group": "4_filter@2"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.createdTimeMenu",
+          "group": "5_time@1"
+        },
+        {
+          "submenu": "tiinex.aiProvenance.traceableStructure.modifiedTimeMenu",
+          "group": "5_time@2"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.createdTimeMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreated1h",
+          "group": "1_created@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreated2h",
+          "group": "1_created@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreated6h",
+          "group": "1_created@3"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreated24h",
+          "group": "1_created@4"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreatedToday",
+          "group": "1_created@5"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterCreatedReset",
+          "group": "1_created@6"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.modifiedTimeMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModified1h",
+          "group": "1_modified@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModified2h",
+          "group": "1_modified@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModified6h",
+          "group": "1_modified@3"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModified24h",
+          "group": "1_modified@4"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModifiedToday",
+          "group": "1_modified@5"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.filterModifiedReset",
+          "group": "1_modified@6"
+        }
+      ],
+      "tiinex.aiProvenance.traceableStructure.boundsMenu": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setMaxItems",
+          "group": "1_bounds@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.setOffset",
+          "group": "1_bounds@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.refresh",
+          "group": "2_actions@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tiinex.aiProvenance.traceableStructure.openMarkdownView",
+          "when": "view == tiinex.aiProvenance.traceableStructure && viewItem == trace",
+          "group": "inline@1"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "tiinex.aiProvenance.newTraceableChat",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.agent\\.md$/",
+          "group": "4_traceable@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.openTraceableEvidenceEditor",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "navigation@32"
+        },
+        {
+          "command": "tiinex.aiProvenance.resumeTraceableChat",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.rewriteMoveTrace",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@3"
+        },
+        {
+          "command": "tiinex.aiProvenance.rewriteCopyTrace",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@4"
+        },
+        {
+          "command": "tiinex.aiProvenance.returnToParentTrace",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/ && resourcePath in tiinex.aiProvenance.returnToParentEligibleResources",
+          "group": "4_traceable@5"
+        },
+        {
+          "command": "tiinex.aiProvenance.repairTraceLineage",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@5.5"
+        },
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@5.6"
+        },
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\/\\.topics\\/\\.schemas\\/.*\\.md$/",
+          "group": "4_traceable@5.7"
+        },
+        {
+          "command": "tiinex.aiProvenance.inspectTraceableEvidence",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@5.8"
+        },
+        {
+          "command": "tiinex.aiProvenance.addFileToTraceableChat",
+          "when": "resourceScheme == file && !explorerResourceIsFolder",
+          "group": "4_traceable@6"
+        },
+        {
+          "command": "tiinex.aiProvenance.newTraceableChat",
+          "when": "explorerResourceIsFolder",
+          "group": "4_traceable@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.setDefaultNewTraceableChatExportFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "4_traceable@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "tiinex.aiProvenance.openTraceableEvidenceEditor",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/ && activeWebviewPanelId != markdown.preview && activeCustomEditorId != vscode.markdown.preview.editor && activeCustomEditorId != tiinexTraceableEvidenceEditor",
+          "group": "navigation@-1000"
+        },
+        {
+          "command": "tiinex.aiProvenance.openTraceableEvidenceEditor",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/ && (activeWebviewPanelId == markdown.preview || activeCustomEditorId == vscode.markdown.preview.editor)",
+          "group": "navigation@-1000"
+        },
+        {
+          "command": "tiinex.aiProvenance.reopenTraceableEvidencePreview",
+          "when": "activeWebviewPanelId == tiinexTraceableEvidenceEditor || activeCustomEditorId == tiinexTraceableEvidenceEditor",
+          "group": "navigation@-975"
+        },
+        {
+          "command": "tiinex.aiProvenance.reopenTraceableEvidenceSource",
+          "when": "activeWebviewPanelId == tiinexTraceableEvidenceEditor || activeCustomEditorId == tiinexTraceableEvidenceEditor",
+          "group": "navigation@-950"
+        },
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "navigation@-925"
+        },
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\/\\.topics\\/\\.schemas\\/.*\\.md$/",
+          "group": "navigation@-924"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@1"
+        },
+        {
+          "command": "tiinex.aiProvenance.inspectTraceableEvidence",
+          "when": "resourceExtname == .md && resourcePath =~ /\\.trace\\.md$/",
+          "group": "4_traceable@2"
+        },
+        {
+          "command": "tiinex.aiProvenance.validateTraceableContinuity",
+          "when": "resourceExtname == .md && resourcePath =~ /\\/\\.topics\\/\\.schemas\\/.*\\.md$/",
+          "group": "4_traceable@3"
+        }
+      ]
+    },
+    "views": {
+      "tiinexAiProvenanceLineage": [
+        {
+          "id": "tiinex.aiProvenance.traceableStructure",
+          "name": "Lineage"
+        }
+      ],
+      "tiinexAiProvenanceTraceablePanel": [
+        {
+          "type": "webview",
+          "id": "tiinex.aiProvenance.traceableStatus",
+          "name": "Traceable",
+          "visibility": "hidden",
+          "when": "tiinex.aiProvenance.traceablePanelVisible"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tiinexAiProvenanceLineage",
+          "title": "Lineage",
+          "icon": "assets/logo-transparent.png"
+        }
+      ],
+      "panel": [
+        {
+          "id": "tiinexAiProvenanceTraceablePanel",
+          "title": "Traceable",
+          "icon": "assets/logo-transparent.png"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "tiinexTraceableEvidenceEditor",
+        "displayName": "TRACEABLE Evidence",
+        "selector": [
+          {
+            "filenamePattern": "*.trace.md"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": [
+      {
+        "id": "tiinex.aiProvenance",
+        "title": "Tiinex Traceable Provenance",
+        "order": 1,
+        "properties": {
+          "tiinex.aiProvenance.traceableAutoReveal": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no",
+              "always"
+            ],
+            "default": "yes",
+            "description": "Control whether TRACEABLE opens automatically when run_traceable_subagent starts. `yes` honors the request flag `reveal: true`, `no` suppresses automatic opening, and `always` opens the TRACEABLE panel for every run regardless of the request flag."
+          },
+          "tiinex.aiProvenance.traceableAutoHide": {
+            "type": "string",
+            "enum": [
+              "yes",
+              "no"
+            ],
+            "default": "yes",
+            "description": "Control whether TRACEABLE hides automatically when the transient status-bar run clears. `yes` hides the panel together with the transient status surface unless you explicitly reopened TRACEABLE to keep it open, and `no` leaves the panel open until you close it manually."
+          },
+          "tiinex.aiProvenance.traceableEvidenceOpenTarget": {
+            "type": "string",
+            "enum": [
+              "traceable",
+              "markdown",
+              "source"
+            ],
+            "default": "traceable",
+            "description": "Control what the TRACEABLE View button and parent-trace openings use for `.trace.md` artifacts. `traceable` opens the reconstructed TRACEABLE evidence view, `markdown` opens the markdown preview, and `source` opens the source file directly."
+          },
+          "tiinex.aiProvenance.traceableRenameMoveRewriteBehavior": {
+            "type": "string",
+            "enum": [
+              "ask",
+              "always",
+              "never"
+            ],
+            "default": "ask",
+            "scope": "resource",
+            "description": "Legacy compatibility setting for TRACEABLE Explorer rename or move operations on `.trace.md` files. `ask` prompts before preserving lineage and rewriting affected references, `always` applies the rewrite flow automatically, and `never` is retained only for backward compatibility. Prefer `tiinex.aiProvenance.traceableDisableMoveCopyLogic` when you intentionally want TRACEABLE to stay out of move or copy handling entirely."
+          },
+          "tiinex.aiProvenance.traceableDisableMoveCopyLogic": {
+            "type": "boolean",
+            "default": false,
+            "scope": "resource",
+            "description": "Disable TRACEABLE move and copy logic for this resource scope. When enabled, Explorer renames or moves are left to the host and TRACEABLE rewrite, lineage, and related move helpers refuse to run until the override is turned off."
+          },
+          "tiinex.aiProvenance.traceableLineageChecksumEnabled": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "Enable direct-parent TRACEABLE lineage checksum support. When disabled, checksum validation, prompts, and checksum write maintenance stay off so bulk file operations can run without lineage checksum intervention."
+          },
+          "tiinex.aiProvenance.traceableDefaultMoveAction": {
+            "type": "string",
+            "enum": [
+              "ask",
+              "alone",
+              "lineage"
+            ],
+            "default": "ask",
+            "scope": "resource",
+            "description": "Control the default action for TRACEABLE move flows that use the Alone and Lineage decision model. `ask` keeps the chooser, `alone` applies the trace-aware selected-file move, and `lineage` prefers the broadest meaningful lineage scope for the selected file. This also upgrades Explorer rename or move from the legacy yes-or-no behavior when it is not otherwise forced by `traceableRenameMoveRewriteBehavior`."
+          },
+          "tiinex.aiProvenance.traceableDefaultCopyAction": {
+            "type": "string",
+            "enum": [
+              "ask",
+              "alone",
+              "lineage"
+            ],
+            "default": "ask",
+            "scope": "resource",
+            "description": "Control the default action for TRACEABLE copy flows that use the Alone and Lineage decision model. `ask` keeps the chooser, `alone` applies the trace-aware selected-file copy, and `lineage` prefers the broadest meaningful lineage scope for the selected file."
+          },
+          "tiinex.aiProvenance.traceableDefaultMultiSelectLineageScope": {
+            "type": "string",
+            "enum": [
+              "ask",
+              "leaves",
+              "branch"
+            ],
+            "default": "ask",
+            "scope": "resource",
+            "description": "Control how TRACEABLE resolves multi-select lineage moves after overlapping selected children are normalized under the highest selected parent in the same branch. `ask` keeps the chooser, `leaves` prefers the selected nodes plus descendants, and `branch` prefers the selected branch plus descendants."
+          },
+          "tiinex.aiProvenance.defaultView": {
+            "type": "string",
+            "enum": [
+              "detailed",
+              "chat"
+            ],
+            "default": "detailed",
+            "scope": "resource",
+            "description": "Control the default TRACEABLE view when you open an existing `.trace.md` file directly or VS Code rehydrates that editor. `detailed` keeps the activity view as the default, and `chat` opens the simplified chat projection by default. Explicit New Traceable Chat and Resume Traceable Chat opens still use their own flow-specific initial view."
+          },
+          "tiinex.aiProvenance.defaultNewTraceableChatExportTo": {
+            "type": "string",
+            "default": "",
+            "scope": "resource",
+            "description": "Optional default export folder for New Traceable Chat when it starts from an `.agent.md` file. The command surface writes an absolute path so multi-root workspaces do not have to guess which repo a relative path belongs to. Relative values are only resolved automatically in single-root workspaces; an empty value means ask whether to pick a folder or start unsaved."
+          },
+          "tiinex.aiProvenance.defaultNewTraceableTopicLocation": {
+            "type": "string",
+            "enum": [
+              "topic-space",
+              "same-folder",
+              "ask"
+            ],
+            "default": "topic-space",
+            "scope": "resource",
+            "description": "Control where New Topic Trace Node creates root topic artifacts when a workspace has a `.topics` folder. `topic-space` prefers the workspace `.topics` folder, `same-folder` keeps the currently selected folder, and `ask` prompts between those two locations when they differ."
+          }
+        }
+      },
+      {
+        "id": "tiinex.aiProvenance.chat",
+        "title": "Traceable Chat",
+        "order": 2,
+        "properties": {
+          "tiinex.aiProvenance.allRolesAvailableAsChatSender": {
+            "type": "boolean",
+            "default": false,
+            "scope": "resource",
+            "description": "Control which roles the optional chat sender picker exposes for TRACEABLE chat turns and New Traceable Chat. `false` limits the sender list to human roles only, and `true` exposes every traceable role as a possible sender."
+          },
+          "tiinex.aiProvenance.hideRolesWithSameBody": {
+            "type": "boolean",
+            "default": false,
+            "scope": "resource",
+            "description": "Hide duplicate sender-role variants only when both the role body and the declared toolset match, then keep the first preferred match from the normal sender ordering. Roles that share body text but declare different tools remain visible as separate sender options."
+          },
+          "tiinex.aiProvenance.defaultChatSenderRole": {
+            "type": "string",
+            "default": "",
+            "scope": "resource",
+            "description": "Optional default sender role hint for the TRACEABLE chat composer UI only. The UX resolves exact display-name matches first, then exact or unique prefix matches on the simplified sender label such as `Sigma` or `Sig`. Ambiguous values are ignored instead of guessing. This does not change tooling validation or runtime parentRoles semantics."
+          },
+          "tiinex.aiProvenance.quickSelectRole": {
+            "type": "boolean",
+            "default": true,
+            "scope": "resource",
+            "description": "Control whether New Traceable Chat and Resume Traceable Chat should immediately use the resolved default sender role when one is configured. `true` skips the sender dropdown when the default sender role resolves cleanly; `false` still shows the sender dropdown, with any resolved default sender role promoted first."
+          },
+          "tiinex.aiProvenance.chatCollapse": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "always"
+            ],
+            "default": "auto",
+            "scope": "resource",
+            "description": "Control whether the TRACEABLE chat composer uses its compact single-line input variant. `auto` collapses when the available chat panel height is small, and `always` keeps the compact composer active whenever chat view is shown."
+          }
+        }
+      },
+      {
+        "id": "tiinex.aiProvenance.models",
+        "title": "Traceable Models",
+        "order": 3,
+        "properties": {
+          "tiinex.aiProvenance.traceablePreferredModels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "TRACEABLE fallback model declarations to treat as the candidate pool when a run does not provide modelSelector.id and the resolved agent role does not declare supported model/models entries. After block filtering, the runtime shuffles among the supported preferred candidates instead of always taking the first one. Use the same human-readable declaration syntax as agent frontmatter model/models, for example `GPT-5 mini (copilot)` or `GPT-5.4 mini (copilot)`."
+          },
+          "tiinex.aiProvenance.traceableBlockedModels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "TRACEABLE model declarations to disallow for role-driven selection, preferred-model fallback selection, and explicit caller-provided modelSelector.id. Blocked declarations are also marked in `list_traceable_models` instead of being hidden. Use the same human-readable declaration syntax as agent frontmatter model/models."
+          },
+          "tiinex.aiProvenance.runtimeProvider": {
+            "type": "string",
+            "enum": [
+              "vscode-lm",
+              "openai-compatible",
+              "ollama"
+            ],
+            "default": "vscode-lm",
+            "description": "Select the model provider route used by TRACEABLE runtime. `vscode-lm` preserves current behavior. `openai-compatible` and `ollama` are opt-in external or local routes."
+          },
+          "tiinex.aiProvenance.disableVscodeLmProviderForTraceableRuntime": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, TRACEABLE runtime must not use the VS Code LM or Copilot provider route. This only controls Tiinex runtime routing and does not unload Copilot globally."
+          },
+          "tiinex.aiProvenance.openAiCompatibleBaseUrl": {
+            "type": "string",
+            "default": "",
+            "description": "Base URL for an OpenAI-compatible chat completions endpoint. For local Ollama this may be a localhost endpoint."
+          },
+          "tiinex.aiProvenance.openAiCompatibleApiKeyEnv": {
+            "type": "string",
+            "default": "",
+            "description": "Name of the environment variable containing the API key for the OpenAI-compatible provider. Leave empty for local providers that do not require a key."
+          },
+          "tiinex.aiProvenance.openAiCompatibleModel": {
+            "type": "string",
+            "default": "",
+            "description": "Model id for the OpenAI-compatible provider route."
+          },
+          "tiinex.aiProvenance.openAiCompatibleMaxOutputTokens": {
+            "type": "number",
+            "default": 1200,
+            "minimum": 1,
+            "description": "Maximum output token budget for OpenAI-compatible provider calls."
+          },
+          "tiinex.aiProvenance.openAiCompatibleTemperature": {
+            "type": "number",
+            "default": 0.2,
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Temperature for OpenAI-compatible provider calls."
+          },
+          "tiinex.aiProvenance.externalProviderMaxRequestsPerRun": {
+            "type": "number",
+            "default": 2,
+            "minimum": 1,
+            "description": "Fail-safe cap on external provider calls per TRACEABLE run."
+          },
+          "tiinex.aiProvenance.traceableUndeclaredMaxIterations": {
+            "type": "number",
+            "default": 100,
+            "description": "Runtime-only fail-safe maximum model iterations for TRACEABLE runs when the caller does not provide `budgetPolicy`. This hidden guard is not surfaced to the child request contract."
+          },
+          "tiinex.aiProvenance.traceableUndeclaredMaxToolCalls": {
+            "type": "number",
+            "default": 100,
+            "description": "Runtime-only fail-safe maximum tool calls for TRACEABLE runs when the caller does not provide `budgetPolicy`. This hidden guard is not surfaced to the child request contract."
+          }
+        }
+      },
+      {
+        "id": "tiinex.aiProvenance.evidence",
+        "title": "Evidence Output",
+        "order": 4,
+        "properties": {
+          "tiinex.aiProvenance.evidenceMaxItems": {
+            "type": "number",
+            "default": 10,
+            "description": "Default bounded item count for TRACEABLE evidence list surfaces."
+          },
+          "tiinex.aiProvenance.includeSupportArtifacts": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include support-artifact references such as debug logs in reconstructed TRACEABLE markdown when available."
+          },
+          "tiinex.aiProvenance.traceablePreviewMaxBytes": {
+            "type": "number",
+            "default": 65536,
+            "minimum": 1,
+            "description": "Maximum serialized byte size for any TRACEABLE markdown preview block before the extension omits the block body and writes an explicit truncation marker instead. This applies to preview sections and raw child output blocks."
+          },
+          "tiinex.aiProvenance.maximumDepthOutsideOfWorkspaceRootForRelativePaths": {
+            "type": "number",
+            "default": 1,
+            "minimum": 0,
+            "description": "Maximum number of directory levels a TRACEABLE markdown path may travel above the containing workspace root before the extension falls back to an absolute file URI. This only affects extension-authored markdown output."
+          },
+          "tiinex.aiProvenance.traceableFilenameTopLevelIndexDigits": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 6,
+            "description": "Minimum digit width for the first TRACEABLE lineage segment in newly created `.trace.md` filenames. Child continuation segments use the configured sub-index digit width unless zero padding is removed entirely."
+          },
+          "tiinex.aiProvenance.traceableFilenameSubIndexDigits": {
+            "type": "number",
+            "default": 1,
+            "minimum": 1,
+            "maximum": 6,
+            "description": "Minimum digit width for all TRACEABLE lineage segments after the first one in newly created `.trace.md` filenames. Use `1` for compact values like `001-1-2` or `2` for padded values like `001-01-02`."
+          },
+          "tiinex.aiProvenance.traceableRemoveZeroPaddingFromFilename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Remove zero padding from newly created TRACEABLE evidence filenames. When enabled, both the first lineage segment and continuation segments use natural numbers like `1-2` regardless of the configured digit-width settings."
+          },
+          "tiinex.aiProvenance.traceableRemoveModelOrRoleFromFilename": {
+            "type": "boolean",
+            "default": false,
+            "description": "Remove the model or role slug from newly created TRACEABLE evidence filenames so the filenames contain lineage indexes only, for example `01-02.trace.md`."
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "build": "npm run typecheck && node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tests/test.mjs",
+    "test:sender-adaptation-probes": "node scripts/check-sender-adaptation-probes.mjs",
+    "package:vsix": "npx --yes @vscode/vsce package",
+    "publish:vsce": "npx --yes @vscode/vsce publish",
+    "release:check": "npm run test && npm run package:vsix",
+    "release:patch": "npm version patch -m \"release: %s\"",
+    "release:minor": "npm version minor -m \"release: %s\"",
+    "release:major": "npm version major -m \"release: %s\"",
+    "preversion": "npm run test",
+    "watch": "node scripts/build.mjs --watch"
+  },
+  "devDependencies": {
+    "@vscode/codicons": "^0.0.45",
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.99.0",
+    "esbuild": "^0.25.4",
+    "typescript": "^5.8.3"
+  }
+}

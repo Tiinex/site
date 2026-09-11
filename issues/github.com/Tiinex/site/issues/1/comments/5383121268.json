@@ -1,0 +1,17 @@
+{
+  "type": "tiinex.github.issue.snapshot.comment.v1",
+  "repository": "Tiinex/site",
+  "issue_number": 1,
+  "id": 5383121268,
+  "node_id": "IC_kwDOSUxe-s8AAAABQNvpdA",
+  "html_url": "https://github.com/Tiinex/site/issues/1#issuecomment-5383121268",
+  "user": {
+    "login": "Tiinusen",
+    "id": 1564942,
+    "html_url": "https://github.com/Tiinusen"
+  },
+  "author_association": "CONTRIBUTOR",
+  "created_at": "2026-08-22T23:20:17Z",
+  "updated_at": "2026-08-22T23:20:17Z",
+  "body_path": "5383121268.md"
+}

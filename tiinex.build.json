@@ -1,0 +1,14 @@
+{
+  "type": "tiinex.public.build.identity.v1",
+  "version": 1,
+  "reason": "viewer-build",
+  "generatedAt": "2026-09-11T03:21:38.487Z",
+  "repository": "Tiinex/site",
+  "commitSha": "b10abe25e2da65e4f91e1bae68a4da41ea10fa3f",
+  "commitCreatedAt": "2026-07-20T16:08:51+02:00",
+  "builtAt": "2026-09-11T03:21:38.473Z",
+  "runId": "34558114996",
+  "runAttempt": "1",
+  "buildId": "b10abe25e2da-34558114996-1",
+  "releaseCacheKey": "Tiinex-site-b10abe25e2da65e4f91e1bae68a4da41ea10fa3f-34558114996-1"
+}

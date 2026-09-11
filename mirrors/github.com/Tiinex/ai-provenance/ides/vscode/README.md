@@ -1,0 +1,176 @@
+# Tiinex Traceable Provenance for VS Code
+
+This package is the VS Code-specific extension surface for the `ai-provenance` repo.
+
+It intentionally lives under `ides/vscode` because the repo itself is broader than one IDE.
+
+## Marketplace Release
+
+`0.2.0` is the first Marketplace-oriented minor release for the provenance-side TRACEABLE package.
+
+It is aimed at operators who need bounded provenance work in VS Code rather than broad autonomous orchestration.
+
+Install path:
+
+1. open the VS Code Extensions view
+2. search for `Tiinex Traceable Provenance`
+3. install the extension published by `tiinex`
+
+Release highlights in `0.2.0`:
+
+- bounded TRACEABLE child-lane execution through `#runTraceableSubagent`
+- bounded role and model discovery through `#listTraceableAgents` and `#listTraceableModels`
+- reconstructed `.trace.md` evidence inspection through `#viewTraceableSubagent`
+- provenance-owned TRACEABLE viewer UX with reopen-to-source and reopen-to-markdown-preview flows
+- persisted runtime-decision visibility for model selection and request routing in evidence artifacts
+
+## Quick Start
+
+After you install the extension in VS Code, the shortest useful first flow is:
+
+1. type `#` in chat and pick `#listTraceableAgents` or `#listTraceableModels`
+2. run one narrow lane with `#runTraceableSubagent`
+3. inspect the returned evidence file with `#viewTraceableSubagent`
+
+The important operator detail is that chat usually exposes the prompt-reference names after `#`, not the raw internal tool ids. In practice you should expect `#listTraceableAgents`, not `list_traceable_agents`.
+
+## What To Expect
+
+This package is built for bounded provenance-first TRACEABLE work.
+
+- It helps you preflight roles and models before a run.
+- It can export and reopen `.trace.md` evidence artifacts when the lane requests `exportToFolder` or when the user explicitly chooses export.
+- It is designed for narrow investigation slices, not broad autonomous orchestration.
+- In chat, the first-class invocation surface is usually `#` plus the prompt reference name.
+
+## Marketplace Fit
+
+This extension is a good fit when you want to:
+
+- run a bounded TRACEABLE lane against one narrow investigative slice
+- export `.trace.md` evidence and inspect it without rerunning the child lane
+- inspect runtime decisions, request contracts, lineage, and outcome surfaces from one evidence artifact
+- keep provenance-oriented tooling separate from Local-chat session-store and delete tooling
+
+This extension is not trying to be:
+
+- a general autonomous agent framework
+- a replacement for `ai-vscode-tools` Local-chat/store workflows
+- a hidden tool-routing layer with opaque evidence output
+
+Current status:
+
+- buildable as a real VS Code extension
+- ready for local main-host junction linking on Windows
+- now carries the provenance-side TRACEABLE tool surface: `list_traceable_agents`, `list_traceable_models`, `view_traceable_subagent`, and `run_traceable_subagent`
+- now also carries the reconstructed `.trace.md` evidence viewer UX with source/preview reopen commands on the provenance side
+- now also carries the first host-independent TRACEABLE contract slice: request/result, request-envelope, payload extraction, result construction, full markdown rendering, and evidence-related types
+- now carries release-check, VSIX packaging, and semantic-version scripts for Marketplace-oriented delivery
+
+Current included surface:
+
+- `Tiinex: Inspect TRACEABLE Evidence` parses the embedded `Traceable State` block from a `.trace.md` file and lets you choose a bounded surface without rerunning the child lane
+- `Open Reconstructed Traceable View` opens a provenance-owned reconstructed viewer for a `.trace.md` artifact, can reopen back into source or markdown preview, and is now anchored with the built-in Explorer open/navigation actions rather than the custom Traceable command block
+- Explorer rename or move on a `.trace.md` file now uses a trace-aware move model with `Alone`, `Lineage`, and `Unmodified`. When `Lineage` is available, TRACEABLE only offers the meaningful scope variants for the selected file, such as `Leaves`, `Branch`, or `Tree`, and rewrites affected `parentTracePath` references for the files it carries.
+- When multiple `.trace.md` files are moved together, TRACEABLE now normalizes overlapping selections so the highest selected parent in the same branch wins over selected descendants before lineage planning runs. Multi-select lineage moves only expose `Leaves` or `Branch`, and `tiinex.aiProvenance.traceableDefaultMultiSelectLineageScope` can preselect that multi-select lineage strategy.
+- `tiinex.aiProvenance.traceableDefaultMoveAction` can now preselect the move-side `Alone`, `Lineage`, or `Unmodified` action instead of always prompting, and `tiinex.aiProvenance.traceableDefaultCopyAction` reserves the same shape for the upcoming copy flow
+- `Rewrite Move Trace...` provides an explicit trace-aware rewrite move from the Explorer so the extension can compute the final destination filename before renaming, which avoids the host collision prompt path that ordinary drag-and-drop can still hit
+- `Copy Trace...` provides the explicit trace-aware copy path from the Explorer and now shares the same `Alone` or `Lineage` decision model as the move-side surface
+- native Explorer copy/paste of existing `.trace.md` artifacts is intentionally fail-closed: VS Code create hooks do not expose the source trace or replace intent, so TRACEABLE removes those created copies and directs you to `Copy Trace...` instead of leaving behind an untracked duplicate
+- native Explorer drag/drop and cut/paste moves of existing `.trace.md` artifacts across folders now reuse the trace-aware move takeover on the current host surface when the destination stays inside the same workspace folder as the source artifact
+- native Explorer move attempts that escape the source workspace folder remain fail-closed; TRACEABLE stops them rather than letting `.trace.md` artifacts land in a different repo root or the org root
+- `Return to Parent Trace...` provides an explicit path back to the selected trace's current parent location, skips itself when the selected trace has no readable parent or is already in the parent folder, and reuses the same `Alone`, `Lineage`, and `Unmodified` decision model as the interactive rename flow. The Explorer menu now shows it only for `.trace.md` files whose current parsed `parentTracePath` resolves to a different folder than the selected file.
+- `Add File to Traceable Chat` is now present as an Explorer placeholder near the normal chat-attachment area; it is intentionally not implemented yet and will later target the Traceable UX chat composer
+- `list_traceable_agents` exposes the bounded workspace-supported traceable agent catalog from the provenance side
+- `list_traceable_models` exposes the bounded runtime-discoverable traceable model catalog from the provenance side
+- `run_traceable_subagent` runs the provenance-owned TRACEABLE child-lane runtime with optional evidence export support
+- current bounded surfaces: rendered-output, request-summary, summary, outcome, tool-ledger, status-history, tool-summary, file-summary, and state-json
+- a separate provenance LM tool namespace is now present through `list_traceable_agents`, `list_traceable_models`, `view_traceable_subagent`, and `run_traceable_subagent`
+- provenance-specific settings now live under `tiinex.aiProvenance.*`
+
+What it exposes in VS Code:
+
+- display name: `Tiinex Traceable Provenance`
+- LM tool surfaces: `list_traceable_agents`, `list_traceable_models`, `view_traceable_subagent`, `run_traceable_subagent`
+- command namespace: `tiinex.aiProvenance.*`
+- settings namespace: `tiinex.aiProvenance.*`
+- TRACEABLE panel/status shell under the provenance namespace
+
+Canonical tool usage:
+
+Canonical prompt references in chat:
+
+- `#listTraceableAgents`: use this first when you want a grounded role-backed run; copy the exact returned display name or file path into `run_traceable_subagent.agentRole` instead of guessing a role label.
+- `#listTraceableModels`: use this first when you need explicit model control; prefer `sendableOnly: true`, narrow with `query` when useful, and treat entries marked `Policy: blocked` as non-selectable for `run_traceable_subagent`.
+- `#runTraceableSubagent`: choose the input mode deliberately. `OPERATIVE`, `EPISTEMIC`, and `NON_LEADING_EPISTEMIC` use the classic `userInput` plus `parentTask` form. `DIRECT` uses only `userInput` while still allowing lineage and runtime overrides. `RESUME` requires `parentTracePath` and resumes without any fresh `userInput`, `parentTask`, or `parentFrame`.
+- `#viewTraceableSubagent`: after a run returns an evidence file, inspect that artifact before rerunning the child lane; start with `summary` or `outcome`, then use `tool-ledger` or `state-json` only when deeper debugging is needed.
+
+Input mode quick guide:
+
+- `OPERATIVE`: requires `userInput` and `parentTask`; use this for bounded operational delegation, with optional `parentTracePath` for continuation and handover.
+- `EPISTEMIC`: requires `userInput` and `parentTask`; use this for inquiry-shaped delegation where the parent still carries the bounded task contract.
+- `NON_LEADING_EPISTEMIC`: requires `userInput` and `parentTask`; use this when the child should preserve a non-leading investigative contract and surface input-mode validation explicitly.
+- `DIRECT`: requires only `userInput`; use this for a live-chat-like fresh turn, optionally with `parentTracePath`, but without inheriting or injecting `parentTask` or `parentFrame`.
+- `RESUME`: requires `parentTracePath`; use this for strict prompt-free continuation. Do not pass fresh `userInput`, `parentTask`, or `parentFrame` here.
+
+Canonical examples:
+
+- Role-grounded preflight flow: `#listTraceableAgents` -> `#runTraceableSubagent` with `agentRole` -> `#viewTraceableSubagent` on the returned evidence file.
+- Model-grounded preflight flow: `#listTraceableModels` -> copy one allowed exact model id -> `#runTraceableSubagent` with `modelSelector.id` -> `#viewTraceableSubagent` on the returned evidence file.
+- Recovery flow: if a run already produced `.trace.md` through `exportToFolder` or explicit export, inspect it with `#viewTraceableSubagent` before launching another lane.
+
+Example payloads:
+
+- `OPERATIVE`:
+	```json
+	{
+		"inputMode": "OPERATIVE",
+		"userInput": "Read README.md and summarize the current validation gap.",
+		"parentTask": "Produce a bounded operational summary grounded in the named file.",
+		"allowedToolNames": ["copilot_readFile"],
+		"budgetPolicy": { "maxIterations": 2, "maxToolCalls": 2 }
+	}
+	```
+- `DIRECT`:
+	```json
+	{
+		"inputMode": "DIRECT",
+		"userInput": "What changed in the last trace and what should I inspect next?",
+		"parentTracePath": "ai-provenance/.topics/m3-lineage-chain/01-anchor.trace.md",
+		"modelSelector": { "id": "copilot/gpt-5-mini" }
+	}
+	```
+- `RESUME`:
+	```json
+	{
+		"inputMode": "RESUME",
+		"parentTracePath": "ai-provenance/.topics/m3-lineage-chain/01-anchor.trace.md",
+		"allowedToolNames": ["copilot_readFile", "view_traceable_subagent"],
+		"reveal": true
+	}
+	```
+
+The `DIRECT` and `RESUME` examples above omit `budgetPolicy` intentionally so the child sees live-like conditions and any undeclared runtime fail-safe stays internal. Add `budgetPolicy` only when you want the child to treat that budget as part of the explicit request contract.
+
+When `budgetPolicy` is omitted, TRACEABLE falls back to the hidden runtime fail-safe settings `tiinex.aiProvenance.traceableUndeclaredMaxIterations` and `tiinex.aiProvenance.traceableUndeclaredMaxToolCalls` instead of surfacing a synthesized default budget to the child.
+
+Local development loop:
+
+- This section is for extension contributors rather than Marketplace-first users.
+- `npm test` builds and runs the current validation slice
+- `npm run package:vsix` produces a local VSIX for install testing
+- `npm run release:check` is the release gate used before publishing
+
+Release flow:
+
+- `npm test`
+- `npm run package:vsix`
+- `npm run release:check`
+- `npm run release:patch`, `npm run release:minor`, `npm run release:major`
+- `npm run publish:vsce`
+
+Non-goal for this package scaffold:
+
+- no MCP server surface
+- no extra agent runtime surface
+- no claim of native `runSubagent` UX parity or of broader host-private agent enumeration beyond the bounded provenance traceable surfaces
