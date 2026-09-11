@@ -9,7 +9,8 @@
     "build": "vite build",
     "build:public": "vite build",
     "test": "node --test test/*.test.mjs",
-    "validate": "npm test && npm run build"
+    "validate": "npm test && npm run build",
+    "test:browser:local-source": "node tools/local-source-browser-harness.mjs"
   },
   "dependencies": {
     "@tiinex/app": "0.1.1",

@@ -13,3 +13,4 @@ test-environment-full-conversation.md
 .tiinex/
 *.zip
 delivery/
+tools/__pycache__/browser-smoke.cpython-313.pyc

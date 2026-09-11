@@ -12,4 +12,9 @@ test('Playthings browser smoke follows the current host/Verse DOM contract',()=>
   assert.match(smoke,/name='Back to Viewer'/);
   assert.match(smoke,/name='Exit Verse'/);
   assert.match(smoke,/TIINEX_BROWSER_EXECUTABLE/);
+  assert.match(smoke,/TIINEX_BROWSER_SMOKE_VITE_LOG/);
+  assert.match(smoke,/failureStage/);
+  assert.match(smoke,/vite-startup/);
+  assert.match(smoke,/browser-launch/);
+  assert.match(smoke,/smoke-assertion/);
 });
