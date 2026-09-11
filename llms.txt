@@ -1,24 +1,32 @@
-# Tiinex/site LLM Router
+# Tiinex/site LLM Guide
 
-Read files in this order:
+Purpose:
+Tiinex/site is the official thin web deployment over `@tiinex/app` and `@tiinex/core`. It is not the shared Tooling source, not canonical schema authority, and not the whole Tiinex project.
 
-1. Read `tiinex.orientation.v1.md` for Tiinex identity.
-2. Read `tiinex.context.v1.md` for bounded repo context.
-3. Read `README.md` for this repo.
-4. Read `tiinex.app.llm.v1.md` for viewer/runtime guidance.
-5. Use the current source, validation output, and Git history for implementation status.
+Read in this order:
+1. README.md
+2. tiinex.config.js
+3. .topics/.workspaces/tiinex-site.workspace.md
+4. .topics/026-thin-site-hygiene-historical-reduction-task.trace.md when working on Turn-2 history hygiene
 
-Important boundary:
+Authority routing:
+- Tiinex/docs owns maintained schema/semantic contracts.
+- Tiinex/business owns organizational truth, priorities and human gates.
+- @tiinex/core owns shared host-neutral mechanics and portable Handoff Tooling.
+- @tiinex/app owns the reusable Viewer/application/Verse-host layer.
+- this repository owns deployment configuration, web integration and hosting only.
 
-- `Tiinex/site` is the Tiinex viewer and one reference implementation.
-- Tiinex itself keeps provenance readable in Markdown artifacts you own.
-- Do not treat CP-specific release notes as the definition of the repo or the project.
-- Do not describe Tiinex as an AI runtime unless a specific current artifact implements that behavior.
+Branch/currentness boundary:
+- current source for this repository is grounded by its Workspace and task artifacts, not by historical `refactor`/PoC branch narratives;
+- the current package/deployment workflow targets `master` after the Core/App split;
+- never infer semantic authority merely from a branch or repository name.
 
-Runtime cautions:
+Handoff/bootstrap boundary:
+- for a qualified routed Handoff package, follow its Start/Continue protocol and its carried Core Tooling bootstrap;
+- Site no longer owns `src/tooling/portable/**` bootstrap/runtime source;
+- external-assistant bootstrap belongs to the Interop frontier when that repository is established.
 
-- Inspect actual app files before making claims about runtime behavior.
-- Keep Parent and Origin separate.
-- Do not guess local or draft material is GitHub-backed source.
-- Workspace files are entrypoints when opened as workspaces.
-- Use nearest `LINEAGE_POLICY.md` or `LINEAGE_LICENSE.md` when loaded material provides one.
+History/reduction boundary:
+- old `.topics/tooling/**` and `.topics/viewer/**` material is historical source awaiting exact destructive Reduction qualification;
+- file age, extraction success, Git retention or a summary alone does not authorize semantic deletion;
+- unresolved reduction preflight must fail closed.

@@ -6,6 +6,7 @@
   - Created At: 2026-06-14 00:00:00
   - Trace: [tiinex.root.v1.schema.md](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
   - Origin:
+    - [relative](tiinex.root.v1.schema.md)
     - [browse + git](https://github.com/Tiinex/docs/blob/cca53fc8c52fd27b92b9429420efd613913a88bd/.topics/.schemas/tiinex.root.v1.schema.md)
 - Current
   - Current Schema: [tiinex.workspace.v1](tiinex.workspace.v1.schema.md)
@@ -53,6 +54,7 @@ The body should prefer this order when sections are present:
 - `## Viewer Identity`
 - `## Empty Stage`
 - `## Host Defaults`
+- `## Schema Origins`
 - `## Workspace Discovery`
 - `## Workspace Entrypoints`
 - `## Repository Mirrors`
@@ -81,6 +83,9 @@ Recognized fields:
 - `Preferred Locale`
 - `Schema Discovery Root`
 - `Default Action`
+- `Browser Title`
+- `Public Viewer URL`
+- `Workspace Home`
 
 Empty fields should be omitted.
 
@@ -123,6 +128,34 @@ Rules:
 - Relative default workspace paths should resolve against the hosting page location.
 - A static host may also provide these values through a small global script before the app loads.
 
+## Schema Origins
+
+Optional declarations for schema origins available to this viewer/workspace. This supports canonical core schemas, viewer-local schema companions, and explicit external extensions without treating every schema as if it must live in Tiinex/docs.
+
+Entries may be links with nested fields.
+
+Recognized nested fields:
+
+- `Kind`
+- `Repository`
+- `Ref`
+- `Root Path`
+- `Trust Role`
+- `Purpose`
+
+Recognized trust roles:
+
+- `canonical-core`
+- `viewer-extension`
+- `external-extension`
+
+Rules:
+
+- `canonical-core` normally points to Tiinex/docs schemas.
+- `viewer-extension` may point to app-local schema companions such as `src/schemas`. The built-in site-local label `Viewer local schemas` is a common viewer-extension declaration.
+- A workspace must disclose viewer-local schema origins instead of hiding app-specific schema projections and viewer-only modules in code.
+- Schema origins are discovery and trust-boundary declarations, not proof that every schema module is loaded or valid.
+
 ## Workspace Discovery
 
 Optional discovery roots for other `*.workspace.md` entrypoints.
@@ -158,6 +191,9 @@ Recognized fields:
 - `Default Filter`
 - `Default Search`
 - `Selected Path`
+- `Repo Files Discovery`
+- `Issue Discovery`
+- `Issue URL`
 - `Tree Root Label`
 - `Preserve Existing Workspace`
 - `If Already Open`
@@ -301,6 +337,13 @@ Optional behavior for closing sources or removing workspaces.
 
 Recognized fields:
 
+- `Add Menu`
+- `Manual Files`
+- `Manual Folder`
+- `GitHub Source`
+- `Explicit URLs`
+- `Drag And Drop`
+- `Unsupported Intake Disclosure`
 - `Close Source`
 - `Close Source Confirm`
 - `Close Source Removes`

@@ -1,20 +1,34 @@
 {
-  "name": "tiinex-lineage-viewer",
-  "version": "0.1.0",
+  "name": "tiinex-site",
+  "version": "0.3.0-turn1.2",
   "private": true,
-  "description": "Static client-side viewer for portable Tiinex markdown lineage and provenance workspaces.",
+  "type": "module",
+  "description": "Official Tiinex web deployment using the versioned @tiinex/app application.",
   "scripts": {
-    "validate": "node tools/validate-static.mjs",
-    "test": "node tools/validate-static.mjs && node tools/check-public-build.mjs",
-    "metrics": "node tools/collect-metrics.mjs",
-    "storage:scan": "node tools/inspect-storage.mjs",
-    "build:public": "node tools/build-public.mjs",
-    "public:check": "node tools/check-public-build.mjs",
-    "issues:snapshot": "node tools/build-issue-snapshots.mjs",
-    "public:identity": "node tools/write-public-build-identity.mjs",
-    "issues:state": "node tools/write-issue-publish-state.mjs"
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "build": "vite build",
+    "build:public": "vite build",
+    "test": "node --test test/*.test.mjs",
+    "validate": "npm test && npm run build"
+  },
+  "dependencies": {
+    "@tiinex/app": "0.1.1",
+    "@tiinex/core": "0.1.1",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "@fortawesome/fontawesome-svg-core": "7.3.1",
+    "@fortawesome/free-regular-svg-icons": "7.3.1",
+    "@fortawesome/free-solid-svg-icons": "7.3.1",
+    "@fortawesome/react-fontawesome": "3.4.0",
+    "@tiinex/verse-playthings": "0.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.5",
+    "typescript": "7.0.2"
   },
   "engines": {
-    "node": ">=18"
-  }
+    "node": ">=22.14"
+  },
+  "packageManager": "npm@10.9.2"
 }

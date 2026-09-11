@@ -1,0 +1,53 @@
+# Continuity Context
+
+- Envelope Schema: tiinex.root.v1
+- Parent
+  - Parent Schema: [tiinex.handoff.v1](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.schemas/coordination/handoff/tiinex.handoff.v1.schema.md)
+  - Created At: 2026-09-05 20:02:27
+  - Trace: [020-4-1-anchor-to-loom-grounding-source-currentness-organizational-context-closure-handoff.trace.md](020-4-1-anchor-to-loom-grounding-source-currentness-organizational-context-closure-handoff.trace.md)
+  - Origin:
+    - [relative](020-4-1-anchor-to-loom-grounding-source-currentness-organizational-context-closure-handoff.trace.md)
+- Current
+  - Current Schema: tiinex.evidence.v1
+  - Created At: 2026-09-05 21:11:31
+  - Authors: Loom
+  - Why: Preserve the final bounded Major 009 grounding-closure implementation and exact qualification state before manufacturing the canonical Loom-to-Anchor return.
+  - Summary: Loom preserves the qualified source-evidence, selected-frontier currentness, organization/project context, planning-context, cold-start acceptance, regression, and validation evidence for Anchor reconciliation.
+  - Status: ready/local
+
+---
+
+## Supported Claim Or Question
+- Supported Claim Or Question: whether the final bounded Major 009 cold-start grounding closure tranche can correct workspace source evidence, selected-frontier blocker currentness, qualified organization/project context recovery, and durable planning-context recovery while preserving accepted work-provenance, Parent, Role-authority, exact-route, genericity, and return-first semantics.
+- Evidence Role: supports bounded Loom implementation qualification and Anchor reconciliation for the delegated grounding source/currentness/organizational-context closure tranche.
+
+## Provenance
+- Known Source: qualified local Site continuation materialized from the exact 008-1-1-1-1-1 Anchor-to-Loom route under explicit Loom holder-role binding, its six qualified Required Context artifacts, and the untouched received full-source carrier used for exact common-ground dogfood.
+- Preservation Basis: bounded source and permanent regression changes are preserved in the materialized Site continuation; the modified common Tiinex ground path was dogfooded against the untouched received carrier and validation receipts are preserved in local checkpoint state before return manufacture.
+- Provenance Limits: local qualification does not prove remote repository currentness, historical Task completion, Anchor acceptance, Sigma landing, release qualification, or Major 009 closure.
+
+## Evidence Material
+- Material Kind: implementation, permanent neutral regressions, exact Tiinex cold-start dogfood, structural acceptance measurement, validation receipts, static-debt state, and bounded execution-limit evidence.
+- Material: Replaced arbitrary carried `tiinex.workspace.v1` scanning with a generic source-evidence projector bound to each carrier-qualified durable Workspace source artifact exposed by recipient-v2 context audit. Source facts are read only from `Workspace Entrypoints` or an explicit source profile: the exact dogfood result contains three source rows only; Business remains local-directory with blank repository/ref and root `.`, Docs is `Tiinex/docs` at `master`, Site is `Tiinex/site` at `refactor`, all remote states remain `not-checked`, and schema-companion origins cannot become workspace source evidence. Scoped current blockers to the exact selected current frontier instead of every nonterminal ancestor; a permanent regression preserves a genuine current unresolved blocker while refusing promotion of an explicit historical ancestor blocker, without inferring completion or readiness for that ancestor. Added a durable Planning Context reduction over qualified Required Context only, recovering the actual segment `Cold-Start Grounding + Handoff Trust.`, purpose, end condition, approximately 2–4 remaining turns/handoffs forecast, medium-high confidence, and after-boundary while making no generic schema/filename/Major inference. Added qualified work-target context projection over the exact declared work-provenance target and its qualified direct Parent context solely to inspect already-declared `Project Identity`/`Project Context` and `Organization Identity`/`Organization Context`; Parent is never reinterpreted as membership or work provenance. Extended work-provenance currentness so an already-qualified typed relation whose declared source lies on the exact selected Parent lineage can be relevant to a descendant current frontier without rewriting its source or manufacturing a new edge. Exact dogfood therefore preserves the one carried `advances` edge from `site/.topics/tooling/020-cold-start-grounding-handoff-trust-hardening.task.trace.md` to `business/.topics/initiatives/001-2-2-portable-handoff-cold-start-ingress-task.trace.md`, projects it as `qualified-relevant` / `qualified-via-selected-lineage`, exposes the same edge in reverse discovery, and recovers explicit `Tiinex Tooling` Project Context plus explicit `Tiinex` Organization Context from the qualified target context. Participant-authority unresolved output now records that Coordinator, Specialist, Human Carrier, identity, role labels, conversation position, and humanness create no generic authority; qualified Loom authority still requires the carried declared Loom Role basis plus explicit Loom session-holder binding. Permanent neutral regression coverage includes multiple upstream edges with no primary election, same-edge reverse discovery, relation-source preservation under selected-lineage relevance, qualified and unresolved project/organization context, unresolved endpoints, no prose/Parent synthesis, blank coordinator-like/specialist/human-carriable roles, two-workspace source evidence with a false schema companion, selected-frontier blocker currentness, and the existing exact multi-route selection regressions. Structural cold-start acceptance over the real received carrier passed 16/16 checks: grounded-to-act, exact three workspace sources, no invented Business repo/ref, exact Docs and Site source facts, remote not-checked, zero current blockers, exact 020-4 frontier, qualified plan context, qualified-relevant `advances` provenance, same-edge reverse discovery, explicit project and organization context, declared Loom authority, and exact next safe action. Final focused/tooling validation passed 4/4 configured steps and 15/15 focused cases; TypeScript typecheck passed; architecture-shape passed; integration/Foundation passed 12/12 configured steps with 47/47 integration cases; static regression diagnostic is clean with inherited=0, introduced=0, resolved=13. One combined validation shell invocation reached its 120-second host execution limit after focused/type/architecture had passed and while integration was starting; no integration pass/fail was inferred from that interrupted invocation, and the isolated integration profile subsequently completed and passed before this Evidence was authored.
+
+## Preservation And Fidelity
+- Preservation State: implementation, permanent tests, common-ground dogfood receipt, structural acceptance measurement, validation checkpoints, and this Evidence are preserved in the local Site continuation for a non-major full-source Business+Docs+Site return; `.tiinex` runtime continuation/checkpoint control state is transport-excluded and the received parent carrier remains untouched.
+- Fidelity Notes: the change is limited to generic grounding projection and the carrier audit metadata needed to bind source evidence to the exact selected Workspace artifact. Parent remains direct artifact continuity; work provenance remains typed non-Parent relation material; selected Parent lineage establishes only relevance of an existing edge; reverse discovery remains the same edge; organization/project context requires explicit qualified target context; source authority requires exact selected Workspace metadata/profile; current blockers require selected-frontier evidence; role/identity labels create no generic authority. Existing carrier/profile/provider, multi-route exact-selection, sibling-allocation, lifecycle/reduction, Viewer, publication, and remote-write mechanics were not broadened.
+- Known Losses: full terminal transcripts, every intermediate patch, and the large common-ground JSON receipt are not embedded in this artifact. The durable implementation/tests plus decisive source/currentness/plan/provenance/context/authority observations, the 16/16 structural acceptance result, validation counts, timeout interpretation boundary, and static-debt state are preserved here.
+
+## Interpretation Limits
+- Does Not Prove: that historical ancestor Tasks are complete, that every project exposes organization/project context, that `advances` is universal, that Parent is membership or work provenance, that selected-lineage relevance creates a new relation, that repository/workspace names establish source or organization identity, that remote repositories were checked, that human presence creates authority, or that Major 009 is closed.
+- Must Not Be Treated As: lifecycle/readiness or Reduction authority, permission to infer source facts from schema companions or filenames, permission to infer organization/project membership from Parent/repository/workspace/path/branch/chat, permission to invent a primary upstream edge, an inverse relation artifact, remote publication evidence, Anchor acceptance, Sigma landing, release qualification, or Major closure.
+- Not Yet Used As: Anchor reconciliation/acceptance decision, Sigma acceptance or landing evidence, final closure-profile evidence, remote publication evidence, release evidence, or Major 009 closure evidence.
+
+---
+
+# Continuity Integrity
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: [020-4-1-anchor-to-loom-grounding-source-currentness-organizational-context-closure-handoff.trace.md](020-4-1-anchor-to-loom-grounding-source-currentness-organizational-context-closure-handoff.trace.md)
+  - Value: ArnLGUmFQ6wU7MuhkqmyhRrOyhpR8V981STP6aFbOg8
+
+- [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
+  - Towards: self
+  - Value: LhD0lBdXQmT0W9lyn6BrsSo4W33djAXLiqscUwT6NUU

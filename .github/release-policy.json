@@ -1,0 +1,7 @@
+{
+  "contract": "tiinex.site-master-pages-deployment.v1",
+  "branch": "master",
+  "sourceBoundary": "thin deployment over exact package dependencies",
+  "qualification": "npm run validate plus dependency-equipped browser smoke",
+  "semanticAuthorityChanged": false
+}
