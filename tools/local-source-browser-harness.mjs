@@ -23,6 +23,12 @@ const FIRST_PARTY = Object.freeze({
   playthings: '@tiinex/verse-playthings',
 });
 const SOURCE_EXCLUDES = new Set(['.git', '.tiinex', 'node_modules', 'dist']);
+const WINDOWS_FRONT_DOOR = 'npm run test:browser:local-source';
+const STANDARD_SIBLING_REPOSITORIES = Object.freeze({
+  core: 'core',
+  app: 'app',
+  playthings: 'verse-playthings',
+});
 
 class HarnessError extends Error {
   constructor(stage, message, details = {}) {
@@ -53,7 +59,60 @@ export function parseHarnessArgs(argv = []) {
 }
 
 function usage() {
-  return `Usage:\n  npm run test:browser:local-source -- --core <root> --app <root> --playthings <root> [--site <root>] [--browser <executable>] [--python <executable>] [--evidence-dir <dir>] [--keep-temp] [--offline]\n\nThe harness packs exact local @tiinex/core, @tiinex/app and @tiinex/verse-playthings source, rewrites only a disposable Site package.json to consume those tarballs, installs exact declared third-party dependencies, runs Site tests/build, then runs tools/browser-smoke.py.\n`;
+  return `Usage:\n  ${WINDOWS_FRONT_DOOR}\n\nOptional overrides: [--site <root>] [--core <root>] [--app <root>] [--playthings <root>] [--browser <executable>] [--python <executable>] [--evidence-dir <dir>] [--keep-temp] [--offline]\n\nThe supported Windows front door is the npm script above. npm exposes its exact CLI path to that script through npm_execpath; the harness launches that CLI through the already-running Node executable rather than trying to execute the Windows npm.cmd shim with shell-free spawn.\n\nBy default, Core, App and Verse Playthings are resolved from the standard Tiinex sibling checkout layout next to the effective Site root: ../core, ../app and ../verse-playthings. Explicit command-line roots take precedence over TIINEX_*_ROOT environment overrides, which take precedence over those sibling defaults.\n\nThe harness packs exact local @tiinex/core, @tiinex/app and @tiinex/verse-playthings source, rewrites only a disposable Site package.json to consume those tarballs, installs exact declared third-party dependencies, runs Site tests/build, then runs tools/browser-smoke.py.\n`;
+}
+
+export function defaultFirstPartyRoots(siteRoot, pathApi = path) {
+  const effectiveSiteRoot = pathApi.resolve(siteRoot);
+  const parent = pathApi.dirname(effectiveSiteRoot);
+  return Object.fromEntries(Object.entries(STANDARD_SIBLING_REPOSITORIES).map(([key, repository]) => [key, pathApi.join(parent, repository)]));
+}
+
+export function resolveFirstPartyRootInputs({
+  args = {},
+  env = process.env,
+  siteRoot = defaultSiteRoot,
+  pathApi = path,
+} = {}) {
+  const defaults = defaultFirstPartyRoots(siteRoot, pathApi);
+  return {
+    core: args.core || env.TIINEX_CORE_ROOT || defaults.core,
+    app: args.app || env.TIINEX_APP_ROOT || defaults.app,
+    playthings: args.playthings || env.TIINEX_PLAYTHINGS_ROOT || defaults.playthings,
+  };
+}
+
+export function resolveNpmInvocation({
+  platform = process.platform,
+  env = process.env,
+  nodeExecutable = process.execPath,
+} = {}) {
+  const npmExecPath = String(env?.npm_execpath || '').trim();
+  if (npmExecPath) {
+    return {
+      command: nodeExecutable,
+      argsPrefix: [npmExecPath],
+      strategy: 'npm-execpath-via-current-node',
+      npmExecPath,
+    };
+  }
+  if (platform === 'win32') {
+    throw new HarnessError(
+      'host-toolchain',
+      'Windows npm invocation metadata is unavailable. Launch the harness through the supported npm script so npm_execpath is provided.',
+      {
+        platform,
+        requiredEnvironment: 'npm_execpath',
+        frontDoor: WINDOWS_FRONT_DOOR,
+      },
+    );
+  }
+  return {
+    command: 'npm',
+    argsPrefix: [],
+    strategy: 'path-direct-non-windows-fallback',
+    npmExecPath: '',
+  };
 }
 
 async function readJson(file) {
@@ -192,17 +251,25 @@ async function runStep({ index, name, command, args = [], cwd, env, evidenceDir 
   return { receipt, stdout, stderr };
 }
 
+async function runNpmStep({ npmInvocation, args = [], ...step }) {
+  return runStep({
+    ...step,
+    command: npmInvocation.command,
+    args: [...npmInvocation.argsPrefix, ...args],
+  });
+}
+
 function requireStepSuccess(stage, step) {
   if (step.receipt.exitCode !== 0 || step.receipt.error) {
     throw new HarnessError(stage, `${step.receipt.name} failed.`, { receipt: step.receipt });
   }
 }
 
-async function packFirstParty({ label, root, packageJson, packsDir, evidenceDir, index }) {
-  const step = await runStep({
+async function packFirstParty({ label, root, packageJson, packsDir, evidenceDir, index, npmInvocation }) {
+  const step = await runNpmStep({
     index,
     name: `pack-${label}`,
-    command: 'npm',
+    npmInvocation,
     args: ['pack', '--json', '--ignore-scripts', '--pack-destination', packsDir],
     cwd: root,
     evidenceDir,
@@ -337,11 +404,13 @@ async function main() {
       : await mkdtemp(path.join(os.tmpdir(), 'tiinex-site-local-source-evidence-'));
     await mkdir(evidenceDir, { recursive: true });
 
+    const siteRoot = await existingDirectory(args.site || defaultSiteRoot, 'site');
+    const firstPartyInputs = resolveFirstPartyRootInputs({ args, env: process.env, siteRoot });
     roots = {
-      site: await existingDirectory(args.site || defaultSiteRoot, 'site'),
-      core: await existingDirectory(args.core || process.env.TIINEX_CORE_ROOT, 'core'),
-      app: await existingDirectory(args.app || process.env.TIINEX_APP_ROOT, 'app'),
-      playthings: await existingDirectory(args.playthings || process.env.TIINEX_PLAYTHINGS_ROOT, 'playthings'),
+      site: siteRoot,
+      core: await existingDirectory(firstPartyInputs.core, 'core'),
+      app: await existingDirectory(firstPartyInputs.app, 'app'),
+      playthings: await existingDirectory(firstPartyInputs.playthings, 'playthings'),
     };
     if (new Set(Object.values(roots)).size !== Object.keys(roots).length) {
       throw new HarnessError('first-party-validation', 'First-party roots must be distinct.', { roots });
@@ -360,7 +429,8 @@ async function main() {
       playthingsPackage: packages.playthings,
     });
     const toolchain = validateNodeEngines(packages);
-    const npmVersionStep = await runStep({ index: 1, name: 'npm-version', command: 'npm', args: ['--version'], cwd: roots.site, evidenceDir });
+    const npmInvocation = resolveNpmInvocation();
+    const npmVersionStep = await runNpmStep({ index: 1, name: 'npm-version', npmInvocation, args: ['--version'], cwd: roots.site, evidenceDir });
     requireStepSuccess('host-toolchain', npmVersionStep);
     sourceStateBefore = await criticalSourceState(roots);
 
@@ -369,9 +439,9 @@ async function main() {
     const tempSiteRoot = path.join(tempRoot, 'site');
     await mkdir(packsDir, { recursive: true });
 
-    const corePack = await packFirstParty({ label: 'core', root: roots.core, packageJson: packages.core, packsDir, evidenceDir, index: 2 });
-    const appPack = await packFirstParty({ label: 'app', root: roots.app, packageJson: packages.app, packsDir, evidenceDir, index: 3 });
-    const playthingsPack = await packFirstParty({ label: 'playthings', root: roots.playthings, packageJson: packages.playthings, packsDir, evidenceDir, index: 4 });
+    const corePack = await packFirstParty({ label: 'core', root: roots.core, packageJson: packages.core, packsDir, evidenceDir, index: 2, npmInvocation });
+    const appPack = await packFirstParty({ label: 'app', root: roots.app, packageJson: packages.app, packsDir, evidenceDir, index: 3, npmInvocation });
+    const playthingsPack = await packFirstParty({ label: 'playthings', root: roots.playthings, packageJson: packages.playthings, packsDir, evidenceDir, index: 4, npmInvocation });
     const packs = { core: corePack, app: appPack, playthings: playthingsPack };
     await writeJson(path.join(evidenceDir, 'first-party-packs.json'), packs);
 
@@ -386,6 +456,11 @@ async function main() {
       roots,
       packageValidation,
       toolchain,
+      npmInvocation: {
+        command: npmInvocation.command,
+        argsPrefix: npmInvocation.argsPrefix,
+        strategy: npmInvocation.strategy,
+      },
       npmVersion: npmVersionStep.stdout.toString('utf8').trim(),
       tempSiteRoot,
       offline: Boolean(args.offline),
@@ -394,10 +469,10 @@ async function main() {
 
     const installArgs = ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline', '--fetch-retries=0', '--fetch-timeout=20000'];
     if (args.offline) installArgs.push('--offline');
-    const install = await runStep({
+    const install = await runNpmStep({
       index: 5,
       name: 'npm-install',
-      command: 'npm',
+      npmInvocation,
       args: installArgs,
       cwd: tempSiteRoot,
       evidenceDir,
@@ -411,9 +486,9 @@ async function main() {
     const installedFirstParty = await verifyInstalledFirstParty(tempSiteRoot, packageValidation.expected);
     await writeJson(path.join(evidenceDir, 'install-verification.json'), { thirdPartyLockVerification, installedFirstParty });
 
-    const siteTest = await runStep({ index: 6, name: 'site-test', command: 'npm', args: ['test'], cwd: tempSiteRoot, evidenceDir });
+    const siteTest = await runNpmStep({ index: 6, name: 'site-test', npmInvocation, args: ['test'], cwd: tempSiteRoot, evidenceDir });
     requireStepSuccess('site-test', siteTest);
-    const siteBuild = await runStep({ index: 7, name: 'site-build', command: 'npm', args: ['run', 'build'], cwd: tempSiteRoot, evidenceDir });
+    const siteBuild = await runNpmStep({ index: 7, name: 'site-build', npmInvocation, args: ['run', 'build'], cwd: tempSiteRoot, evidenceDir });
     requireStepSuccess('site-build', siteBuild);
 
     const python = args.python || process.env.TIINEX_PYTHON || 'python3';
