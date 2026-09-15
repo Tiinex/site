@@ -9,4 +9,8 @@ test('Vite dev serves the source-distributed App package through normal transfor
     viteConfig,
     /optimizeDeps\s*:\s*\{[\s\S]*?exclude\s*:\s*\[\s*['"]@tiinex\/app['"]\s*\]/,
   );
+  assert.match(
+    viteConfig,
+    /include\s*:\s*\[[\s\S]*?['"]@tiinex\/app > react['"][\s\S]*?['"]@tiinex\/app > react-dom\/client['"][\s\S]*?\]/,
+  );
 });

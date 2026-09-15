@@ -10,6 +10,9 @@ export default defineConfig({
   // a Windows filesystem path during optimizer scanning.
   optimizeDeps: {
     exclude: ['@tiinex/app'],
+    // App stays source-transformed, while its CommonJS React peers still need
+    // Vite's dependency interop when reached through the excluded package.
+    include: ['@tiinex/app > react', '@tiinex/app > react-dom/client'],
   },
   build: {
     outDir: '.site-publish',

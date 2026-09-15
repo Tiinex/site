@@ -44,3 +44,8 @@ The harness validates the first-party package names and exact Site-declared vers
 `--site` defaults to the current Site checkout. Core, App and Verse Playthings then default to the sibling repositories `../core`, `../app`, and `../verse-playthings`. Explicit `--core`, `--app`, and `--playthings` overrides take precedence over `TIINEX_CORE_ROOT`, `TIINEX_APP_ROOT`, and `TIINEX_PLAYTHINGS_ROOT`; those environment overrides take precedence over the sibling defaults.
 
 The real-browser smoke uses `--browser` / `TIINEX_BROWSER_EXECUTABLE` first when supplied. Otherwise, on Windows it checks a bounded deterministic set of normal Chrome, Edge and Chromium install locations under `Program Files`, `Program Files (x86)`, and `LOCALAPPDATA`, then the corresponding browser names on `PATH`. If none is present, it uses Playwright-managed Chromium only when that executable is already installed. The gate never downloads a browser automatically, and its structured result reports both the chosen browser executable and the resolution source. The Python executable may still be selected with `--python` or `TIINEX_PYTHON` when a host needs an override. `--offline` is a diagnostic cache-only mode for hosts where public npm access is intentionally unavailable.
+
+### Windows Vite development dependency interop
+
+Site intentionally consumes `@tiinex/app` as source so Vite can transform App asset queries such as `?raw`. The App package is excluded from dependency pre-bundling, while its React peers are explicitly included for CommonJS/ESM interop when reached through that excluded source package. After changing this optimizer contract, restart development with `npm run dev -- --force` so Vite does not reuse a stale optimized-dependency cache.
+
