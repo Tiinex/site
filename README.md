@@ -19,6 +19,8 @@ npm test
 npm run build
 ```
 
+For local browser development, `npm run dev` serves the source-distributed `@tiinex/app` package through Vite's normal transform pipeline. Site excludes `@tiinex/app` from dependency pre-bundling because App intentionally contains Vite asset-query imports such as `?raw`; optimizer scanning can otherwise interpret those query-bearing paths as invalid Windows filesystem names. This development-only setting does not change the production build contract.
+
 `npm run validate` runs the Site-owned deployment tests and the production Vite build. `tools/browser-smoke.py` is the dependency-equipped browser gate used by CI after Chromium is installed.
 
 ## Authority and history
