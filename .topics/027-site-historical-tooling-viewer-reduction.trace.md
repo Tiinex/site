@@ -31,28 +31,28 @@
 
 ### Stage-A Surviving Closure Endpoints
 
-- [001-tooling-development-loop-efficiency-discovery.trace.md](tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
-- [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
-- [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
-- [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
-- [007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md](tooling/007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md)
-- [007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md](tooling/007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md)
-- [007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md](tooling/007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md)
-- [007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md](tooling/007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md)
-- [011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md](tooling/011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md)
-- [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
-- [011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md](tooling/011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md)
-- [011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md](tooling/011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md)
-- [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
-- [012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md](tooling/012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md)
-- [012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md](tooling/012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md)
-- [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
-- [013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md](tooling/013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md)
-- [016-common-author-continuation-schema-authority-repair.task.trace.md](tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
-- [020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md](tooling/020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md)
-- [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
-- [002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md](viewer/002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md)
-- [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
+- [001-tooling-development-loop-efficiency-discovery.trace.md](work/tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
+- [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](work/tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
+- [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+- [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+- [007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md](work/tooling/007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md)
+- [007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md](work/tooling/007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md)
+- [007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md](work/tooling/007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md)
+- [007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md](work/tooling/007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md)
+- [011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md](work/tooling/011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md)
+- [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](work/tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
+- [011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md](work/tooling/011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md)
+- [011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md](work/tooling/011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md)
+- [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+- [012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md](work/tooling/012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md)
+- [012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md](work/tooling/012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md)
+- [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](work/tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
+- [013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md](work/tooling/013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md)
+- [016-common-author-continuation-schema-authority-repair.task.trace.md](work/tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
+- [020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md](work/tooling/020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md)
+- [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](work/tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
+- [002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md](work/viewer/002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md)
+- [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](work/viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
 
 ## Carry-Forward State
 
@@ -69,379 +69,379 @@
 The entries below bind each Stage-A disappearing graph leaf to the nearest retained historical Site boundary. They prepare the companion destructive eligibility proof; they do not authorize deletion.
 
 - **Leaf 1**
-  - Leaf: [001-1-1-1-1-loom-to-anchor-validation-checkpoint-efficiency-return-handoff.trace.md](tooling/001-1-1-1-1-loom-to-anchor-validation-checkpoint-efficiency-return-handoff.trace.md)
-  - Collapse To: [001-tooling-development-loop-efficiency-discovery.trace.md](tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
+  - Leaf: [001-1-1-1-1-loom-to-anchor-validation-checkpoint-efficiency-return-handoff.trace.md](work/tooling/001-1-1-1-1-loom-to-anchor-validation-checkpoint-efficiency-return-handoff.trace.md)
+  - Collapse To: [001-tooling-development-loop-efficiency-discovery.trace.md](work/tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 4 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 2**
-  - Leaf: [001-2-1-1-1-loom-to-anchor-scoped-export-parent-boundary-impact-return-handoff.trace.md](tooling/001-2-1-1-1-loom-to-anchor-scoped-export-parent-boundary-impact-return-handoff.trace.md)
-  - Collapse To: [001-tooling-development-loop-efficiency-discovery.trace.md](tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
+  - Leaf: [001-2-1-1-1-loom-to-anchor-scoped-export-parent-boundary-impact-return-handoff.trace.md](work/tooling/001-2-1-1-1-loom-to-anchor-scoped-export-parent-boundary-impact-return-handoff.trace.md)
+  - Collapse To: [001-tooling-development-loop-efficiency-discovery.trace.md](work/tooling/001-tooling-development-loop-efficiency-discovery.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 4 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 3**
-  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-1-anchor-canonical-transport-manufacture-role-grounding-evidence.trace.md](tooling/002-1-1-1-1-1-1-1-1-1-1-1-1-anchor-canonical-transport-manufacture-role-grounding-evidence.trace.md)
-  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
+  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-1-anchor-canonical-transport-manufacture-role-grounding-evidence.trace.md](work/tooling/002-1-1-1-1-1-1-1-1-1-1-1-1-anchor-canonical-transport-manufacture-role-grounding-evidence.trace.md)
+  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](work/tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 12 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 4**
-  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-2-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-foundation-human-first-cli-carrier-ux-handoff.trace.md](tooling/002-1-1-1-1-1-1-1-1-1-1-1-2-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-foundation-human-first-cli-carrier-ux-handoff.trace.md)
-  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
+  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-2-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-foundation-human-first-cli-carrier-ux-handoff.trace.md](work/tooling/002-1-1-1-1-1-1-1-1-1-1-1-2-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-loom-foundation-human-first-cli-carrier-ux-handoff.trace.md)
+  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](work/tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 47 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 5**
-  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-2-2-loom-openai-safety-false-positive-diagnostic-evidence.trace.md](tooling/002-1-1-1-1-1-1-1-1-1-1-1-2-2-loom-openai-safety-false-positive-diagnostic-evidence.trace.md)
-  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
+  - Leaf: [002-1-1-1-1-1-1-1-1-1-1-1-2-2-loom-openai-safety-false-positive-diagnostic-evidence.trace.md](work/tooling/002-1-1-1-1-1-1-1-1-1-1-1-2-2-loom-openai-safety-false-positive-diagnostic-evidence.trace.md)
+  - Collapse To: [002-foundation-tooling-closure-and-workflow-automation-task.trace.md](work/tooling/002-foundation-tooling-closure-and-workflow-automation-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 13 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 6**
-  - Leaf: [005-1-site-branch-authority-grounding-task.trace.md](tooling/005-1-site-branch-authority-grounding-task.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [005-1-site-branch-authority-grounding-task.trace.md](work/tooling/005-1-site-branch-authority-grounding-task.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 19 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 7**
-  - Leaf: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-to-anchor-pinned-parent-continuity-reconciliation-return-handoff.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-to-anchor-pinned-parent-continuity-reconciliation-return-handoff.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-to-anchor-pinned-parent-continuity-reconciliation-return-handoff.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-to-anchor-pinned-parent-continuity-reconciliation-return-handoff.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 8**
-  - Leaf: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-axiom-pinned-parent-continuity-reconciliation-handoff.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-axiom-pinned-parent-continuity-reconciliation-handoff.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-axiom-pinned-parent-continuity-reconciliation-handoff.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-axiom-pinned-parent-continuity-reconciliation-handoff.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 41 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 9**
-  - Leaf: [007-3-1-1-1-1-1-1-loom-to-anchor-human-first-common-cli-output-density-correction-return-handoff.trace.md](tooling/007-3-1-1-1-1-1-1-loom-to-anchor-human-first-common-cli-output-density-correction-return-handoff.trace.md)
-  - Collapse To: [007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md](tooling/007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md)
+  - Leaf: [007-3-1-1-1-1-1-1-loom-to-anchor-human-first-common-cli-output-density-correction-return-handoff.trace.md](work/tooling/007-3-1-1-1-1-1-1-loom-to-anchor-human-first-common-cli-output-density-correction-return-handoff.trace.md)
+  - Collapse To: [007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md](work/tooling/007-3-1-1-1-1-1-loom-human-first-common-cli-output-density-correction-final-evidence.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 10**
-  - Leaf: [007-4-1-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md](tooling/007-4-1-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md)
-  - Collapse To: [007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md](tooling/007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md)
+  - Leaf: [007-4-1-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md](work/tooling/007-4-1-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md)
+  - Collapse To: [007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md](work/tooling/007-4-1-1-anchor-fresh-re-ground-and-plan-next-major-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 11**
-  - Leaf: [007-4-1-1-2-1-anchor-to-loom-schema-invalid-author-repair-common-path-ergonomics-handoff.trace.md](tooling/007-4-1-1-2-1-anchor-to-loom-schema-invalid-author-repair-common-path-ergonomics-handoff.trace.md)
-  - Collapse To: [007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md](tooling/007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md)
+  - Leaf: [007-4-1-1-2-1-anchor-to-loom-schema-invalid-author-repair-common-path-ergonomics-handoff.trace.md](work/tooling/007-4-1-1-2-1-anchor-to-loom-schema-invalid-author-repair-common-path-ergonomics-handoff.trace.md)
+  - Collapse To: [007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md](work/tooling/007-4-1-1-2-anchor-schema-invalid-author-repair-common-path-ergonomics-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 12**
-  - Leaf: [007-4-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md](tooling/007-4-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md)
-  - Collapse To: [007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md](tooling/007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md)
+  - Leaf: [007-4-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md](work/tooling/007-4-1-1-anchor-to-anchor-human-first-common-cli-major-checkpoint-handoff.trace.md)
+  - Collapse To: [007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md](work/tooling/007-4-1-anchor-human-first-common-cli-stable-checkpoint-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 13**
-  - Leaf: [008-1-1-1-1-anchor-to-anchor-site-reduction-finalization-handoff.trace.md](tooling/008-1-1-1-1-anchor-to-anchor-site-reduction-finalization-handoff.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [008-1-1-1-1-anchor-to-anchor-site-reduction-finalization-handoff.trace.md](work/tooling/008-1-1-1-1-anchor-to-anchor-site-reduction-finalization-handoff.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 5 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 14**
-  - Leaf: [009-1-tooling-historical-lineage-reduction.trace.md](tooling/009-1-tooling-historical-lineage-reduction.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [009-1-tooling-historical-lineage-reduction.trace.md](work/tooling/009-1-tooling-historical-lineage-reduction.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 15**
-  - Leaf: [009-2-schema-invalid-author-repair-human-acceptance-carry-forward-task.trace.md](tooling/009-2-schema-invalid-author-repair-human-acceptance-carry-forward-task.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [009-2-schema-invalid-author-repair-human-acceptance-carry-forward-task.trace.md](work/tooling/009-2-schema-invalid-author-repair-human-acceptance-carry-forward-task.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 16**
-  - Leaf: [010-1-1-1-axiom-to-anchor-reduction-safety-contract-return-handoff.trace.md](tooling/010-1-1-1-axiom-to-anchor-reduction-safety-contract-return-handoff.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [010-1-1-1-axiom-to-anchor-reduction-safety-contract-return-handoff.trace.md](work/tooling/010-1-1-1-axiom-to-anchor-reduction-safety-contract-return-handoff.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 8 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 17**
-  - Leaf: [010-2-1-1-loom-to-anchor-reduction-audit-repair-parity-return-handoff.trace.md](tooling/010-2-1-1-loom-to-anchor-reduction-audit-repair-parity-return-handoff.trace.md)
-  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
+  - Leaf: [010-2-1-1-loom-to-anchor-reduction-audit-repair-parity-return-handoff.trace.md](work/tooling/010-2-1-1-loom-to-anchor-reduction-audit-repair-parity-return-handoff.trace.md)
+  - Collapse To: [005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md](work/tooling/005-2-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-axiom-pinned-parent-continuity-reconciliation-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 8 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 18**
-  - Leaf: [011-1-anchor-to-axiom-schema-slice-factory-semantics-handoff.trace.md](tooling/011-1-anchor-to-axiom-schema-slice-factory-semantics-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-1-anchor-to-axiom-schema-slice-factory-semantics-handoff.trace.md](work/tooling/011-1-anchor-to-axiom-schema-slice-factory-semantics-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 19**
-  - Leaf: [011-11-anchor-clean-schema-factory-hygiene-reconciliation-decision.trace.md](tooling/011-11-anchor-clean-schema-factory-hygiene-reconciliation-decision.trace.md)
-  - Collapse To: [011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md](tooling/011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md)
+  - Leaf: [011-11-anchor-clean-schema-factory-hygiene-reconciliation-decision.trace.md](work/tooling/011-11-anchor-clean-schema-factory-hygiene-reconciliation-decision.trace.md)
+  - Collapse To: [011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md](work/tooling/011-10-1-1-1-1-loom-to-anchor-inline-inheritance-override-factory-hygiene-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 20**
-  - Leaf: [011-2-1-1-loom-to-anchor-schema-slice-factory-mechanics-return-handoff.trace.md](tooling/011-2-1-1-loom-to-anchor-schema-slice-factory-mechanics-return-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-2-1-1-loom-to-anchor-schema-slice-factory-mechanics-return-handoff.trace.md](work/tooling/011-2-1-1-loom-to-anchor-schema-slice-factory-mechanics-return-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 21**
-  - Leaf: [011-3-anchor-to-axiom-schema-factory-canonical-repair-handoff.trace.md](tooling/011-3-anchor-to-axiom-schema-factory-canonical-repair-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-3-anchor-to-axiom-schema-factory-canonical-repair-handoff.trace.md](work/tooling/011-3-anchor-to-axiom-schema-factory-canonical-repair-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 22**
-  - Leaf: [011-4-1-1-loom-to-anchor-schema-factory-reverification-transport-closure-handoff.trace.md](tooling/011-4-1-1-loom-to-anchor-schema-factory-reverification-transport-closure-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-4-1-1-loom-to-anchor-schema-factory-reverification-transport-closure-handoff.trace.md](work/tooling/011-4-1-1-loom-to-anchor-schema-factory-reverification-transport-closure-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 23**
-  - Leaf: [011-5-1-2-1-kodax-to-anchor-schema-factory-viewer-proof-handoff.trace.md](tooling/011-5-1-2-1-kodax-to-anchor-schema-factory-viewer-proof-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-5-1-2-1-kodax-to-anchor-schema-factory-viewer-proof-handoff.trace.md](work/tooling/011-5-1-2-1-kodax-to-anchor-schema-factory-viewer-proof-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 5 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 24**
-  - Leaf: [011-6-1-1-loom-to-anchor-generic-cross-workspace-endpoint-role-carriage-repair-return-handoff.trace.md](tooling/011-6-1-1-loom-to-anchor-generic-cross-workspace-endpoint-role-carriage-repair-return-handoff.trace.md)
-  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
+  - Leaf: [011-6-1-1-loom-to-anchor-generic-cross-workspace-endpoint-role-carriage-repair-return-handoff.trace.md](work/tooling/011-6-1-1-loom-to-anchor-generic-cross-workspace-endpoint-role-carriage-repair-return-handoff.trace.md)
+  - Collapse To: [011-schema-slice-factory-qualification-builder-readiness-task.trace.md](work/tooling/011-schema-slice-factory-qualification-builder-readiness-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 25**
-  - Leaf: [011-6-1-anchor-to-axiom-evidence-parent-lineage-validator-semantic-adjudication-handoff.trace.md](tooling/011-6-1-anchor-to-axiom-evidence-parent-lineage-validator-semantic-adjudication-handoff.trace.md)
-  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
+  - Leaf: [011-6-1-anchor-to-axiom-evidence-parent-lineage-validator-semantic-adjudication-handoff.trace.md](work/tooling/011-6-1-anchor-to-axiom-evidence-parent-lineage-validator-semantic-adjudication-handoff.trace.md)
+  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](work/tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 26**
-  - Leaf: [011-6-2-axiom-evidence-parent-lineage-validator-disposition-decision.trace.md](tooling/011-6-2-axiom-evidence-parent-lineage-validator-disposition-decision.trace.md)
-  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
+  - Leaf: [011-6-2-axiom-evidence-parent-lineage-validator-disposition-decision.trace.md](work/tooling/011-6-2-axiom-evidence-parent-lineage-validator-disposition-decision.trace.md)
+  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](work/tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 27**
-  - Leaf: [011-6-3-axiom-to-anchor-evidence-parent-lineage-validator-disposition-return-handoff.trace.md](tooling/011-6-3-axiom-to-anchor-evidence-parent-lineage-validator-disposition-return-handoff.trace.md)
-  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
+  - Leaf: [011-6-3-axiom-to-anchor-evidence-parent-lineage-validator-disposition-return-handoff.trace.md](work/tooling/011-6-3-axiom-to-anchor-evidence-parent-lineage-validator-disposition-return-handoff.trace.md)
+  - Collapse To: [011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md](work/tooling/011-6-anchor-evidence-parent-lineage-validator-semantic-adjudication-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 28**
-  - Leaf: [011-8-anchor-schema-slice-factory-qualification-reconciliation-decision.trace.md](tooling/011-8-anchor-schema-slice-factory-qualification-reconciliation-decision.trace.md)
-  - Collapse To: [011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md](tooling/011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md)
+  - Leaf: [011-8-anchor-schema-slice-factory-qualification-reconciliation-decision.trace.md](work/tooling/011-8-anchor-schema-slice-factory-qualification-reconciliation-decision.trace.md)
+  - Collapse To: [011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md](work/tooling/011-7-1-1-1-loom-to-anchor-evidence-parent-lineage-validator-reconciliation-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 29**
-  - Leaf: [011-9-1-1-axiom-schema-native-inheritance-override-representation-decision.trace.md](tooling/011-9-1-1-axiom-schema-native-inheritance-override-representation-decision.trace.md)
-  - Collapse To: [011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md](tooling/011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md)
+  - Leaf: [011-9-1-1-axiom-schema-native-inheritance-override-representation-decision.trace.md](work/tooling/011-9-1-1-axiom-schema-native-inheritance-override-representation-decision.trace.md)
+  - Collapse To: [011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md](work/tooling/011-9-1-anchor-to-axiom-schema-native-inheritance-override-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 30**
-  - Leaf: [012-1-1-axiom-validation-method-report-factory-scale-disposition-decision.trace.md](tooling/012-1-1-axiom-validation-method-report-factory-scale-disposition-decision.trace.md)
-  - Collapse To: [012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md](tooling/012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md)
+  - Leaf: [012-1-1-axiom-validation-method-report-factory-scale-disposition-decision.trace.md](work/tooling/012-1-1-axiom-validation-method-report-factory-scale-disposition-decision.trace.md)
+  - Collapse To: [012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md](work/tooling/012-1-anchor-to-axiom-validation-method-report-factory-scale-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 31**
-  - Leaf: [012-2-2-loom-validation-method-report-shared-factory-implementation-evidence.trace.md](tooling/012-2-2-loom-validation-method-report-shared-factory-implementation-evidence.trace.md)
-  - Collapse To: [012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md](tooling/012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md)
+  - Leaf: [012-2-2-loom-validation-method-report-shared-factory-implementation-evidence.trace.md](work/tooling/012-2-2-loom-validation-method-report-shared-factory-implementation-evidence.trace.md)
+  - Collapse To: [012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md](work/tooling/012-2-1-anchor-to-loom-validation-method-report-factory-implementation-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 32**
-  - Leaf: [012-3-anchor-validation-method-report-factory-scale-reconciliation-decision.trace.md](tooling/012-3-anchor-validation-method-report-factory-scale-reconciliation-decision.trace.md)
-  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
+  - Leaf: [012-3-anchor-validation-method-report-factory-scale-reconciliation-decision.trace.md](work/tooling/012-3-anchor-validation-method-report-factory-scale-reconciliation-decision.trace.md)
+  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](work/tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 33**
-  - Leaf: [013-1-1-axiom-party-role-schema-native-specialization-decision.trace.md](tooling/013-1-1-axiom-party-role-schema-native-specialization-decision.trace.md)
-  - Collapse To: [013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md](tooling/013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md)
+  - Leaf: [013-1-1-axiom-party-role-schema-native-specialization-decision.trace.md](work/tooling/013-1-1-axiom-party-role-schema-native-specialization-decision.trace.md)
+  - Collapse To: [013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md](work/tooling/013-1-anchor-to-axiom-major-planning-role-authority-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 34**
-  - Leaf: [013-anchor-major-planning-role-persistence.task.trace.md](tooling/013-anchor-major-planning-role-persistence.task.trace.md)
-  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
+  - Leaf: [013-anchor-major-planning-role-persistence.task.trace.md](work/tooling/013-anchor-major-planning-role-persistence.task.trace.md)
+  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](work/tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 35**
-  - Leaf: [014-process-reconciliation-reduction-readiness-lifecycle.task.trace.md](tooling/014-process-reconciliation-reduction-readiness-lifecycle.task.trace.md)
-  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
+  - Leaf: [014-process-reconciliation-reduction-readiness-lifecycle.task.trace.md](work/tooling/014-process-reconciliation-reduction-readiness-lifecycle.task.trace.md)
+  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](work/tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 36**
-  - Leaf: [015-anchor-major-segmentation-plan.task.trace.md](tooling/015-anchor-major-segmentation-plan.task.trace.md)
-  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
+  - Leaf: [015-anchor-major-segmentation-plan.task.trace.md](work/tooling/015-anchor-major-segmentation-plan.task.trace.md)
+  - Collapse To: [012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md](work/tooling/012-2-2-1-loom-to-anchor-validation-method-report-shared-factory-return-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 37**
-  - Leaf: [016-1-anchor-fresh-common-author-continuation-failure-evidence.trace.md](tooling/016-1-anchor-fresh-common-author-continuation-failure-evidence.trace.md)
-  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
+  - Leaf: [016-1-anchor-fresh-common-author-continuation-failure-evidence.trace.md](work/tooling/016-1-anchor-fresh-common-author-continuation-failure-evidence.trace.md)
+  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](work/tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 38**
-  - Leaf: [016-2-anchor-to-loom-common-author-continuation-repair-handoff.trace.md](tooling/016-2-anchor-to-loom-common-author-continuation-repair-handoff.trace.md)
-  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
+  - Leaf: [016-2-anchor-to-loom-common-author-continuation-repair-handoff.trace.md](work/tooling/016-2-anchor-to-loom-common-author-continuation-repair-handoff.trace.md)
+  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](work/tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 39**
-  - Leaf: [017-2-sigma-cross-repository-work-provenance-grounding-feedback.trace.md](tooling/017-2-sigma-cross-repository-work-provenance-grounding-feedback.trace.md)
-  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
+  - Leaf: [017-2-sigma-cross-repository-work-provenance-grounding-feedback.trace.md](work/tooling/017-2-sigma-cross-repository-work-provenance-grounding-feedback.trace.md)
+  - Collapse To: [016-common-author-continuation-schema-authority-repair.task.trace.md](work/tooling/016-common-author-continuation-schema-authority-repair.task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 40**
-  - Leaf: [020-1-1-1-1-axiom-to-anchor-work-provenance-grounding-semantics-return-handoff.trace.md](tooling/020-1-1-1-1-axiom-to-anchor-work-provenance-grounding-semantics-return-handoff.trace.md)
-  - Collapse To: [020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md](tooling/020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md)
+  - Leaf: [020-1-1-1-1-axiom-to-anchor-work-provenance-grounding-semantics-return-handoff.trace.md](work/tooling/020-1-1-1-1-axiom-to-anchor-work-provenance-grounding-semantics-return-handoff.trace.md)
+  - Collapse To: [020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md](work/tooling/020-1-anchor-cold-start-grounding-handoff-trust-discovery.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 3 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 41**
-  - Leaf: [021-1-1-1-axiom-major-010-lifecycle-readiness-semantic-disposition-decision.trace.md](tooling/021-1-1-1-axiom-major-010-lifecycle-readiness-semantic-disposition-decision.trace.md)
-  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
+  - Leaf: [021-1-1-1-axiom-major-010-lifecycle-readiness-semantic-disposition-decision.trace.md](work/tooling/021-1-1-1-axiom-major-010-lifecycle-readiness-semantic-disposition-decision.trace.md)
+  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](work/tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 6 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 42**
-  - Leaf: [023-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-major-012-watcher-session-operator-interaction-repair-loom-to-anchor-return.trace.md](tooling/023-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-major-012-watcher-session-operator-interaction-repair-loom-to-anchor-return.trace.md)
-  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
+  - Leaf: [023-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-major-012-watcher-session-operator-interaction-repair-loom-to-anchor-return.trace.md](work/tooling/023-3-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-major-012-watcher-session-operator-interaction-repair-loom-to-anchor-return.trace.md)
+  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](work/tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 80 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 43**
-  - Leaf: [023-3-1-1-1-axiom-to-anchor-major-012-pointerless-carrier-semantics-return-handoff.trace.md](tooling/023-3-1-1-1-axiom-to-anchor-major-012-pointerless-carrier-semantics-return-handoff.trace.md)
-  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
+  - Leaf: [023-3-1-1-1-axiom-to-anchor-major-012-pointerless-carrier-semantics-return-handoff.trace.md](work/tooling/023-3-1-1-1-axiom-to-anchor-major-012-pointerless-carrier-semantics-return-handoff.trace.md)
+  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](work/tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 43 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 44**
-  - Leaf: [024-3-1-anchor-to-sigma-major-013-vscode-0-1-7-dogfood-handoff.trace.md](tooling/024-3-1-anchor-to-sigma-major-013-vscode-0-1-7-dogfood-handoff.trace.md)
-  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
+  - Leaf: [024-3-1-anchor-to-sigma-major-013-vscode-0-1-7-dogfood-handoff.trace.md](work/tooling/024-3-1-anchor-to-sigma-major-013-vscode-0-1-7-dogfood-handoff.trace.md)
+  - Collapse To: [020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md](work/tooling/020-10-anchor-to-sigma-major-009-windows-closure-repair-handoff.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 96 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 45**
-  - Leaf: [001-1-poc-product-contract-inventory-discovery.trace.md](viewer/001-1-poc-product-contract-inventory-discovery.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-1-poc-product-contract-inventory-discovery.trace.md](work/viewer/001-1-poc-product-contract-inventory-discovery.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 46**
-  - Leaf: [001-2-tooling-prerequisite-matrix-discovery.trace.md](viewer/001-2-tooling-prerequisite-matrix-discovery.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-2-tooling-prerequisite-matrix-discovery.trace.md](work/viewer/001-2-tooling-prerequisite-matrix-discovery.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 47**
-  - Leaf: [001-3-navigation-parity-task.trace.md](viewer/001-3-navigation-parity-task.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-3-navigation-parity-task.trace.md](work/viewer/001-3-navigation-parity-task.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 48**
-  - Leaf: [001-4-artifact-and-action-parity-task.trace.md](viewer/001-4-artifact-and-action-parity-task.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-4-artifact-and-action-parity-task.trace.md](work/viewer/001-4-artifact-and-action-parity-task.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 49**
-  - Leaf: [001-5-workspace-source-temporal-and-export-parity-task.trace.md](viewer/001-5-workspace-source-temporal-and-export-parity-task.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-5-workspace-source-temporal-and-export-parity-task.trace.md](work/viewer/001-5-workspace-source-temporal-and-export-parity-task.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 50**
-  - Leaf: [001-6-human-browser-parity-acceptance-task.trace.md](viewer/001-6-human-browser-parity-acceptance-task.trace.md)
-  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
+  - Leaf: [001-6-human-browser-parity-acceptance-task.trace.md](work/viewer/001-6-human-browser-parity-acceptance-task.trace.md)
+  - Collapse To: [003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md](work/tooling/003-1-1-1-1-1-1-anchor-iteration-friction-acceptance-decision.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 20 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 51**
-  - Leaf: [002-4-1-1-1-anchor-viewer-navigation-parity-major-acceptance-decision.trace.md](viewer/002-4-1-1-1-anchor-viewer-navigation-parity-major-acceptance-decision.trace.md)
-  - Collapse To: [002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md](viewer/002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md)
+  - Leaf: [002-4-1-1-1-anchor-viewer-navigation-parity-major-acceptance-decision.trace.md](work/viewer/002-4-1-1-1-anchor-viewer-navigation-parity-major-acceptance-decision.trace.md)
+  - Collapse To: [002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md](work/viewer/002-4-1-1-anchor-materialized-sigma-viewer-navigation-human-acceptance-feedback.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 52**
-  - Leaf: [004-1-anchor-to-anchor-post-reduction-artifact-action-major-checkpoint-handoff.trace.md](viewer/004-1-anchor-to-anchor-post-reduction-artifact-action-major-checkpoint-handoff.trace.md)
-  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
+  - Leaf: [004-1-anchor-to-anchor-post-reduction-artifact-action-major-checkpoint-handoff.trace.md](work/viewer/004-1-anchor-to-anchor-post-reduction-artifact-action-major-checkpoint-handoff.trace.md)
+  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](work/viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 53**
-  - Leaf: [005-1-1-1-kodax-to-anchor-node-graph-verse-projection-return-handoff.trace.md](viewer/005-1-1-1-kodax-to-anchor-node-graph-verse-projection-return-handoff.trace.md)
-  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
+  - Leaf: [005-1-1-1-kodax-to-anchor-node-graph-verse-projection-return-handoff.trace.md](work/viewer/005-1-1-1-kodax-to-anchor-node-graph-verse-projection-return-handoff.trace.md)
+  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](work/viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 4 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
 
 - **Leaf 54**
-  - Leaf: [006-viewer-human-authoring-and-handoff-package-parity-task.trace.md](viewer/006-viewer-human-authoring-and-handoff-package-parity-task.trace.md)
-  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
+  - Leaf: [006-viewer-human-authoring-and-handoff-package-parity-task.trace.md](work/viewer/006-viewer-human-authoring-and-handoff-package-parity-task.trace.md)
+  - Collapse To: [004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md](work/viewer/004-anchor-viewer-artifact-action-parity-recovery-active-major-task.trace.md)
   - Disposition: `completed-or-superseded-historical-work`
   - Why: Current Site ownership has moved to the thin-deployment frontier; still-relevant shared Tooling and Viewer obligations are explicitly carried by current Core/App tasks, while historical bytes remain subject to exact immutable recovery qualification before removal.
   - Expansion Span: exact declared Parent traversal across 1 proposed disappearing edge(s) to the nearest surviving Site-local closure endpoint.
@@ -475,4 +475,4 @@ The entries below bind each Stage-A disappearing graph leaf to the nearest retai
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: mk6PEnOGyUV76j1p9TBwxONntswjl6CR6aoZyQd7V3Q
+  - Value: RNdl4Vher9vz2yYkkG_wr13rq9sE5TzAEAskADwFl4A

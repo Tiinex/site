@@ -1,8 +1,8 @@
 # Continuity Context
 
-- Envelope Schema: [tiinex.root.v1](../.schemas/tiinex.root.v1.schema.md)
+- Envelope Schema: [tiinex.root.v1](https://github.com/Tiinex/docs/blob/302506f90537dc23d6f88ad0bd0bb9c97c6cf9f6/.topics/.schemas/tiinex.root.v1.schema.md)
 - Current
-  - Current Schema: [tiinex.workspace.v1](../.schemas/tiinex.workspace.v1.schema.md)
+  - Current Schema: [tiinex.workspace.v1](https://github.com/Tiinex/docs/blob/302506f90537dc23d6f88ad0bd0bb9c97c6cf9f6/.topics/.schemas/tiinex.workspace.v1.schema.md)
   - Created At: 2026-09-08 20:46:00
   - Authors: Anchor
   - Why: Reconcile the current deployment entrypoint after Sigma's source landing and the Core/App split; historical input bytes remain in the supplied input archive.
@@ -36,4 +36,4 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:MVr7--y9G71AdXOHOFMK5XsXG51MI64Zlqkuxmvy8I4
+  - Value:x1XpMynVodpOclWomJXm_u0IuEcu5-8BWSCzJTMCesw

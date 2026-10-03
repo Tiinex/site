@@ -4,9 +4,9 @@
 - Parent
   - Parent Schema: [tiinex.decision.v1](https://github.com/Tiinex/docs/blob/e713557f8be630967571d11a73f9ecd05ae329ce/.topics/.schemas/core/decision/tiinex.decision.v1.schema.md)
   - Created At: 2026-09-03 22:20:34
-  - Trace: [011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md](../../tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
+  - Trace: [011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md](../../work/tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
   - Origin:
-    - [relative](../../tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
+    - [relative](../../work/tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
 - Current
   - Current Schema: [tiinex.task.v1](https://github.com/Tiinex/docs/blob/302506f90537dc23d6f88ad0bd0bb9c97c6cf9f6/.topics/.schemas/core/task/tiinex.task.v1.schema.md)
   - Created At: 2026-10-03 10:15:29
@@ -47,9 +47,9 @@ Resolve the one remaining Site historical terminal candidate left outside Stage-
 # Continuity Integrity
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
-  - Towards: [011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md](../../tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
+  - Towards: [011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md](../../work/tooling/011-3-1-axiom-schema-factory-canonical-repair-disposition-decision.trace.md)
   - Value: g-AeP1QLPGPIaaBuzkalI4wuukIaB_cpBbGK2TEOIJ4
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 8SbDy9P-vvoHz-229p1pdmcK5zceDVcH3m-wQTdts-M
+  - Value: iqB7PhVBlW1-NARW9baV0e2CKf-kGxmHnOvwwudzkyw
