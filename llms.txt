@@ -1,32 +1,23 @@
 # Tiinex/site LLM Guide
 
 Purpose:
-Tiinex/site is the official thin web deployment over `@tiinex/app` and `@tiinex/core`. It is not the shared Tooling source, not canonical schema authority, and not the whole Tiinex project.
+Tiinex/site is the official thin web deployment over `@tiinex/app` and `@tiinex/core`. It is not shared Tooling source, canonical schema authority, or the whole Tiinex project.
 
 Read in this order:
-1. README.md
-2. tiinex.config.js
-3. .topics/.workspaces/tiinex-site.workspace.md
-4. .topics/026-thin-site-hygiene-historical-reduction-task.trace.md when working on Turn-2 history hygiene
+1. `.topics/.workspaces/tiinex-site.workspace.md`
+2. `.topics/reductions/workspace/010-site-fresh-start-reduction.trace.md`
+3. `README.md` for deployment/operator orientation
+4. `tiinex.config.js` and source/tests only for a concrete Site implementation question
 
 Authority routing:
 - Tiinex/docs owns maintained schema/semantic contracts.
-- Tiinex/business owns organizational truth, priorities and human gates.
-- @tiinex/core owns shared host-neutral mechanics and portable Handoff Tooling.
-- @tiinex/app owns the reusable Viewer/application/Verse-host layer.
+- Tiinex/business owns organizational Project/priority/human-gate context where applicable.
+- `@tiinex/core` owns shared host-neutral mechanics and portable Handoff Tooling.
+- `@tiinex/app` owns the reusable Viewer/application/Verse-host layer.
 - this repository owns deployment configuration, web integration and hosting only.
 
-Branch/currentness boundary:
-- current source for this repository is grounded by its Workspace and task artifacts, not by historical `refactor`/PoC branch narratives;
-- the current package/deployment workflow targets `master` after the Core/App split;
-- never infer semantic authority merely from a branch or repository name.
-
-Handoff/bootstrap boundary:
-- for a qualified routed Handoff package, follow its Start/Continue protocol and its carried Core Tooling bootstrap;
-- Site no longer owns `src/tooling/portable/**` bootstrap/runtime source;
-- external-assistant bootstrap belongs to the Interop frontier when that repository is established.
-
-History/reduction boundary:
-- old `.topics/tooling/**` and `.topics/viewer/**` material is historical source awaiting exact destructive Reduction qualification;
-- file age, extraction success, Git retention or a summary alone does not authorize semantic deletion;
-- unresolved reduction preflight must fail closed.
+Currentness boundary:
+- Major 017 reduced the historical Site Viewer/Tooling/refactor execution lineage, including legacy top-level `025/026/027` artifacts; those paths are not current work.
+- No historical Task becomes current from Git retention, filename, old README prose, or a ready/local status in immutable recovery.
+- Future Site work starts from a new explicit bounded Task with truthful Project ancestry.
+- For a qualified routed Handoff package, follow its Start/Continue protocol and carried Core Tooling bootstrap; Site does not own portable bootstrap/runtime source.

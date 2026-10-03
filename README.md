@@ -25,9 +25,9 @@ For local browser development, `npm run dev` serves the source-distributed `@tii
 
 ## Authority and history
 
-Tiinex Docs remains canonical schema/semantic authority. Business owns initiative/human-gate context. Site repository placement does not transfer either authority.
+Tiinex Docs remains canonical schema/semantic authority. Business owns organizational Project/priority/human-gate context where applicable. Site repository placement does not transfer either authority.
 
-The old monolithic Viewer/Tooling `.topics` history is still present while Turn 2 qualifies its destructive Reduction. Current deployment work is rooted at `.topics/025-thin-site-deployment-task.trace.md` and `.topics/026-thin-site-hygiene-historical-reduction-task.trace.md`. Historical semantic files are not deleted until the shared reduction preflight has an exact immutable Git source identity and returns eligible.
+Major 017 completed the Site fresh-start reduction. The old monolithic Viewer/Tooling execution material and legacy top-level `025/026/027` Tasks are no longer current source; exact recovery is preserved by `.topics/reductions/workspace/010-site-fresh-start-reduction.trace.md`. Site currently carries deployment source plus Workspace/reduction authority, not an active historical Task lineage. Future Site work starts from a new explicit bounded Task with truthful Project ancestry.
 
 ## Self-contained local-source browser gate
 
