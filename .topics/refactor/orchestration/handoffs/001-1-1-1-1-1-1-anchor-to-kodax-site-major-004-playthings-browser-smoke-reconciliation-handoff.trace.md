@@ -83,7 +83,7 @@
 
 - playthings-major-003-evidence
   - Material: Prism browser-readiness evidence from the still-open Playthings Major 003.
-  - Material Reference: [Playthings Major 003 Evidence](verse-playthings::.topics/refactor/qualification/002-prism-playthings-major-003-real-browser-readiness-evidence.trace.md)
+  - Material Reference: [Playthings Major 003 Evidence](verse-playthings::.topics/work/refactor/qualification/002-prism-playthings-major-003-real-browser-readiness-evidence.trace.md)
   - Purpose: exact stale-smoke findings, successful Verse-local gates and remaining browser/dependency blocker.
   - Availability: available
 
@@ -97,7 +97,7 @@
 
 - playthings-major-003-return
   - Material: Prism return for the open Playthings Major 003.
-  - Material Reference: [Playthings Major 003 Return](verse-playthings::.topics/refactor/qualification/003-prism-to-anchor-playthings-major-003-real-browser-readiness-retu.trace.md)
+  - Material Reference: [Playthings Major 003 Return](verse-playthings::.topics/work/refactor/qualification/003-prism-to-anchor-playthings-major-003-real-browser-readiness-retu.trace.md)
   - Purpose: exact current browser-readiness disposition and owner boundary.
   - Availability: available
 
@@ -152,4 +152,4 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 8B-SvMSENcMsIbYT0IzeIC7BsX-ZqvLjhbYfN75zcWk
+  - Value: nj4ex0udnT6iOguhUnDfFqNDXTlGmne1_hyUaavgcGM

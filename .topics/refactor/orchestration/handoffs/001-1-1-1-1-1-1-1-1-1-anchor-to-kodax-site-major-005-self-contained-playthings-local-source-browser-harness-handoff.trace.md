@@ -86,7 +86,7 @@
   - Availability: available
 - playthings-major-003-return
   - Material: current Prism return for open Playthings Major 003.
-  - Material Reference: [Playthings Major 003 Return](verse-playthings::.topics/refactor/qualification/003-prism-to-anchor-playthings-major-003-real-browser-readiness-retu.trace.md)
+  - Material Reference: [Playthings Major 003 Return](verse-playthings::.topics/work/refactor/qualification/003-prism-to-anchor-playthings-major-003-real-browser-readiness-retu.trace.md)
   - Purpose: current product/readiness evidence and requirement for genuine browser execution.
   - Availability: available
 
@@ -137,8 +137,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-site-major-005-self-contained-playthings-local-source-browser-harness-task.trace.md](../001-1-1-1-1-1-1-1-1-site-major-005-self-contained-playthings-local-source-browser-harness-task.trace.md)
-  - Value: yUAwB35ZzqiojbXVkSB7DpT89e2FVybTtpRHhAuNmCc
+  - Value: HW8JcYYcq5mANzMof1mCkNtNaB34IxToYXVgcmfd1_Q
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: UW-7egLBiwa-ZodpuYNwBIzYIIEayKgtR8uigM2QU2M
+  - Value: VFgN1Bz3EfXGjtrmN4dgWL64_tLcuyP15Fx10DtQaXU

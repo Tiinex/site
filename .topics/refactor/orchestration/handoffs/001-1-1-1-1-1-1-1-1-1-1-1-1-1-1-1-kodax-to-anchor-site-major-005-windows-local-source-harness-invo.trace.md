@@ -170,8 +170,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-kodax-site-major-005-windows-local-source-harness-invocation-repair-handoff.trace.md](001-1-1-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-kodax-site-major-005-windows-local-source-harness-invocation-repair-handoff.trace.md)
-  - Value: FjVzFe-6j0rWp2PCJSzRPrB52eg3kCVrS2fp_qRlNBc
+  - Value: rwJHcCMuiwluqxVOeijxpFAlCpNxamXfX4PEgWcRajg
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: ufkPl51dGWwtUSLqGJprOr42jpBhoXND6nq2qCTsdmY
+  - Value: KEyyn-qXXeW2VnrtjYlrsCgD2Qyvalw5Vfte2Tps8K8

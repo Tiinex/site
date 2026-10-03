@@ -40,7 +40,7 @@
 - playthings-lane-coordination
   - Transfer Kind: work-and-responsibility
   - Description: coordinate the coupled Verse Playthings Major 003 readiness frontier using its repository-local Business-linked Task and the carried Playthings context.
-  - Controlling Artifact: [Secondary Anchor Playthings Lane — Major 003 Real-Browser Readiness Continuation](verse-playthings::.topics/refactor/orchestration/002-secondary-anchor-playthings-major-003-continuation-task.trace.md)
+  - Controlling Artifact: [Secondary Anchor Playthings Lane — Major 003 Real-Browser Readiness Continuation](verse-playthings::.topics/work/refactor/orchestration/002-secondary-anchor-playthings-major-003-continuation-task.trace.md)
   - Boundary: Playthings is carried as sibling context in this Site-first route. If Verse-local mutation is required, create/return an explicit owner-routed delegation/frontier rather than silently mutating the sibling Workspace from this route.
 
 - secondary-anchor-orchestration
@@ -91,7 +91,7 @@
 
 - playthings-major-003
   - Material: existing Verse Playthings Major 003 real-browser/Sigma-test readiness Task.
-  - Material Reference: [Playthings Major 003 Real Browser Readiness](verse-playthings::.topics/refactor/orchestration/001-1-playthings-major-003-real-browser-sigma-test-readiness-task.trace.md)
+  - Material Reference: [Playthings Major 003 Real Browser Readiness](verse-playthings::.topics/work/refactor/orchestration/001-1-playthings-major-003-real-browser-sigma-test-readiness-task.trace.md)
   - Purpose: recover the coupled product readiness frontier and avoid feature-scope widening.
   - Availability: available
 
@@ -154,4 +154,4 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: uqeYeAkoCilYFuQtADfcMIrLHUYMiidIAo69LEbbwCM
+  - Value: Gtyi0uEz0vrwnVImko0mgtMafUZrsqwSb30MBoMD2VM

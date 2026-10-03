@@ -79,7 +79,7 @@
 
 - playthings-major-003-evidence
   - Material: Prism evidence that isolated stale Site smoke assumptions and the dependency-capable-host blocker while keeping Verse-local gates green.
-  - Material Reference: [Playthings Major 003 Evidence](verse-playthings::.topics/refactor/qualification/002-prism-playthings-major-003-real-browser-readiness-evidence.trace.md)
+  - Material Reference: [Playthings Major 003 Evidence](verse-playthings::.topics/work/refactor/qualification/002-prism-playthings-major-003-real-browser-readiness-evidence.trace.md)
   - Purpose: prior blocker evidence reconciled by this Site tranche.
   - Availability: available
 
@@ -161,8 +161,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-anchor-to-kodax-site-major-004-playthings-browser-smoke-reconciliation-handoff.trace.md](001-1-1-1-1-1-1-anchor-to-kodax-site-major-004-playthings-browser-smoke-reconciliation-handoff.trace.md)
-  - Value: 8B-SvMSENcMsIbYT0IzeIC7BsX-ZqvLjhbYfN75zcWk
+  - Value: nj4ex0udnT6iOguhUnDfFqNDXTlGmne1_hyUaavgcGM
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: q1c_IMOphSV9J06SRnXCmYo2ou4MfVKjTMFWgLJnRdI
+  - Value: w_s5gczubWy0tH2d0OcNdVDuZjPDE4M-NvC6erACogI

@@ -132,8 +132,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-1-1-sigma-playthings-browser-host-execution-task.trace.md](../001-1-1-1-1-1-1-1-1-1-1-1-sigma-playthings-browser-host-execution-task.trace.md)
-  - Value: MnZsKCMfAR4ClAd44baTnxFNHCg_AnHw9WmzrzIn-_I
+  - Value: CjVIvV4os1zSdF63Vhr7XI-xbU6TT7-T2sYLfPIkk6Y
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: fXjtDINJi02nS8sWKQe35aLekQ0nm8Q5H1KkwpHTUc4
+  - Value: 5G_cTVjgIyjdGUfmjAofjLzRc77nQuqzf0y4pQ-Dm0k

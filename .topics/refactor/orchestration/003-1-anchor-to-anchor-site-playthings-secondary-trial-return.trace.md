@@ -95,7 +95,7 @@
 
 - playthings-secondary-anchor-task
   - Material: coupled Verse Playthings production-trial continuation Task.
-  - Material Reference: [Secondary Anchor Playthings Lane — Major 003 Real-Browser Readiness Continuation](verse-playthings::.topics/refactor/orchestration/002-secondary-anchor-playthings-major-003-continuation-task.trace.md)
+  - Material Reference: [Secondary Anchor Playthings Lane — Major 003 Real-Browser Readiness Continuation](verse-playthings::.topics/work/refactor/orchestration/002-secondary-anchor-playthings-major-003-continuation-task.trace.md)
   - Purpose: controlling coupled Playthings scope and owner boundary.
   - Availability: available
 
@@ -165,4 +165,4 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: dyWuYDWJvRSnWvRfytrLyOl3NX8SfVZtOE8S_FvguXE
+  - Value: R8UVriy0jDY6XlKNjzWUFLT3dphwgIu3dmUpIPTcQ5E

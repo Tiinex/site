@@ -58,8 +58,8 @@ Site-owned local-source browser harness and launch/test ergonomics only. No Play
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-sigma-playthings-browser-host-execution-handoff.trace.md](handoffs/001-1-1-1-1-1-1-1-1-1-1-1-1-anchor-to-sigma-playthings-browser-host-execution-handoff.trace.md)
-  - Value: fXjtDINJi02nS8sWKQe35aLekQ0nm8Q5H1KkwpHTUc4
+  - Value: 5G_cTVjgIyjdGUfmjAofjLzRc77nQuqzf0y4pQ-Dm0k
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 5tB3AiJJi-wlx_AZh0ofMUt2uY55q6_79gSTL7zC0nU
+  - Value: xnIzJVdN3miBJsv-3kpwpTwzEKk6dQNiY6kBuglcsHc

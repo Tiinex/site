@@ -125,8 +125,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [004-site-major-005-zero-ambiguity-sigma-windows-front-door.trace.md](../004-site-major-005-zero-ambiguity-sigma-windows-front-door.trace.md)
-  - Value: HGHpM98widsDADtZSInDXXkJJjPLL51cGhztyYlgZeQ
+  - Value: ecN4yuQ_5Q9cn8YFqTKgg1o3i9-djrfRi2kq5jYUt_I
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: W2J5fHmxU7m9bm0yX851-qwgRhNJVBhXyh-0grSS_RQ
+  - Value: x0j0fzXgMca_qX9BB_UPtqFs5scz9Z6TkLGBaGDZuAo

@@ -85,7 +85,7 @@
 
 - playthings-major-003
   - Material: current Verse Playthings Major 003 readiness Task.
-  - Material Reference: [Playthings Major 003 Real Browser Readiness](verse-playthings::.topics/refactor/orchestration/001-1-playthings-major-003-real-browser-sigma-test-readiness-task.trace.md)
+  - Material Reference: [Playthings Major 003 Real Browser Readiness](verse-playthings::.topics/work/refactor/orchestration/001-1-playthings-major-003-real-browser-sigma-test-readiness-task.trace.md)
   - Purpose: preserve the coupled readiness lane without feature expansion.
   - Availability: available
 
@@ -143,4 +143,4 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: em6Y1mT5odhp8W-UKbgONz0P6VQnx6fEgl4RgxULWQU
+  - Value: VGz1z4SXoav1b5ZG-A80pdxatuLkgaDB2uvet7Ynfb8

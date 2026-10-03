@@ -54,8 +54,8 @@ The Site Major 005 implementation removed the first-party publication ambiguity 
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-1-kodax-to-anchor-site-major-005-self-contained-playthings-local-source-browser-harness-return.trace.md](handoffs/001-1-1-1-1-1-1-1-1-1-1-kodax-to-anchor-site-major-005-self-contained-playthings-local-source-browser-harness-return.trace.md)
-  - Value: 7AfyXSsT0RT2nmicruB_VsgWgrZ2-lBEAArk60vsMA0
+  - Value: f_2lM1VRP2iV49qqP_1mdo_5HCirwOUINKgjWHn2S9U
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: MnZsKCMfAR4ClAd44baTnxFNHCg_AnHw9WmzrzIn-_I
+  - Value: CjVIvV4os1zSdF63Vhr7XI-xbU6TT7-T2sYLfPIkk6Y
