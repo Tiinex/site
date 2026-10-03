@@ -45,8 +45,8 @@ Official web deployment, composition and Site-owned Reduction only.
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [025-thin-site-deployment-task.trace.md](../025-thin-site-deployment-task.trace.md)
-  - Value: HtJrHXje6wzo9OZtxjZ3Ao20AjzZoA3HZjIuWRW6lCo
+  - Value: uvDLrpygzFErKVGqcBgJinQrKjQv5Pr8sgJfVT3QQII
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: Lb9Wx4rW0RKO-0ZHLYrPFSHmdH-u2Y-mEKsoF4R8KmM
+  - Value: 8_gKlftD3iZKWlzS3tFpFJ9XjjxHAJqFYuEANXAbdzA

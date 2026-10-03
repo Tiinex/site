@@ -151,8 +151,8 @@ These are preserved as cross-owner legacy diagnostics, not treated as current Ap
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-anchor-to-kodax-viewer-major-003-qualification-ownership-repair-current-baseline-handoff.trace.md](handoffs/001-1-1-1-anchor-to-kodax-viewer-major-003-qualification-ownership-repair-current-baseline-handoff.trace.md)
-  - Value: yQWeJ_pMyt6JFyaWyPLsDQnBq_Orm0H1kzASp_z7PKo
+  - Value: 17XUGAT-ZzztdO5NpG4DGOhink1iW755fMkDSWsf3JE
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: xsUjeBbYk37cPwLcozadnUgqdySDXsO1Pt0n14NwC2I
+  - Value: AK8RC4r2pocOaT3Q8MqvATChCPwH_OjY8iGNp6Znfbc

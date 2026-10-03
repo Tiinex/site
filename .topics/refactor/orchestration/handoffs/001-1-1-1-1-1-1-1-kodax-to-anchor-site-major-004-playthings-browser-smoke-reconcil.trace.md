@@ -161,8 +161,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-anchor-to-kodax-site-major-004-playthings-browser-smoke-reconciliation-handoff.trace.md](001-1-1-1-1-1-1-anchor-to-kodax-site-major-004-playthings-browser-smoke-reconciliation-handoff.trace.md)
-  - Value: 5yLjqKvoaCa81VSyqYv7GHsr_UMnhq6HEJPc86gWTU4
+  - Value: 8B-SvMSENcMsIbYT0IzeIC7BsX-ZqvLjhbYfN75zcWk
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: xI7PpF2pDtlafJRcT49fjXEBBcLmYxmSaDvTjJl1BYs
+  - Value: q1c_IMOphSV9J06SRnXCmYo2ou4MfVKjTMFWgLJnRdI

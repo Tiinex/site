@@ -471,8 +471,8 @@ The entries below bind each Stage-A disappearing graph leaf to the nearest retai
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [026-thin-site-hygiene-historical-reduction-task.trace.md](026-thin-site-hygiene-historical-reduction-task.trace.md)
-  - Value: 2n_RLlLORw06m6AENYcyNqur2OsU6Cta-F6v7YVWEGc
+  - Value: i_ZuEFPTa_B2XUTrKOXItTY2awMWxP-63R_-OGiQUQw
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: aDdJZQ8Hn5yG_TUdfUb9hh9cOd7PKnTRU6Lprb_Fxi8
+  - Value: mk6PEnOGyUV76j1p9TBwxONntswjl6CR6aoZyQd7V3Q

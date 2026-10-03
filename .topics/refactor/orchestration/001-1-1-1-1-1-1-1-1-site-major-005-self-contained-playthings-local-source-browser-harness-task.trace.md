@@ -67,8 +67,8 @@ Major 005 closes when the first-party source dependency boundary is reproducible
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-kodax-to-anchor-site-major-004-playthings-browser-smoke-reconcil.trace.md](handoffs/001-1-1-1-1-1-1-1-kodax-to-anchor-site-major-004-playthings-browser-smoke-reconcil.trace.md)
-  - Value: xI7PpF2pDtlafJRcT49fjXEBBcLmYxmSaDvTjJl1BYs
+  - Value: q1c_IMOphSV9J06SRnXCmYo2ou4MfVKjTMFWgLJnRdI
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: mEcidGcjUIRZP1gi_faKWF6zN0K18O6tWNhYMgY5J3Q
+  - Value: yUAwB35ZzqiojbXVkSB7DpT89e2FVybTtpRHhAuNmCc

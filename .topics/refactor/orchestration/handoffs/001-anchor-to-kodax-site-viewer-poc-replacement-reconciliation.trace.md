@@ -127,8 +127,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-site-viewer-repository-local-orchestration-frontier.trace.md](../001-site-viewer-repository-local-orchestration-frontier.trace.md)
-  - Value: 8-YErGORA0ys1CD1ORmAEgQF10absJdrDcl2gWS4erI
+  - Value: prm8Iu_dz842KUprc0lWwf7bV5WPFaMOMFf_VzPwGrQ
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: IZwgY5Cn0M3HtZau8wWruDvN-FA84rL_e1qLb-oIHuQ
+  - Value: ljbykeiotkc1UnouN3fOiBl34F0-YL5tyD508Pqlm6I

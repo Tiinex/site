@@ -56,8 +56,8 @@ Current Site browser-harness / Playthings host-readiness work only, including Si
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-9-1-site-playthings-secondary-anchor-trial-epic.trace.md](business::.topics/initiatives/001-9-1-site-playthings-secondary-anchor-trial-epic.trace.md)
-  - Value: lX_JFvL1nfXGKcGVrIGkq7I1Bfb8lfw0v61kNsrsZbQ
+  - Value: z0e5IaJ3_a2DwCzlHzUXBvHYFypZIkoKmA7Fsp5RWxI
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: E5gVLUcIoKMTLq5yhu3bhDFeS6Kvk427zaWeozb8CuM
+  - Value: dyhMPvpgIbFDKvU3w2ZzITiJbKXv07xX9dbUwrDjWZ0

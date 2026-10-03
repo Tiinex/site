@@ -45,8 +45,8 @@ Site browser/host qualification only.
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-turn-2-thin-site-integration-frontier.trace.md](../001-turn-2-thin-site-integration-frontier.trace.md)
-  - Value: Lb9Wx4rW0RKO-0ZHLYrPFSHmdH-u2Y-mEKsoF4R8KmM
+  - Value: 8_gKlftD3iZKWlzS3tFpFJ9XjjxHAJqFYuEANXAbdzA
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: n30kBHtVUq-XAtzKBG77NRyPzyGd-f7ukX16ZSFug1M
+  - Value: nmsHGdkhbI_V-d_RgSfv3nj4hQjC3AJFjVrX-iAVZPE

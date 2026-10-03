@@ -61,8 +61,8 @@ A machine browser PASS proves only the current bounded Site/Playthings smoke pat
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-kodax-to-anchor-viewer-major-003-qualification-ownership-repair-return.trace.md](handoffs/001-1-1-1-1-kodax-to-anchor-viewer-major-003-qualification-ownership-repair-return.trace.md)
-  - Value: FUfYv802tYSIEUWFWMs5BpSqmk32tvBqo6TStgAJjv8
+  - Value: H7rzwhB-8jLag0N5UYSniRQVb8Jz58LVTwupYzDdL98
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 58SXfe_4yIT5vgylbIXY7bTITqvl-uQztHNqf__5EDw
+  - Value: NwHLAYj2FYRLwo1n_iwO5CDsSP_edAiocFlAorI1hZs

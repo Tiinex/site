@@ -53,8 +53,8 @@ This continuation improves the human front door. A genuine real-browser PASS sti
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-kodax-to-anchor-site-major-005-windows-local-source-harness-invo.trace.md](handoffs/001-1-1-1-1-1-1-1-1-1-1-1-1-1-1-1-kodax-to-anchor-site-major-005-windows-local-source-harness-invo.trace.md)
-  - Value: AjN-1TUaAQge5SmwkVqEynx1BVSM4COyN9ZM-AoFjjo
+  - Value: ufkPl51dGWwtUSLqGJprOr42jpBhoXND6nq2qCTsdmY
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: Q3I3wF00Rp-FyjfMqHMNbyMIzuBx03PznQc31rpJ7wU
+  - Value: HGHpM98widsDADtZSInDXXkJJjPLL51cGhztyYlgZeQ

@@ -176,8 +176,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [002-anchor-to-kodax-site-major-005-zero-ambiguity-sigma-windows-fron.trace.md](002-anchor-to-kodax-site-major-005-zero-ambiguity-sigma-windows-fron.trace.md)
-  - Value: hnBTU6fX8IcrwOZ004NfI-5M7c1o17KqkhiuZmrW6dc
+  - Value: W2J5fHmxU7m9bm0yX851-qwgRhNJVBhXyh-0grSS_RQ
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 8D1f1nq8UCgt1oIttzeCDnWrdi6cPzp_kyFd97YUIVw
+  - Value: TojYvRNuLwKOwWRgtPtuwA1a7yZShofvuZInPhckCYI

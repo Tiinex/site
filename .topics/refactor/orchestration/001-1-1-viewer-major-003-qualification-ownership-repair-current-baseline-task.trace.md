@@ -51,8 +51,8 @@ Machine-green qualification means the ownership/checkpoint baseline is truthful;
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-viewer-poc-replacement-reconciliation-kodax-to-anchor-return.trace.md](handoffs/001-1-viewer-poc-replacement-reconciliation-kodax-to-anchor-return.trace.md)
-  - Value: 6T_vePY5Vx5sQ-ENm83GKpv7heOZBonRgkBKhMO5lJU
+  - Value: gJj-gB4KG_9QU8n73xNs-CPlZVJrAYi-7SjhoL3Udbk
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: IsqxVnDZvFLGM4ka_UsgxLzJWQVz0ciiMG2Ww49XfNk
+  - Value: iaje_zVUa9a3nTdwNoLp7zixSxx30TxrsCc5ET860ZI

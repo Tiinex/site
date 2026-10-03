@@ -41,8 +41,8 @@ No historical artifact deletion in this bounded checkpoint. Historical reduction
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [Extract Core and App; unblock the Playthings consumer](business::.topics/initiatives/001-3-6-core-app-site-extraction-task.trace.md)
-  - Value: SOxxB77pxLrbHBJ3AodTGDgynI770PNNulV-Ov0MPqQ
+  - Value: KchXq9Hb_zV5SqD58G2ps36Ts5T4jG0VBAaY4bSQcG8
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value:HtJrHXje6wzo9OZtxjZ3Ao20AjzZoA3HZjIuWRW6lCo
+  - Value:uvDLrpygzFErKVGqcBgJinQrKjQv5Pr8sgJfVT3QQII

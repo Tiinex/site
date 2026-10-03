@@ -57,8 +57,8 @@ Technical PASS requires `status: passed` and `realBrowser: true` from the harnes
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [002-1-kodax-to-anchor-site-major-005-zero-ambiguity-sigma-windows-fron.trace.md](handoffs/002-1-kodax-to-anchor-site-major-005-zero-ambiguity-sigma-windows-fron.trace.md)
-  - Value: 8D1f1nq8UCgt1oIttzeCDnWrdi6cPzp_kyFd97YUIVw
+  - Value: TojYvRNuLwKOwWRgtPtuwA1a7yZShofvuZInPhckCYI
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 7J8DDayNZL14xZXWR7pPHp5U3srjS-vH_PtuBbkr91Y
+  - Value: RybrOMcy4_ksTH7IrCL9V6qYKnpU3arcSXwRZx24Cus

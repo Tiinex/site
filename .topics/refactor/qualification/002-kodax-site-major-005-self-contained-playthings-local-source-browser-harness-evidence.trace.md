@@ -94,8 +94,8 @@
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: [001-1-1-1-1-1-1-1-1-1-anchor-to-kodax-site-major-005-self-contained-playthings-local-source-browser-harness-handoff.trace.md](../orchestration/handoffs/001-1-1-1-1-1-1-1-1-1-anchor-to-kodax-site-major-005-self-contained-playthings-local-source-browser-harness-handoff.trace.md)
-  - Value: z0l9SncB7qzp-e7W48CyHmHXdmAzyyZQnRd-N5Pt_dQ
+  - Value: UW-7egLBiwa-ZodpuYNwBIzYIIEayKgtR8uigM2QU2M
 
 - [sha256-base64url-c14n-v2](https://github.com/Tiinex/docs/blob/3988951208eb9a8926e84ab42625d4b42fa00c2d/.topics/.validators/sha256-base64url-c14n-v2.validator.md)
   - Towards: self
-  - Value: 6PHvR8SqU7uGaaMtRhG3Q6ogZO1IIwi4G8sTb6dOrk8
+  - Value: OnpO7-NuRi7e4FwJ3XSYTsLMN_q3VE3T__r586T9VME
