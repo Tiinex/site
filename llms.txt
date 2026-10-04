@@ -1,23 +1,7 @@
-# Tiinex/site LLM Guide
+# Tiinex/site LLM Bootstrap
 
-Purpose:
-Tiinex/site is the official thin web deployment over `@tiinex/app` and `@tiinex/core`. It is not shared Tooling source, canonical schema authority, or the whole Tiinex project.
+This repository uses Tiinex. `.topics/**` and qualified source material are semantic/provenance authority; this file is only a bootstrap hint.
 
-Read in this order:
-1. `.topics/.workspaces/tiinex-site.workspace.md`
-2. `.topics/reductions/workspace/010-site-fresh-start-reduction.trace.md`
-3. `README.md` for deployment/operator orientation
-4. `tiinex.config.js` and source/tests only for a concrete Site implementation question
+Use Tiinex Tooling to discover and qualify the Workspace entrypoint under `.topics/.workspaces`, then follow only the qualified artifacts and processes applicable to the current task.
 
-Authority routing:
-- Tiinex/docs owns maintained schema/semantic contracts.
-- Tiinex/business owns organizational Project/priority/human-gate context where applicable.
-- `@tiinex/core` owns shared host-neutral mechanics and portable Handoff Tooling.
-- `@tiinex/app` owns the reusable Viewer/application/Verse-host layer.
-- this repository owns deployment configuration, web integration and hosting only.
-
-Currentness boundary:
-- Major 017 reduced the historical Site Viewer/Tooling/refactor execution lineage, including legacy top-level `025/026/027` artifacts; those paths are not current work.
-- No historical Task becomes current from Git retention, filename, old README prose, or a ready/local status in immutable recovery.
-- Future Site work starts from a new explicit bounded Task with truthful Project ancestry.
-- For a qualified routed Handoff package, follow its Start/Continue protocol and carried Core Tooling bootstrap; Site does not own portable bootstrap/runtime source.
+Do not use `llms.txt` or `README.md` as an artifact index, current-work declaration, or substitute for Tiinex discovery/grounding.
